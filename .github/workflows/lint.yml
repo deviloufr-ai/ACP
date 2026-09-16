@@ -21,26 +21,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Install Android SDK Components
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Setup Android SDK Command Line Tools
-        run: |
-          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
-          sdkmanager --sdk_root="$ANDROID_HOME/cmdline-tools/latest" --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-          ln -sf "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/cmdline-tools/4.1"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Set Environment Variables
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
-      
-      - name: Setup Android SDK (Legacy Method)
+      - name: Setup Android SDK
         id: setup-android
         uses: android-actions/setup-android@v3
         with:
@@ -66,26 +47,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Install Android SDK Components
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Setup Android SDK Command Line Tools
-        run: |
-          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
-          sdkmanager --sdk_root="$ANDROID_HOME/cmdline-tools/latest" --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-          ln -sf "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/cmdline-tools/4.1"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Set Environment Variables
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
-      
-      - name: Setup Android SDK (Legacy Method)
+      - name: Setup Android SDK
         id: setup-android
         uses: android-actions/setup-android@v3
         with:
@@ -109,26 +71,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Install Android SDK Components
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Setup Android SDK Command Line Tools
-        run: |
-          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
-          sdkmanager --sdk_root="$ANDROID_HOME/cmdline-tools/latest" --install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-          ln -sf "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/cmdline-tools/4.1"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      
-      - name: Set Environment Variables
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
-      
-      - name: Setup Android SDK (Legacy Method)
+      - name: Setup Android SDK
         id: setup-android
         uses: android-actions/setup-android@v3
         with:
