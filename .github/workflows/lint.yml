@@ -1,0 +1,85 @@
+name: Lint & Test APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        id: setup-android
+        uses: android-actions/setup-android@v3
+        
+      - name: Lint Check
+        run: ./gradlew lint
+      
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        id: setup-android
+        uses: android-actions/setup-android@v3
+      
+      - name: Run Unit Tests
+        run: ./gradlew test
+
+  release-apk:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        id: setup-android
+        uses: android-actions/setup-android@v3
+        
+      - name: Build APK
+        run: ./gradlew assembleDebug
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openauto-dash-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: skip
+      
+      - name: Install APK to Emulator (Optional Preview)
+        run: |
+          echo "To preview the APK, download it from the Actions tab and install manually on a device."
+          echo "APK location: app/build/outputs/apk/debug/app-debug.apk"

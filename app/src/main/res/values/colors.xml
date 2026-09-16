@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Theme Colors -->
+    <color name="primary">#6750A4</color>
+    <color name="primary_variant">#7C53EE</color>
+    
+    <!-- On colors for contrast -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    
+    <!-- Dark Theme Background -->
+    <color name="background">#0F1115</color>
+    <color name="surface">#1C1E24</color>
+    
+    <!-- Telemetry Colors (High Contrast) -->
+    <color name="telemetry_speed">#81D4FA</color>
+    <color name="telemetry_rpm">#FFA07A</color>
+    <color name="telemetry_warning">#FF5252</color>
+    <color name="telemetry_status_good">#69F0AE</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#C4C9CE</color>
+    
+    <!-- HUD Overlay Colors -->
+    <color name="hud_background">#2A2D35</color>
+    <color name="hud_speed">#81D4FA</color>
+    <color name="hud_rpm">#FFA07A</color>
+</resources>

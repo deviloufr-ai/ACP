@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="App.Button.HighContrast" parent="Widget.Material3.Button">
+        <item name="backgroundTint">#6750A4</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+    
+    <style name="App.Button.PlayPause" parent="Widget.Material3.Filled.TonalButton">
+        <item name="backgroundTint">#7C53EE</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="paddingStart">64dp</item>
+        <item name="paddingEnd">64dp</item>
+        <item name="paddingTop">32dp</item>
+        <item name="paddingBottom">32dp</item>
+    </style>
+    
+    <style name="App.Button.Skip" parent="Widget.Material3.FilledIconButton">
+        <item name="iconSize">52dp</item>
+        <item name="contentPadding">0dp</item>
+        <item name="cornerRadius">16dp</item>
+    </style>
+    
+    <style name="App.Text.Speedometer" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textColor">@color/telemetry_speed</item>
+        <item name="android:textSize">72sp</item>
+        <item name="android:typeface">sans</item>
+    </style>
+    
+    <style name="App.Text.RPM" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/telemetry_rpm</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:typeface">sans</item>
+    </style>
+    
+    <style name="App.Text.Info" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:typeface">sans</item>
+    </style>
+</resources>

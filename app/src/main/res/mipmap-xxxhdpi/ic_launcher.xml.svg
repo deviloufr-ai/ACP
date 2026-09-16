@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+
+  <!-- Background -->
+  <circle cx="96" cy="96" r="127.2" fill="#0F1115"/>
+
+  <!-- Speedometer Arc (Primary Visual Element) - Blue telemetry color -->
+  <path d="M 31.44 96 A 208.44 208.44 0 0 1 160.56 96 Z" 
+        fill="none" stroke="#81D4FA" stroke-width="14.08" 
+        stroke-linecap="round"/>
+
+  <!-- Inner Circle (Dashboard Hub) - Surface color -->
+  <circle cx="96" cy="96" r="32" fill="#1C1E24"/>
+
+  <!-- Vertical Speed Line in Center -->
+  <line x1="96" y1="89.6" x2="96" y2="102.4" 
+        stroke="#FFD4AA" stroke-width="4.8" stroke-linecap="round"/>
+
+  <!-- Navigation Icon at Bottom (Primary color) -->
+  <circle cx="96" cy="128" r="32" fill="#6750A4"/>
+  <path d="M 91.2 118.4 L 99.2 118.4 M 96 96 L 96 137.6" 
+        stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+
+  <!-- Compass Points (White) -->
+  <line x1="96" y1="89.6" x2="96" y2="118.4" 
+        stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="76.8" y1="96" x2="115.2" y2="96" 
+        stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+
+  <!-- OpenAuto Logo - Stylized OA mark (Primary purple) -->
+  <rect x="42.75" y="130.5" width="15" height="55" 
+        stroke="#6750A4" stroke-width="3.2" rx="3"/>
+  <rect x="60" y="130.5" width="7.5" height="55" 
+        stroke="#6750A4" stroke-width="3.2" rx="1.5"/>
+
+</svg>
+<EOF>

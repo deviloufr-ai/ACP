@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenAuto Dash</string>
+    <string name="obd_status_connected">Connected</string>
+    <string name="obd_status_disconnected">Disconnected</string>
+    <string name="speed_kmh">km/h</string>
+    <string name="rpm_label">RPM</string>
+    <string name="temp_celsius">°C</string>
+    <string name="battery_level">Battery</string>
+    <string name="coolant_temp">Coolant Temp</string>
+</resources>
