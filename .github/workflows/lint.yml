@@ -14,19 +14,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+      
       - name: Setup JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Install Android SDK Command Line Tools
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME update
-          sdkmanager --sdk_root=$ANDROID_HOME install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
       
       - name: Setup Android SDK
         id: setup-android
@@ -34,7 +27,7 @@ jobs:
         with:
           build-tools-version: '34.0.0'
           android-sdk-packages: 'platforms;android-34,build-tools;34.0.0,platform-tools'
-        
+      
       - name: Lint Check
         run: ./gradlew lint
       
@@ -47,19 +40,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+      
       - name: Setup JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Install Android SDK Command Line Tools
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME update
-          sdkmanager --sdk_root=$ANDROID_HOME install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
       
       - name: Setup Android SDK
         id: setup-android
@@ -78,19 +64,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+      
       - name: Setup JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Install Android SDK Command Line Tools
-        run: |
-          sdkmanager --sdk_root=$ANDROID_HOME update
-          sdkmanager --sdk_root=$ANDROID_HOME install "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk
       
       - name: Setup Android SDK
         id: setup-android
@@ -98,7 +77,7 @@ jobs:
         with:
           build-tools-version: '34.0.0'
           android-sdk-packages: 'platforms;android-34,build-tools;34.0.0,platform-tools'
-        
+      
       - name: Build APK
         run: ./gradlew assembleDebug
       
