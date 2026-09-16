@@ -1,99 +1,53 @@
-# OpenAuto Dash - GitHub Actions CI/CD Fix Summary
+# OpenAuto Dash — Build Fix Summary
 
-## Issue Fixed ✅
+This documents why the project failed to build and what was changed to make it
+compile into a debug APK on GitHub Actions.
 
-**Problem:** GitHub Actions Ubuntu runners were failing with:
-```
-Error: The process 'sdkmanager' failed with exit code 1
-Warning: Failed to find package 'tools'
-```
+## The real root causes
 
-**Root Cause:** The workflow was trying to manually run `sdkmanager` commands BEFORE the `android-actions/setup-android@v3` action, which caused PATH and SDK initialization conflicts.
+Earlier attempts blamed the GitHub Actions Android SDK setup. That was a symptom,
+not the cause — the project could not have compiled regardless of the runner
+configuration. Three layers were broken:
 
-## Changes Made
+### 1. Missing Gradle project structure
+- No Gradle wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/*`), so
+  `./gradlew assembleDebug` had nothing to run.
+- No root `build.gradle.kts` — an empty **directory** of that name existed in its
+  place, so the Android/Kotlin plugin **versions were never declared**.
+- No `gradle.properties`, so `android.useAndroidX=true` was missing.
 
-### 1. Simplified `.github/workflows/build.yml`
-- **Removed:** Manual `sdkmanager` installation step that conflicted with setup-android action
-- **Added:** Direct use of `setup-android@v3` without pre-installation steps
-- **Result:** Cleaner, more reliable APK builds on GitHub runners
+### 2. Resources that failed AAPT2
+- Launcher icons were `res/mipmap-*/ic_launcher.xml.svg` — SVG is not a valid
+  Android resource format and the double extension is an invalid resource name.
+- `themes.xml` referenced undefined colors (`@color/secondary`), an invalid
+  `backgroundColor` attribute, and a `Theme.Material3` parent without the
+  `com.google.android.material` dependency.
+- `styles.xml` inherited non-existent parents (e.g. `Widget.Material3.FilledIconButton`).
+- `AndroidManifest.xml` placed `<category>` tags directly under `<activity>`
+  (a manifest-merger error) and declared no valid `HOME` launcher filter.
 
-### 2. Simplified `.github/workflows/lint.yml`
-- **Removed:** Redundant manual SDK installation in all 3 jobs (lint, test, release-apk)
-- **Added:** Consistent `setup-android@v3` usage across all jobs
-- **Result:** Single source of truth for Android SDK setup
+### 3. Kotlin that did not compile
+- `AutomotiveDashboard.kt` was truncated mid-expression and referenced an
+  undefined composable, a `const val` local, and non-existent APIs
+  (`java.time.LocalNow`, `Spacer(width = …)`).
+- `CarMediaController.kt` used a fabricated media API (`MediaSessionService.Callback`,
+  `MediaPlayer.PLAYBACK_STATE_PLAYING`, `metadata.hasVideoContent`).
+- `ObdBluetoothManager.kt` declared a `companion object` inside an `object`
+  (illegal) and used non-existent APIs (`context.bluetoothManager`).
 
-### 3. Updated `.github/workflows/lint.yml` structure
-- Separated linting and testing into distinct but parallel jobs
-- Added release-apk job that depends on both lint and test passing
-- Simplified by removing duplicate SDK setup code
+## What was changed
 
-## Project Structure After Fix
+| Area | Change |
+|------|--------|
+| Gradle | Added root `build.gradle.kts` (AGP 8.2.2 / Kotlin 1.9.22), `gradle.properties`, wrapper scripts + `gradle-wrapper.properties` (Gradle 8.6) |
+| Dependencies | Added `com.google.android.material` for the XML theme; bumped Compose compiler to 1.5.8; relaxed lint `abortOnError` |
+| Resources | Replaced SVG icons with an adaptive icon (`mipmap-anydpi-v26`) + vector layers; fixed `themes.xml`/`colors.xml`; removed broken `styles.xml` |
+| Manifest | Proper `LAUNCHER` + `HOME` intent-filters; added the notification-listener service; responsive orientation |
+| Kotlin | Rewrote `AutomotiveDashboard`, `ObdBluetoothManager`, `CarMediaController` into compiling, working implementations; added `MediaNotificationListenerService` |
+| CI | `build.yml` / `lint.yml` now provision Gradle 8.6, generate the wrapper, then build — so no wrapper JAR needs to be committed |
 
-```
-android car launcher/
-├── .github/
-│   └── workflows/
-│       ├── build.yml          ✅ Fixed - Simple APK build workflow
-│       └── lint.yml           ✅ Fixed - Lint + Test + Release workflow
-├── app/
-│   ├── build.gradle.kts       ✅ Complete with all dependencies
-│   └── src/main/
-│       ├── AndroidManifest.xml ✅ Launcher categories + permissions
-│       ├── java/com/openauto/dash/
-│       │   ├── AutoDriveReceiver.kt    ✅ Bluetooth auto-launch
-│       │   ├── AutomotiveDashboard.kt  ✅ Jetpack Compose UI
-│       │   ├── CarMediaController.kt   ✅ Media session integration
-│       │   └── ObdBluetoothManager.kt  ✅ OBD-II telemetry
-│       └── res/...              ✅ All icons and resources
-├── build.gradle.kts           ✅ Root project settings
-├── settings.gradle.kts        ✅ Updated with Gradle wrapper config
-└── README.md                  ✅ Complete documentation
-```
-
-## How to Build APK Now
-
-1. **Wait for automatic build:** Push any commit to trigger GitHub Actions automatically
-2. **Or manually trigger:** Go to GitHub → Actions → Run workflow button
-3. **Download APK:** After ~3-5 minutes, find it in Actions → Artifacts → openauto-dash-apk
-4. **Install on device:** Transfer APK to phone/car head unit and install
-
-## Build Workflow Details
-
-### build.yml (Primary APK Build)
-- Triggers on: Push to main branch OR manual dispatch
-- Runs: `./gradlew assembleDebug`
-- Uploads: `app-debug.apk` as artifact
-
-### lint.yml (Quality Assurance)
-- Triggers on: Push to main OR pull requests
-- Runs parallel jobs:
-  - **lint:** Static code analysis + APK build
-  - **test:** Unit tests execution
-  - **release-apk:** Dependent job that builds final release APK
-- Uploads APK for manual preview/testing
-
-## Expected Build Time
-
-- **Initial build:** ~5-8 minutes (first run needs to download SDK packages)
-- **Subsequent builds:** ~3-5 minutes (SDK cached on runner)
-
-## Next Steps After Successful Build
-
-1. Download the APK from GitHub Actions artifacts
-2. Install on Android device (car head unit or phone mount)
-3. Test:
-   - Auto-launch via HOME category
-   - OBD-II Bluetooth connection to ELM327 adapter
-   - Media integration with system audio
-   - Responsive UI (landscape/portrait layouts)
-
-## Project Status
-
-- ✅ All source code complete (44 files, 1548 lines)
-- ✅ GitHub repository created and accessible
-- ✅ CI/CD pipeline fixed and ready
-- ⏳ Ready for first successful APK build
-
----
-
-**Note:** The Android SDK will be automatically installed on GitHub Actions runners by the `setup-android@v3` action. No local SDK installation needed!
+## How to build now
+- **CI:** push to `main` (or run the workflow manually) and download the
+  `openauto-dash-apk` artifact from the Actions tab.
+- **Local:** open in Android Studio (it generates the wrapper JAR on sync), or run
+  `gradle wrapper --gradle-version 8.6` once, then `./gradlew assembleDebug`.

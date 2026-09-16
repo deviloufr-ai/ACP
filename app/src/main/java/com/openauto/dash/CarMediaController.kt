@@ -1,114 +1,128 @@
 package com.openauto.dash
 
-import android.media.session.*
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import android.provider.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Media Controller Manager - Interfaces with Android's MediaSessionManager.
- * Captures audio metadata and media events for the unified media panel.
- */
-class CarMediaController {
-    
-    private val mediaSessionManager: MediaSessionManager = 
-        getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-    
-    // Exposed state for Jetpack Compose UI
-    private val _mediaState = MutableStateFlow(
-        MediaState(
-            title = "",
-            artist = "",
-            isPlaying = false,
-            hasVideoContent = false
-        )
-    )
-    
-    val mediaState: StateFlow<MediaState> = _mediaState.asStateFlow()
-    
-    // Callback for media event interception
-    var onPlayPauseListener: ((Boolean) -> Unit)? = null
-    
-    var onNextListener: ((Boolean) -> Unit)? = null
-    
-    var onPreviousListener: ((Boolean) -> Unit)? = null
-    
-    init {
-        registerMediaSessionCallback()
-    }
-    
-    private fun registerMediaSessionCallback() {
-        mediaSessionManager.registerCallback(
-            "com.openauto.dash",
-            object : MediaSessionService.Callback {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    when (playbackState) {
-                        MediaPlayer.PLAYBACK_STATE_PLAYING -> _mediaState.value = _mediaState.value.copy(isPlaying = true)
-                        MediaPlayer.PLAYBACK_STATE_PAUSED -> _mediaState.value = _mediaState.value.copy(isPlaying = false)
-                        MediaPlayer.PLAYBACK_STATE_STOPPED -> _mediaState.value = _mediaState.value.copy(isPlaying = false)
-                    }
-                }
-                
-                override fun onMetadataChanged(metadata: MediaMetadata?) {
-                    if (metadata != null) {
-                        val title = metadata.title ?: ""
-                        val artist = metadata.artist ?: ""
-                        val hasVideoContent = metadata.hasVideoContent
-                        
-                        _mediaState.value = _mediaState.value.copy(
-                            title = title,
-                            artist = artist,
-                            hasVideoContent = hasVideoContent
-                        )
-                    }
-                }
-                
-                override fun onTransportControlsCommand(command: Int) {
-                    // Intercept media commands
-                    when (command) {
-                        MediaPlayer.PLAYBACK_COMMAND_PLAY -> handlePlay()
-                        MediaPlayer.PLAYBACK_COMMAND_PAUSE -> handlePause()
-                        MediaPlayer.PLAYBACK_COMMAND_SKIP_TO_NEXT_TRACK -> handleNext()
-                        MediaPlayer.PLAYBACK_COMMAND_SKIP_TO_PREVIOUS_TRACK -> handlePrevious()
-                    }
-                }
-                
-                override fun onPlaybackSpeedChanged(playbackSpeed: Float) {
-                    // Handle playback speed changes if needed
-                }
-            },
-            null
-        )
-    }
-    
-    private fun handlePlay() {
-        _mediaState.value = _mediaState.value.copy(isPlaying = true)
-        onPlayPauseListener?.invoke(true)
-    }
-    
-    private fun handlePause() {
-        _mediaState.value = _mediaState.value.copy(isPlaying = false)
-        onPlayPauseListener?.invoke(false)
-    }
-    
-    private fun handleNext() {
-        onNextListener?.invoke(true)
-    }
-    
-    private fun handlePrevious() {
-        onPreviousListener?.invoke(true)
-    }
-    
-    fun clearCallback() {
-        mediaSessionManager.unregisterCallback("com.openauto.dash")
-    }
-}
-
-/**
- * Data class representing current media state.
- */
+/** Snapshot of the currently active system media session. */
 data class MediaState(
     val title: String = "",
     val artist: String = "",
     val isPlaying: Boolean = false,
-    val hasVideoContent: Boolean = false
+    val hasMedia: Boolean = false
 )
+
+/**
+ * Bridges Android's [MediaSessionManager] into a Compose-friendly [StateFlow].
+ *
+ * Reads the active media session from other apps (title, artist, playback
+ * state) and exposes transport controls. This requires Notification access,
+ * which the user grants once via system settings — see
+ * [hasNotificationAccess] / [openNotificationAccessSettings]. The paired
+ * [MediaNotificationListenerService] is the component that access is granted to.
+ */
+class CarMediaController(private val context: Context) {
+
+    private val sessionManager =
+        context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+
+    private val listenerComponent =
+        ComponentName(context, MediaNotificationListenerService::class.java)
+
+    private val _mediaState = MutableStateFlow(MediaState())
+    val mediaState: StateFlow<MediaState> = _mediaState.asStateFlow()
+
+    private var activeController: MediaController? = null
+
+    private val controllerCallback = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) = publish(activeController)
+        override fun onMetadataChanged(metadata: MediaMetadata?) = publish(activeController)
+        override fun onSessionDestroyed() {
+            activeController = null
+            _mediaState.value = MediaState()
+        }
+    }
+
+    private val sessionsChangedListener =
+        MediaSessionManager.OnActiveSessionsChangedListener { controllers -> bind(controllers) }
+
+    /** Starts observing active media sessions. Safe to call before access is granted. */
+    fun start() {
+        try {
+            sessionManager.addOnActiveSessionsChangedListener(sessionsChangedListener, listenerComponent)
+            bind(sessionManager.getActiveSessions(listenerComponent))
+        } catch (e: SecurityException) {
+            // Notification access not granted yet; UI prompts the user to enable it.
+            _mediaState.value = MediaState()
+        }
+    }
+
+    /** Stops observing and releases callbacks. */
+    fun stop() {
+        runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
+        activeController?.unregisterCallback(controllerCallback)
+        activeController = null
+    }
+
+    private fun bind(controllers: List<MediaController>?) {
+        activeController?.unregisterCallback(controllerCallback)
+        activeController = controllers?.firstOrNull()
+        activeController?.registerCallback(controllerCallback)
+        publish(activeController)
+    }
+
+    private fun publish(controller: MediaController?) {
+        if (controller == null) {
+            _mediaState.value = MediaState()
+            return
+        }
+        val metadata = controller.metadata
+        val playback = controller.playbackState
+        _mediaState.value = MediaState(
+            title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty(),
+            artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty(),
+            isPlaying = playback?.state == PlaybackState.STATE_PLAYING,
+            hasMedia = metadata != null
+        )
+    }
+
+    fun playPause() {
+        val controls = activeController?.transportControls ?: return
+        if (_mediaState.value.isPlaying) controls.pause() else controls.play()
+    }
+
+    fun next() {
+        activeController?.transportControls?.skipToNext()
+    }
+
+    fun previous() {
+        activeController?.transportControls?.skipToPrevious()
+    }
+
+    companion object {
+        /** True once the user has granted Notification access to this app. */
+        fun hasNotificationAccess(context: Context): Boolean {
+            val enabled = Settings.Secure.getString(
+                context.contentResolver,
+                "enabled_notification_listeners"
+            ) ?: return false
+            return enabled.split(":").any { it.contains(context.packageName) }
+        }
+
+        /** Opens the system screen where the user enables Notification access. */
+        fun openNotificationAccessSettings(context: Context) {
+            context.startActivity(
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+}

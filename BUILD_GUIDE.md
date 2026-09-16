@@ -1,12 +1,23 @@
 # OpenAuto Dash - Build Instructions
 
-## Quick Start (Manual Build)
+## Quick Start (Android Studio)
 
 ### Prerequisites
-1. Install Android Studio
-2. Open project and let Gradle sync
+1. Install Android Studio (Hedgehog 2023.1.1 or newer) with JDK 17
+2. Open the project and let Gradle sync — this also generates the Gradle wrapper JAR
 3. Build → Build Bundle(s) / APK(s) → Build APK(s)
 4. Find output at: `app/build/outputs/apk/debug/app-debug.apk`
+
+## Command-line build
+
+The wrapper JAR is not committed. Generate it once (needs a local Gradle 8.x), then build:
+
+```bash
+gradle wrapper --gradle-version 8.6
+./gradlew assembleDebug
+```
+
+On Windows PowerShell: `.\gradlew.bat assembleDebug`. Or skip local tooling entirely and use the GitHub Actions build below.
 
 ## GitHub Actions Automated Build
 

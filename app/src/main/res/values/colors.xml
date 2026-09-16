@@ -3,10 +3,14 @@
     <!-- Primary Theme Colors -->
     <color name="primary">#6750A4</color>
     <color name="primary_variant">#7C53EE</color>
-    
+
+    <!-- Secondary Theme Colors -->
+    <color name="secondary">#03DAC5</color>
+    <color name="secondary_variant">#018786</color>
+
     <!-- On colors for contrast -->
     <color name="on_primary">#FFFFFF</color>
-    <color name="on_secondary">#FFFFFF</color>
+    <color name="on_secondary">#000000</color>
     
     <!-- Dark Theme Background -->
     <color name="background">#0F1115</color>

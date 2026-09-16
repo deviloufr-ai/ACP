@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Speedometer gauge arc (open at the bottom). -->
+    <path
+        android:pathData="M30,68 A30,30 0 1 1 78,68"
+        android:strokeColor="#81D4FA"
+        android:strokeWidth="6"
+        android:strokeLineCap="round" />
+    <!-- Central hub. -->
+    <path
+        android:pathData="M54,54 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0"
+        android:fillColor="#6750A4" />
+    <!-- Navigation needle pointing up. -->
+    <path
+        android:pathData="M54,34 L65,70 L54,62 L43,70 Z"
+        android:fillColor="#FFFFFF" />
+</vector>

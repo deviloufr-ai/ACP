@@ -4,38 +4,28 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 
 /**
- * Main Activity - Acts as the launcher for Android Head Units and smartphones.
- * Initializes the automotive dashboard with screen awake flags for driving safety.
+ * Entry point for OpenAuto Dash.
+ *
+ * Acts as the launcher/home surface for Android head units and phone mounts.
+ * Keeps the screen awake while driving and hands off to the Compose dashboard.
  */
 class MainActivity : ComponentActivity() {
-    
-    companion object {
-        /** Singleton instance for global access */
-        lateinit var instance: MainActivity
-            private set
-    }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Store singleton instance
-        MainActivity.instance = this
-        
-        // Set window flags for driving safety (keep screen on)
+
+        // Keep the screen on and turn it on while the vehicle is running.
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
         )
-        
+
         setContent {
             OpenAutoDashTheme {
                 AutomotiveDashboard()
@@ -45,12 +35,20 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Theme for the OpenAuto Dash application.
- * High-contrast dark theme optimized for driving safety.
+ * High-contrast dark theme tuned for glare-free reading while driving.
  */
 @Composable
 fun OpenAutoDashTheme(content: @Composable () -> Unit) {
-    MaterialTheme {
-        content()
-    }
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = Color(0xFF6750A4),
+            secondary = Color(0xFF03DAC5),
+            background = Color(0xFF0F1115),
+            surface = Color(0xFF1C1E24),
+            onPrimary = Color.White,
+            onBackground = Color.White,
+            onSurface = Color.White
+        ),
+        content = content
+    )
 }
