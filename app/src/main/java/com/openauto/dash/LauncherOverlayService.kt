@@ -157,7 +157,7 @@ class LauncherOverlayService : Service() {
                 shape = GradientDrawable.OVAL
                 setColor(CARD_HI)
             }
-            setOnClickListener { AppLauncher.launch(this@LauncherOverlayService, app.packageName) }
+            setOnClickListener { SplitScreenLauncher.launchFullscreen(this@LauncherOverlayService, app.packageName) }
         }
     }
 

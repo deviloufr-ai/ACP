@@ -49,6 +49,15 @@ object SplitScreenLauncher {
         }, ADJACENT_LAUNCH_DELAY_MS)
     }
 
+    /** Launches [packageName] fullscreen (over the split). */
+    fun launchFullscreen(context: Context, packageName: String): Boolean {
+        val intent = context.packageManager
+            .getLaunchIntentForPackage(packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ?: return false
+        return runCatching { context.startActivity(intent); true }.getOrDefault(false)
+    }
+
     /** Launch intent for the Maps app, or a generic geo intent as a fallback. */
     private fun mapsIntent(context: Context): Intent =
         context.packageManager.getLaunchIntentForPackage(MAPS_PACKAGE)
