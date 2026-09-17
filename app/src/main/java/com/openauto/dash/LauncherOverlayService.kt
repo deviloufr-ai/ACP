@@ -36,9 +36,9 @@ import java.util.Locale
  * on top of the split-screen panes (Maps | media), using a `TYPE_APPLICATION_OVERLAY`
  * window. Requires the "Display over other apps" permission.
  *
- * The overlay is a left-edge rail of circular buttons (favorite apps launch
- * fullscreen, an app-launcher button reopens the home drawer, plus the
- * Assistant) with a clock / speed / now-playing info block underneath.
+ * It starts as a single round button; tapping it expands to a left-edge rail
+ * (favorite apps, Assistant, and a clock / speed / now-playing info block), and
+ * the top button collapses it back to the single button.
  */
 class LauncherOverlayService : Service() {
 
@@ -50,6 +50,9 @@ class LauncherOverlayService : Service() {
     private var clockView: TextView? = null
     private var speedView: TextView? = null
     private var trackView: TextView? = null
+
+    /** The overlay starts as a single button and expands to the full menu on tap. */
+    private var collapsed = true
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -68,10 +71,27 @@ class LauncherOverlayService : Service() {
         val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         windowManager = wm
 
-        val rail = buildRail()
-        overlayView = rail
+        val container = FrameLayout(this)
+        overlayView = container
+        wm.addView(container, collapsedParams())
+        renderCollapsed(container)
+        observeInfo()
+    }
 
-        val params = WindowManager.LayoutParams(
+    private fun collapsedParams(): WindowManager.LayoutParams =
+        WindowManager.LayoutParams(
+            dp(60),
+            dp(60),
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            x = dp(6)
+        }
+
+    private fun expandedParams(): WindowManager.LayoutParams =
+        WindowManager.LayoutParams(
             dp(96),
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -79,8 +99,48 @@ class LauncherOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.START or Gravity.TOP }
 
-        wm.addView(rail, params)
-        observeInfo()
+    /** Switches the overlay between the single button and the full menu. */
+    private fun setCollapsed(value: Boolean) {
+        collapsed = value
+        val container = overlayView as? FrameLayout ?: return
+        container.removeAllViews()
+        if (value) {
+            renderCollapsed(container)
+            windowManager?.updateViewLayout(container, collapsedParams())
+        } else {
+            container.addView(
+                buildRail(),
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+            windowManager?.updateViewLayout(container, expandedParams())
+        }
+    }
+
+    /** Collapsed state: one round button that opens the menu when tapped. */
+    private fun renderCollapsed(container: FrameLayout) {
+        val button = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(ACCENT)
+            }
+            addView(
+                TextView(this@LauncherOverlayService).apply {
+                    text = "≡" // ≡ menu
+                    setTextColor(BACKGROUND)
+                    textSize = 24f
+                    gravity = Gravity.CENTER
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+            setOnClickListener { setCollapsed(false) }
+        }
+        container.addView(button, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
     }
 
     /** Builds the vertical rail: apps + favorites + assistant + info. */
@@ -95,13 +155,10 @@ class LauncherOverlayService : Service() {
             }
         }
 
-        // App launcher (reopens the home drawer).
+        // Collapse back to the single button.
         rail.addView(
-            circleButton(glyph = "⬚", bg = ACCENT, textColor = BACKGROUND) {
-                startActivity(
-                    Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+            circleButton(glyph = "×", bg = CARD_HI, textColor = Color.WHITE) {
+                setCollapsed(true)
             }
         )
         rail.addView(spacer(dp(14)))
