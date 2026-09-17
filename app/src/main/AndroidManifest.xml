@@ -45,18 +45,12 @@
     </queries>
 
     <application
-        android:name=".DashApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.OpenAutoDash">
-
-        <!-- Enable Jetpack WindowManager Activity Embedding for this app. -->
-        <property
-            android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED"
-            android:value="true" />
 
         <!-- MainActivity: standard launcher entry + acts as an Android Home app.
              Orientation is left responsive so the 50/50 layout adapts to
@@ -105,17 +99,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Embedded workspace activities (Jetpack WindowManager). Launched by
-             the launcher and split side by side by rules in DashApplication. -->
+        <!-- Swipeable multi-pane workspaces (Compose HorizontalPager). -->
         <activity
-            android:name=".MapsWorkspaceActivity"
+            android:name=".WorkspacesActivity"
             android:exported="false"
-            android:resizeableActivity="true"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" />
-        <activity
-            android:name=".MediaWorkspaceActivity"
-            android:exported="false"
-            android:resizeableActivity="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" />
 
         <!-- Draws the launcher menu/info widget over the split-screen panes. -->

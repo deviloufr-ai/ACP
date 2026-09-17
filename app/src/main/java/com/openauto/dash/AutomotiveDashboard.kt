@@ -241,11 +241,10 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Opens the embedded Drive workspace (our Maps + media activities split
-    // side by side via Jetpack WindowManager Activity Embedding).
+    // Opens the swipeable workspaces (Drive: Maps|Media, Vehicle: Telemetry|Climate).
     val onWorkspaces: () -> Unit = {
         runCatching {
-            context.startActivity(Intent(context, MapsWorkspaceActivity::class.java))
+            context.startActivity(Intent(context, WorkspacesActivity::class.java))
         }
     }
 

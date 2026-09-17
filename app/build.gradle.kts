@@ -106,9 +106,6 @@ dependencies {
     // Activity Compose
     implementation("androidx.activity:activity-compose:1.9.2")
 
-    // Jetpack WindowManager — Activity Embedding for side-by-side workspaces
-    implementation("androidx.window:window:1.3.0")
-
     // Media3 ExoPlayer (video/album-art rendering surface)
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
