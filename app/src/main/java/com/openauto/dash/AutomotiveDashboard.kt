@@ -1071,7 +1071,7 @@ private fun DevicePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DashColors.Surface,
+        containerColor = DashColors.Card,
         title = { Text("Select OBD adapter", color = DashColors.TextPrimary) },
         text = {
             Column {
