@@ -4,13 +4,18 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -20,6 +25,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,22 +33,93 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 
+private const val MAPS_PACKAGE = "com.google.android.apps.maps"
+
 /**
- * Left panel: an actual interactive map.
+ * Left map panel.
  *
- * Google Maps on the web deliberately degrades inside a WebView to an
- * "open the app" page, so this shows a Leaflet + OpenStreetMap map. Leaflet is
- * bundled in `assets/` (not loaded from a CDN, which a head unit may not be able
- * to reach), so only the map tiles need the network. The map centers on the
- * vehicle's location, injected from Android's [LocationManager] (WebView
- * geolocation is unreliable from a file:// origin).
- *
- * The real Google Maps app can't be embedded in a view; use the split-screen
- * cockpit ([SplitScreenLauncher]) to run it as its own pane.
+ * If the app is installed as a **privileged/system app** (see the QF001/Roco
+ * root notes), it hosts the real Google Maps activity inside an [ActivityView]
+ * — the interactive embedding used by vendor launchers on Android 10. Because
+ * `ActivityView` is a hidden system class (present up to Android 10/11, removed
+ * in Android 12), it is accessed by reflection and only works for a system app.
+ * A normal install can't do this, so it falls back to an embedded OpenStreetMap
+ * map + an "Open Maps" button.
  */
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MapsPanel(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val canEmbed = remember {
+        isSystemApp(context) &&
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && // ActivityView removed in API 31
+            runCatching { Class.forName("android.app.ActivityView"); true }.getOrDefault(false)
+    }
+    if (canEmbed) {
+        EmbeddedGoogleMapsPanel(modifier)
+    } else {
+        LeafletMapsPanel(modifier)
+    }
+}
+
+private fun isSystemApp(context: Context): Boolean {
+    val flags = context.applicationInfo.flags
+    return (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+}
+
+// --- Privileged path: real Google Maps inside an ActivityView (Android 10) ---
+
+/**
+ * Hosts the real Google Maps app in an [android.app.ActivityView] (reflection).
+ * Interactive: touches reach Maps. Requires the app to be a privileged system
+ * app; otherwise the reflected calls throw and this composable stays blank (the
+ * chooser only routes here when [isSystemApp] is true).
+ */
+@Composable
+private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { ctx ->
+            val activityView = runCatching {
+                Class.forName("android.app.ActivityView")
+                    .getConstructor(Context::class.java)
+                    .newInstance(ctx) as ViewGroup
+            }.getOrNull()
+
+            if (activityView == null) {
+                FrameLayout(ctx)
+            } else {
+                activityView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(v: View) {
+                        // Give ActivityView a moment to create its virtual display.
+                        v.postDelayed({ launchMapsInto(ctx, v) }, 500)
+                    }
+
+                    override fun onViewDetachedFromWindow(v: View) {
+                        runCatching { v.javaClass.getMethod("release").invoke(v) }
+                    }
+                })
+                activityView
+            }
+        }
+    )
+}
+
+private fun launchMapsInto(context: Context, activityView: View) {
+    val maps = context.packageManager
+        .getLaunchIntentForPackage(MAPS_PACKAGE)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: return
+    runCatching {
+        activityView.javaClass
+            .getMethod("startActivity", Intent::class.java)
+            .invoke(activityView, maps)
+    }
+}
+
+// --- Fallback path: embedded OpenStreetMap (non-privileged installs) ---------
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun LeafletMapsPanel(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -82,6 +159,14 @@ fun MapsPanel(modifier: Modifier = Modifier) {
                         ) {
                             callback?.invoke(origin, true, false)
                         }
+
+                        override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                            android.util.Log.d(
+                                "MapsPanel",
+                                "${m.message()} @${m.sourceId()}:${m.lineNumber()}"
+                            )
+                            return true
+                        }
                     }
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
@@ -93,8 +178,8 @@ fun MapsPanel(modifier: Modifier = Modifier) {
             }
         )
 
-        // Fallback: open the real Google Maps app (works offline; a WebView
-        // can't embed it). Useful if the head unit can't load online map tiles.
+        // Fallback: open the real Google Maps app (works offline; a WebView can't
+        // embed it). Useful if the head unit can't load online map tiles.
         FilledTonalButton(
             onClick = { openMapsApp(context) },
             modifier = Modifier
@@ -109,7 +194,7 @@ fun MapsPanel(modifier: Modifier = Modifier) {
 /** Opens the Google Maps app, or a generic geo intent as a fallback. */
 private fun openMapsApp(context: Context) {
     val intent = context.packageManager
-        .getLaunchIntentForPackage("com.google.android.apps.maps")
+        .getLaunchIntentForPackage(MAPS_PACKAGE)
         ?: Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0"))
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }
