@@ -1,117 +1,122 @@
 package com.openauto.dash
 
+import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.Arrangement
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-
-/** Google Maps URL loaded on start; opens the standard maps surface. */
-private const val MAPS_URL = "https://www.google.com/maps"
+import androidx.core.content.ContextCompat
 
 /**
- * Left panel that automatically opens Google Maps.
+ * Left panel: an actual interactive map.
  *
- * Maps is embedded directly via a [WebView] (auto-loaded on first composition),
- * so navigation stays visible next to the app drawer. If the page fails to load
- * (e.g. no connection), a fallback offers to open the installed Maps app.
+ * Google Maps on the web deliberately degrades inside a WebView to an
+ * "open the app" page, so this uses a self-contained Leaflet + OpenStreetMap
+ * map (no API key) loaded from an inline document. It centers on the vehicle's
+ * GPS position via the browser geolocation API, which needs the app's location
+ * permission — requested here on first display.
+ *
+ * The real Google Maps app can't be embedded in a view; use the split-screen
+ * cockpit ([SplitScreenLauncher]) to run it as its own pane.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MapsPanel(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var loadFailed by remember { mutableStateOf(false) }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* map recenters automatically once geolocation is allowed */ }
+
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            locationPermission.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (loadFailed) {
-            MapsFallback(
-                onOpenMapsApp = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(MAPS_URL))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    runCatching { context.startActivity(intent) }
-                }
-            )
-        } else {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        settings.apply {
-                            javaScriptEnabled = true
-                            domStorageEnabled = true
-                            setGeolocationEnabled(true)
-                        }
-                        webViewClient = object : WebViewClient() {
-                            override fun onReceivedError(
-                                view: WebView?,
-                                request: android.webkit.WebResourceRequest?,
-                                error: android.webkit.WebResourceError?
-                            ) {
-                                // Only fail on the main frame, not sub-resources.
-                                if (request?.isForMainFrame == true) loadFailed = true
-                            }
-                        }
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onGeolocationPermissionsShowPrompt(
-                                origin: String?,
-                                callback: GeolocationPermissions.Callback?
-                            ) {
-                                // App-level location permission is requested elsewhere;
-                                // grant the map origin so it can center on the vehicle.
-                                callback?.invoke(origin, true, false)
-                            }
-                        }
-                        loadUrl(MAPS_URL)
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        setGeolocationEnabled(true)
                     }
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onGeolocationPermissionsShowPrompt(
+                            origin: String?,
+                            callback: GeolocationPermissions.Callback?
+                        ) {
+                            callback?.invoke(origin, true, false)
+                        }
+                    }
+                    loadDataWithBaseURL(
+                        "https://www.openstreetmap.org/",
+                        MAP_HTML,
+                        "text/html",
+                        "UTF-8",
+                        null
+                    )
                 }
-            )
-        }
+            }
+        )
     }
 }
 
-@Composable
-private fun MapsFallback(onOpenMapsApp: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Map,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp)
-        )
-        Text(
-            text = "Maps couldn't load",
-            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp)
-        )
-        Button(onClick = onOpenMapsApp) {
-            Text("Open Maps app")
-        }
+/** Self-contained Leaflet map that tracks the device's GPS position. */
+private const val MAP_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>html,body,#map{height:100%;margin:0;background:#0b0c0f}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', { zoomControl: true }).setView([48.8566, 2.3522], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var marker = null;
+    var centered = false;
+    function place(lat, lng) {
+      var ll = [lat, lng];
+      if (marker) { marker.setLatLng(ll); } else { marker = L.marker(ll).addTo(map); }
+      if (!centered) { map.setView(ll, 16); centered = true; }
     }
-}
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        function (p) { place(p.coords.latitude, p.coords.longitude); },
+        function (e) { /* keep default view on error */ },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    }
+  </script>
+</body>
+</html>
+"""

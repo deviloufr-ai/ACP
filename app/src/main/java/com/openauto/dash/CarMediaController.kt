@@ -3,6 +3,7 @@ package com.openauto.dash
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -20,7 +21,9 @@ data class MediaState(
     val isPlaying: Boolean = false,
     val hasMedia: Boolean = false,
     /** Track length in ms, or 0 when unknown (hides the progress bar). */
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    /** Album art / thumbnail from the session, or null when none is published. */
+    val artwork: Bitmap? = null
 )
 
 /**
@@ -105,9 +108,16 @@ class CarMediaController(private val context: Context) {
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty(),
             isPlaying = playback?.state == PlaybackState.STATE_PLAYING,
             hasMedia = metadata != null,
-            durationMs = (metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L)
+            durationMs = (metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L),
+            artwork = metadata?.artwork()
         )
     }
+
+    /** First available artwork bitmap from the session metadata, if any. */
+    private fun MediaMetadata.artwork(): Bitmap? =
+        getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
 
     /**
      * Current playback position in ms, extrapolated from the last reported
