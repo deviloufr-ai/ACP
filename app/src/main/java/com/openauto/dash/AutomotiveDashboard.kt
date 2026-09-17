@@ -158,13 +158,18 @@ fun AutomotiveDashboard() {
 
     // Start media observation, and re-check notification access on every resume
     // so granting it in system settings takes effect without an app restart.
+    // Also hide the cockpit overlay whenever the home screen is in front, so it
+    // never covers the launcher's own left menu (it only belongs over apps that
+    // hide the launcher in a split).
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         mediaController.start()
+        LauncherOverlayService.stop(context)
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasMediaAccess = CarMediaController.hasNotificationAccess(context)
                 if (hasMediaAccess) mediaController.start()
+                LauncherOverlayService.stop(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
