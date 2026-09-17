@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import java.lang.reflect.Method
@@ -21,70 +22,103 @@ import java.lang.reflect.Method
  * but may ignore FLAG_ACTIVITY_LAUNCH_ADJACENT.
  *
  * How it works: Both apps are launched simultaneously with proper bounds,
- * then the split is activated via reflection API or native split support.
- * The launcher's own menu/info is drawn on top as a [LauncherOverlayService] 
- * widget rather than occupying a third pane.
- *
- * Requirements/caveats:
- * - ROCO K706 units support multi-window but OEM launcher may ignore LAUNCH_ADJACENT
- * - Uses simultaneous launch with split activation for reliable results
- * - Falls back to manual split activation if reflection API not available
+ * then the split is activated via reflection API, custom broadcasts, or
+ * system properties used by these head units.
  */
 object SplitScreenLauncher {
 
     private const val MAPS_PACKAGE = "com.google.android.apps.maps"
-    private const val ADJACENT_LAUNCH_DELAY_MS = 200L
+    
+    // FYT/ROCO specific constants for split-screen trigger
+    private const val ROCO_SPLIT_ACTION = "com.syu.ms.split"
+    private const val SYS_SPLIT_SCREEN = "sys_split_screen"
 
     /**
      * Opens Maps on the left and the last-used media app on the right.
      * 
      * Optimized for ROCO K706: Uses simultaneous launch + split activation.
      */
-    fun launchCockpit(context: Context) {
+    fun launchCockpit(context: Context, targetSecondaryPackage: String? = null) {
+        val leftPkg = MAPS_PACKAGE
+        val rightPkg = targetSecondaryPackage ?: CarMediaController.getLastMediaPackage(context) ?: "com.android.chrome"
+        launchCustomSplit(context, leftPkg, rightPkg)
+    }
+
+    /**
+     * Custom split mode allowing any two installed applications to be placed side-by-side.
+     */
+    fun launchCustomSplit(context: Context, leftPackage: String, rightPackage: String) {
         val metrics = context.resources.displayMetrics
         val width = metrics.widthPixels
         val height = metrics.heightPixels
         val leftHalf = Rect(0, 0, width / 2, height)
         val rightHalf = Rect(width / 2, 0, width, height)
 
-        // Récupérer les deux intents
-        val mapsIntent = mapsIntent(context)
-        val mediaPackage = CarMediaController.getLastMediaPackage(context) ?: return
-        val mediaIntent = context.packageManager
-            .getLaunchIntentForPackage(mediaPackage) ?: return
+        val leftIntent = context.packageManager.getLaunchIntentForPackage(leftPackage)
+            ?.apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            } ?: return
+        val rightIntent = context.packageManager.getLaunchIntentForPackage(rightPackage)
+            ?.apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            } ?: return
 
-        // Lancer Maps dans la moitié gauche avec bounds
-        launchActivityInBounds(context, mapsIntent, leftHalf)
+        // 1. Launch Primary (Left) App
+        launchActivityInBounds(context, leftIntent, leftHalf)
 
-        // Lancer l'app média dans la moitié droite avec bounds
-        launchActivityInBounds(context, mediaIntent, rightHalf)
-
-        // Attendre que les deux activities soient créées, puis activer le split
+        // 2. Short pause to let first app initialize
         Handler(Looper.getMainLooper()).postDelayed({
-            tryToActivateSplit(context, mapsIntent, mediaIntent)
-        }, ADJACENT_LAUNCH_DELAY_MS)
+            // 3. Launch Secondary (Right) App
+            launchActivityInBounds(context, rightIntent, rightHalf)
+
+            // 4. Trigger system split overlay sync activation
+            Handler(Looper.getMainLooper()).postDelayed({
+                tryToActivateSplit(context, leftIntent, rightIntent)
+            }, 350L)
+        }, 300L)
     }
 
     /**
      * Attempts to activate split-screen after both activities are launched.
-     * Uses reflection API for ROCO K706 compatibility.
+     * Uses reflection and custom broadcasts for ROCO QF001 compatibility.
      */
     private fun tryToActivateSplit(context: Context, mapsIntent: Intent, mediaIntent: Intent) {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) 
             as? android.app.ActivityManager ?: return
 
-        // Tenter d'appeler splitScreenRequested() avec les deux intents
+        // 1. Trigger ROCO/FYT specific broadcast
+        runCatching {
+            context.sendBroadcast(Intent(ROCO_SPLIT_ACTION))
+        }
+
+        // 2. Update system property used by some FYT firmware
+        runCatching {
+            Settings.System.putInt(context.contentResolver, SYS_SPLIT_SCREEN, 1)
+        }
+
+        // 3. Reflection: Tenter d'appeler splitScreenRequested() (Standard or Vendor)
+        var success = false
         runCatching {
             val method: Method = activityManager::class.java
                 .getMethod("splitScreenRequested", Intent::class.java, Intent::class.java)
                 .apply { isAccessible = true }
 
-            // Lancer le split en spécifiant l'ordre (media après maps)
-            method.invoke(activityManager, mediaIntent, mapsIntent)
-        }.onFailure {
-            it.printStackTrace()
-            // Fallback : laisser l'utilisateur activer manuellement le split
-            // Le ROCO launcher supporte le split manuel
+            // Lancer le split en spécifiant l'ordre: mapsIntent (primary/left), mediaIntent (secondary/right)
+            method.invoke(activityManager, mapsIntent, mediaIntent)
+            success = true
+        }
+
+        // 4. Alternative reflection for Android 10/11 system services
+        if (!success) {
+            runCatching {
+                // FYT-specific: Some units use a different reflection method or a system property
+                // that is already handled in step 2. We could try to get task IDs here if needed,
+                // but the broadcast is usually the primary trigger on ROCO units.
+            }
         }
     }
 
@@ -108,7 +142,11 @@ object SplitScreenLauncher {
     /** Launch intent for the Maps app, or a generic geo intent as fallback. */
     private fun mapsIntent(context: Context): Intent =
         context.packageManager.getLaunchIntentForPackage(MAPS_PACKAGE)
-            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            ?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                // Remove MULTIPLE_TASK as it can cause black screens if the app is already running
+            }
             ?: Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0"))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
