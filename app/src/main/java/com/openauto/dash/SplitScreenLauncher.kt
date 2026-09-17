@@ -1,8 +1,11 @@
 package com.openauto.dash
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 
@@ -27,14 +30,25 @@ import android.os.Looper
 object SplitScreenLauncher {
 
     private const val MAPS_PACKAGE = "com.google.android.apps.maps"
-    private const val ADJACENT_LAUNCH_DELAY_MS = 500L
+    private const val ADJACENT_LAUNCH_DELAY_MS = 600L
 
     /**
-     * Opens Maps, then the last-used media app adjacent to it in split-screen.
-     * Falls back to just Maps when no media app has been seen yet.
+     * Opens Maps on the left and the last-used media app on the right.
+     *
+     * Uses two mechanisms so at least one works per device: `LAUNCH_ADJACENT`
+     * (Android's system split-screen) AND ActivityOptions launch bounds (freeform
+     * multi-window, which many head units support and standard split does not).
+     * Where neither is supported the apps open fullscreen one over the other —
+     * enabling freeform on the head unit (see the app notes) makes the split work.
      */
     fun launchCockpit(context: Context) {
-        context.startActivity(mapsIntent(context))
+        val metrics = context.resources.displayMetrics
+        val width = metrics.widthPixels
+        val height = metrics.heightPixels
+        val leftHalf = Rect(0, 0, width / 2, height)
+        val rightHalf = Rect(width / 2, 0, width, height)
+
+        startInBounds(context, mapsIntent(context), leftHalf)
 
         val mediaPackage = CarMediaController.getLastMediaPackage(context) ?: return
         Handler(Looper.getMainLooper()).postDelayed({
@@ -45,8 +59,21 @@ object SplitScreenLauncher {
                         Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or
                         Intent.FLAG_ACTIVITY_MULTIPLE_TASK
                 )
-            if (media != null) runCatching { context.startActivity(media) }
+            if (media != null) startInBounds(context, media, rightHalf)
         }, ADJACENT_LAUNCH_DELAY_MS)
+    }
+
+    /**
+     * Starts [intent] positioned within [bounds]. On a head unit with freeform
+     * multi-window the app is placed in that half of the screen; where it isn't
+     * supported the bounds are ignored and the app opens fullscreen.
+     */
+    private fun startInBounds(context: Context, intent: Intent, bounds: Rect) {
+        val options = ActivityOptions.makeBasic()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching { options.setLaunchBounds(bounds) }
+        }
+        runCatching { context.startActivity(intent, options.toBundle()) }
     }
 
     /** Launches [packageName] fullscreen (over the split). */
