@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -240,6 +241,14 @@ fun AutomotiveDashboard() {
         }
     }
 
+    // Opens the embedded Drive workspace (our Maps + media activities split
+    // side by side via Jetpack WindowManager Activity Embedding).
+    val onWorkspaces: () -> Unit = {
+        runCatching {
+            context.startActivity(Intent(context, MapsWorkspaceActivity::class.java))
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -254,7 +263,8 @@ fun AutomotiveDashboard() {
             onLaunch = onLaunchApp,
             onToggleAllApps = { showAllApps = !showAllApps },
             onAssistant = { launchAssistant(context) },
-            onCockpit = onCockpit
+            onCockpit = onCockpit,
+            onWorkspaces = onWorkspaces
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -343,7 +353,8 @@ private fun Taskbar(
     onLaunch: (AppEntry) -> Unit,
     onToggleAllApps: () -> Unit,
     onAssistant: () -> Unit,
-    onCockpit: () -> Unit
+    onCockpit: () -> Unit,
+    onWorkspaces: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -372,7 +383,7 @@ private fun Taskbar(
 
             Spacer(Modifier.height(14.dp))
 
-            // Cockpit: launch Maps + last-used media in a system split screen.
+            // Cockpit: launch real Maps + last-used media in a system split screen.
             TaskbarButton(
                 selected = false,
                 onClick = onCockpit
@@ -380,6 +391,21 @@ private fun Taskbar(
                 Icon(
                     imageVector = Icons.Filled.Splitscreen,
                     contentDescription = "Split-screen cockpit",
+                    tint = DashColors.TextPrimary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Workspaces: embedded Maps + media split (Activity Embedding).
+            TaskbarButton(
+                selected = false,
+                onClick = onWorkspaces
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ViewColumn,
+                    contentDescription = "Embedded workspace",
                     tint = DashColors.TextPrimary,
                     modifier = Modifier.size(26.dp)
                 )
