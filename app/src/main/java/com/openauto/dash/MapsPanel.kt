@@ -3,8 +3,10 @@ package com.openauto.dash
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.Uri
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -13,10 +15,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 
@@ -59,7 +66,7 @@ fun MapsPanel(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
+            factory = { ctx: Context ->
                 WebView(ctx).apply {
                     settings.apply {
                         javaScriptEnabled = true
@@ -84,7 +91,27 @@ fun MapsPanel(modifier: Modifier = Modifier) {
                 }
             }
         )
+
+        // Fallback: open the real Google Maps app (works offline; a WebView
+        // can't embed it). Useful if the head unit can't load online map tiles.
+        FilledTonalButton(
+            onClick = { openMapsApp(context) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(12.dp)
+        ) {
+            Text("Open Maps")
+        }
     }
+}
+
+/** Opens the Google Maps app, or a generic geo intent as a fallback. */
+private fun openMapsApp(context: Context) {
+    val intent = context.packageManager
+        .getLaunchIntentForPackage("com.google.android.apps.maps")
+        ?: Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0"))
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
 }
 
 /** Centers the map on the device's last known location, if permission is held. */

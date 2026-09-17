@@ -37,6 +37,8 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
@@ -44,6 +46,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.AlertDialog
@@ -143,12 +146,18 @@ fun AutomotiveDashboard() {
     val updateStatus by updateManager.status.collectAsState()
 
     val apps = remember { AppLauncher.loadApps(context) }
-    val favorites = remember(apps) { AppLauncher.pickFavorites(apps, MAX_FAVORITES) }
+    var favorites by remember { mutableStateOf(AppLauncher.favorites(context, apps, MAX_FAVORITES)) }
 
     var showAllApps by remember { mutableStateOf(false) }
+    var editFavorites by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     var showDevicePicker by remember { mutableStateOf(false) }
     var pairedDevices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+
+    val onToggleFavorite: (AppEntry) -> Unit = { app ->
+        AppLauncher.toggleFavorite(context, app.packageName, MAX_FAVORITES)
+        favorites = AppLauncher.favorites(context, apps, MAX_FAVORITES)
+    }
 
     var clock by remember { mutableStateOf(currentClock()) }
     LaunchedEffect(Unit) {
@@ -296,7 +305,11 @@ fun AutomotiveDashboard() {
                     AppDrawer(
                         apps = apps,
                         onLaunch = onLaunchApp,
-                        onClose = { showAllApps = false },
+                        onClose = { showAllApps = false; editFavorites = false },
+                        editing = editFavorites,
+                        favoritePackages = favorites.map { it.packageName }.toSet(),
+                        onToggleEditing = { editFavorites = !editFavorites },
+                        onToggleFavorite = onToggleFavorite,
                         modifier = mod
                     )
                 } else {
@@ -936,6 +949,10 @@ private fun AppDrawer(
     apps: List<AppEntry>,
     onLaunch: (AppEntry) -> Unit,
     onClose: () -> Unit,
+    editing: Boolean,
+    favoritePackages: Set<String>,
+    onToggleEditing: () -> Unit,
+    onToggleFavorite: (AppEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier) {
@@ -943,22 +960,31 @@ private fun AppDrawer(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 20.dp, end = 10.dp, top = 14.dp, bottom = 6.dp),
+                    .padding(start = 20.dp, end = 6.dp, top = 14.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "All apps",
+                    text = if (editing) "Tap apps to pin (max 5)" else "All apps",
                     color = DashColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleLarge
                 )
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Close app drawer",
-                        tint = DashColors.TextSecondary
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onToggleEditing) {
+                        Icon(
+                            imageVector = if (editing) Icons.Filled.Done else Icons.Filled.Edit,
+                            contentDescription = if (editing) "Done editing menu" else "Edit menu",
+                            tint = if (editing) DashColors.Accent else DashColors.TextSecondary
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close app drawer",
+                            tint = DashColors.TextSecondary
+                        )
+                    }
                 }
             }
 
@@ -975,7 +1001,11 @@ private fun AppDrawer(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(apps, key = { it.packageName }) { app ->
-                        DrawerApp(app = app, onClick = { onLaunch(app) })
+                        DrawerApp(
+                            app = app,
+                            favorite = favoritePackages.contains(app.packageName),
+                            onClick = { if (editing) onToggleFavorite(app) else onLaunch(app) }
+                        )
                     }
                 }
             }
@@ -984,7 +1014,7 @@ private fun AppDrawer(
 }
 
 @Composable
-private fun DrawerApp(app: AppEntry, onClick: () -> Unit) {
+private fun DrawerApp(app: AppEntry, favorite: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -992,14 +1022,24 @@ private fun DrawerApp(app: AppEntry, onClick: () -> Unit) {
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(DashColors.CardHi),
-            contentAlignment = Alignment.Center
-        ) {
-            AppIcon(icon = app.icon, size = 42.dp)
+        Box(contentAlignment = Alignment.TopEnd) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(DashColors.CardHi),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(icon = app.icon, size = 42.dp)
+            }
+            if (favorite) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Pinned to menu",
+                    tint = DashColors.Accent,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
         Text(

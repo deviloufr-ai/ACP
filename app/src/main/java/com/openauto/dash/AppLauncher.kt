@@ -71,6 +71,46 @@ object AppLauncher {
         return (preferred + fill).take(max)
     }
 
+    // --- User-chosen menu favorites -----------------------------------------
+
+    private const val PREFS = "launcher_prefs"
+    private const val KEY_FAVORITES = "favorite_packages"
+
+    /** Package names the user pinned to the menu, in order (may be empty). */
+    fun favoritePackages(context: Context): List<String> =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_FAVORITES, null)
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+    private fun setFavoritePackages(context: Context, packages: List<String>) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_FAVORITES, packages.joinToString(",")).apply()
+    }
+
+    /** Pins/unpins [packageName] (capped at [max]); returns the new list. */
+    fun toggleFavorite(context: Context, packageName: String, max: Int = 5): List<String> {
+        val current = favoritePackages(context).toMutableList()
+        when {
+            current.contains(packageName) -> current.remove(packageName)
+            current.size < max -> current.add(packageName)
+        }
+        setFavoritePackages(context, current)
+        return current
+    }
+
+    /** The rail's favorites: the user's chosen apps if any, else auto-picked. */
+    fun favorites(context: Context, apps: List<AppEntry>, max: Int = 5): List<AppEntry> {
+        val chosen = favoritePackages(context)
+        if (chosen.isNotEmpty()) {
+            val byPackage = apps.associateBy { it.packageName }
+            val resolved = chosen.mapNotNull { byPackage[it] }
+            if (resolved.isNotEmpty()) return resolved.take(max)
+        }
+        return pickFavorites(apps, max)
+    }
+
     /** Launches [packageName] fullscreen. Returns false if it has no launch intent. */
     fun launch(context: Context, packageName: String): Boolean {
         val launchIntent = context.packageManager
