@@ -7,6 +7,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import android.provider.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,9 @@ data class MediaState(
     val title: String = "",
     val artist: String = "",
     val isPlaying: Boolean = false,
-    val hasMedia: Boolean = false
+    val hasMedia: Boolean = false,
+    /** Track length in ms, or 0 when unknown (hides the progress bar). */
+    val durationMs: Long = 0L
 )
 
 /**
@@ -92,14 +95,33 @@ class CarMediaController(private val context: Context) {
             _mediaState.value = MediaState()
             return
         }
+        // Remember which app owns this session so the split-screen cockpit can
+        // reopen the last-used media app.
+        controller.packageName?.let { rememberLastMediaPackage(context, it) }
         val metadata = controller.metadata
         val playback = controller.playbackState
         _mediaState.value = MediaState(
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty(),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty(),
             isPlaying = playback?.state == PlaybackState.STATE_PLAYING,
-            hasMedia = metadata != null
+            hasMedia = metadata != null,
+            durationMs = (metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L)
         )
+    }
+
+    /**
+     * Current playback position in ms, extrapolated from the last reported
+     * position so a progress bar advances smoothly while playing.
+     */
+    fun positionMs(): Long {
+        val state = activeController?.playbackState ?: return 0L
+        val base = state.position
+        return if (state.state == PlaybackState.STATE_PLAYING) {
+            val elapsed = SystemClock.elapsedRealtime() - state.lastPositionUpdateTime
+            (base + (elapsed * state.playbackSpeed).toLong()).coerceAtLeast(0L)
+        } else {
+            base.coerceAtLeast(0L)
+        }
     }
 
     fun playPause() {
@@ -116,6 +138,23 @@ class CarMediaController(private val context: Context) {
     }
 
     companion object {
+        private const val PREFS = "media_prefs"
+        private const val KEY_LAST_MEDIA_PACKAGE = "last_media_package"
+
+        /** Persists the package of the most recently active media app. */
+        private fun rememberLastMediaPackage(context: Context, packageName: String) {
+            if (packageName == context.packageName) return
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_MEDIA_PACKAGE, packageName)
+                .apply()
+        }
+
+        /** The last media app seen playing, or null if none has been observed. */
+        fun getLastMediaPackage(context: Context): String? =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_LAST_MEDIA_PACKAGE, null)
+
         /** True once the user has granted Notification access to this app. */
         fun hasNotificationAccess(context: Context): Boolean {
             val enabled = Settings.Secure.getString(

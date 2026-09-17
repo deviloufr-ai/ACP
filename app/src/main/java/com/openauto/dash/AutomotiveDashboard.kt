@@ -7,11 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,11 +39,13 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,6 +54,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,6 +63,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -86,37 +91,41 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Central color palette for the launcher (deep, low-glare, high-contrast). */
+/**
+ * Android Auto ("Coolwalk") inspired palette: near-black backdrop, elevated
+ * dark cards, Google-blue accent and the four Assistant brand colors.
+ */
 private object DashColors {
-    val Background = Color(0xFF0B0D10)
-    val Surface = Color(0xFF15181E)
-    val SurfaceHi = Color(0xFF1E222A)
-    val Rail = Color(0xFF0E1116)
-    val Stroke = Color(0xFF262B33)
-    val Primary = Color(0xFF5B8DEF)
-    val Accent = Color(0xFF2DD4BF)
-    val Speed = Color(0xFF7CC4FF)
-    val Rpm = Color(0xFFFFB27A)
-    val Warning = Color(0xFFFF6B6B)
-    val Good = Color(0xFF54E39B)
-    val Muted = Color(0xFF6B7280)
-    val TextPrimary = Color(0xFFF4F6F8)
-    val TextSecondary = Color(0xFFAEB6C0)
+    val Background = Color(0xFF0B0C0F)
+    val Taskbar = Color(0xFF141518)
+    val Card = Color(0xFF1E2024)
+    val CardHi = Color(0xFF2A2D33)
+    val Accent = Color(0xFF8AB4F8)
+    val Speed = Color(0xFF8AB4F8)
+    val Rpm = Color(0xFFF6AD7B)
+    val Warning = Color(0xFFF28B82)
+    val Good = Color(0xFF81C995)
+    val Muted = Color(0xFF9AA0A6)
+    val TextPrimary = Color(0xFFE8EAED)
+    val TextSecondary = Color(0xFF9AA0A6)
+
+    // Google Assistant brand colors.
+    val GBlue = Color(0xFF4285F4)
+    val GRed = Color(0xFFEA4335)
+    val GYellow = Color(0xFFFBBC05)
+    val GGreen = Color(0xFF34A853)
 }
 
 private const val SPEED_WARNING_KMH = 110
 private const val MAX_FAVORITES = 5
 
 /**
- * Modern car launcher.
+ * Android Auto style car launcher.
  *
- * Layout: a fixed left [AppRail] (up to five favorite apps + an "All apps"
- * button), the [MapsPanel] which auto-opens Google Maps, and a [RightPanel]
- * that shows either the driving home screen (media + telemetry) or the full
- * app drawer.
- *
- * Landscape (head units): rail | maps | right, side by side.
- * Portrait (phone mounts): rail | (maps stacked over right).
+ * A dark [Taskbar] runs down the left edge (app launcher, favorites, Google
+ * Assistant, clock). The content area is map-dominant: [MapsPanel] auto-opens
+ * Google Maps, and a card column shows the now-playing media card and OBD
+ * telemetry — or the full app drawer when "All apps" is open.
  */
 @Composable
 fun AutomotiveDashboard() {
@@ -131,12 +140,19 @@ fun AutomotiveDashboard() {
     val mediaState by mediaController.mediaState.collectAsState()
     val updateStatus by updateManager.status.collectAsState()
 
-    // Installed apps are enumerated once; favorites seed the rail.
     val apps = remember { AppLauncher.loadApps(context) }
     val favorites = remember(apps) { AppLauncher.pickFavorites(apps, MAX_FAVORITES) }
 
     var showAllApps by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
+
+    var clock by remember { mutableStateOf(currentClock()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            clock = currentClock()
+            delay(1000)
+        }
+    }
 
     // Start media observation, and re-check notification access on every resume
     // so granting it in system settings takes effect without an app restart.
@@ -156,7 +172,6 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Poll telemetry while connected.
     LaunchedEffect(obdConnection) {
         while (obdConnection == ObdConnectionState.CONNECTED) {
             ObdBluetoothManager.poll()
@@ -164,10 +179,7 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Check GitHub for a newer APK on launch.
-    LaunchedEffect(Unit) {
-        updateManager.checkForUpdate()
-    }
+    LaunchedEffect(Unit) { updateManager.checkForUpdate() }
 
     val onUpdate: (UpdateInfo) -> Unit = { info ->
         if (updateManager.canInstallPackages()) {
@@ -197,79 +209,117 @@ fun AutomotiveDashboard() {
     }
 
     val onLaunchApp: (AppEntry) -> Unit = { app ->
-        // Close the drawer on a successful launch; if the app has no launch
-        // intent, leave it open so the user can pick another.
         if (AppLauncher.launch(context, app.packageName)) {
             showAllApps = false
         }
     }
 
-    Column(
+    // Enters "cockpit" mode: Maps + last-used media in a real system split, with
+    // this launcher's menu/info floating on top as an overlay widget.
+    fun startCockpit() {
+        LauncherOverlayService.start(context)
+        SplitScreenLauncher.launchCockpit(context)
+    }
+
+    val overlayPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Settings.canDrawOverlays(context)) startCockpit()
+    }
+
+    val onCockpit: () -> Unit = {
+        if (Settings.canDrawOverlays(context)) {
+            startCockpit()
+        } else {
+            overlayPermissionLauncher.launch(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+            )
+        }
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .background(DashColors.Background)
     ) {
-        TopStatusBar(
+        Taskbar(
+            favorites = favorites,
+            showAllApps = showAllApps,
+            clock = clock,
+            versionName = updateManager.currentVersionName,
             obdConnection = obdConnection,
-            speedKmh = if (obdConnection == ObdConnectionState.CONNECTED) obdData.speedKmh else null,
-            versionName = updateManager.currentVersionName
+            onLaunch = onLaunchApp,
+            onToggleAllApps = { showAllApps = !showAllApps },
+            onAssistant = { launchAssistant(context) },
+            onCockpit = onCockpit
         )
 
-        UpdateBanner(
-            status = updateStatus,
-            onUpdate = onUpdate,
-            onDismiss = { updateManager.dismiss() }
-        )
-
-        Row(modifier = Modifier.fillMaxSize()) {
-            AppRail(
-                favorites = favorites,
-                showAllApps = showAllApps,
-                onLaunch = onLaunchApp,
-                onToggleAllApps = { showAllApps = !showAllApps }
+        Column(modifier = Modifier.fillMaxSize()) {
+            UpdateBanner(
+                status = updateStatus,
+                onUpdate = onUpdate,
+                onDismiss = { updateManager.dismiss() }
             )
 
-            val rightPanel: @Composable (Modifier) -> Unit = { mod ->
-                RightPanel(
-                    showAllApps = showAllApps,
-                    apps = apps,
-                    onLaunch = onLaunchApp,
-                    onCloseDrawer = { showAllApps = false },
-                    mediaState = mediaState,
-                    controller = mediaController,
-                    hasMediaAccess = hasMediaAccess,
-                    context = context,
-                    obdData = obdData,
-                    connection = obdConnection,
-                    onConnect = onConnectObd,
-                    modifier = mod
-                )
+            val cards: @Composable (Modifier) -> Unit = { mod ->
+                if (showAllApps) {
+                    AppDrawer(
+                        apps = apps,
+                        onLaunch = onLaunchApp,
+                        onClose = { showAllApps = false },
+                        modifier = mod
+                    )
+                } else {
+                    CardStack(
+                        mediaState = mediaState,
+                        controller = mediaController,
+                        hasMediaAccess = hasMediaAccess,
+                        context = context,
+                        obdData = obdData,
+                        connection = obdConnection,
+                        onConnect = onConnectObd,
+                        modifier = mod
+                    )
+                }
             }
 
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+            ) {
                 if (maxWidth >= maxHeight) {
-                    // Landscape: maps and right panel side by side.
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        MapsPanel(
+                    // Landscape: map dominant, cards on the right.
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        MapsCard(
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.6f)
                                 .fillMaxHeight()
                         )
-                        rightPanel(
+                        cards(
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
                     }
                 } else {
-                    // Portrait: maps stacked above the right panel.
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        MapsPanel(
+                    // Portrait: map on top, cards below.
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        MapsCard(
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.3f)
                                 .fillMaxWidth()
                         )
-                        rightPanel(
+                        cards(
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
@@ -281,107 +331,163 @@ fun AutomotiveDashboard() {
     }
 }
 
-// --- Top bar -----------------------------------------------------------------
+// --- Left taskbar (Android Auto style) ---------------------------------------
 
 @Composable
-private fun TopStatusBar(obdConnection: ObdConnectionState, speedKmh: Int?, versionName: String) {
-    var clock by remember { mutableStateOf(currentClock()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            clock = currentClock()
-            delay(1000)
-        }
-    }
-
+private fun Taskbar(
+    favorites: List<AppEntry>,
+    showAllApps: Boolean,
+    clock: String,
+    versionName: String,
+    obdConnection: ObdConnectionState,
+    onLaunch: (AppEntry) -> Unit,
+    onToggleAllApps: () -> Unit,
+    onAssistant: () -> Unit,
+    onCockpit: () -> Unit
+) {
     Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        color = DashColors.Surface,
-        tonalElevation = 8.dp
+            .fillMaxHeight()
+            .width(96.dp),
+        color = DashColors.Taskbar
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "OpenAuto",
-                    color = DashColors.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = " Dash",
-                    color = DashColors.Primary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = "v$versionName",
-                    color = DashColors.Muted,
-                    style = MaterialTheme.typography.labelMedium
+            // App launcher (all apps).
+            TaskbarButton(
+                selected = showAllApps,
+                onClick = onToggleAllApps
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Apps,
+                    contentDescription = "All apps",
+                    tint = if (showAllApps) DashColors.Background else DashColors.TextPrimary,
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (speedKmh != null) {
-                    Text(
-                        text = "$speedKmh km/h",
-                        color = if (speedKmh > SPEED_WARNING_KMH) DashColors.Warning else DashColors.Speed,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Spacer(Modifier.width(16.dp))
-                }
-                Text(
-                    text = clock,
-                    color = DashColors.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.width(16.dp))
-                ConnectionChip(obdConnection)
-            }
-        }
-    }
-}
+            Spacer(Modifier.height(14.dp))
 
-@Composable
-private fun ConnectionChip(connection: ObdConnectionState) {
-    val (label, color) = when (connection) {
-        ObdConnectionState.CONNECTED -> "OBD" to DashColors.Good
-        ObdConnectionState.CONNECTING -> "Connecting" to DashColors.Speed
-        ObdConnectionState.ERROR -> "OBD Error" to DashColors.Warning
-        ObdConnectionState.DISCONNECTED -> "OBD Off" to DashColors.Muted
-    }
-    Surface(
-        color = color.copy(alpha = 0.14f),
-        shape = CircleShape,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            // Cockpit: launch Maps + last-used media in a system split screen.
+            TaskbarButton(
+                selected = false,
+                onClick = onCockpit
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Splitscreen,
+                    contentDescription = "Split-screen cockpit",
+                    tint = DashColors.TextPrimary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            favorites.forEach { app ->
+                TaskbarAppButton(app = app, onClick = { onLaunch(app) })
+                Spacer(Modifier.height(14.dp))
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            // Google Assistant.
+            AssistantButton(onClick = onAssistant)
+
+            Spacer(Modifier.height(16.dp))
+
+            // OBD status dot + clock cluster.
+            val dotColor = when (obdConnection) {
+                ObdConnectionState.CONNECTED -> DashColors.Good
+                ObdConnectionState.CONNECTING -> DashColors.Speed
+                ObdConnectionState.ERROR -> DashColors.Warning
+                ObdConnectionState.DISCONNECTED -> DashColors.Muted
+            }
             Icon(
-                imageVector = if (connection == ObdConnectionState.CONNECTED) {
+                imageVector = if (obdConnection == ObdConnectionState.CONNECTED) {
                     Icons.Filled.BluetoothConnected
                 } else {
                     Icons.Filled.Bluetooth
                 },
                 contentDescription = null,
-                tint = color,
+                tint = dotColor,
                 modifier = Modifier.size(16.dp)
             )
-            Spacer(Modifier.width(6.dp))
-            Text(text = label, color = color, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = clock,
+                color = DashColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "v$versionName",
+                color = DashColors.Muted,
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }
+
+@Composable
+private fun TaskbarAppButton(app: AppEntry, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(58.dp)
+            .clip(CircleShape)
+            .background(DashColors.CardHi)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        AppIcon(icon = app.icon, size = 40.dp)
+    }
+}
+
+@Composable
+private fun TaskbarButton(
+    selected: Boolean,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(58.dp)
+            .clip(CircleShape)
+            .background(if (selected) DashColors.Accent else DashColors.CardHi)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun AssistantButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(58.dp)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(
+                    listOf(DashColors.GBlue, DashColors.GRed, DashColors.GYellow, DashColors.GGreen)
+                )
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Mic,
+            contentDescription = "Google Assistant",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+// --- Content: banner, map, cards, drawer -------------------------------------
 
 @Composable
 private fun UpdateBanner(
@@ -394,7 +500,13 @@ private fun UpdateBanner(
         status is UpdateStatus.Installing
     if (!visible) return
 
-    Surface(color = DashColors.Primary, modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        color = DashColors.Accent,
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 10.dp, end = 10.dp, top = 10.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -409,7 +521,7 @@ private fun UpdateBanner(
                 Icon(
                     imageVector = Icons.Filled.SystemUpdate,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = DashColors.Background,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.width(10.dp))
@@ -420,7 +532,8 @@ private fun UpdateBanner(
                         is UpdateStatus.Installing -> "Starting installer…"
                         else -> ""
                     },
-                    color = Color.White,
+                    color = DashColors.Background,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -431,8 +544,8 @@ private fun UpdateBanner(
                     Button(
                         onClick = { onUpdate(status.info) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = DashColors.Primary
+                            containerColor = DashColors.Background,
+                            contentColor = DashColors.Accent
                         )
                     ) {
                         Text("Update")
@@ -441,14 +554,14 @@ private fun UpdateBanner(
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Dismiss",
-                            tint = Color.White
+                            tint = DashColors.Background
                         )
                     }
                 }
 
                 is UpdateStatus.Downloading -> CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
-                    color = Color.White,
+                    color = DashColors.Background,
                     strokeWidth = 2.dp
                 )
 
@@ -458,110 +571,20 @@ private fun UpdateBanner(
     }
 }
 
-// --- Left app rail -----------------------------------------------------------
-
+/** Rounded map surface — the dominant, always-on navigation panel. */
 @Composable
-private fun AppRail(
-    favorites: List<AppEntry>,
-    showAllApps: Boolean,
-    onLaunch: (AppEntry) -> Unit,
-    onToggleAllApps: () -> Unit
-) {
+private fun MapsCard(modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier
-            .fillMaxHeight()
-            .width(92.dp),
-        color = DashColors.Rail,
-        tonalElevation = 4.dp
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = DashColors.Card
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Brand mark.
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(DashColors.Primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("OA", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            favorites.forEach { app ->
-                RailAppButton(app = app, onClick = { onLaunch(app) })
-                Spacer(Modifier.height(14.dp))
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            // "All apps" toggle at the bottom of the rail.
-            RailIconButton(
-                selected = showAllApps,
-                onClick = onToggleAllApps
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Apps,
-                    contentDescription = "All apps",
-                    tint = if (showAllApps) Color.White else DashColors.TextSecondary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-            Text(
-                text = "All apps",
-                color = if (showAllApps) DashColors.TextPrimary else DashColors.Muted,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        MapsPanel(modifier = Modifier.fillMaxSize())
     }
 }
 
 @Composable
-private fun RailAppButton(app: AppEntry, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(DashColors.SurfaceHi)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        AppIcon(icon = app.icon, size = 40.dp)
-    }
-}
-
-@Composable
-private fun RailIconButton(
-    selected: Boolean,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) DashColors.Primary else DashColors.SurfaceHi)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
-}
-
-// --- Right panel (home / drawer) ---------------------------------------------
-
-@Composable
-private fun RightPanel(
-    showAllApps: Boolean,
-    apps: List<AppEntry>,
-    onLaunch: (AppEntry) -> Unit,
-    onCloseDrawer: () -> Unit,
+private fun CardStack(
     mediaState: MediaState,
     controller: CarMediaController,
     hasMediaAccess: Boolean,
@@ -571,109 +594,9 @@ private fun RightPanel(
     onConnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier, color = DashColors.Surface) {
-        if (showAllApps) {
-            AppDrawer(apps = apps, onLaunch = onLaunch, onClose = onCloseDrawer)
-        } else {
-            HomePanel(
-                mediaState = mediaState,
-                controller = controller,
-                hasMediaAccess = hasMediaAccess,
-                context = context,
-                obdData = obdData,
-                connection = connection,
-                onConnect = onConnect
-            )
-        }
-    }
-}
-
-@Composable
-private fun AppDrawer(
-    apps: List<AppEntry>,
-    onLaunch: (AppEntry) -> Unit,
-    onClose: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "All apps",
-                color = DashColors.TextPrimary,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
-            )
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = "Close app drawer",
-                    tint = DashColors.TextSecondary
-                )
-            }
-        }
-
-        if (apps.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No apps found", color = DashColors.Muted)
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 96.dp),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(apps, key = { it.packageName }) { app ->
-                    DrawerApp(app = app, onClick = { onLaunch(app) })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DrawerApp(app: AppEntry, onClick: () -> Unit) {
     Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        AppIcon(icon = app.icon, size = 56.dp)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = app.label,
-            color = DashColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun HomePanel(
-    mediaState: MediaState,
-    controller: CarMediaController,
-    hasMediaAccess: Boolean,
-    context: Context,
-    obdData: ObdData,
-    connection: ObdConnectionState,
-    onConnect: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         MediaCard(
             mediaState = mediaState,
@@ -701,103 +624,150 @@ private fun MediaCard(
     context: Context,
     modifier: Modifier = Modifier
 ) {
+    // Advance a local position estimate while something is playing.
+    var positionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(mediaState.isPlaying, mediaState.title, mediaState.durationMs) {
+        while (true) {
+            positionMs = controller.positionMs()
+            delay(500)
+        }
+    }
+    val fraction = if (mediaState.durationMs > 0L) {
+        (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
+    } else 0f
+
     Card(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(18.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DashColors.SurfaceHi),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.MusicNote,
-                    contentDescription = null,
-                    tint = DashColors.TextSecondary,
-                    modifier = Modifier.size(56.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DashColors.CardHi),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MusicNote,
+                        contentDescription = null,
+                        tint = DashColors.TextSecondary,
+                        modifier = Modifier.size(38.dp)
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "NOW PLAYING",
+                        color = DashColors.Accent,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = when {
+                            mediaState.hasMedia && mediaState.title.isNotBlank() -> mediaState.title
+                            hasAccess -> "Nothing playing"
+                            else -> "Media access needed"
+                        },
+                        color = DashColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = mediaState.artist.ifBlank { if (hasAccess) "—" else "Tap to enable" },
+                        color = DashColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = when {
-                    mediaState.hasMedia && mediaState.title.isNotBlank() -> mediaState.title
-                    hasAccess -> "Nothing playing"
-                    else -> "Media access needed"
-                },
-                color = DashColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleLarge
-            )
-            Text(
-                text = mediaState.artist.ifBlank { if (hasAccess) "—" else "Tap below to enable" },
-                color = DashColors.TextSecondary,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(Modifier.height(16.dp))
-
             if (hasAccess) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (mediaState.durationMs > 0L) {
+                    Spacer(Modifier.height(14.dp))
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(CircleShape),
+                        color = DashColors.Accent,
+                        trackColor = DashColors.CardHi,
+                        drawStopIndicator = {}
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(formatTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                        Text(formatTime(mediaState.durationMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(
                         onClick = { controller.previous() },
-                        modifier = Modifier.size(60.dp)
+                        modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.SkipPrevious,
                             contentDescription = "Previous",
                             tint = DashColors.TextPrimary,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(36.dp)
                         )
                     }
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(16.dp))
                     FilledIconButton(
                         onClick = { controller.playPause() },
                         modifier = Modifier.size(68.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.Primary
+                            containerColor = DashColors.Accent,
+                            contentColor = DashColors.Background
                         )
                     ) {
                         Icon(
-                            imageVector = if (mediaState.isPlaying) {
-                                Icons.Filled.Pause
-                            } else {
-                                Icons.Filled.PlayArrow
-                            },
+                            imageVector = if (mediaState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = "Play/Pause",
                             modifier = Modifier.size(40.dp)
                         )
                     }
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(16.dp))
                     IconButton(
                         onClick = { controller.next() },
-                        modifier = Modifier.size(60.dp)
+                        modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.SkipNext,
                             contentDescription = "Next",
                             tint = DashColors.TextPrimary,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(36.dp)
                         )
                     }
                 }
             } else {
+                Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = { CarMediaController.openNotificationAccessSettings(context) },
-                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DashColors.Accent,
+                        contentColor = DashColors.Background
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Grant Media Access")
                 }
@@ -842,12 +812,15 @@ private fun ObdCard(
                 label = "Coolant",
                 value = if (connected) obdData.coolantTempC.toString() else "--",
                 unit = "°C",
-                valueColor = if (connected) DashColors.Accent else DashColors.Muted
+                valueColor = if (connected) DashColors.Good else DashColors.Muted
             )
             Button(
                 onClick = onConnect,
                 enabled = connection != ObdConnectionState.CONNECTING,
-                colors = ButtonDefaults.buttonColors(containerColor = DashColors.Primary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DashColors.Accent,
+                    contentColor = DashColors.Background
+                ),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Icon(
@@ -865,28 +838,104 @@ private fun ObdCard(
 @Composable
 private fun HudStat(label: String, value: String, unit: String, valueColor: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, color = valueColor, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(text = value, color = valueColor, fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Text(text = unit, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(2.dp))
+        Text(text = label, color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun AppDrawer(
+    apps: List<AppEntry>,
+    onLaunch: (AppEntry) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 10.dp, top = 14.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "All apps",
+                    color = DashColors.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close app drawer",
+                        tint = DashColors.TextSecondary
+                    )
+                }
+            }
+
+            if (apps.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No apps found", color = DashColors.Muted)
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 92.dp),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(apps, key = { it.packageName }) { app ->
+                        DrawerApp(app = app, onClick = { onLaunch(app) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DrawerApp(app: AppEntry, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(DashColors.CardHi),
+            contentAlignment = Alignment.Center
+        ) {
+            AppIcon(icon = app.icon, size = 42.dp)
+        }
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = label,
+            text = app.label,
             color = DashColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
 // --- Shared building blocks --------------------------------------------------
 
-/** Rounded surface with a subtle border used for the home cards. */
+/** Rounded elevated card, matching the Android Auto content surfaces. */
 @Composable
 private fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(
         modifier = modifier,
-        color = DashColors.Surface,
+        color = DashColors.Card,
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, DashColors.Stroke),
-        tonalElevation = 2.dp,
         content = content
     )
 }
@@ -909,6 +958,22 @@ private fun AppIcon(icon: Drawable, size: androidx.compose.ui.unit.Dp) {
 
 private fun currentClock(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+private fun formatTime(ms: Long): String {
+    val totalSeconds = (ms / 1000).coerceAtLeast(0)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
+}
+
+/** Launches the device's voice assistant, if one is available. */
+private fun launchAssistant(context: Context) {
+    val actions = listOf(Intent.ACTION_VOICE_COMMAND, Intent.ACTION_ASSIST)
+    for (action in actions) {
+        val intent = Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.startActivity(intent); true }.getOrDefault(false)) return
+    }
+}
 
 private fun requiredBluetoothPermissions(): List<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
