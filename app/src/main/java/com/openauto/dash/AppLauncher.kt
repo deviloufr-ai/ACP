@@ -71,12 +71,21 @@ object AppLauncher {
         return (preferred + fill).take(max)
     }
 
-    /** Launches [packageName] fullscreen. Returns false if it has no launch intent. */
-    fun launch(context: Context, packageName: String): Boolean {
+    /**
+     * Launches [packageName]. When [adjacent] is true (the default) it opens in
+     * a split-screen pane next to the current app via `LAUNCH_ADJACENT`, rather
+     * than fullscreen. On devices without split-screen support the flag is
+     * ignored and the app simply opens fullscreen. Returns false if the package
+     * has no launch intent.
+     */
+    fun launch(context: Context, packageName: String, adjacent: Boolean = true): Boolean {
         val launchIntent = context.packageManager
             .getLaunchIntentForPackage(packageName)
-            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             ?: return false
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (adjacent) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+        }
         return runCatching { context.startActivity(launchIntent); true }.getOrDefault(false)
     }
 }
