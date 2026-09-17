@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
@@ -42,6 +43,9 @@ object ObdBluetoothManager {
     /** Upper bound for a single command's reply read, in milliseconds. */
     private const val READ_TIMEOUT_MS = 2000L
 
+    private const val PREFS = "obd_prefs"
+    private const val KEY_MAC = "obd_device_mac"
+
     private var appContext: Context? = null
     private var socket: BluetoothSocket? = null
     private var inputStream: InputStream? = null
@@ -71,9 +75,11 @@ object ObdBluetoothManager {
         _connectionState.value = ObdConnectionState.CONNECTING
         try {
             val device = adapter.getRemoteDevice(deviceAddress)
-            adapter.cancelDiscovery()
-            val newSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            newSocket.connect()
+            runCatching { adapter.cancelDiscovery() }
+            val newSocket = openSocket(device) ?: run {
+                _connectionState.value = ObdConnectionState.ERROR
+                return@withContext false
+            }
 
             socket = newSocket
             inputStream = newSocket.inputStream
@@ -93,12 +99,69 @@ object ObdBluetoothManager {
         }
     }
 
+    /**
+     * Opens an RFCOMM socket to the adapter, trying (like Torque) the secure
+     * SPP channel, then the insecure channel, then a reflection fallback on
+     * channel 1 — clone ELM327 adapters fail one but succeed on another.
+     */
+    @SuppressLint("MissingPermission")
+    private fun openSocket(device: BluetoothDevice): BluetoothSocket? {
+        tryConnect(runCatching { device.createRfcommSocketToServiceRecord(SPP_UUID) }.getOrNull())
+            ?.let { return it }
+        tryConnect(runCatching { device.createInsecureRfcommSocketToServiceRecord(SPP_UUID) }.getOrNull())
+            ?.let { return it }
+        val reflected = runCatching {
+            device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                .invoke(device, 1) as BluetoothSocket
+        }.getOrNull()
+        return tryConnect(reflected)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun tryConnect(candidate: BluetoothSocket?): BluetoothSocket? {
+        candidate ?: return null
+        return try {
+            candidate.connect()
+            candidate
+        } catch (e: IOException) {
+            runCatching { candidate.close() }
+            null
+        }
+    }
+
     /** Sends the standard ELM327 initialization sequence. */
     private fun initializeAdapter() {
         sendCommand("ATZ")   // reset
+        Thread.sleep(1000)   // clone adapters need a moment after reset
         sendCommand("ATE0")  // echo off
         sendCommand("ATL0")  // line feeds off
         sendCommand("ATSP0") // automatic protocol selection
+        sendCommand("0100")  // probe supported PIDs (wakes the ECU link)
+    }
+
+    /** Paired Bluetooth devices as (name, MAC) pairs, for the adapter picker. */
+    @SuppressLint("MissingPermission")
+    fun bondedDevices(): List<Pair<String, String>> {
+        val context = appContext ?: return emptyList()
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            ?: return emptyList()
+        val adapter = manager.adapter ?: return emptyList()
+        return try {
+            adapter.bondedDevices.map { device ->
+                (runCatching { device.name }.getOrNull() ?: "Unknown device") to device.address
+            }.sortedBy { it.first.lowercase() }
+        } catch (e: SecurityException) {
+            emptyList()
+        }
+    }
+
+    /** The adapter the user picked, or null if none chosen yet. */
+    fun savedDeviceAddress(): String? =
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.getString(KEY_MAC, null)
+
+    fun saveDeviceAddress(address: String) {
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.edit()?.putString(KEY_MAC, address)?.apply()
     }
 
     /** Polls speed, RPM and coolant temperature once, updating [data]. */

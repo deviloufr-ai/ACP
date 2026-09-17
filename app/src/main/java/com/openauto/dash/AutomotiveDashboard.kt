@@ -1,8 +1,6 @@
 package com.openauto.dash
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -48,6 +46,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +58,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -147,6 +147,8 @@ fun AutomotiveDashboard() {
 
     var showAllApps by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
+    var showDevicePicker by remember { mutableStateOf(false) }
+    var pairedDevices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
     var clock by remember { mutableStateOf(currentClock()) }
     LaunchedEffect(Unit) {
@@ -196,24 +198,34 @@ fun AutomotiveDashboard() {
         }
     }
 
+    fun openDevicePicker() {
+        pairedDevices = ObdBluetoothManager.bondedDevices()
+        showDevicePicker = true
+    }
+
+    fun connectSavedOrPick() {
+        val saved = ObdBluetoothManager.savedDeviceAddress()
+        if (saved != null) scope.launch { ObdBluetoothManager.connect(saved) } else openDevicePicker()
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         if (result.values.all { it }) {
-            scope.launch { connectOrOpenSettings(context) }
+            connectSavedOrPick()
         }
     }
 
-    val onConnectObd: () -> Unit = {
+    // Runs [action] once the (API 31+) BLUETOOTH_CONNECT permission is granted.
+    val ensureBluetooth: (() -> Unit) -> Unit = { action ->
         val missing = requiredBluetoothPermissions().filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing.isNotEmpty()) {
-            permissionLauncher.launch(missing.toTypedArray())
-        } else {
-            scope.launch { connectOrOpenSettings(context) }
-        }
+        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray()) else action()
     }
+
+    val onConnectObd: () -> Unit = { ensureBluetooth { connectSavedOrPick() } }
+    val onPickDevice: () -> Unit = { ensureBluetooth { openDevicePicker() } }
 
     val onLaunchApp: (AppEntry) -> Unit = { app ->
         if (AppLauncher.launch(context, app.packageName)) {
@@ -296,6 +308,7 @@ fun AutomotiveDashboard() {
                         obdData = obdData,
                         connection = obdConnection,
                         onConnect = onConnectObd,
+                        onPickDevice = onPickDevice,
                         modifier = mod
                     )
                 }
@@ -343,6 +356,26 @@ fun AutomotiveDashboard() {
                 }
             }
         }
+    }
+
+    if (showDevicePicker) {
+        DevicePickerDialog(
+            devices = pairedDevices,
+            onPick = { mac ->
+                ObdBluetoothManager.saveDeviceAddress(mac)
+                showDevicePicker = false
+                scope.launch { ObdBluetoothManager.connect(mac) }
+            },
+            onDismiss = { showDevicePicker = false },
+            onOpenSettings = {
+                showDevicePicker = false
+                runCatching {
+                    context.startActivity(
+                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -623,6 +656,7 @@ private fun CardStack(
     obdData: ObdData,
     connection: ObdConnectionState,
     onConnect: () -> Unit,
+    onPickDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -642,6 +676,7 @@ private fun CardStack(
             obdData = obdData,
             connection = connection,
             onConnect = onConnect,
+            onPickDevice = onPickDevice,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -822,6 +857,7 @@ private fun ObdCard(
     obdData: ObdData,
     connection: ObdConnectionState,
     onConnect: () -> Unit,
+    onPickDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val connected = connection == ObdConnectionState.CONNECTED
@@ -855,22 +891,31 @@ private fun ObdCard(
                 unit = "°C",
                 valueColor = if (connected) DashColors.Good else DashColors.Muted
             )
-            Button(
-                onClick = onConnect,
-                enabled = connection != ObdConnectionState.CONNECTING,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DashColors.Accent,
-                    contentColor = DashColors.Background
-                ),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Bluetooth,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(if (connected) "Reconnect" else "Connect")
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Button(
+                    onClick = onConnect,
+                    enabled = connection != ObdConnectionState.CONNECTING,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DashColors.Accent,
+                        contentColor = DashColors.Background
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Bluetooth,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (connected) "Reconnect" else "Connect")
+                }
+                TextButton(onClick = onPickDevice) {
+                    Text(
+                        "Change adapter",
+                        color = DashColors.Muted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
         }
     }
@@ -1016,43 +1061,59 @@ private fun launchAssistant(context: Context) {
     }
 }
 
+/** Lets the user pick which paired Bluetooth device is the OBD adapter. */
+@Composable
+private fun DevicePickerDialog(
+    devices: List<Pair<String, String>>,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Surface,
+        title = { Text("Select OBD adapter", color = DashColors.TextPrimary) },
+        text = {
+            Column {
+                if (devices.isEmpty()) {
+                    Text(
+                        "No paired Bluetooth devices. Pair your OBD adapter in Bluetooth settings first.",
+                        color = DashColors.TextSecondary
+                    )
+                } else {
+                    devices.forEach { (name, mac) ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(mac) }
+                                .padding(vertical = 10.dp)
+                        ) {
+                            Text(name, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
+                            Text(mac, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onOpenSettings) {
+                Text("Bluetooth settings", color = DashColors.Accent)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = DashColors.Muted)
+            }
+        }
+    )
+}
+
+// Only BLUETOOTH_CONNECT is needed (and declared) to talk to a bonded adapter.
+// The old code also requested BLUETOOTH_SCAN, which is NOT in the manifest, so
+// the system auto-denied it and the connect never ran.
 private fun requiredBluetoothPermissions(): List<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
+        listOf(Manifest.permission.BLUETOOTH_CONNECT)
     } else {
         emptyList()
     }
-
-/** Connects to a paired ELM327 adapter, or opens Bluetooth settings to pair one. */
-private suspend fun connectOrOpenSettings(context: Context) {
-    val address = findObdDeviceAddress(context)
-    if (address != null) {
-        ObdBluetoothManager.connect(address)
-    } else {
-        context.startActivity(
-            Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
-    }
-}
-
-@SuppressLint("MissingPermission")
-private fun findObdDeviceAddress(context: Context): String? {
-    val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return null
-    val adapter = manager.adapter ?: return null
-    val bonded = try {
-        adapter.bondedDevices
-    } catch (e: SecurityException) {
-        null
-    } ?: return null
-
-    return bonded.firstOrNull { device ->
-        val name = try {
-            device.name
-        } catch (e: SecurityException) {
-            null
-        }.orEmpty()
-        name.contains("OBD", ignoreCase = true) ||
-            name.contains("ELM", ignoreCase = true) ||
-            name.contains("327", ignoreCase = true)
-    }?.address
-}
