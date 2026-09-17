@@ -39,6 +39,9 @@ object ObdBluetoothManager {
     /** Well-known SPP UUID used by ELM327 clones. */
     private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
+    /** Upper bound for a single command's reply read, in milliseconds. */
+    private const val READ_TIMEOUT_MS = 2000L
+
     private var appContext: Context? = null
     private var socket: BluetoothSocket? = null
     private var inputStream: InputStream? = null
@@ -113,7 +116,12 @@ object ObdBluetoothManager {
         )
     }
 
-    /** Writes a command and reads the reply up to the ELM327 '>' prompt. */
+    /**
+     * Writes a command and reads the reply up to the ELM327 '>' prompt.
+     *
+     * Reads are bounded by [READ_TIMEOUT_MS]: a silent or misbehaving adapter
+     * would otherwise block this IO coroutine indefinitely on [InputStream.read].
+     */
     private fun sendCommand(command: String): String? {
         val out = outputStream ?: return null
         val input = inputStream ?: return null
@@ -123,13 +131,18 @@ object ObdBluetoothManager {
 
             val response = StringBuilder()
             val buffer = ByteArray(1024)
-            while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
-                response.append(String(buffer, 0, read))
-                if (response.contains(">")) break
+            val deadline = System.currentTimeMillis() + READ_TIMEOUT_MS
+            while (System.currentTimeMillis() < deadline) {
+                if (input.available() > 0) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    response.append(String(buffer, 0, read))
+                    if (response.contains(">")) break
+                } else {
+                    Thread.sleep(20)
+                }
             }
-            response.toString().replace(">", "").trim()
+            response.toString().replace(">", "").trim().ifEmpty { null }
         } catch (e: IOException) {
             _connectionState.value = ObdConnectionState.ERROR
             null

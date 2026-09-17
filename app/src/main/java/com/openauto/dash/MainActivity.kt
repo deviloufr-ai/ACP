@@ -41,10 +41,10 @@ class MainActivity : ComponentActivity() {
 fun OpenAutoDashTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Color(0xFF6750A4),
-            secondary = Color(0xFF03DAC5),
-            background = Color(0xFF0F1115),
-            surface = Color(0xFF1C1E24),
+            primary = Color(0xFF5B8DEF),
+            secondary = Color(0xFF2DD4BF),
+            background = Color(0xFF0B0D10),
+            surface = Color(0xFF15181E),
             onPrimary = Color.White,
             onBackground = Color.White,
             onSurface = Color.White

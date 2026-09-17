@@ -9,6 +9,7 @@ OpenAuto Dash is an automotive interface application that functions both as an A
 - **OBD-II Telemetry**: Real-time speed, RPM and coolant temperature via a Bluetooth ELM327 adapter
 - **Media Integration**: Reads the active system media session (title, artist, playback) and exposes transport controls
 - **Auto-Launch**: Can launch when the car's Bluetooth device connects, and can be set as the device Home launcher
+- **In-App Auto-Update**: Checks GitHub Releases on launch, tracks the installed version, and downloads/installs newer APKs
 - **Safety First**: Dark theme (#0F1115), large touch targets (48–72dp), screen kept on while driving
 
 ### Project Structure
@@ -19,7 +20,7 @@ D:/android car launcher/
 ├── settings.gradle.kts                           # Project + repositories
 ├── gradle.properties                             # AndroidX / Gradle flags
 ├── gradlew, gradlew.bat                           # Gradle wrapper scripts
-├── gradle/wrapper/gradle-wrapper.properties       # Pins Gradle 8.6 (jar generated on first sync/CI)
+├── gradle/wrapper/gradle-wrapper.properties       # Pins Gradle 8.13 (jar generated on first sync/CI)
 ├── app/
 │   ├── build.gradle.kts                           # Module dependencies & Android config
 │   ├── proguard-rules.pro
@@ -46,32 +47,33 @@ D:/android car launcher/
 
 | Tool | Version |
 |------|---------|
-| Java (JDK) | 17 |
-| Gradle | 8.6 |
-| Android Gradle Plugin | 8.2.2 |
-| Kotlin | 1.9.22 |
-| Compose Compiler | 1.5.8 |
-| compileSdk / targetSdk | 34 |
+| Android Gradle Plugin | 8.13.2 |
+| Gradle | 8.13 |
+| Kotlin | 2.0.21 (Compose compiler plugin) |
+| compileSdk | 35 |
+| targetSdk | 34 |
 | minSdk | 29 (Android 10) |
+| Gradle JDK | 17–21 (see note) |
+
+> **JDK note:** AGP 8.13.2 / Gradle 8.13 run on JDK 17–21, not JDK 25. The latest Android Studio bundles JBR 25 for the IDE, but the **Gradle JDK** is a separate, per-project setting. If Studio flags "Java 25 is not supported", set **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK → Download JDK → 21** and re-sync. The IDE keeps using JBR 25; only the Gradle daemon uses 21.
 
 ## Setup Instructions
 
 ### Prerequisites
-1. **Android Studio Hedgehog (2023.1.1) or newer**
-2. **Java JDK 17**
-3. **Android SDK** (platform 34, build-tools 34, platform-tools)
+1. **Android Studio (latest)** with a **Gradle JDK of 17–21** (Studio can download it)
+2. **Android SDK** (platform 35, build-tools 35, platform-tools)
 
 ### Building with Android Studio
 1. Open `D:/android car launcher` in Android Studio.
-2. Let Gradle sync — this downloads dependencies and generates the Gradle wrapper JAR automatically.
+2. Let Gradle sync — this downloads dependencies and generates the Gradle wrapper JAR automatically. If it complains about Java 25, set the Gradle JDK to 21 (see the JDK note above) and re-sync.
 3. Build the debug APK: `Build → Build Bundle(s) / APK(s) → Build APK(s)`.
 4. Install `app/build/outputs/apk/debug/app-debug.apk` on a device or emulator.
 
 ### Building from the command line
-The wrapper JAR (`gradle/wrapper/gradle-wrapper.jar`) is intentionally **not** committed. Generate it once with a locally installed Gradle (8.x), or let Android Studio create it on first sync:
+The wrapper JAR (`gradle/wrapper/gradle-wrapper.jar`) is intentionally **not** committed. Generate it once with a locally installed Gradle (8.13), or let Android Studio create it on first sync:
 
 ```bash
-gradle wrapper --gradle-version 8.6
+gradle wrapper --gradle-version 8.13
 ```
 
 Then build:
@@ -113,6 +115,36 @@ Reading other apps' sessions requires **Notification access**, granted once via 
 - When the saved car device connects, it launches `MainActivity`.
 - `MainActivity` also declares a `HOME` intent-filter, so it can be selected as the device Home launcher on a head unit.
 
+### 5. In-App Auto-Update
+`UpdateManager` keeps the app current from GitHub Releases:
+- On launch it queries `https://api.github.com/repos/deviloufr-ai/ACP/releases/latest`.
+- **Version tracking**: the installed `versionCode` is set by CI to the Actions **run number**; the latest build number is parsed from the release tag (`v1.0.42` → `42`). A higher number means an update is available.
+- If newer, a banner offers **Update** → it downloads the release APK via `DownloadManager` and launches the system installer (Android always shows its own install confirmation).
+- The current version is shown in the top status bar.
+
+> Android cannot install silently without device-owner privileges, so "auto-update" means auto-check + auto-download + a one-tap, OS-confirmed install. The first time, the user must allow "install unknown apps" for OpenAuto Dash (the app opens that settings screen for them).
+
+**Important — signing:** an update APK can only replace the installed app if both are signed with the **same key**. CI's debug key is regenerated every run, so you must add a persistent release keystore (below) for updates to actually install over each other.
+
+#### Release signing setup (required for OTA updates)
+1. Generate a keystore once:
+   ```bash
+   keytool -genkeypair -v -keystore release.keystore -alias openauto \
+     -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Base64-encode it:
+   ```bash
+   base64 -w0 release.keystore > release.keystore.b64   # Linux
+   # macOS: base64 -i release.keystore -o release.keystore.b64
+   ```
+3. In the GitHub repo, add **Settings → Secrets and variables → Actions**:
+   - `KEYSTORE_BASE64` — contents of `release.keystore.b64`
+   - `KEYSTORE_PASSWORD` — the store password
+   - `KEY_ALIAS` — `openauto`
+   - `KEY_PASSWORD` — the key password
+
+When these secrets are present, CI signs every release APK with that key; when they are absent, it falls back to the debug key (installs fine, but cross-version updates won't).
+
 ## Architecture
 
 ```mermaid
@@ -134,6 +166,11 @@ graph TB
 
     N[AutoDriveReceiver] --> O[ACL_CONNECTED Intent]
     O --> P[Launch MainActivity]
+
+    Q[UpdateManager] --> R[GitHub Releases API]
+    R --> S[Compare versionCode vs latest tag]
+    S --> T[DownloadManager -> System Installer]
+    Q --> B
 ```
 
 ## Safety Guidelines
@@ -153,6 +190,7 @@ graph TB
 | WAKE_LOCK / DISABLE_KEYGUARD | Keep screen on while driving |
 | FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC | Continuous telemetry service |
 | POST_NOTIFICATIONS | Notifications on Android 13+ |
+| REQUEST_INSTALL_PACKAGES | Install downloaded update APKs |
 | Notification access (granted in Settings) | Read active media sessions from other apps |
 
 ## Testing Checklist
@@ -170,17 +208,16 @@ graph TB
 The project builds automatically on GitHub Actions — no local Android Studio required.
 
 ### Workflow Files
-- **`.github/workflows/build.yml`** — builds the debug APK on every push/PR to `main` and uploads it as an artifact.
+- **`.github/workflows/build.yml`** — builds the **release** APK, uploads it as an artifact, and (on push to `main`) publishes a **GitHub Release** the in-app updater reads.
 - **`.github/workflows/lint.yml`** — runs Android Lint and unit tests.
 
 ### How It Works
-Each job: checkout → set up JDK 17 → set up Android SDK → **set up Gradle 8.6** → `gradle wrapper` (generates the wrapper JAR) → `./gradlew assembleDebug`. Because CI provisions Gradle itself, the wrapper JAR does not need to be committed.
+Each build job: checkout → set up JDK 21 → set up Android SDK (explicit packages, no obsolete `tools`) → **set up Gradle 8.13** → `gradle wrapper` → decode the optional signing key → `./gradlew assembleRelease` (with `VERSION_CODE`/`VERSION_NAME` from the run number) → upload artifact → publish a release tagged `v1.0.<run_number>` with the APK attached. Because CI provisions Gradle itself, the wrapper JAR is not committed.
 
-### Download the APK
-1. Visit https://github.com/deviloufr-ai/ACP/actions
-2. Open a successful **Build Android APK** run.
-3. Download the `openauto-dash-apk` artifact.
-4. Install on a device: `adb install app-debug.apk`
+### Get the APK
+- **Latest release** (what the app auto-updates from): https://github.com/deviloufr-ai/ACP/releases/latest
+- **Per-run artifact**: Actions tab → a successful run → `openauto-dash-apk`.
+- Install on a device: `adb install app-release.apk`
 
 ## Troubleshooting
 

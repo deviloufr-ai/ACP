@@ -4,12 +4,27 @@ import android.bluetooth.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
+import android.os.Build
 import android.util.Log
+
+/** Version-safe read of the [BluetoothDevice] extra (typed getter deprecated on API 33+). */
+private fun Intent.bluetoothDevice(): BluetoothDevice? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+    } else {
+        @Suppress("DEPRECATION")
+        getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+    }
 
 /**
  * BroadcastReceiver that auto-launches MainActivity when car Bluetooth connects.
  * Enables the app to act as an auto-trigger phone dashboard.
+ *
+ * Note: `ACTION_ACL_CONNECTED`/`ACTION_ACL_DISCONNECTED` are implicit broadcasts
+ * that Android 8+ (API 26) no longer delivers to manifest-declared receivers, so
+ * on this app's minSdk (29) auto-launch only fires when the process is already
+ * running and this receiver has been registered dynamically. A foreground
+ * service would be required to catch it while backgrounded.
  */
 class AutoDriveReceiver : BroadcastReceiver() {
     
@@ -42,7 +57,7 @@ class AutoDriveReceiver : BroadcastReceiver() {
      * Handle car Bluetooth connection - auto-launch MainActivity.
      */
     private fun handleBluetoothConnection(context: Context, intent: Intent) {
-        val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
+        val device = intent.bluetoothDevice() ?: return
         
         // Check if this is the saved car Bluetooth device
         val storedMac = context.getSharedPreferences(

@@ -41,6 +41,7 @@ class CarMediaController(private val context: Context) {
     val mediaState: StateFlow<MediaState> = _mediaState.asStateFlow()
 
     private var activeController: MediaController? = null
+    private var started = false
 
     private val controllerCallback = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) = publish(activeController)
@@ -54,11 +55,17 @@ class CarMediaController(private val context: Context) {
     private val sessionsChangedListener =
         MediaSessionManager.OnActiveSessionsChangedListener { controllers -> bind(controllers) }
 
-    /** Starts observing active media sessions. Safe to call before access is granted. */
+    /**
+     * Starts observing active media sessions. Safe (and idempotent) to call
+     * before access is granted — the UI re-invokes it once the user grants
+     * Notification access so playback appears without an app restart.
+     */
     fun start() {
+        if (started) return
         try {
             sessionManager.addOnActiveSessionsChangedListener(sessionsChangedListener, listenerComponent)
             bind(sessionManager.getActiveSessions(listenerComponent))
+            started = true
         } catch (e: SecurityException) {
             // Notification access not granted yet; UI prompts the user to enable it.
             _mediaState.value = MediaState()
@@ -70,6 +77,7 @@ class CarMediaController(private val context: Context) {
         runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
         activeController?.unregisterCallback(controllerCallback)
         activeController = null
+        started = false
     }
 
     private fun bind(controllers: List<MediaController>?) {
@@ -114,7 +122,11 @@ class CarMediaController(private val context: Context) {
                 context.contentResolver,
                 "enabled_notification_listeners"
             ) ?: return false
-            return enabled.split(":").any { it.contains(context.packageName) }
+            // Each entry is a flattened ComponentName ("pkg/cls"); match the
+            // package exactly rather than as a loose substring.
+            return enabled.split(":").any { entry ->
+                entry.substringBefore("/") == context.packageName
+            }
         }
 
         /** Opens the system screen where the user enables Notification access. */

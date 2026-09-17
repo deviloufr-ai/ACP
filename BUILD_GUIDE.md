@@ -3,7 +3,7 @@
 ## Quick Start (Android Studio)
 
 ### Prerequisites
-1. Install Android Studio (Hedgehog 2023.1.1 or newer) with JDK 17
+1. Install Android Studio (latest) with a Gradle JDK of 17–21 (Studio can download it)
 2. Open the project and let Gradle sync — this also generates the Gradle wrapper JAR
 3. Build → Build Bundle(s) / APK(s) → Build APK(s)
 4. Find output at: `app/build/outputs/apk/debug/app-debug.apk`
@@ -13,7 +13,7 @@
 The wrapper JAR is not committed. Generate it once (needs a local Gradle 8.x), then build:
 
 ```bash
-gradle wrapper --gradle-version 8.6
+gradle wrapper --gradle-version 8.13
 ./gradlew assembleDebug
 ```
 

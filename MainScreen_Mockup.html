@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAuto Dash - Main Screen Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .dashboard-container {
+            background: linear-gradient(180deg, #0F1115 0%, #1A1D24 50%, #0F1115 100%);
+            border-radius: 30px;
+            padding: 30px;
+            width: 100%;
+            max-width: 1400px;
+            height: 800px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+        }
+
+        /* Top Status Bar */
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            right: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: rgba(26, 29, 36, 0.9);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #9CA3AF;
+        }
+
+        .status-item span.icon {
+            font-size: 1.2rem;
+        }
+
+        /* Speedometer - Main Display */
+        .speedometer-section {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .speed-display {
+            font-size: 120px;
+            font-weight: bold;
+            color: #3B82F6;
+            text-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+            font-family: 'Courier New', monospace;
+        }
+
+        .speed-unit {
+            font-size: 36px;
+            color: #9CA3AF;
+            margin-top: -10px;
+        }
+
+        .rpm-display {
+            font-size: 48px;
+            color: #22C55E;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+
+        /* Navigation Panel (Left) - with installed apps */
+        .nav-panel {
+            position: absolute;
+            top: 100px;
+            left: 30px;
+            bottom: 100px;
+            width: 250px;
+            background: rgba(26, 29, 36, 0.8);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .app-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .app-item:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateX(5px);
+        }
+
+        .app-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3B82F6;
+        }
+
+        .app-icon {
+            width: 56px;
+            height: 56px;
+            min-width: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #fff, #e0e0e0);
+        }
+
+        /* App-specific hover colors */
+        .app-item.maps:hover { background: rgba(66, 133, 244, 0.2); border-color: rgba(66, 133, 244, 0.5); }
+        .app-item.spotify:hover { background: rgba(220, 56, 68, 0.2); border-color: rgba(220, 56, 68, 0.5); }
+        .app-item.youtube:hover { background: rgba(237, 91, 43, 0.2); border-color: rgba(237, 91, 43, 0.5); }
+        .app-item.podcasts:hover { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.5); }
+        .app-item.google-assistant:hover { background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.5); }
+        .app-item.settings:hover { background: rgba(100, 116, 139, 0.2); border-color: rgba(100, 116, 139, 0.5); }
+
+        /* Navigation Section */
+        .nav-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .nav-section:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3B82F6;
+            transform: translateX(3px);
+        }
+
+        .nav-icon {
+            font-size: 1.8rem;
+            min-width: 48px;
+        }
+
+        .nav-info h4 {
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .nav-info p {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+        }
+
+        /* "Show All Apps" Button */
+        .show-all-apps-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .show-all-apps-btn:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
+            transform: scale(1.02);
+        }
+
+        .show-all-apps-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* All Apps Modal */
+        .all-apps-modal {
+            position: absolute;
+            top: 0;
+            left: 250px;
+            right: 30px;
+            bottom: 100px;
+            background: rgba(26, 29, 36, 0.98);
+            border-radius: 20px 20px 20px 20px;
+            padding: 24px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            display: none;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .all-apps-modal.active {
+            display: grid;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: scale(1.1);
+        }
+
+        .app-item.modal-app-item {
+            margin: 0;
+            padding: 12px;
+            font-size: 0.9rem;
+        }
+
+        /* Media Center (Right) */
+        .media-center {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            bottom: 100px;
+            width: 320px;
+            background: rgba(26, 29, 36, 0.8);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .album-art {
+            width: 280px;
+            height: 240px;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .player-info {
+            text-align: center;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .song-title {
+            font-size: 1.3rem;
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .artist-name {
+            font-size: 1rem;
+            color: #9CA3AF;
+        }
+
+        /* Control Buttons */
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+            margin-top: auto;
+        }
+
+        .control-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3B82F6, #2563EB);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(59, 130, 246, 0.6);
+        }
+
+        .control-btn.expand {
+            width: 180px;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Floating HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 24px;
+        }
+
+        .hud-item {
+            background: rgba(26, 29, 36, 0.9);
+            padding: 16px 24px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hud-item-icon {
+            font-size: 1.5rem;
+        }
+
+        .hud-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-label {
+            font-size: 0.7rem;
+            color: #9CA3AF;
+            text-transform: uppercase;
+        }
+
+        .hud-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* Expand button */
+        .expand-btn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 48px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .expand-btn:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 12px 35px rgba(16, 185, 129, 0.6);
+        }
+
+        /* OBD Status Indicator */
+        .obd-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .obd-dot {
+            width: 8px;
+            height: 8px;
+            background: #22C55E;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Navigation Branding */
+        .nav-branding {
+            position: absolute;
+            top: 28px;
+            left: 30px;
+            font-size: 0.8rem;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* App Status Indicators */
+        .app-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: #9CA3AF;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .app-status-dot {
+            width: 6px;
+            height: 6px;
+            background: #22C55E;
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                height: 900px;
+                padding: 20px;
+            }
+
+            .speed-display {
+                font-size: 96px;
+            }
+
+            .album-art {
+                width: 240px;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Top Status Bar -->
+        <div class="status-bar">
+            <div class="nav-branding">OpenAuto Dash</div>
+            
+            <div class="status-item">
+                <span class="icon">📶</span>
+                <span>OBD: Connected</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="icon">⚡</span>
+                <span>Battery: 85%</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="icon">🔥</span>
+                <span>Coolant: 92°C</span>
+            </div>
+
+            <div class="obd-status">
+                <div class="obd-dot"></div>
+                <span>OBD Connected</span>
+            </div>
+        </div>
+
+        <!-- Speedometer (Center) -->
+        <div class="speedometer-section">
+            <div class="speed-display">87</div>
+            <div class="speed-unit">km/h</div>
+            <div class="rpm-display">1,850 RPM</div>
+        </div>
+
+        <!-- Navigation Panel (Left) - with installed apps -->
+        <div class="nav-panel">
+            <!-- Dynamic Apps Container -->
+            <div id="apps-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: auto;"></div>
+
+            <!-- Show All Apps Button -->
+            <button class="show-all-apps-btn" onclick="toggleAllApps()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+                Show All Apps
+            </button>
+
+            <!-- App Status Indicators -->
+            <div class="app-status">
+                <span class="app-status-dot"></span>
+                <span>All apps ready</span>
+            </div>
+        </div>
+
+        <!-- All Apps Modal (hidden by default) -->
+        <div class="all-apps-modal" id="allAppsModal">
+            <button class="modal-close-btn" onclick="toggleAllApps()" aria-label="Close">✕</button>
+            <div id="all-apps-container" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;"></div>
+        </div>
+
+        <!-- Media Center (Right) -->
+        <div class="media-center">
+            <div class="album-art">🎵</div>
+            
+            <div class="player-info">
+                <div class="song-title">Midnight Drive</div>
+                <div class="artist-name">Electronic Dreams</div>
+            </div>
+
+            <div class="control-buttons">
+                <button class="control-btn expand" onclick="launchFromPanel('right')">[ Expand Maps ]</button>
+                
+                <button class="control-btn">⏮️</button>
+                <button class="control-btn">▶️</button>
+                <button class="control-btn">⏭️</button>
+            </div>
+        </div>
+
+        <!-- HUD Overlay -->
+        <div class="hud-overlay">
+            <div class="hud-item">
+                <span class="hud-item-icon">🌡️</span>
+                <div class="hud-text">
+                    <span class="hud-label">Outside Temp</span>
+                    <span class="hud-value">24°C</span>
+                </div>
+            </div>
+
+            <div class="hud-item">
+                <span class="hud-item-icon">🔋</span>
+                <div class="hud-text">
+                    <span class="hud-label">Fuel Level</span>
+                    <span class="hud-value">68%</span>
+                </div>
+            </div>
+
+            <div class="hud-item">
+                <span class="hud-item-icon">⏱️</span>
+                <div class="hud-text">
+                    <span class="hud-label">Trip Time</span>
+                    <span class="hud-value">45m</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expand Button -->
+        <button class="expand-btn" onclick="launchFromPanel('right')">[ Expand Maps ]</button>
+    </div>
+
+    <script>
+        // Mock installed apps data (in production, fetch from Android PackageManager)
+        const installedApps = [
+            { name: 'Google Maps', icon: '🗺️', package: 'com.google.android.apps.maps', color: '#4285F4' },
+            { name: 'Spotify', icon: '🎵', package: 'com.spotify.music', color: '#1DB954' },
+            { name: 'YouTube Music', icon: '🎬', package: 'com.google.android.apps.youtube.music', color: '#FF0000' },
+            { name: 'Podcasts', icon: '🎙️', package: 'com.google.android.apps podcasts', color: '#FFA000' },
+            { name: 'Google Assistant', icon: '🔊', package: 'com.google.android.apps.mediashell', color: '#4285F4' },
+            { name: 'Settings', icon: '⚙️', package: 'com.google.android.settings', color: '#9CA3AF' },
+            { name: 'Calendar', icon: '📅', package: 'com.android.calendar', color: '#2196F3' },
+            { name: 'Photos', icon: '🖼️', package: 'com.google.android.apps.photos', color: '#FF5722' },
+            { name: 'Contacts', icon: '👥', package: 'com.google.android.contacts', color: '#8BC34A' },
+            { name: 'Chrome', icon: '🌐', package: 'com.android.chrome', color: '#F59E0B' },
+        ];
+
+        // Display only first 5 apps on left panel
+        const displayLimit = 5;
+        const displayedApps = installedApps.slice(0, displayLimit);
+        const allAppsCount = installedApps.length - displayLimit;
+
+        // Render apps to left panel
+        function renderApps() {
+            const appsContainer = document.getElementById('apps-container');
+            let html = '';
+
+            displayedApps.forEach((app, index) => {
+                const isSettings = app.name === 'Settings';
+                html += `
+                    <div class="app-item ${isSettings ? 'settings' : ''}" 
+                         onclick="launchApp('${app.package}', '${index + 1}')">
+                        <div class="app-icon" style="background: linear-gradient(135deg, ${app.color}, darken(${app.color}, 20)); color: white;">
+                            ${app.icon}
+                        </div>
+                        <div class="nav-info">
+                            <h4>${app.name}</h4>
+                            <p>${isSettings ? 'System Settings' : app.package.substring(0, 15) + '...'}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            appsContainer.innerHTML = html;
+
+            // Add "See All" count if there are more apps
+            if (allAppsCount > 0) {
+                const showAllBtn = document.querySelector('.show-all-apps-btn');
+                showAllBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    See ${allAppsCount} More Apps
+                `;
+            }
+        }
+
+        // Toggle All Apps modal
+        function toggleAllApps() {
+            const modal = document.getElementById('allAppsModal');
+            const allAppsContainer = document.getElementById('all-apps-container');
+
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            } else {
+                // Render remaining apps in modal
+                let html = '';
+                displayedApps.forEach((app, index) => {
+                    const isSettings = app.name === 'Settings';
+                    html += `
+                        <div class="app-item modal-app-item ${isSettings ? 'settings' : ''}" 
+                             onclick="launchApp('${app.package}', '${index + 1}')">
+                            <div class="app-icon" style="background: linear-gradient(135deg, ${app.color}, darken(${app.color}, 20)); color: white;">
+                                ${app.icon}
+                            </div>
+                            <div class="nav-info">
+                                <h4>${app.name}</h4>
+                                <p style="font-size: 0.75rem; color: #9CA3AF;">${isSettings ? 'System Settings' : app.package.substring(0, 20)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                allAppsContainer.innerHTML = html;
+                modal.classList.add('active');
+            }
+        }
+
+        // Launch app from left or right panel
+        function launchApp(packageName, position) {
+            console.log(`Launching ${packageName} from ${position === 'left' ? 'left' : 'right'} panel`);
+            
+            // Add active state to clicked app
+            document.querySelectorAll('.app-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Close modal if open
+            document.getElementById('allAppsModal').classList.remove('active');
+
+            // Launch the app (in Android, this would start the activity)
+            window.dispatchEvent(new CustomEvent('appLaunched', { 
+                detail: { packageName: packageName, position: 'left' } 
+            }));
+        }
+
+        function launchFromPanel(panel) {
+            if (panel === 'right') {
+                // Launch Google Maps from right panel
+                const mapsApp = installedApps.find(app => app.name === 'Google Maps');
+                if (mapsApp) {
+                    launchApp(mapsApp.package, 'right');
+                    
+                    // Update expand button text to indicate which app launched
+                    document.querySelector('.expand-btn').textContent = `[ ${mapsApp.icon} Launching ${mapsApp.name} ]`;
+                    document.querySelector('.control-btn.expand').textContent = `[ ${mapsApp.icon} Expand ${mapsApp.name} ]`;
+                }
+            } else if (panel === 'left') {
+                // Launch first app from left panel
+                const firstApp = displayedApps[0];
+                launchApp(firstApp.package, 'left');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderApps();
+        });
+
+        // Add active state on click
+        document.querySelectorAll('.app-item:not(.settings)').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-info p').forEach(p => {
+                    p.textContent = `${this.querySelector('.nav-info h4')} • Launching...`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

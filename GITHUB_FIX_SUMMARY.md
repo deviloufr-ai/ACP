@@ -39,15 +39,15 @@ configuration. Three layers were broken:
 
 | Area | Change |
 |------|--------|
-| Gradle | Added root `build.gradle.kts` (AGP 8.2.2 / Kotlin 1.9.22), `gradle.properties`, wrapper scripts + `gradle-wrapper.properties` (Gradle 8.6) |
-| Dependencies | Added `com.google.android.material` for the XML theme; bumped Compose compiler to 1.5.8; relaxed lint `abortOnError` |
+| Gradle | Added root `build.gradle.kts` (AGP 8.13.2 / Kotlin 2.0.21), `gradle.properties`, wrapper scripts + `gradle-wrapper.properties` (Gradle 8.13) |
+| Dependencies | Added `com.google.android.material` for the XML theme; Compose via the Kotlin 2 Compose plugin; relaxed lint `abortOnError` |
 | Resources | Replaced SVG icons with an adaptive icon (`mipmap-anydpi-v26`) + vector layers; fixed `themes.xml`/`colors.xml`; removed broken `styles.xml` |
 | Manifest | Proper `LAUNCHER` + `HOME` intent-filters; added the notification-listener service; responsive orientation |
 | Kotlin | Rewrote `AutomotiveDashboard`, `ObdBluetoothManager`, `CarMediaController` into compiling, working implementations; added `MediaNotificationListenerService` |
-| CI | `build.yml` / `lint.yml` now provision Gradle 8.6, generate the wrapper, then build — so no wrapper JAR needs to be committed |
+| CI | `build.yml` / `lint.yml` now provision Gradle 8.13 (JDK 21), generate the wrapper, then build — so no wrapper JAR needs to be committed |
 
 ## How to build now
 - **CI:** push to `main` (or run the workflow manually) and download the
   `openauto-dash-apk` artifact from the Actions tab.
 - **Local:** open in Android Studio (it generates the wrapper JAR on sync), or run
-  `gradle wrapper --gradle-version 8.6` once, then `./gradlew assembleDebug`.
+  `gradle wrapper --gradle-version 8.13` once, then `./gradlew assembleDebug`.
