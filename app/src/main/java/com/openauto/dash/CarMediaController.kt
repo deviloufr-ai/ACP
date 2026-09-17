@@ -47,15 +47,15 @@ class CarMediaController(private val context: Context) {
     val mediaState: StateFlow<MediaState> = _mediaState.asStateFlow()
 
     private var activeController: MediaController? = null
+    private var boundControllers: List<MediaController> = emptyList()
     private var started = false
 
     private val controllerCallback = object : MediaController.Callback() {
-        override fun onPlaybackStateChanged(state: PlaybackState?) = publish(activeController)
-        override fun onMetadataChanged(metadata: MediaMetadata?) = publish(activeController)
-        override fun onSessionDestroyed() {
-            activeController = null
-            _mediaState.value = MediaState()
-        }
+        // The callback is registered on every session, so re-pick the active one
+        // whenever any of them changes state (e.g. YouTube Music starts playing).
+        override fun onPlaybackStateChanged(state: PlaybackState?) = selectActive()
+        override fun onMetadataChanged(metadata: MediaMetadata?) = selectActive()
+        override fun onSessionDestroyed() = selectActive()
     }
 
     private val sessionsChangedListener =
@@ -81,15 +81,25 @@ class CarMediaController(private val context: Context) {
     /** Stops observing and releases callbacks. */
     fun stop() {
         runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
-        activeController?.unregisterCallback(controllerCallback)
+        boundControllers.forEach { runCatching { it.unregisterCallback(controllerCallback) } }
+        boundControllers = emptyList()
         activeController = null
         started = false
     }
 
     private fun bind(controllers: List<MediaController>?) {
-        activeController?.unregisterCallback(controllerCallback)
-        activeController = controllers?.firstOrNull()
-        activeController?.registerCallback(controllerCallback)
+        boundControllers.forEach { runCatching { it.unregisterCallback(controllerCallback) } }
+        boundControllers = controllers.orEmpty()
+        // Observe every session so we follow whichever one is actually playing.
+        boundControllers.forEach { runCatching { it.registerCallback(controllerCallback) } }
+        selectActive()
+    }
+
+    /** Picks the session that is currently playing, falling back to the first. */
+    private fun selectActive() {
+        activeController = boundControllers.firstOrNull {
+            it.playbackState?.state == PlaybackState.STATE_PLAYING
+        } ?: boundControllers.firstOrNull()
         publish(activeController)
     }
 
