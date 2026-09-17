@@ -68,6 +68,7 @@ fun MapsPanel(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             factory = { ctx: Context ->
                 WebView(ctx).apply {
+                    setBackgroundColor(android.graphics.Color.parseColor("#1B1D22"))
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true

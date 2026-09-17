@@ -176,7 +176,8 @@ private fun WorkspaceIndicator(current: Int, count: Int) {
 
 @Composable
 private fun MapsPane(modifier: Modifier = Modifier) {
-    WsCard(modifier = modifier) {
+    // No rounded clip: a clipped hardware WebView renders black on some head unit GPUs.
+    Box(modifier = modifier.background(WsColors.Card)) {
         MapsPanel(modifier = Modifier.fillMaxSize())
     }
 }

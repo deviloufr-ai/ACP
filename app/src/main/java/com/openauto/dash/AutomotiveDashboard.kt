@@ -651,11 +651,9 @@ private fun UpdateBanner(
 /** Rounded map surface — the dominant, always-on navigation panel. */
 @Composable
 private fun MapsCard(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = DashColors.Card
-    ) {
+    // No rounded clip around the map: clipping a hardware WebView to rounded
+    // corners renders it black on some head unit GPUs.
+    Box(modifier = modifier.background(DashColors.Card)) {
         MapsPanel(modifier = Modifier.fillMaxSize())
     }
 }
