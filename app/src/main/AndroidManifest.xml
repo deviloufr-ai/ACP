@@ -26,10 +26,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Draw the menu/info widget on top of the split-screen panes. -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
     <!-- In-app updater: download and install new APKs from GitHub Releases -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -101,22 +97,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <!-- Swipeable multi-pane workspaces (Compose HorizontalPager). -->
-        <activity
-            android:name=".WorkspacesActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" />
-
-        <!-- Draws the launcher menu/info widget over the split-screen panes. -->
-        <service
-            android:name=".LauncherOverlayService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="car_launcher_overlay" />
-        </service>
 
         <!-- AutoDriveReceiver Declaration -->
         <receiver android:name=".AutoDriveReceiver" android:exported="false">

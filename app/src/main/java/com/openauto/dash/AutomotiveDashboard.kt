@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package com.openauto.dash
 
 import android.Manifest
@@ -5,17 +7,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,29 +29,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DashboardCustomize
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Splitscreen
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,6 +71,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,9 +80,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -92,10 +95,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -106,7 +107,7 @@ import java.util.Locale
  */
 private object DashColors {
     val Background = Color(0xFF0B0C0F)
-    val Taskbar = Color(0xFF141518)
+    val Bar = Color(0xFF141518)
     val Card = Color(0xFF1E2024)
     val CardHi = Color(0xFF2A2D33)
     val Accent = Color(0xFF8AB4F8)
@@ -117,24 +118,15 @@ private object DashColors {
     val Muted = Color(0xFF9AA0A6)
     val TextPrimary = Color(0xFFE8EAED)
     val TextSecondary = Color(0xFF9AA0A6)
-
-    // Google Assistant brand colors.
-    val GBlue = Color(0xFF4285F4)
-    val GRed = Color(0xFFEA4335)
-    val GYellow = Color(0xFFFBBC05)
-    val GGreen = Color(0xFF34A853)
 }
 
 private const val SPEED_WARNING_KMH = 110
-private const val MAX_FAVORITES = 5
 
 /**
- * Android Auto style car launcher.
- *
- * A dark [Taskbar] runs down the left edge (app launcher, favorites, Google
- * Assistant, clock). The content area is map-dominant: [MapsPanel] auto-opens
- * Google Maps, and a card column shows the now-playing media card and OBD
- * telemetry — or the full app drawer when "All apps" is open.
+ * Simple car launcher: three swipeable "virtual desktop" dashboards. Each page
+ * is a grid the user fills with app shortcuts and widgets (our built-in Maps /
+ * media / OBD cards, or any real Android app-widget) via the "+" tile. A single
+ * Apps button opens the full app drawer. Nothing launches automatically.
  */
 @Composable
 fun AutomotiveDashboard() {
@@ -150,20 +142,41 @@ fun AutomotiveDashboard() {
     val updateStatus by updateManager.status.collectAsState()
 
     val apps = remember { AppLauncher.loadApps(context) }
-    var favorites by remember { mutableStateOf(AppLauncher.favorites(context, apps, MAX_FAVORITES)) }
+    val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
 
-    var activeWidgets by remember { mutableStateOf(WidgetConfig.getActiveWidgets(context)) }
-    var showWidgetPicker by remember { mutableStateOf(false) }
+    var pages by remember { mutableStateOf(DashboardStore.load(context)) }
+    val pagerState = rememberPagerState(pageCount = { DashboardStore.PAGE_COUNT })
 
     var showAllApps by remember { mutableStateOf(false) }
-    var editFavorites by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     var showDevicePicker by remember { mutableStateOf(false) }
     var pairedDevices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
-    val onToggleFavorite: (AppEntry) -> Unit = { app ->
-        AppLauncher.toggleFavorite(context, app.packageName, MAX_FAVORITES)
-        favorites = AppLauncher.favorites(context, apps, MAX_FAVORITES)
+    // "+" add flow state.
+    var addTargetPage by remember { mutableIntStateOf(-1) }
+    var showAddMenu by remember { mutableStateOf(false) }
+    var showAppPicker by remember { mutableStateOf(false) }
+    var showWidgetMenu by remember { mutableStateOf(false) }
+
+    fun mutatePage(page: Int, transform: (List<DashboardItem>) -> List<DashboardItem>) {
+        pages = pages.mapIndexed { i, list -> if (i == page) transform(list) else list }
+        DashboardStore.save(context, pages)
+    }
+
+    fun addItem(page: Int, item: DashboardItem) = mutatePage(page) { it + item }
+
+    fun removeAt(page: Int, index: Int) {
+        val item = pages.getOrNull(page)?.getOrNull(index) ?: return
+        if (item is DashboardItem.SystemWidget) WidgetHostHolder.delete(context, item.appWidgetId)
+        mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
+    }
+
+    // System app-widget picker; adds the bound widget to the page that requested it.
+    val addSystemWidget = rememberSystemWidgetAdder { id ->
+        if (addTargetPage in 0 until DashboardStore.PAGE_COUNT) {
+            addItem(addTargetPage, DashboardItem.SystemWidget(id))
+        }
     }
 
     var clock by remember { mutableStateOf(currentClock()) }
@@ -174,20 +187,15 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Start media observation, and re-check notification access on every resume
-    // so granting it in system settings takes effect without an app restart.
-    // Also hide the cockpit overlay whenever the home screen is in front, so it
-    // never covers the launcher's own left menu (it only belongs over apps that
-    // hide the launcher in a split).
+    // Observe media; re-check notification access on resume so granting it in
+    // system settings takes effect without an app restart.
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         mediaController.start()
-        LauncherOverlayService.stop(context)
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasMediaAccess = CarMediaController.hasNotificationAccess(context)
                 if (hasMediaAccess) mediaController.start()
-                LauncherOverlayService.stop(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -227,12 +235,9 @@ fun AutomotiveDashboard() {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
-        if (result.values.all { it }) {
-            connectSavedOrPick()
-        }
+        if (result.values.all { it }) connectSavedOrPick()
     }
 
-    // Runs [action] once the (API 31+) BLUETOOTH_CONNECT permission is granted.
     val ensureBluetooth: (() -> Unit) -> Unit = { action ->
         val missing = requiredBluetoothPermissions().filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
@@ -243,208 +248,75 @@ fun AutomotiveDashboard() {
     val onConnectObd: () -> Unit = { ensureBluetooth { connectSavedOrPick() } }
     val onPickDevice: () -> Unit = { ensureBluetooth { openDevicePicker() } }
 
-    val onLaunchApp: (AppEntry) -> Unit = { app ->
-        if (AppLauncher.launch(context, app.packageName)) {
-            showAllApps = false
-        }
+    val onLaunchApp: (String) -> Unit = { pkg ->
+        if (AppLauncher.launch(context, pkg)) showAllApps = false
     }
 
-    // Enters "cockpit" mode: two apps of the user's choice in a real system
-    // split, with this launcher's menu/info floating on top as an overlay widget.
-    // Instead of auto-launching Maps + media, we ask which app goes left/right.
-    var showSplitPicker by remember { mutableStateOf(false) }
-
-    val overlayPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (Settings.canDrawOverlays(context)) showSplitPicker = true
+    val onAdd: (Int) -> Unit = { page ->
+        addTargetPage = page
+        showAddMenu = true
     }
 
-    val onCockpit: () -> Unit = {
-        if (Settings.canDrawOverlays(context)) {
-            showSplitPicker = true
-        } else {
-            overlayPermissionLauncher.launch(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:${context.packageName}")
-                )
-            )
-        }
-    }
-
-    // Opens the swipeable workspaces (Drive: Maps|Media, Vehicle: Telemetry|Climate).
-    val onWorkspaces: () -> Unit = {
-        runCatching {
-            context.startActivity(Intent(context, WorkspacesActivity::class.java))
-        }
-    }
-
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DashColors.Background)
     ) {
-        Taskbar(
-            favorites = favorites,
-            showAllApps = showAllApps,
+        TopBar(
+            currentPage = pagerState.currentPage,
             clock = clock,
             versionName = updateManager.currentVersionName,
             obdConnection = obdConnection,
-            onLaunch = onLaunchApp,
-            onToggleAllApps = { showAllApps = !showAllApps },
-            onAssistant = { launchAssistant(context) },
-            onCockpit = onCockpit,
-            onWorkspaces = onWorkspaces,
-            onCustomizeWidgets = { showWidgetPicker = true }
+            editing = editing,
+            onApps = { showAllApps = true },
+            onToggleEdit = { editing = !editing }
         )
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            UpdateBanner(
-                status = updateStatus,
-                onUpdate = onUpdate,
-                onDismiss = { updateManager.dismiss() }
-            )
+        UpdateBanner(
+            status = updateStatus,
+            onUpdate = onUpdate,
+            onDismiss = { updateManager.dismiss() }
+        )
 
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(10.dp)
-            ) {
-                if (showAllApps) {
-                    AppDrawer(
-                        apps = apps,
-                        onLaunch = onLaunchApp,
-                        onClose = { showAllApps = false; editFavorites = false },
-                        editing = editFavorites,
-                        favoritePackages = favorites.map { it.packageName }.toSet(),
-                        onToggleEditing = { editFavorites = !editFavorites },
-                        onToggleFavorite = onToggleFavorite,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    if (maxWidth >= maxHeight) {
-                        // Landscape layout mapping configured active widgets
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (activeWidgets.contains(WidgetType.MAPS)) {
-                                SystemWidgetPanel(
-                                    slotKey = "left_dashboard_widget",
-                                    placeholderText = "Tap to add Google Maps or system widget",
-                                    modifier = Modifier
-                                        .weight(1.6f)
-                                        .fillMaxHeight()
-                                )
-                            }
-                            
-                            val hasMedia = activeWidgets.contains(WidgetType.MEDIA)
-                            val hasTelemetry = activeWidgets.contains(WidgetType.TELEMETRY)
-                            val hasSystemWidgets = activeWidgets.contains(WidgetType.SYSTEM_WIDGETS)
-                            
-                            if (hasMedia || hasTelemetry || hasSystemWidgets) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight(),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    if (hasMedia) {
-                                        MediaCard(
-                                            mediaState = mediaState,
-                                            controller = mediaController,
-                                            hasAccess = hasMediaAccess,
-                                            context = context,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                        )
-                                    }
-                                    if (hasTelemetry) {
-                                        ObdCard(
-                                            obdData = obdData,
-                                            connection = obdConnection,
-                                            onConnect = onConnectObd,
-                                            onPickDevice = onPickDevice,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                    if (hasSystemWidgets) {
-                                        SystemWidgetPanel(
-                                            slotKey = "right_dashboard_widget",
-                                            placeholderText = "Tap to add custom Google widget",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        // Portrait layout mapping configured active widgets
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (activeWidgets.contains(WidgetType.MAPS)) {
-                                SystemWidgetPanel(
-                                    slotKey = "left_dashboard_widget",
-                                    placeholderText = "Tap to add Google Maps or system widget",
-                                    modifier = Modifier
-                                        .weight(1.3f)
-                                        .fillMaxWidth()
-                                )
-                            }
-                            
-                            val hasMedia = activeWidgets.contains(WidgetType.MEDIA)
-                            val hasTelemetry = activeWidgets.contains(WidgetType.TELEMETRY)
-                            val hasSystemWidgets = activeWidgets.contains(WidgetType.SYSTEM_WIDGETS)
-                            
-                            if (hasMedia || hasTelemetry || hasSystemWidgets) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    if (hasMedia) {
-                                        MediaCard(
-                                            mediaState = mediaState,
-                                            controller = mediaController,
-                                            hasAccess = hasMediaAccess,
-                                            context = context,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                        )
-                                    }
-                                    if (hasTelemetry) {
-                                        ObdCard(
-                                            obdData = obdData,
-                                            connection = obdConnection,
-                                            onConnect = onConnectObd,
-                                            onPickDevice = onPickDevice,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                    if (hasSystemWidgets) {
-                                        SystemWidgetPanel(
-                                            slotKey = "right_dashboard_widget",
-                                            placeholderText = "Tap to add custom Google widget",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        Box(modifier = Modifier.weight(1f)) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                DashboardPage(
+                    pageItems = pages[page],
+                    editing = editing,
+                    appsByPackage = appsByPackage,
+                    mediaState = mediaState,
+                    mediaController = mediaController,
+                    hasMediaAccess = hasMediaAccess,
+                    obdData = obdData,
+                    obdConnection = obdConnection,
+                    onConnectObd = onConnectObd,
+                    onPickDevice = onPickDevice,
+                    onLaunchApp = onLaunchApp,
+                    onRemove = { index -> removeAt(page, index) },
+                    onAdd = { onAdd(page) }
+                )
+            }
+
+            if (showAllApps) {
+                AppDrawer(
+                    apps = apps,
+                    onLaunch = { onLaunchApp(it.packageName) },
+                    onClose = { showAllApps = false },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(10.dp)
+                )
             }
         }
+
+        PageDots(
+            count = DashboardStore.PAGE_COUNT,
+            current = pagerState.currentPage,
+            onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
+        )
     }
 
     if (showDevicePicker) {
@@ -467,229 +339,120 @@ fun AutomotiveDashboard() {
         )
     }
 
-    if (showWidgetPicker) {
+    if (showAddMenu) {
         AlertDialog(
-            onDismissRequest = { showWidgetPicker = false },
+            onDismissRequest = { showAddMenu = false },
             containerColor = DashColors.Card,
-            title = { Text("Customize Dashboard Widgets", color = DashColors.TextPrimary) },
+            title = { Text("Add to dashboard", color = DashColors.TextPrimary) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    WidgetType.entries.forEach { widget ->
-                        val isSelected = activeWidgets.contains(widget)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) DashColors.CardHi else Color.Transparent)
-                                .clickable {
-                                    val updated = if (isSelected) {
-                                        activeWidgets.filter { it != widget }
-                                    } else {
-                                        activeWidgets + widget
-                                    }
-                                    activeWidgets = updated
-                                    WidgetConfig.saveActiveWidgets(context, updated)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(widget.label, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Filled.Done,
-                                    contentDescription = "Active",
-                                    tint = DashColors.Accent
-                                )
-                            }
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AddChoiceRow(Icons.Filled.Apps, "Add app") {
+                        showAddMenu = false
+                        showAppPicker = true
+                    }
+                    AddChoiceRow(Icons.Filled.Widgets, "Add widget") {
+                        showAddMenu = false
+                        showWidgetMenu = true
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showWidgetPicker = false }) {
-                    Text("Done", color = DashColors.Accent)
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddMenu = false }) {
+                    Text("Cancel", color = DashColors.Muted)
                 }
             }
         )
     }
 
-    if (showSplitPicker) {
-        SplitAppPickerDialog(
+    if (showAppPicker) {
+        AppPickerDialog(
             apps = apps,
-            onDismiss = { showSplitPicker = false },
-            onConfirm = { leftPkg, rightPkg ->
-                showSplitPicker = false
-                LauncherOverlayService.start(context)
-                SplitScreenLauncher.launchCustomSplit(context, leftPkg, rightPkg)
+            onPick = { app ->
+                showAppPicker = false
+                if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
+            },
+            onDismiss = { showAppPicker = false }
+        )
+    }
+
+    if (showWidgetMenu) {
+        AlertDialog(
+            onDismissRequest = { showWidgetMenu = false },
+            containerColor = DashColors.Card,
+            title = { Text("Add widget", color = DashColors.TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AddChoiceRow(Icons.Filled.Map, BuiltinKind.MAPS.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MAPS))
+                    }
+                    AddChoiceRow(Icons.Filled.MusicNote, BuiltinKind.MEDIA.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MEDIA))
+                    }
+                    AddChoiceRow(Icons.Filled.Speed, BuiltinKind.TELEMETRY.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.TELEMETRY))
+                    }
+                    AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
+                        showWidgetMenu = false
+                        addSystemWidget()
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showWidgetMenu = false }) {
+                    Text("Cancel", color = DashColors.Muted)
+                }
             }
         )
     }
 }
 
-/**
- * Two-step picker: choose the app for the LEFT split pane, then the RIGHT one.
- * Nothing is launched until both are chosen, so the app never opens Maps/media
- * on its own — the user decides what each side shows.
- */
-@Composable
-private fun SplitAppPickerDialog(
-    apps: List<AppEntry>,
-    onDismiss: () -> Unit,
-    onConfirm: (leftPackage: String, rightPackage: String) -> Unit
-) {
-    var leftPackage by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = DashColors.Card,
-        title = {
-            Text(
-                text = if (leftPackage == null) "Choose LEFT screen app" else "Choose RIGHT screen app",
-                color = DashColors.TextPrimary
-            )
-        },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 84.dp),
-                contentPadding = PaddingValues(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(360.dp)
-            ) {
-                items(apps, key = { it.packageName }) { app ->
-                    DrawerApp(
-                        app = app,
-                        favorite = app.packageName == leftPackage,
-                        onClick = {
-                            if (leftPackage == null) {
-                                leftPackage = app.packageName
-                            } else {
-                                onConfirm(leftPackage!!, app.packageName)
-                            }
-                        }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (leftPackage != null) {
-                TextButton(onClick = { leftPackage = null }) {
-                    Text("Back", color = DashColors.Accent)
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = DashColors.Muted)
-            }
-        }
-    )
-}
-
-// --- Left taskbar (Android Auto style) ---------------------------------------
+// --- Top bar & page dots -----------------------------------------------------
 
 @Composable
-private fun Taskbar(
-    favorites: List<AppEntry>,
-    showAllApps: Boolean,
+private fun TopBar(
+    currentPage: Int,
     clock: String,
     versionName: String,
     obdConnection: ObdConnectionState,
-    onLaunch: (AppEntry) -> Unit,
-    onToggleAllApps: () -> Unit,
-    onAssistant: () -> Unit,
-    onCockpit: () -> Unit,
-    onWorkspaces: () -> Unit,
-    onCustomizeWidgets: () -> Unit
+    editing: Boolean,
+    onApps: () -> Unit,
+    onToggleEdit: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxHeight()
-            .width(96.dp),
-        color = DashColors.Taskbar
-    ) {
-        Column(
+    Surface(color = DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // App launcher (all apps).
-            TaskbarButton(
-                selected = showAllApps,
-                onClick = onToggleAllApps
+            Button(
+                onClick = onApps,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DashColors.CardHi,
+                    contentColor = DashColors.TextPrimary
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Apps,
-                    contentDescription = "All apps",
-                    tint = if (showAllApps) DashColors.Background else DashColors.TextPrimary,
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(Icons.Filled.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Apps")
             }
 
-            Spacer(Modifier.height(14.dp))
-
-            // Cockpit: launch real Maps + last-used media in a system split screen.
-            TaskbarButton(
-                selected = false,
-                onClick = onCockpit
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Splitscreen,
-                    contentDescription = "Split-screen cockpit",
-                    tint = DashColors.TextPrimary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Workspaces: embedded Maps + media split (Activity Embedding).
-            TaskbarButton(
-                selected = false,
-                onClick = onWorkspaces
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ViewColumn,
-                    contentDescription = "Embedded workspace",
-                    tint = DashColors.TextPrimary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Widget Customization.
-            TaskbarButton(
-                selected = false,
-                onClick = onCustomizeWidgets
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DashboardCustomize,
-                    contentDescription = "Customize Dashboard Widgets",
-                    tint = DashColors.TextPrimary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            Spacer(Modifier.height(18.dp))
-
-            favorites.forEach { app ->
-                TaskbarAppButton(app = app, onClick = { onLaunch(app) })
-                Spacer(Modifier.height(14.dp))
-            }
+            Text(
+                text = "Dashboard ${currentPage + 1}",
+                color = DashColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium
+            )
 
             Spacer(Modifier.weight(1f))
 
-            // Google Assistant.
-            AssistantButton(onClick = onAssistant)
-
-            Spacer(Modifier.height(16.dp))
-
-            // OBD status dot + clock cluster.
             val dotColor = when (obdConnection) {
                 ObdConnectionState.CONNECTED -> DashColors.Good
                 ObdConnectionState.CONNECTING -> DashColors.Speed
@@ -706,75 +469,250 @@ private fun Taskbar(
                 tint = dotColor,
                 modifier = Modifier.size(16.dp)
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = clock,
-                color = DashColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "v$versionName",
-                color = DashColors.Muted,
-                style = MaterialTheme.typography.labelSmall
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(clock, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+                Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+            }
+
+            IconButton(onClick = onToggleEdit) {
+                Icon(
+                    imageVector = if (editing) Icons.Filled.Done else Icons.Filled.Edit,
+                    contentDescription = if (editing) "Done editing" else "Edit dashboards",
+                    tint = if (editing) DashColors.Accent else DashColors.TextSecondary
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun TaskbarAppButton(app: AppEntry, onClick: () -> Unit) {
-    Box(
+private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
+    Row(
         modifier = Modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(DashColors.CardHi)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(icon = app.icon, size = 40.dp)
-    }
-}
-
-@Composable
-private fun TaskbarButton(
-    selected: Boolean,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(if (selected) DashColors.Accent else DashColors.CardHi)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun AssistantButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(DashColors.GBlue, DashColors.GRed, DashColors.GYellow, DashColors.GGreen)
-                )
+        repeat(count) { index ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 5.dp)
+                    .size(if (index == current) 11.dp else 8.dp)
+                    .clip(CircleShape)
+                    .background(if (index == current) DashColors.Accent else DashColors.CardHi)
+                    .clickable { onSelect(index) }
             )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+        }
+    }
+}
+
+// --- A single dashboard page -------------------------------------------------
+
+@Composable
+private fun DashboardPage(
+    pageItems: List<DashboardItem>,
+    editing: Boolean,
+    appsByPackage: Map<String, AppEntry>,
+    mediaState: MediaState,
+    mediaController: CarMediaController,
+    hasMediaAccess: Boolean,
+    obdData: ObdData,
+    obdConnection: ObdConnectionState,
+    onConnectObd: () -> Unit,
+    onPickDevice: () -> Unit,
+    onLaunchApp: (String) -> Unit,
+    onRemove: (Int) -> Unit,
+    onAdd: () -> Unit
+) {
+    val context = LocalContext.current
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 104.dp),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Filled.Mic,
-            contentDescription = "Google Assistant",
-            tint = Color.White,
-            modifier = Modifier.size(28.dp)
+        items(
+            count = pageItems.size,
+            span = { index ->
+                if (pageItems[index] is DashboardItem.AppShortcut) GridItemSpan(1) else GridItemSpan(maxLineSpan)
+            }
+        ) { index ->
+            EditableTile(editing = editing, onRemove = { onRemove(index) }) {
+                when (val item = pageItems[index]) {
+                    is DashboardItem.AppShortcut -> AppShortcutTile(
+                        app = appsByPackage[item.packageName],
+                        packageName = item.packageName,
+                        onClick = { onLaunchApp(item.packageName) }
+                    )
+
+                    is DashboardItem.BuiltinWidget -> when (item.kind) {
+                        BuiltinKind.MAPS -> MapsCard(
+                            modifier = Modifier.fillMaxWidth().height(260.dp)
+                        )
+                        BuiltinKind.MEDIA -> MediaCard(
+                            mediaState = mediaState,
+                            controller = mediaController,
+                            hasAccess = hasMediaAccess,
+                            context = context,
+                            modifier = Modifier.fillMaxWidth().height(210.dp)
+                        )
+                        BuiltinKind.TELEMETRY -> ObdCard(
+                            obdData = obdData,
+                            connection = obdConnection,
+                            onConnect = onConnectObd,
+                            onPickDevice = onPickDevice,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    is DashboardItem.SystemWidget -> Card(
+                        modifier = Modifier.fillMaxWidth().height(200.dp)
+                    ) {
+                        HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+
+        item(span = { GridItemSpan(1) }) {
+            AddTile(onClick = onAdd)
+        }
+    }
+}
+
+/** Wraps a tile, overlaying a remove (×) badge while [editing]. */
+@Composable
+private fun EditableTile(editing: Boolean, onRemove: () -> Unit, content: @Composable () -> Unit) {
+    Box {
+        content()
+        if (editing) {
+            FilledIconButton(
+                onClick = onRemove,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(30.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = DashColors.Warning,
+                    contentColor = Color.Black
+                )
+            ) {
+                Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppShortcutTile(app: AppEntry?, packageName: String, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(DashColors.CardHi),
+            contentAlignment = Alignment.Center
+        ) {
+            if (app != null) {
+                AppIcon(icon = app.icon, size = 44.dp)
+            } else {
+                Icon(Icons.Filled.Apps, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = app?.label ?: packageName.substringAfterLast('.'),
+            color = DashColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+@Composable
+private fun AddTile(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(DashColors.Card),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add", tint = DashColors.Accent, modifier = Modifier.size(34.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("Add", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun AddChoiceRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .background(DashColors.CardHi)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
+    }
+}
+
+// --- Add-app picker ----------------------------------------------------------
+
+@Composable
+private fun AppPickerDialog(
+    apps: List<AppEntry>,
+    onPick: (AppEntry) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text("Choose an app", color = DashColors.TextPrimary) },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 84.dp),
+                contentPadding = PaddingValues(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+            ) {
+                items(apps, key = { it.packageName }) { app ->
+                    AppShortcutTile(app = app, packageName = app.packageName, onClick = { onPick(app) })
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = DashColors.Muted)
+            }
+        }
+    )
 }
 
 // --- Content: banner, map, cards, drawer -------------------------------------
@@ -861,48 +799,12 @@ private fun UpdateBanner(
     }
 }
 
-/** Rounded map surface — the dominant, always-on navigation panel. */
+/** Rounded map surface. Clipping a hardware WebView to rounded corners renders
+ *  it black on some head unit GPUs, so no rounded clip is applied here. */
 @Composable
 private fun MapsCard(modifier: Modifier = Modifier) {
-    // No rounded clip around the map: clipping a hardware WebView to rounded
-    // corners renders it black on some head unit GPUs.
     Box(modifier = modifier.background(DashColors.Card)) {
         MapsPanel(modifier = Modifier.fillMaxSize())
-    }
-}
-
-@Composable
-private fun CardStack(
-    mediaState: MediaState,
-    controller: CarMediaController,
-    hasMediaAccess: Boolean,
-    context: Context,
-    obdData: ObdData,
-    connection: ObdConnectionState,
-    onConnect: () -> Unit,
-    onPickDevice: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        MediaCard(
-            mediaState = mediaState,
-            controller = controller,
-            hasAccess = hasMediaAccess,
-            context = context,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        )
-        ObdCard(
-            obdData = obdData,
-            connection = connection,
-            onConnect = onConnect,
-            onPickDevice = onPickDevice,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
@@ -914,7 +816,6 @@ private fun MediaCard(
     context: Context,
     modifier: Modifier = Modifier
 ) {
-    // Advance a local position estimate while something is playing.
     var positionMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(mediaState.isPlaying, mediaState.title, mediaState.durationMs) {
         while (true) {
@@ -1019,10 +920,7 @@ private fun MediaCard(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = { controller.previous() },
-                        modifier = Modifier.size(56.dp)
-                    ) {
+                    IconButton(onClick = { controller.previous() }, modifier = Modifier.size(56.dp)) {
                         Icon(
                             imageVector = Icons.Filled.SkipPrevious,
                             contentDescription = "Previous",
@@ -1046,10 +944,7 @@ private fun MediaCard(
                         )
                     }
                     Spacer(Modifier.width(16.dp))
-                    IconButton(
-                        onClick = { controller.next() },
-                        modifier = Modifier.size(56.dp)
-                    ) {
+                    IconButton(onClick = { controller.next() }, modifier = Modifier.size(56.dp)) {
                         Icon(
                             imageVector = Icons.Filled.SkipNext,
                             contentDescription = "Next",
@@ -1159,10 +1054,6 @@ private fun AppDrawer(
     apps: List<AppEntry>,
     onLaunch: (AppEntry) -> Unit,
     onClose: () -> Unit,
-    editing: Boolean,
-    favoritePackages: Set<String>,
-    onToggleEditing: () -> Unit,
-    onToggleFavorite: (AppEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier) {
@@ -1175,26 +1066,17 @@ private fun AppDrawer(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = if (editing) "Tap apps to pin (max 5)" else "All apps",
+                    text = "All apps",
                     color = DashColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleLarge
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onToggleEditing) {
-                        Icon(
-                            imageVector = if (editing) Icons.Filled.Done else Icons.Filled.Edit,
-                            contentDescription = if (editing) "Done editing menu" else "Edit menu",
-                            tint = if (editing) DashColors.Accent else DashColors.TextSecondary
-                        )
-                    }
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close app drawer",
-                            tint = DashColors.TextSecondary
-                        )
-                    }
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close app drawer",
+                        tint = DashColors.TextSecondary
+                    )
                 }
             }
 
@@ -1211,55 +1093,11 @@ private fun AppDrawer(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(apps, key = { it.packageName }) { app ->
-                        DrawerApp(
-                            app = app,
-                            favorite = favoritePackages.contains(app.packageName),
-                            onClick = { if (editing) onToggleFavorite(app) else onLaunch(app) }
-                        )
+                        AppShortcutTile(app = app, packageName = app.packageName, onClick = { onLaunch(app) })
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DrawerApp(app: AppEntry, favorite: Boolean, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(DashColors.CardHi),
-                contentAlignment = Alignment.Center
-            ) {
-                AppIcon(icon = app.icon, size = 42.dp)
-            }
-            if (favorite) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Pinned to menu",
-                    tint = DashColors.Accent,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = app.label,
-            color = DashColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -1300,15 +1138,6 @@ private fun formatTime(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
-}
-
-/** Launches the device's voice assistant, if one is available. */
-private fun launchAssistant(context: Context) {
-    val actions = listOf(Intent.ACTION_VOICE_COMMAND, Intent.ACTION_ASSIST)
-    for (action in actions) {
-        val intent = Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (runCatching { context.startActivity(intent); true }.getOrDefault(false)) return
-    }
 }
 
 /** Lets the user pick which paired Bluetooth device is the OBD adapter. */
@@ -1359,8 +1188,6 @@ private fun DevicePickerDialog(
 }
 
 // Only BLUETOOTH_CONNECT is needed (and declared) to talk to a bonded adapter.
-// The old code also requested BLUETOOTH_SCAN, which is NOT in the manifest, so
-// the system auto-denied it and the connect never ran.
 private fun requiredBluetoothPermissions(): List<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(Manifest.permission.BLUETOOTH_CONNECT)
