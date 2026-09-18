@@ -8,7 +8,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
-import android.os.Build
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
@@ -50,10 +50,16 @@ private const val MAPS_PACKAGE = "com.google.android.apps.maps"
 fun MapsPanel(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val canEmbed = remember {
-        isSystemApp(context) &&
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && // ActivityView removed in API 31
-            runCatching { Class.forName("android.app.ActivityView"); true }.getOrDefault(false)
+        // ROCO/K706 units often have ActivityView even on newer Android versions.
+        // We try to use it if the class exists and we have system-level privileges.
+        val hasActivityView = runCatching { Class.forName("android.app.ActivityView") }.isSuccess
+        val isSystem = isSystemApp(context)
+        
+        Log.d("MapsPanel", "canEmbed check: hasActivityView=$hasActivityView, isSystem=$isSystem")
+        
+        hasActivityView && isSystem
     }
+
     if (canEmbed) {
         EmbeddedGoogleMapsPanel(modifier)
     } else {
@@ -62,8 +68,15 @@ fun MapsPanel(modifier: Modifier = Modifier) {
 }
 
 private fun isSystemApp(context: Context): Boolean {
-    val flags = context.applicationInfo.flags
-    return (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+    val appInfo = context.applicationInfo
+    val flags = appInfo.flags
+    val isSystem = (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+    val isSystemPath = appInfo.sourceDir.startsWith("/system/") || 
+                      appInfo.sourceDir.startsWith("/priv-app/") ||
+                      appInfo.sourceDir.startsWith("/product/") ||
+                      appInfo.sourceDir.startsWith("/vendor/")
+                      
+    return isSystem || isSystemPath
 }
 
 // --- Privileged path: real Google Maps inside an ActivityView (Android 10) ---
@@ -83,6 +96,8 @@ private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
                 Class.forName("android.app.ActivityView")
                     .getConstructor(Context::class.java)
                     .newInstance(ctx) as ViewGroup
+            }.onFailure {
+                Log.e("MapsPanel", "Failed to create ActivityView (requires system app privileges)", it)
             }.getOrNull()
 
             if (activityView == null) {
@@ -91,7 +106,8 @@ private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
                 activityView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                     override fun onViewAttachedToWindow(v: View) {
                         // Give ActivityView a moment to create its virtual display.
-                        v.postDelayed({ launchMapsInto(ctx, v) }, 500)
+                        // Slow head units may need a longer delay.
+                        v.postDelayed({ launchMapsInto(ctx, v) }, 1000)
                     }
 
                     override fun onViewDetachedFromWindow(v: View) {
@@ -107,11 +123,16 @@ private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
 private fun launchMapsInto(context: Context, activityView: View) {
     val maps = context.packageManager
         .getLaunchIntentForPackage(MAPS_PACKAGE)
-        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: return
+        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) ?: return
+        
+    Log.d("MapsPanel", "Launching Maps into ActivityView...")
     runCatching {
         activityView.javaClass
             .getMethod("startActivity", Intent::class.java)
             .invoke(activityView, maps)
+    }.onFailure {
+        Log.e("MapsPanel", "Failed to launch Maps into ActivityView", it)
     }
 }
 
@@ -119,7 +140,7 @@ private fun launchMapsInto(context: Context, activityView: View) {
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun LeafletMapsPanel(modifier: Modifier = Modifier) {
+fun LeafletMapsPanel(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -161,7 +182,7 @@ private fun LeafletMapsPanel(modifier: Modifier = Modifier) {
                         }
 
                         override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
-                            android.util.Log.d(
+                            Log.d(
                                 "MapsPanel",
                                 "${m.message()} @${m.sourceId()}:${m.lineNumber()}"
                             )

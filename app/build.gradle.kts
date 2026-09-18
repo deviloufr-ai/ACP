@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -72,6 +71,10 @@ android {
         buildConfig = true
     }
 
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14" // Fully compatible with Kotlin 1.9.24 on Gradle 8.13
+    }
+
     lint {
         // Bluetooth/notification permissions are requested at runtime, so the
         // static MissingPermission checks would otherwise fail CI.
@@ -94,8 +97,8 @@ dependencies {
     // Activity theme (Compose UI itself uses androidx.compose.material3).
     implementation("com.google.android.material:material:1.12.0")
 
-    // Jetpack Compose BOM (Compose 1.7.x, compiled by the Kotlin 2 Compose plugin)
-    val composeBom = "2024.09.03"
+    // Jetpack Compose BOM (Compose 1.7.x fallback compatible block)
+    val composeBom = "2024.04.00"
     implementation(platform("androidx.compose:compose-bom:$composeBom"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -113,6 +116,7 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

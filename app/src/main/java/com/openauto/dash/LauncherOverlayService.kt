@@ -409,12 +409,13 @@ class LauncherOverlayService : Service() {
         }
 
         val remaining = apps.size % columns
-        if (remaining > 0 && currentRow != null) {
+        val finalRow = currentRow
+        if (remaining > 0 && finalRow != null) {
             for (dummyIdx in 0 until (columns - remaining)) {
                 val dummy = View(this).apply {
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 }
-                currentRow.addView(dummy)
+                finalRow.addView(dummy)
             }
         }
 

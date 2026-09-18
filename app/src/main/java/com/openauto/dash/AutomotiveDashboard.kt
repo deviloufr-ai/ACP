@@ -37,12 +37,14 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DashboardCustomize
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
@@ -90,8 +92,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -147,6 +151,9 @@ fun AutomotiveDashboard() {
 
     val apps = remember { AppLauncher.loadApps(context) }
     var favorites by remember { mutableStateOf(AppLauncher.favorites(context, apps, MAX_FAVORITES)) }
+
+    var activeWidgets by remember { mutableStateOf(WidgetConfig.getActiveWidgets(context)) }
+    var showWidgetPicker by remember { mutableStateOf(false) }
 
     var showAllApps by remember { mutableStateOf(false) }
     var editFavorites by remember { mutableStateOf(false) }
@@ -290,7 +297,8 @@ fun AutomotiveDashboard() {
             onToggleAllApps = { showAllApps = !showAllApps },
             onAssistant = { launchAssistant(context) },
             onCockpit = onCockpit,
-            onWorkspaces = onWorkspaces
+            onWorkspaces = onWorkspaces,
+            onCustomizeWidgets = { showWidgetPicker = true }
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -300,7 +308,11 @@ fun AutomotiveDashboard() {
                 onDismiss = { updateManager.dismiss() }
             )
 
-            val cards: @Composable (Modifier) -> Unit = { mod ->
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+            ) {
                 if (showAllApps) {
                     AppDrawer(
                         apps = apps,
@@ -310,61 +322,127 @@ fun AutomotiveDashboard() {
                         favoritePackages = favorites.map { it.packageName }.toSet(),
                         onToggleEditing = { editFavorites = !editFavorites },
                         onToggleFavorite = onToggleFavorite,
-                        modifier = mod
+                        modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    CardStack(
-                        mediaState = mediaState,
-                        controller = mediaController,
-                        hasMediaAccess = hasMediaAccess,
-                        context = context,
-                        obdData = obdData,
-                        connection = obdConnection,
-                        onConnect = onConnectObd,
-                        onPickDevice = onPickDevice,
-                        modifier = mod
-                    )
-                }
-            }
-
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(10.dp)
-            ) {
-                if (maxWidth >= maxHeight) {
-                    // Landscape: map dominant, cards on the right.
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        MapsCard(
-                            modifier = Modifier
-                                .weight(1.6f)
-                                .fillMaxHeight()
-                        )
-                        cards(
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        )
-                    }
-                } else {
-                    // Portrait: map on top, cards below.
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        MapsCard(
-                            modifier = Modifier
-                                .weight(1.3f)
-                                .fillMaxWidth()
-                        )
-                        cards(
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        )
+                    if (maxWidth >= maxHeight) {
+                        // Landscape layout mapping configured active widgets
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (activeWidgets.contains(WidgetType.MAPS)) {
+                                SystemWidgetPanel(
+                                    slotKey = "left_dashboard_widget",
+                                    placeholderText = "Tap to add Google Maps or system widget",
+                                    modifier = Modifier
+                                        .weight(1.6f)
+                                        .fillMaxHeight()
+                                )
+                            }
+                            
+                            val hasMedia = activeWidgets.contains(WidgetType.MEDIA)
+                            val hasTelemetry = activeWidgets.contains(WidgetType.TELEMETRY)
+                            val hasSystemWidgets = activeWidgets.contains(WidgetType.SYSTEM_WIDGETS)
+                            
+                            if (hasMedia || hasTelemetry || hasSystemWidgets) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    if (hasMedia) {
+                                        MediaCard(
+                                            mediaState = mediaState,
+                                            controller = mediaController,
+                                            hasAccess = hasMediaAccess,
+                                            context = context,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .weight(1f)
+                                        )
+                                    }
+                                    if (hasTelemetry) {
+                                        ObdCard(
+                                            obdData = obdData,
+                                            connection = obdConnection,
+                                            onConnect = onConnectObd,
+                                            onPickDevice = onPickDevice,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    if (hasSystemWidgets) {
+                                        SystemWidgetPanel(
+                                            slotKey = "right_dashboard_widget",
+                                            placeholderText = "Tap to add custom Google widget",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Portrait layout mapping configured active widgets
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (activeWidgets.contains(WidgetType.MAPS)) {
+                                SystemWidgetPanel(
+                                    slotKey = "left_dashboard_widget",
+                                    placeholderText = "Tap to add Google Maps or system widget",
+                                    modifier = Modifier
+                                        .weight(1.3f)
+                                        .fillMaxWidth()
+                                )
+                            }
+                            
+                            val hasMedia = activeWidgets.contains(WidgetType.MEDIA)
+                            val hasTelemetry = activeWidgets.contains(WidgetType.TELEMETRY)
+                            val hasSystemWidgets = activeWidgets.contains(WidgetType.SYSTEM_WIDGETS)
+                            
+                            if (hasMedia || hasTelemetry || hasSystemWidgets) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    if (hasMedia) {
+                                        MediaCard(
+                                            mediaState = mediaState,
+                                            controller = mediaController,
+                                            hasAccess = hasMediaAccess,
+                                            context = context,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .weight(1f)
+                                        )
+                                    }
+                                    if (hasTelemetry) {
+                                        ObdCard(
+                                            obdData = obdData,
+                                            connection = obdConnection,
+                                            onConnect = onConnectObd,
+                                            onPickDevice = onPickDevice,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    if (hasSystemWidgets) {
+                                        SystemWidgetPanel(
+                                            slotKey = "right_dashboard_widget",
+                                            placeholderText = "Tap to add custom Google widget",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -390,6 +468,53 @@ fun AutomotiveDashboard() {
             }
         )
     }
+
+    if (showWidgetPicker) {
+        AlertDialog(
+            onDismissRequest = { showWidgetPicker = false },
+            containerColor = DashColors.Card,
+            title = { Text("Customize Dashboard Widgets", color = DashColors.TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    WidgetType.entries.forEach { widget ->
+                        val isSelected = activeWidgets.contains(widget)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) DashColors.CardHi else Color.Transparent)
+                                .clickable {
+                                    val updated = if (isSelected) {
+                                        activeWidgets.filter { it != widget }
+                                    } else {
+                                        activeWidgets + widget
+                                    }
+                                    activeWidgets = updated
+                                    WidgetConfig.saveActiveWidgets(context, updated)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(widget.label, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Filled.Done,
+                                    contentDescription = "Active",
+                                    tint = DashColors.Accent
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWidgetPicker = false }) {
+                    Text("Done", color = DashColors.Accent)
+                }
+            }
+        )
+    }
 }
 
 // --- Left taskbar (Android Auto style) ---------------------------------------
@@ -405,7 +530,8 @@ private fun Taskbar(
     onToggleAllApps: () -> Unit,
     onAssistant: () -> Unit,
     onCockpit: () -> Unit,
-    onWorkspaces: () -> Unit
+    onWorkspaces: () -> Unit,
+    onCustomizeWidgets: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -457,6 +583,21 @@ private fun Taskbar(
                 Icon(
                     imageVector = Icons.Filled.ViewColumn,
                     contentDescription = "Embedded workspace",
+                    tint = DashColors.TextPrimary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Widget Customization.
+            TaskbarButton(
+                selected = false,
+                onClick = onCustomizeWidgets
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DashboardCustomize,
+                    contentDescription = "Customize Dashboard Widgets",
                     tint = DashColors.TextPrimary,
                     modifier = Modifier.size(26.dp)
                 )
@@ -786,8 +927,7 @@ private fun MediaCard(
                             .height(4.dp)
                             .clip(CircleShape),
                         color = DashColors.Accent,
-                        trackColor = DashColors.CardHi,
-                        drawStopIndicator = {}
+                        trackColor = DashColors.CardHi
                     )
                     Row(
                         modifier = Modifier

@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
@@ -56,14 +57,10 @@ object SplitScreenLauncher {
 
         val leftIntent = context.packageManager.getLaunchIntentForPackage(leftPackage)
             ?.apply {
-                action = Intent.ACTION_MAIN
-                addCategory(Intent.CATEGORY_LAUNCHER)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             } ?: return
         val rightIntent = context.packageManager.getLaunchIntentForPackage(rightPackage)
             ?.apply {
-                action = Intent.ACTION_MAIN
-                addCategory(Intent.CATEGORY_LAUNCHER)
                 addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             } ?: return
 
@@ -78,21 +75,29 @@ object SplitScreenLauncher {
             // 4. Trigger system split overlay sync activation
             Handler(Looper.getMainLooper()).postDelayed({
                 tryToActivateSplit(context, leftIntent, rightIntent)
-            }, 350L)
-        }, 300L)
+            }, 400L)
+        }, 400L)
     }
 
     /**
      * Attempts to activate split-screen after both activities are launched.
      * Uses reflection and custom broadcasts for ROCO QF001 compatibility.
      */
-    private fun tryToActivateSplit(context: Context, mapsIntent: Intent, mediaIntent: Intent) {
+    private fun tryToActivateSplit(context: Context, leftIntent: Intent, rightIntent: Intent) {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) 
-            as? android.app.ActivityManager ?: return
+            as? ActivityManager ?: return
 
-        // 1. Trigger ROCO/FYT specific broadcast
+        val leftPkg = leftIntent.component?.packageName ?: leftIntent.`package` ?: ""
+        val rightPkg = rightIntent.component?.packageName ?: rightIntent.`package` ?: ""
+
+        // 1. Trigger ROCO/FYT specific broadcast with layout intent extras
         runCatching {
-            context.sendBroadcast(Intent(ROCO_SPLIT_ACTION))
+            val intent = Intent(ROCO_SPLIT_ACTION).apply {
+                putExtra("package1", leftPkg)
+                putExtra("package2", rightPkg)
+                putExtra("split_mode", 1)
+            }
+            context.sendBroadcast(intent)
         }
 
         // 2. Update system property used by some FYT firmware
@@ -107,8 +112,8 @@ object SplitScreenLauncher {
                 .getMethod("splitScreenRequested", Intent::class.java, Intent::class.java)
                 .apply { isAccessible = true }
 
-            // Lancer le split en spécifiant l'ordre: mapsIntent (primary/left), mediaIntent (secondary/right)
-            method.invoke(activityManager, mapsIntent, mediaIntent)
+            // Lancer le split en spécifiant l'ordre: leftIntent (primary/left), rightIntent (secondary/right)
+            method.invoke(activityManager, leftIntent, rightIntent)
             success = true
         }
 

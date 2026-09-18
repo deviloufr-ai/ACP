@@ -1,9 +1,11 @@
+@file:OptIn(ExperimentalFoundationApi::class)
 package com.openauto.dash
 
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -176,9 +178,10 @@ private fun WorkspaceIndicator(current: Int, count: Int) {
 
 @Composable
 private fun MapsPane(modifier: Modifier = Modifier) {
-    // No rounded clip: a clipped hardware WebView renders black on some head unit GPUs.
     Box(modifier = modifier.background(WsColors.Card)) {
-        MapsPanel(modifier = Modifier.fillMaxSize())
+        // Enforce the embedded Leaflet OpenStreetMap view specifically inside the Single-Window single layout workspace container context.
+        // This ensures a smooth, swipeable map layout panel that is permitted to render here without framework activity-embedding sandboxing black screens.
+        LeafletMapsPanel(modifier = Modifier.fillMaxSize())
     }
 }
 
@@ -276,8 +279,7 @@ private fun WorkspaceMediaPane(modifier: Modifier = Modifier) {
                             .height(4.dp)
                             .clip(CircleShape),
                         color = WsColors.Accent,
-                        trackColor = WsColors.CardHi,
-                        drawStopIndicator = {}
+                        trackColor = WsColors.CardHi
                     )
                 }
                 Spacer(Modifier.height(18.dp))

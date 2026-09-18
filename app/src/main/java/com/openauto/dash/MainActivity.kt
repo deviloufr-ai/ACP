@@ -1,19 +1,23 @@
 package com.openauto.dash
 
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Entry point for OpenAuto Dash.
  *
- * Acts as the launcher/home surface for Android head units and phone mounts.
- * Keeps the screen awake while driving and hands off to the Compose dashboard.
+ * Acts as the launcher/home surface. On ROCO/K706 units, it is optimized to
+ * automatically trigger the native Android split-screen (Maps | Media)
+ * rather than displaying a static dashboard.
  */
 class MainActivity : ComponentActivity() {
 
@@ -28,6 +32,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OpenAutoDashTheme {
+                val context = LocalContext.current
+                
+                LaunchedEffect(Unit) {
+                    // Automatically trigger the native split-screen "Cockpit" mode.
+                    // This puts real Google Maps on the left and Media on the right.
+                    if (Settings.canDrawOverlays(context)) {
+                        LauncherOverlayService.start(context)
+                        SplitScreenLauncher.launchCockpit(context)
+                    }
+                }
+
                 AutomotiveDashboard()
             }
         }
