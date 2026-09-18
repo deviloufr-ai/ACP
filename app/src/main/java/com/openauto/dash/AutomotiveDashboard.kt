@@ -177,6 +177,30 @@ fun AutomotiveDashboard() {
         }
     }
 
+    // Auto-install to /system/priv-app on first launch when root is available,
+    // so the Maps tile can embed the real Google Maps app after a reboot. Runs
+    // once (guarded by a flag) — never re-remounts /system on later boots.
+    LaunchedEffect(Unit) {
+        if (SystemInstaller.isSystemApp(context)) return@LaunchedEffect
+        val prefs = context.getSharedPreferences("system_install_prefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("attempted", false)) return@LaunchedEffect
+        val hasRoot = withContext(Dispatchers.IO) { SystemInstaller.isRootAvailable() }
+        if (!hasRoot) return@LaunchedEffect
+        rootChecked = true
+        rootAvailable = true
+        systemBusy = true
+        val res = withContext(Dispatchers.IO) { SystemInstaller.installAsSystemApp(context) }
+        systemBusy = false
+        prefs.edit().putBoolean("attempted", true).apply()
+        res.onSuccess {
+            systemInstalled = true
+            systemMessage = "Installed to /system/priv-app. Reboot to activate embedded Google Maps."
+            showSystemDialog = true
+        }.onFailure {
+            systemMessage = "Auto system-install failed: ${it.message}"
+        }
+    }
+
     fun mutatePage(page: Int, transform: (List<DashboardItem>) -> List<DashboardItem>) {
         pages = pages.mapIndexed { i, list -> if (i == page) transform(list) else list }
         DashboardStore.save(context, pages)

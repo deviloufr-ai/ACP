@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 
 /**
  * Self-installs the app into `/system/priv-app` on a **rooted** device, so it
@@ -17,6 +18,18 @@ object SystemInstaller {
 
     private const val DIR = "/system/priv-app/OpenAutoDash"
     private const val DEST = "$DIR/OpenAutoDash.apk"
+
+    /** True if the app is already running from a system/privileged location. */
+    fun isSystemApp(context: Context): Boolean {
+        val info = context.applicationInfo
+        val flagged = (info.flags and
+            (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+        val path = info.sourceDir.startsWith("/system/") ||
+            info.sourceDir.startsWith("/priv-app/") ||
+            info.sourceDir.startsWith("/product/") ||
+            info.sourceDir.startsWith("/vendor/")
+        return flagged || path
+    }
 
     /** True if a root shell (`su`) is available and granted. */
     fun isRootAvailable(): Boolean = runCatching {

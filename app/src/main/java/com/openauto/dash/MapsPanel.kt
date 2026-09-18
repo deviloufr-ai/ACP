@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
@@ -65,7 +64,7 @@ fun MapsPanel(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val canEmbedMapsApp = remember {
         val hasActivityView = runCatching { Class.forName("android.app.ActivityView") }.isSuccess
-        val isSystem = isSystemApp(context)
+        val isSystem = SystemInstaller.isSystemApp(context)
         Log.d("MapsPanel", "embed check: hasActivityView=$hasActivityView isSystem=$isSystem")
         hasActivityView && isSystem
     }
@@ -78,17 +77,6 @@ fun MapsPanel(modifier: Modifier = Modifier) {
 }
 
 // --- Privileged path: the real Google Maps app inside an ActivityView --------
-
-private fun isSystemApp(context: Context): Boolean {
-    val appInfo = context.applicationInfo
-    val flaggedSystem = (appInfo.flags and
-        (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
-    val systemPath = appInfo.sourceDir.startsWith("/system/") ||
-        appInfo.sourceDir.startsWith("/priv-app/") ||
-        appInfo.sourceDir.startsWith("/product/") ||
-        appInfo.sourceDir.startsWith("/vendor/")
-    return flaggedSystem || systemPath
-}
 
 /**
  * Hosts the real Google Maps app in an [android.app.ActivityView] (reflection —
