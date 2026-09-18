@@ -65,4 +65,22 @@ object SystemInstaller {
         Runtime.getRuntime().exec(arrayOf("su", "-c", "svc power reboot || reboot"))
         Unit
     }
+
+    /**
+     * Installs the app as a privileged system app, preferring the head unit's
+     * internal root ADB socket ([AdbInstaller]) and falling back to `su`.
+     */
+    fun install(context: Context): Result<Unit> {
+        val viaAdb = AdbInstaller.installViaAdb(context)
+        if (viaAdb.isSuccess) return viaAdb
+        val viaSu = installAsSystemApp(context)
+        // Surface the ADB error too when both routes fail.
+        return if (viaSu.isSuccess) viaSu else viaSu.recoverCatching {
+            error("ADB: ${viaAdb.exceptionOrNull()?.message}; su: ${it.message}")
+        }
+    }
+
+    /** Reboots via su, falling back to the root ADB socket. */
+    fun rebootDevice(): Result<Unit> =
+        reboot().recoverCatching { AdbInstaller.rebootViaAdb().getOrThrow() }
 }

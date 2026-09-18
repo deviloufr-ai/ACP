@@ -177,19 +177,15 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Auto-install to /system/priv-app on first launch when root is available,
-    // so the Maps tile can embed the real Google Maps app after a reboot. Runs
-    // once (guarded by a flag) — never re-remounts /system on later boots.
+    // Auto-install to /system/priv-app on first launch (internal root ADB, then
+    // su), so the Maps tile can embed the real Google Maps app after a reboot.
+    // Runs once (guarded by a flag) — never re-remounts /system on later boots.
     LaunchedEffect(Unit) {
         if (SystemInstaller.isSystemApp(context)) return@LaunchedEffect
         val prefs = context.getSharedPreferences("system_install_prefs", Context.MODE_PRIVATE)
         if (prefs.getBoolean("attempted", false)) return@LaunchedEffect
-        val hasRoot = withContext(Dispatchers.IO) { SystemInstaller.isRootAvailable() }
-        if (!hasRoot) return@LaunchedEffect
-        rootChecked = true
-        rootAvailable = true
         systemBusy = true
-        val res = withContext(Dispatchers.IO) { SystemInstaller.installAsSystemApp(context) }
+        val res = withContext(Dispatchers.IO) { SystemInstaller.install(context) }
         systemBusy = false
         prefs.edit().putBoolean("attempted", true).apply()
         res.onSuccess {
@@ -463,16 +459,17 @@ fun AutomotiveDashboard() {
                     Text(
                         "Install OpenAuto Dash into /system/priv-app so it runs as a " +
                             "privileged app and can embed the real Google Maps app — with " +
-                            "navigation — in the Maps tile, like OEM car launchers. Requires " +
-                            "a rooted device (Magisk). Reboot afterwards to activate it.",
+                            "navigation — in the Maps tile, like OEM car launchers. It tries " +
+                            "the head unit's internal root ADB (127.0.0.1:${AdbInstaller.DEFAULT_PORT}) " +
+                            "first, then su. Reboot afterwards to activate it.",
                         color = DashColors.TextSecondary,
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = when {
-                            !rootChecked -> "Checking root…"
-                            rootAvailable -> "Root available ✓"
-                            else -> "Root not detected — grant su in Magisk, then reopen."
+                            !rootChecked -> "Checking su…"
+                            rootAvailable -> "su available ✓ (ADB :${AdbInstaller.DEFAULT_PORT} also tried)"
+                            else -> "No su — will use internal root ADB (:${AdbInstaller.DEFAULT_PORT})."
                         },
                         color = if (rootAvailable) DashColors.Good else DashColors.Muted,
                         style = MaterialTheme.typography.labelLarge
@@ -494,18 +491,18 @@ fun AutomotiveDashboard() {
             },
             confirmButton = {
                 if (systemInstalled) {
-                    TextButton(onClick = { scope.launch { SystemInstaller.reboot() } }) {
+                    TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { SystemInstaller.rebootDevice() } } }) {
                         Text("Reboot now", color = DashColors.Accent)
                     }
                 } else {
                     TextButton(
-                        enabled = rootAvailable && !systemBusy,
+                        enabled = !systemBusy,
                         onClick = {
                             systemBusy = true
                             systemMessage = null
                             scope.launch {
                                 val res = withContext(Dispatchers.IO) {
-                                    SystemInstaller.installAsSystemApp(context)
+                                    SystemInstaller.install(context)
                                 }
                                 systemBusy = false
                                 res.onSuccess {
@@ -517,10 +514,7 @@ fun AutomotiveDashboard() {
                             }
                         }
                     ) {
-                        Text(
-                            "Install as system app",
-                            color = if (rootAvailable) DashColors.Accent else DashColors.Muted
-                        )
+                        Text("Install as system app", color = DashColors.Accent)
                     }
                 }
             },

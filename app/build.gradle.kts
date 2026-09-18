@@ -139,6 +139,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     // Real Google Maps rendered in a Compose tile.
     implementation("com.google.maps.android:maps-compose:4.4.1")
+    // Pure-Kotlin ADB client — lets the app self-install to /system/priv-app
+    // over the head unit's root wireless-ADB socket (no Magisk/su needed).
+    implementation("dev.mobile:dadb:1.2.10")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
