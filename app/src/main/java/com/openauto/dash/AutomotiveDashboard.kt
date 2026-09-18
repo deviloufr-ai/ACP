@@ -249,22 +249,20 @@ fun AutomotiveDashboard() {
         }
     }
 
-    // Enters "cockpit" mode: Maps + last-used media in a real system split, with
-    // this launcher's menu/info floating on top as an overlay widget.
-    fun startCockpit() {
-        LauncherOverlayService.start(context)
-        SplitScreenLauncher.launchCockpit(context)
-    }
+    // Enters "cockpit" mode: two apps of the user's choice in a real system
+    // split, with this launcher's menu/info floating on top as an overlay widget.
+    // Instead of auto-launching Maps + media, we ask which app goes left/right.
+    var showSplitPicker by remember { mutableStateOf(false) }
 
     val overlayPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        if (Settings.canDrawOverlays(context)) startCockpit()
+        if (Settings.canDrawOverlays(context)) showSplitPicker = true
     }
 
     val onCockpit: () -> Unit = {
         if (Settings.canDrawOverlays(context)) {
-            startCockpit()
+            showSplitPicker = true
         } else {
             overlayPermissionLauncher.launch(
                 Intent(
@@ -515,6 +513,80 @@ fun AutomotiveDashboard() {
             }
         )
     }
+
+    if (showSplitPicker) {
+        SplitAppPickerDialog(
+            apps = apps,
+            onDismiss = { showSplitPicker = false },
+            onConfirm = { leftPkg, rightPkg ->
+                showSplitPicker = false
+                LauncherOverlayService.start(context)
+                SplitScreenLauncher.launchCustomSplit(context, leftPkg, rightPkg)
+            }
+        )
+    }
+}
+
+/**
+ * Two-step picker: choose the app for the LEFT split pane, then the RIGHT one.
+ * Nothing is launched until both are chosen, so the app never opens Maps/media
+ * on its own — the user decides what each side shows.
+ */
+@Composable
+private fun SplitAppPickerDialog(
+    apps: List<AppEntry>,
+    onDismiss: () -> Unit,
+    onConfirm: (leftPackage: String, rightPackage: String) -> Unit
+) {
+    var leftPackage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = {
+            Text(
+                text = if (leftPackage == null) "Choose LEFT screen app" else "Choose RIGHT screen app",
+                color = DashColors.TextPrimary
+            )
+        },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 84.dp),
+                contentPadding = PaddingValues(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+            ) {
+                items(apps, key = { it.packageName }) { app ->
+                    DrawerApp(
+                        app = app,
+                        favorite = app.packageName == leftPackage,
+                        onClick = {
+                            if (leftPackage == null) {
+                                leftPackage = app.packageName
+                            } else {
+                                onConfirm(leftPackage!!, app.packageName)
+                            }
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (leftPackage != null) {
+                TextButton(onClick = { leftPackage = null }) {
+                    Text("Back", color = DashColors.Accent)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = DashColors.Muted)
+            }
+        }
+    )
 }
 
 // --- Left taskbar (Android Auto style) ---------------------------------------

@@ -24,6 +24,33 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 private const val HOST_ID = 1024
 
+/**
+ * Process-wide [AppWidgetHost]. Every [SystemWidgetPanel] shares ONE host (a
+ * single host id): two hosts with the same id conflict, and hosting widgets in
+ * more than one place at once requires the same host. Listening is ref-counted
+ * so it is only started while at least one panel is on screen and stopped once
+ * they are all gone.
+ */
+private object WidgetHostHolder {
+    private var host: AppWidgetHost? = null
+    private var active = 0
+
+    fun acquire(context: Context): AppWidgetHost {
+        val h = host ?: AppWidgetHost(context.applicationContext, HOST_ID).also { host = it }
+        if (active == 0) runCatching { h.startListening() }
+        active++
+        return h
+    }
+
+    fun release() {
+        active--
+        if (active <= 0) {
+            active = 0
+            runCatching { host?.stopListening() }
+        }
+    }
+}
+
 @Composable
 fun SystemWidgetPanel(
     slotKey: String,
@@ -32,7 +59,7 @@ fun SystemWidgetPanel(
 ) {
     val context = LocalContext.current
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
-    val appWidgetHost = remember { AppWidgetHost(context, HOST_ID) }
+    val appWidgetHost = remember { WidgetHostHolder.acquire(context) }
 
     var savedWidgetId by remember {
         mutableStateOf(
@@ -43,8 +70,8 @@ fun SystemWidgetPanel(
 
     var showAppWidgetPicker by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        appWidgetHost.startListening()
+    DisposableEffect(Unit) {
+        onDispose { WidgetHostHolder.release() }
     }
 
     val configureLauncher = rememberLauncherForActivityResult(
