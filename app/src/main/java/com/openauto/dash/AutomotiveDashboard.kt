@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
@@ -95,8 +96,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -158,6 +161,21 @@ fun AutomotiveDashboard() {
     var showAddMenu by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
     var showWidgetMenu by remember { mutableStateOf(false) }
+
+    // System-app install (root) — unlocks embedding the real Google Maps app.
+    var showSystemDialog by remember { mutableStateOf(false) }
+    var rootChecked by remember { mutableStateOf(false) }
+    var rootAvailable by remember { mutableStateOf(false) }
+    var systemBusy by remember { mutableStateOf(false) }
+    var systemInstalled by remember { mutableStateOf(false) }
+    var systemMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(showSystemDialog) {
+        if (showSystemDialog && !rootChecked) {
+            rootAvailable = withContext(Dispatchers.IO) { SystemInstaller.isRootAvailable() }
+            rootChecked = true
+        }
+    }
 
     fun mutatePage(page: Int, transform: (List<DashboardItem>) -> List<DashboardItem>) {
         pages = pages.mapIndexed { i, list -> if (i == page) transform(list) else list }
@@ -269,7 +287,8 @@ fun AutomotiveDashboard() {
             obdConnection = obdConnection,
             editing = editing,
             onApps = { showAllApps = true },
-            onToggleEdit = { editing = !editing }
+            onToggleEdit = { editing = !editing },
+            onSystem = { showSystemDialog = true }
         )
 
         UpdateBanner(
@@ -409,6 +428,85 @@ fun AutomotiveDashboard() {
             }
         )
     }
+
+    if (showSystemDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!systemBusy) showSystemDialog = false },
+            containerColor = DashColors.Card,
+            title = { Text("System app (advanced)", color = DashColors.TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Install OpenAuto Dash into /system/priv-app so it runs as a " +
+                            "privileged app and can embed the real Google Maps app — with " +
+                            "navigation — in the Maps tile, like OEM car launchers. Requires " +
+                            "a rooted device (Magisk). Reboot afterwards to activate it.",
+                        color = DashColors.TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = when {
+                            !rootChecked -> "Checking root…"
+                            rootAvailable -> "Root available ✓"
+                            else -> "Root not detected — grant su in Magisk, then reopen."
+                        },
+                        color = if (rootAvailable) DashColors.Good else DashColors.Muted,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    systemMessage?.let {
+                        Text(
+                            it,
+                            color = if (systemInstalled) DashColors.Good else DashColors.Warning,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (systemBusy) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = DashColors.Accent
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (systemInstalled) {
+                    TextButton(onClick = { scope.launch { SystemInstaller.reboot() } }) {
+                        Text("Reboot now", color = DashColors.Accent)
+                    }
+                } else {
+                    TextButton(
+                        enabled = rootAvailable && !systemBusy,
+                        onClick = {
+                            systemBusy = true
+                            systemMessage = null
+                            scope.launch {
+                                val res = withContext(Dispatchers.IO) {
+                                    SystemInstaller.installAsSystemApp(context)
+                                }
+                                systemBusy = false
+                                res.onSuccess {
+                                    systemInstalled = true
+                                    systemMessage = "Installed. Reboot to activate embedded Maps."
+                                }.onFailure {
+                                    systemMessage = "Failed: ${it.message}"
+                                }
+                            }
+                        }
+                    ) {
+                        Text(
+                            "Install as system app",
+                            color = if (rootAvailable) DashColors.Accent else DashColors.Muted
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!systemBusy) showSystemDialog = false }) {
+                    Text("Close", color = DashColors.Muted)
+                }
+            }
+        )
+    }
 }
 
 // --- Top bar & page dots -----------------------------------------------------
@@ -421,7 +519,8 @@ private fun TopBar(
     obdConnection: ObdConnectionState,
     editing: Boolean,
     onApps: () -> Unit,
-    onToggleEdit: () -> Unit
+    onToggleEdit: () -> Unit,
+    onSystem: () -> Unit
 ) {
     Surface(color = DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -472,6 +571,14 @@ private fun TopBar(
             Column(horizontalAlignment = Alignment.End) {
                 Text(clock, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
                 Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+            }
+
+            IconButton(onClick = onSystem) {
+                Icon(
+                    imageVector = Icons.Filled.Build,
+                    contentDescription = "System app / embedded Maps",
+                    tint = DashColors.TextSecondary
+                )
             }
 
             IconButton(onClick = onToggleEdit) {

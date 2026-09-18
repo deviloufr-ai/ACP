@@ -4,14 +4,18 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
 import android.util.Log
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -46,19 +50,96 @@ private val DEFAULT_LATLNG = LatLng(48.8566, 2.3522) // Paris
 private const val DEFAULT_ZOOM = 13f
 
 /**
- * The Maps tile.
+ * The Maps tile, in priority order:
  *
- * When a Google Maps API key is configured ([BuildConfig.MAPS_API_KEY]), this
- * renders a **real Google map** with the Maps SDK inside the panel-sized tile,
- * centered on the device location. Without a key it falls back to an embedded
- * OpenStreetMap (Leaflet) view so the tile still shows a live map.
+ *  1. **Privileged system app** → embeds the *real* Google Maps app (with full
+ *     navigation) inside the panel via [android.app.ActivityView] — the same
+ *     technique OEM/aftermarket car launchers use. Needs the app installed to
+ *     `/system/priv-app` (see [SystemInstaller]).
+ *  2. **Maps API key** configured → a real Google map via the Maps SDK (shows
+ *     the map and your location; no in-panel turn-by-turn).
+ *  3. **Neither** → an embedded OpenStreetMap (Leaflet) view.
  */
 @Composable
 fun MapsPanel(modifier: Modifier = Modifier) {
-    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-        GoogleMapsPanel(modifier)
-    } else {
-        LeafletMapsPanel(modifier)
+    val context = LocalContext.current
+    val canEmbedMapsApp = remember {
+        val hasActivityView = runCatching { Class.forName("android.app.ActivityView") }.isSuccess
+        val isSystem = isSystemApp(context)
+        Log.d("MapsPanel", "embed check: hasActivityView=$hasActivityView isSystem=$isSystem")
+        hasActivityView && isSystem
+    }
+
+    when {
+        canEmbedMapsApp -> EmbeddedGoogleMapsPanel(modifier)
+        BuildConfig.MAPS_API_KEY.isNotBlank() -> GoogleMapsPanel(modifier)
+        else -> LeafletMapsPanel(modifier)
+    }
+}
+
+// --- Privileged path: the real Google Maps app inside an ActivityView --------
+
+private fun isSystemApp(context: Context): Boolean {
+    val appInfo = context.applicationInfo
+    val flaggedSystem = (appInfo.flags and
+        (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+    val systemPath = appInfo.sourceDir.startsWith("/system/") ||
+        appInfo.sourceDir.startsWith("/priv-app/") ||
+        appInfo.sourceDir.startsWith("/product/") ||
+        appInfo.sourceDir.startsWith("/vendor/")
+    return flaggedSystem || systemPath
+}
+
+/**
+ * Hosts the real Google Maps app in an [android.app.ActivityView] (reflection —
+ * the class is hidden and present up to Android 10/11). Interactive: touches,
+ * search and navigation all reach Maps. Only reached when [isSystemApp] is true.
+ */
+@Composable
+private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { ctx ->
+            val activityView = runCatching {
+                Class.forName("android.app.ActivityView")
+                    .getConstructor(Context::class.java)
+                    .newInstance(ctx) as ViewGroup
+            }.onFailure {
+                Log.e("MapsPanel", "ActivityView unavailable (needs system privileges)", it)
+            }.getOrNull()
+
+            if (activityView == null) {
+                FrameLayout(ctx)
+            } else {
+                activityView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(v: View) {
+                        // Give ActivityView a moment to create its virtual display.
+                        v.postDelayed({ launchMapsInto(ctx, v) }, 1000)
+                    }
+
+                    override fun onViewDetachedFromWindow(v: View) {
+                        runCatching { v.javaClass.getMethod("release").invoke(v) }
+                    }
+                })
+                activityView
+            }
+        }
+    )
+}
+
+private fun launchMapsInto(context: Context, activityView: View) {
+    val maps = context.packageManager
+        .getLaunchIntentForPackage(MAPS_PACKAGE)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) ?: return
+
+    Log.d("MapsPanel", "Launching Maps into ActivityView…")
+    runCatching {
+        activityView.javaClass
+            .getMethod("startActivity", Intent::class.java)
+            .invoke(activityView, maps)
+    }.onFailure {
+        Log.e("MapsPanel", "Failed to launch Maps into ActivityView", it)
     }
 }
 
