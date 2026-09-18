@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -30,11 +32,11 @@ android {
         // Maps tile falls back to the OpenStreetMap view.
         val mapsApiKey: String = run {
             val fromProp = project.findProperty("MAPS_API_KEY") as String?
-            val fromEnv = System.getenv("MAPS_API_KEY")
+            val fromEnv: String? = System.getenv("MAPS_API_KEY")
             val fromLocal = rootProject.file("local.properties")
                 .takeIf { it.exists() }
                 ?.let { f ->
-                    java.util.Properties().apply { f.inputStream().use { load(it) } }
+                    Properties().apply { f.inputStream().use { load(it) } }
                         .getProperty("MAPS_API_KEY")
                 }
             (fromProp ?: fromEnv ?: fromLocal ?: "").trim()
