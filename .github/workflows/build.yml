@@ -62,6 +62,9 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Google Maps SDK key — set the MAPS_API_KEY repo secret to embed a
+          # real Google map. When unset the Maps tile uses OpenStreetMap.
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK artifact

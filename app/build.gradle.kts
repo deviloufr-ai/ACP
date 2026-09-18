@@ -24,6 +24,24 @@ android {
         buildConfigField("String", "GITHUB_OWNER", "\"deviloufr-ai\"")
         buildConfigField("String", "GITHUB_REPO", "\"ACP\"")
 
+        // Google Maps SDK key. Resolved from (in order): -PMAPS_API_KEY=...,
+        // the MAPS_API_KEY env var (CI secret), or a MAPS_API_KEY line in the
+        // git-ignored local.properties. Never commit the key. When empty, the
+        // Maps tile falls back to the OpenStreetMap view.
+        val mapsApiKey: String = run {
+            val fromProp = project.findProperty("MAPS_API_KEY") as String?
+            val fromEnv = System.getenv("MAPS_API_KEY")
+            val fromLocal = rootProject.file("local.properties")
+                .takeIf { it.exists() }
+                ?.let { f ->
+                    java.util.Properties().apply { f.inputStream().use { load(it) } }
+                        .getProperty("MAPS_API_KEY")
+                }
+            (fromProp ?: fromEnv ?: fromLocal ?: "").trim()
+        }
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -117,6 +135,8 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
+    // Real Google Maps rendered in a Compose tile.
+    implementation("com.google.maps.android:maps-compose:4.4.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

@@ -4,18 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
 import android.util.Log
-import android.view.View
-import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -25,118 +21,117 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.rememberCameraPositionState
 
 private const val MAPS_PACKAGE = "com.google.android.apps.maps"
 
+// Camera default when no location fix is available yet.
+private val DEFAULT_LATLNG = LatLng(48.8566, 2.3522) // Paris
+private const val DEFAULT_ZOOM = 13f
+
 /**
- * Left map panel.
+ * The Maps tile.
  *
- * If the app is installed as a **privileged/system app** (see the QF001/Roco
- * root notes), it hosts the real Google Maps activity inside an [ActivityView]
- * — the interactive embedding used by vendor launchers on Android 10. Because
- * `ActivityView` is a hidden system class (present up to Android 10/11, removed
- * in Android 12), it is accessed by reflection and only works for a system app.
- * A normal install can't do this, so it falls back to an embedded OpenStreetMap
- * map + an "Open Maps" button.
+ * When a Google Maps API key is configured ([BuildConfig.MAPS_API_KEY]), this
+ * renders a **real Google map** with the Maps SDK inside the panel-sized tile,
+ * centered on the device location. Without a key it falls back to an embedded
+ * OpenStreetMap (Leaflet) view so the tile still shows a live map.
  */
 @Composable
 fun MapsPanel(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val canEmbed = remember {
-        // ROCO/K706 units often have ActivityView even on newer Android versions.
-        // We try to use it if the class exists and we have system-level privileges.
-        val hasActivityView = runCatching { Class.forName("android.app.ActivityView") }.isSuccess
-        val isSystem = isSystemApp(context)
-        
-        Log.d("MapsPanel", "canEmbed check: hasActivityView=$hasActivityView, isSystem=$isSystem")
-        
-        hasActivityView && isSystem
-    }
-
-    if (canEmbed) {
-        EmbeddedGoogleMapsPanel(modifier)
+    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+        GoogleMapsPanel(modifier)
     } else {
         LeafletMapsPanel(modifier)
     }
 }
 
-private fun isSystemApp(context: Context): Boolean {
-    val appInfo = context.applicationInfo
-    val flags = appInfo.flags
-    val isSystem = (flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
-    val isSystemPath = appInfo.sourceDir.startsWith("/system/") || 
-                      appInfo.sourceDir.startsWith("/priv-app/") ||
-                      appInfo.sourceDir.startsWith("/product/") ||
-                      appInfo.sourceDir.startsWith("/vendor/")
-                      
-    return isSystem || isSystemPath
-}
+// --- Real Google map (Maps SDK via maps-compose) -----------------------------
 
-// --- Privileged path: real Google Maps inside an ActivityView (Android 10) ---
-
-/**
- * Hosts the real Google Maps app in an [android.app.ActivityView] (reflection).
- * Interactive: touches reach Maps. Requires the app to be a privileged system
- * app; otherwise the reflected calls throw and this composable stays blank (the
- * chooser only routes here when [isSystemApp] is true).
- */
 @Composable
-private fun EmbeddedGoogleMapsPanel(modifier: Modifier = Modifier) {
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        factory = { ctx ->
-            val activityView = runCatching {
-                Class.forName("android.app.ActivityView")
-                    .getConstructor(Context::class.java)
-                    .newInstance(ctx) as ViewGroup
-            }.onFailure {
-                Log.e("MapsPanel", "Failed to create ActivityView (requires system app privileges)", it)
-            }.getOrNull()
+private fun GoogleMapsPanel(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var hasLocation by remember { mutableStateOf(hasLocationPermission(context)) }
 
-            if (activityView == null) {
-                FrameLayout(ctx)
-            } else {
-                activityView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                    override fun onViewAttachedToWindow(v: View) {
-                        // Give ActivityView a moment to create its virtual display.
-                        // Slow head units may need a longer delay.
-                        v.postDelayed({ launchMapsInto(ctx, v) }, 1000)
-                    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result -> hasLocation = result.values.any { it } }
 
-                    override fun onViewDetachedFromWindow(v: View) {
-                        runCatching { v.javaClass.getMethod("release").invoke(v) }
-                    }
-                })
-                activityView
+    LaunchedEffect(Unit) {
+        if (!hasLocation) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(DEFAULT_LATLNG, DEFAULT_ZOOM)
+    }
+
+    // Recenter on the last known location once we have permission.
+    LaunchedEffect(hasLocation) {
+        if (hasLocation) {
+            lastKnownLatLng(context)?.let {
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(it, 15f)
             }
         }
+    }
+
+    GoogleMap(
+        modifier = modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(
+            isMyLocationEnabled = hasLocation,
+            mapType = MapType.NORMAL
+        ),
+        uiSettings = MapUiSettings(
+            zoomControlsEnabled = false,
+            myLocationButtonEnabled = hasLocation,
+            compassEnabled = true
+        )
     )
 }
 
-private fun launchMapsInto(context: Context, activityView: View) {
-    val maps = context.packageManager
-        .getLaunchIntentForPackage(MAPS_PACKAGE)
-        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ?.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) ?: return
-        
-    Log.d("MapsPanel", "Launching Maps into ActivityView...")
-    runCatching {
-        activityView.javaClass
-            .getMethod("startActivity", Intent::class.java)
-            .invoke(activityView, maps)
-    }.onFailure {
-        Log.e("MapsPanel", "Failed to launch Maps into ActivityView", it)
-    }
+private fun hasLocationPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+@SuppressLint("MissingPermission")
+private fun lastKnownLatLng(context: Context): LatLng? {
+    if (!hasLocationPermission(context)) return null
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val location = try {
+        manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            ?: manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+    } catch (e: SecurityException) {
+        null
+    } ?: return null
+    return LatLng(location.latitude, location.longitude)
 }
 
-// --- Fallback path: embedded OpenStreetMap (non-privileged installs) ---------
+// --- Fallback: embedded OpenStreetMap (no Maps API key configured) -----------
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -148,10 +143,7 @@ fun LeafletMapsPanel(modifier: Modifier = Modifier) {
     ) { /* map recenters once a fix is available */ }
 
     LaunchedEffect(Unit) {
-        val granted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) {
+        if (!hasLocationPermission(context)) {
             locationPermission.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -182,10 +174,7 @@ fun LeafletMapsPanel(modifier: Modifier = Modifier) {
                         }
 
                         override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
-                            Log.d(
-                                "MapsPanel",
-                                "${m.message()} @${m.sourceId()}:${m.lineNumber()}"
-                            )
+                            Log.d("MapsPanel", "${m.message()} @${m.sourceId()}:${m.lineNumber()}")
                             return true
                         }
                     }
@@ -199,8 +188,7 @@ fun LeafletMapsPanel(modifier: Modifier = Modifier) {
             }
         )
 
-        // Fallback: open the real Google Maps app (works offline; a WebView can't
-        // embed it). Useful if the head unit can't load online map tiles.
+        // Fallback: open the real Google Maps app for turn-by-turn navigation.
         FilledTonalButton(
             onClick = { openMapsApp(context) },
             modifier = Modifier
@@ -221,25 +209,9 @@ private fun openMapsApp(context: Context) {
     runCatching { context.startActivity(intent) }
 }
 
-/** Centers the map on the device's last known location, if permission is held. */
-@SuppressLint("MissingPermission")
+/** Centers the Leaflet map on the device's last known location, if permitted. */
 private fun injectLastKnownLocation(context: Context, web: WebView?) {
     web ?: return
-    val fine = ContextCompat.checkSelfPermission(
-        context, Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
-    val coarse = ContextCompat.checkSelfPermission(
-        context, Manifest.permission.ACCESS_COARSE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
-    if (!fine && !coarse) return
-
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
-    val location = try {
-        manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            ?: manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-    } catch (e: SecurityException) {
-        null
-    } ?: return
-
-    web.evaluateJavascript("setCenter(${location.latitude}, ${location.longitude});", null)
+    val latLng = lastKnownLatLng(context) ?: return
+    web.evaluateJavascript("setCenter(${latLng.latitude}, ${latLng.longitude});", null)
 }
