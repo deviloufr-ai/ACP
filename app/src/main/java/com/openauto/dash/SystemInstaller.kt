@@ -25,9 +25,11 @@ object SystemInstaller {
         val flagged = (info.flags and
             (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
         val path = info.sourceDir.startsWith("/system/") ||
+            info.sourceDir.startsWith("/system_ext/") ||
             info.sourceDir.startsWith("/priv-app/") ||
             info.sourceDir.startsWith("/product/") ||
-            info.sourceDir.startsWith("/vendor/")
+            info.sourceDir.startsWith("/vendor/") ||
+            info.sourceDir.startsWith("/odm/")
         return flagged || path
     }
 

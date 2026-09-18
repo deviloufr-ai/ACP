@@ -21,8 +21,6 @@ object AdbInstaller {
 
     const val DEFAULT_PORT = 9876
     private const val HOST = "127.0.0.1"
-    private const val DIR = "/system/priv-app/OpenAutoDash"
-    private const val DEST = "$DIR/OpenAutoDash.apk"
     private const val TMP = "/data/local/tmp/OpenAutoDash.apk"
 
     private fun connect(context: Context, port: Int): Dadb {
@@ -62,23 +60,33 @@ object AdbInstaller {
             val uid = dadb.shell("id -u").output.trim()
             // Stage the APK in a writable temp dir (sync straight to /system FAILs).
             dadb.push(apk, TMP)
-            // Privileged copy into /system/priv-app. Needs root adbd.
-            val script = buildString {
-                append("mount -o remount,rw / 2>/dev/null; ")
-                append("mount -o remount,rw /system 2>/dev/null; ")
-                append("mkdir -p $DIR && ")
-                append("cp $TMP $DEST && ")
-                append("chmod 755 $DIR && chmod 644 $DEST && ")
-                append("(chcon u:object_r:system_file:s0 $DEST 2>/dev/null || true) && ")
-                append("sync && echo OKINSTALL")
-            }
-            val res = dadb.shell(script)
-            if (!res.allOutput.contains("OKINSTALL")) {
-                val hint = if (uid != "0") " (adbd not root: uid=$uid — this unit's :$port adbd won't run as root)" else ""
+            // /system is often 100% full on these units, so try every privileged
+            // partition Android scans and install into the first one with space.
+            val res = dadb.shell(INSTALL_SCRIPT)
+            val ok = res.allOutput.lineSequence().firstOrNull { it.startsWith("OKINSTALL:") }
+            if (ok == null) {
+                val hint = if (uid != "0") " (adbd not root: uid=$uid)" else ""
                 error("${res.allOutput.trim().ifBlank { "install failed" }}$hint")
             }
-            Log.d("AdbInstaller", "Installed to $DEST via ADB :$port (uid=$uid)")
+            Log.d("AdbInstaller", "Installed via ADB :$port (uid=$uid): ${ok.removePrefix("OKINSTALL:")}")
         }
+    }
+
+    // Tries each privileged partition; installs into the first that has room.
+    // Uses \$ for shell variables so Kotlin doesn't interpolate them.
+    private val INSTALL_SCRIPT: String = buildString {
+        append("TMP=$TMP; ERR=/data/local/tmp/oad_err; : > \$ERR; ")
+        append("for BASE in /system /product /system_ext /vendor /odm; do ")
+        append("  DIR=\$BASE/priv-app/OpenAutoDash; ")
+        append("  mount -o remount,rw \$BASE 2>>\$ERR; mount -o remount,rw / 2>>\$ERR; ")
+        append("  if mkdir -p \"\$DIR\" 2>>\$ERR && cp \"\$TMP\" \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; then ")
+        append("    chmod 755 \"\$DIR\" 2>>\$ERR; chmod 644 \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; ")
+        append("    chcon u:object_r:system_file:s0 \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; sync; ")
+        append("    echo \"OKINSTALL:\$DIR\"; break; ")
+        append("  else rm -rf \"\$DIR\" 2>/dev/null; fi; ")
+        append("done; ")
+        append("echo '---DIAG---'; df /system /product /system_ext /vendor /odm 2>/dev/null; ")
+        append("echo '---ERR---'; cat \$ERR 2>/dev/null")
     }
 
     fun rebootViaAdb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = runCatching {
