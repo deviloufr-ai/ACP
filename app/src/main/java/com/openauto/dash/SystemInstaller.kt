@@ -81,6 +81,6 @@ object SystemInstaller {
     }
 
     /** Reboots via su, falling back to the root ADB socket. */
-    fun rebootDevice(): Result<Unit> =
-        reboot().recoverCatching { AdbInstaller.rebootViaAdb().getOrThrow() }
+    fun rebootDevice(context: Context): Result<Unit> =
+        reboot().recoverCatching { AdbInstaller.rebootViaAdb(context).getOrThrow() }
 }

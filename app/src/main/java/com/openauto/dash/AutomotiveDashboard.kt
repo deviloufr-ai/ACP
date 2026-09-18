@@ -187,8 +187,9 @@ fun AutomotiveDashboard() {
         systemBusy = true
         val res = withContext(Dispatchers.IO) { SystemInstaller.install(context) }
         systemBusy = false
-        prefs.edit().putBoolean("attempted", true).apply()
         res.onSuccess {
+            // Only mark done on success, so a failed attempt retries next launch.
+            prefs.edit().putBoolean("attempted", true).apply()
             systemInstalled = true
             systemMessage = "Installed to /system/priv-app. Reboot to activate embedded Google Maps."
             showSystemDialog = true
@@ -491,7 +492,7 @@ fun AutomotiveDashboard() {
             },
             confirmButton = {
                 if (systemInstalled) {
-                    TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { SystemInstaller.rebootDevice() } } }) {
+                    TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { SystemInstaller.rebootDevice(context) } } }) {
                         Text("Reboot now", color = DashColors.Accent)
                     }
                 } else {

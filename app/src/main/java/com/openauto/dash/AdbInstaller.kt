@@ -2,6 +2,7 @@ package com.openauto.dash
 
 import android.content.Context
 import android.util.Log
+import dadb.AdbKeyPair
 import dadb.Dadb
 import java.io.File
 
@@ -13,8 +14,10 @@ import java.io.File
  * root shell without Magisk/su, which is enough to remount `/system` and copy
  * the APK in — exactly how some OEM launchers self-privilege.
  *
- * Requires the classic ADB transport (not Android 11 TLS pairing) and, if
- * `ro.adb.secure=1`, a one-time on-device "allow debugging" acceptance.
+ * We generate our own ADB RSA keypair under the app's private files dir (the
+ * default `~/.android/adbkey` path isn't writable from an app sandbox). If the
+ * unit's `adbd` is secure it will show a one-time "allow debugging" prompt for
+ * this key; if insecure it connects straight away.
  */
 object AdbInstaller {
 
@@ -23,9 +26,20 @@ object AdbInstaller {
     private const val DIR = "/system/priv-app/OpenAutoDash"
     private const val DEST = "$DIR/OpenAutoDash.apk"
 
+    private fun connect(context: Context, port: Int): Dadb {
+        val keyDir = File(context.filesDir, "adb").apply { mkdirs() }
+        val priv = File(keyDir, "adbkey")
+        val pub = File(keyDir, "adbkey.pub")
+        if (!priv.exists() || !pub.exists()) {
+            AdbKeyPair.generate(priv, pub)
+        }
+        val keyPair = AdbKeyPair.read(priv, pub)
+        return Dadb.create(HOST, port, keyPair)
+    }
+
     fun installViaAdb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = runCatching {
         val apk = File(context.applicationInfo.sourceDir)
-        Dadb.create(HOST, port).use { dadb ->
+        connect(context, port).use { dadb ->
             // Remount system writable and make sure the target dir exists.
             dadb.shell(
                 "mount -o remount,rw / 2>/dev/null; " +
@@ -46,8 +60,8 @@ object AdbInstaller {
         }
     }
 
-    fun rebootViaAdb(port: Int = DEFAULT_PORT): Result<Unit> = runCatching {
-        Dadb.create(HOST, port).use { it.shell("svc power reboot || reboot") }
+    fun rebootViaAdb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = runCatching {
+        connect(context, port).use { it.shell("svc power reboot || reboot") }
         Unit
     }
 }
