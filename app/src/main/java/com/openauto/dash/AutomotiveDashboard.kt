@@ -15,6 +15,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -59,6 +60,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -85,6 +87,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -187,9 +191,9 @@ fun AutomotiveDashboard() {
         systemBusy = true
         val res = withContext(Dispatchers.IO) { SystemInstaller.install(context) }
         systemBusy = false
+        // Attempt once; the manual dialog button remains for explicit retries.
+        prefs.edit().putBoolean("attempted", true).apply()
         res.onSuccess {
-            // Only mark done on success, so a failed attempt retries next launch.
-            prefs.edit().putBoolean("attempted", true).apply()
             systemInstalled = true
             systemMessage = "Installed to /system/priv-app. Reboot to activate embedded Google Maps."
             showSystemDialog = true
@@ -652,49 +656,53 @@ private fun DashboardPage(
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 104.dp),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
+    // Tiles are laid out side by side (horizontal), filling the page height. The
+    // row scrolls horizontally only when the tiles overflow the screen width; a
+    // page that fits still swipes to the next dashboard normally.
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .horizontalScroll(rememberScrollState())
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        items(
-            count = pageItems.size,
-            span = { index ->
-                if (pageItems[index] is DashboardItem.AppShortcut) GridItemSpan(1) else GridItemSpan(maxLineSpan)
-            }
-        ) { index ->
+        pageItems.forEachIndexed { index, item ->
             EditableTile(editing = editing, onRemove = { onRemove(index) }) {
-                when (val item = pageItems[index]) {
-                    is DashboardItem.AppShortcut -> AppShortcutTile(
-                        app = appsByPackage[item.packageName],
-                        packageName = item.packageName,
-                        onClick = { onLaunchApp(item.packageName) }
-                    )
+                when (item) {
+                    is DashboardItem.AppShortcut -> Box(
+                        modifier = Modifier.width(116.dp).fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AppShortcutTile(
+                            app = appsByPackage[item.packageName],
+                            packageName = item.packageName,
+                            onClick = { onLaunchApp(item.packageName) }
+                        )
+                    }
 
                     is DashboardItem.BuiltinWidget -> when (item.kind) {
                         BuiltinKind.MAPS -> MapsCard(
-                            modifier = Modifier.fillMaxWidth().height(260.dp)
+                            modifier = Modifier.width(420.dp).fillMaxHeight()
                         )
                         BuiltinKind.MEDIA -> MediaCard(
                             mediaState = mediaState,
                             controller = mediaController,
                             hasAccess = hasMediaAccess,
                             context = context,
-                            modifier = Modifier.fillMaxWidth().height(210.dp)
+                            modifier = Modifier.width(340.dp).fillMaxHeight()
                         )
                         BuiltinKind.TELEMETRY -> ObdCard(
                             obdData = obdData,
                             connection = obdConnection,
                             onConnect = onConnectObd,
                             onPickDevice = onPickDevice,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.width(440.dp).fillMaxHeight()
                         )
                     }
 
                     is DashboardItem.SystemWidget -> Card(
-                        modifier = Modifier.fillMaxWidth().height(200.dp)
+                        modifier = Modifier.width(340.dp).fillMaxHeight()
                     ) {
                         HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
                     }
@@ -702,7 +710,10 @@ private fun DashboardPage(
             }
         }
 
-        item(span = { GridItemSpan(1) }) {
+        Box(
+            modifier = Modifier.width(116.dp).fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
             AddTile(onClick = onAdd)
         }
     }
@@ -926,11 +937,38 @@ private fun UpdateBanner(
 }
 
 /** Rounded map surface. Clipping a hardware WebView to rounded corners renders
- *  it black on some head unit GPUs, so no rounded clip is applied here. */
+ *  it black on some head unit GPUs, so no rounded clip is applied here.
+ *
+ *  "Float real Maps" launches the actual Google Maps app in a freeform window
+ *  sized to this tile — using the head unit's floating-window support, so you get
+ *  the real app (with navigation) over the dashboard, no root or API key needed. */
 @Composable
 private fun MapsCard(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.background(DashColors.Card)) {
+    val context = LocalContext.current
+    var tileBounds by remember { mutableStateOf<android.graphics.Rect?>(null) }
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { coords ->
+                val r = coords.boundsInWindow()
+                tileBounds = android.graphics.Rect(
+                    r.left.toInt(), r.top.toInt(), r.right.toInt(), r.bottom.toInt()
+                )
+            }
+            .background(DashColors.Card)
+    ) {
         MapsPanel(modifier = Modifier.fillMaxSize())
+        FilledTonalButton(
+            onClick = {
+                tileBounds?.let {
+                    FreeformLauncher.launchInBounds(context, "com.google.android.apps.maps", it)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+        ) {
+            Text("Float real Maps")
+        }
     }
 }
 
