@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
@@ -152,6 +153,7 @@ fun AutomotiveDashboard() {
     val pagerState = rememberPagerState(pageCount = { DashboardStore.PAGE_COUNT })
 
     var showAllApps by remember { mutableStateOf(false) }
+    var showSplitPicker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     var showDevicePicker by remember { mutableStateOf(false) }
@@ -309,6 +311,7 @@ fun AutomotiveDashboard() {
             obdConnection = obdConnection,
             editing = editing,
             onApps = { showAllApps = true },
+            onSplit = { showSplitPicker = true },
             onToggleEdit = { editing = !editing },
             onSystem = { showSystemDialog = true }
         )
@@ -414,6 +417,18 @@ fun AutomotiveDashboard() {
                 if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
             },
             onDismiss = { showAppPicker = false }
+        )
+    }
+
+    if (showSplitPicker) {
+        AppPickerDialog(
+            apps = apps,
+            title = "Split screen with…",
+            onPick = { app ->
+                showSplitPicker = false
+                SplitLauncher.launchAdjacent(context, app.packageName)
+            },
+            onDismiss = { showSplitPicker = false }
         )
     }
 
@@ -540,6 +555,7 @@ private fun TopBar(
     obdConnection: ObdConnectionState,
     editing: Boolean,
     onApps: () -> Unit,
+    onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
     onSystem: () -> Unit
 ) {
@@ -594,10 +610,18 @@ private fun TopBar(
                 Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
             }
 
+            IconButton(onClick = onSplit) {
+                Icon(
+                    imageVector = Icons.Filled.Splitscreen,
+                    contentDescription = "Split screen with an app",
+                    tint = DashColors.TextSecondary
+                )
+            }
+
             IconButton(onClick = onSystem) {
                 Icon(
                     imageVector = Icons.Filled.Build,
-                    contentDescription = "System app / embedded Maps",
+                    contentDescription = "System app",
                     tint = DashColors.TextSecondary
                 )
             }
@@ -822,12 +846,13 @@ private fun AddChoiceRow(icon: ImageVector, label: String, onClick: () -> Unit) 
 private fun AppPickerDialog(
     apps: List<AppEntry>,
     onPick: (AppEntry) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = "Choose an app"
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
-        title = { Text("Choose an app", color = DashColors.TextPrimary) },
+        title = { Text(title, color = DashColors.TextPrimary) },
         text = {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 84.dp),

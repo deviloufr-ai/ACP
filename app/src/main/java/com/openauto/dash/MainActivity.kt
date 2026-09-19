@@ -8,14 +8,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * Entry point for OpenAuto Dash.
- *
- * Acts as the launcher/home surface. On launch it simply shows the dashboard
- * (main screen) — it does NOT auto-open Maps/media or force split-screen. The
- * user chooses what goes on the left/right panes from the dashboard (Cockpit
- * button and the per-slot widget pickers).
+ * Entry point for OpenAuto Dash — the launcher/home surface. Runs edge-to-edge
+ * in immersive fullscreen (status/navigation bars hidden), showing the dashboard.
  */
 class MainActivity : ComponentActivity() {
 
@@ -28,10 +27,28 @@ class MainActivity : ComponentActivity() {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
         )
 
+        enableImmersiveFullscreen()
+
         setContent {
             OpenAutoDashTheme {
                 AutomotiveDashboard()
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Re-hide the system bars whenever we regain focus (they can reappear
+        // after a transient swipe or returning from another app).
+        if (hasFocus) enableImmersiveFullscreen()
+    }
+
+    private fun enableImmersiveFullscreen() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 }
