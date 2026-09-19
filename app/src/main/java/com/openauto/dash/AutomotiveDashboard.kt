@@ -639,6 +639,14 @@ private fun TopBar(
                 Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
             }
 
+            IconButton(onClick = onMaps) {
+                Icon(
+                    imageVector = Icons.Filled.Map,
+                    contentDescription = "Google Maps split-screen",
+                    tint = DashColors.TextSecondary
+                )
+            }
+
             IconButton(onClick = onSplit) {
                 Icon(
                     imageVector = Icons.Filled.Splitscreen,
