@@ -142,6 +142,8 @@ dependencies {
     // Pure-Kotlin ADB client — lets the app self-install to /system/priv-app
     // over the head unit's root wireless-ADB socket (no Magisk/su needed).
     implementation("dev.mobile:dadb:1.2.10")
+    // MapLibre GL — free/open-source map (OpenFreeMap style, no token/API key).
+    implementation("org.maplibre.gl:android-sdk:11.11.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

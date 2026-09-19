@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
@@ -431,6 +432,10 @@ fun AutomotiveDashboard() {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MAPS))
                     }
+                    AddChoiceRow(Icons.Filled.Navigation, BuiltinKind.NAVMAP.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
+                    }
                     AddChoiceRow(Icons.Filled.MusicNote, BuiltinKind.MEDIA.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MEDIA))
@@ -686,6 +691,11 @@ private fun DashboardPage(
                         BuiltinKind.MAPS -> MapsCard(
                             modifier = Modifier.width(420.dp).fillMaxHeight()
                         )
+                        BuiltinKind.NAVMAP -> Box(
+                            modifier = Modifier.width(420.dp).fillMaxHeight().background(DashColors.Card)
+                        ) {
+                            MapLibrePanel(modifier = Modifier.fillMaxSize())
+                        }
                         BuiltinKind.MEDIA -> MediaCard(
                             mediaState = mediaState,
                             controller = mediaController,
