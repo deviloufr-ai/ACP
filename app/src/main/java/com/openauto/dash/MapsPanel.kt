@@ -96,18 +96,15 @@ private const val DEFAULT_ZOOM = 13f
  */
 @Composable
 fun MapsPanel(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val canEmbedMapsApp = remember {
-        val hasActivityView = runCatching { Class.forName("android.app.ActivityView") }.isSuccess
-        val isSystem = SystemInstaller.isSystemApp(context)
-        Log.d("MapsPanel", "embed check: hasActivityView=$hasActivityView isSystem=$isSystem")
-        hasActivityView && isSystem
-    }
-
-    when {
-        canEmbedMapsApp -> EmbeddedGoogleMapsPanel(modifier)
-        BuildConfig.MAPS_API_KEY.isNotBlank() -> GoogleMapsPanel(modifier)
-        else -> LeafletMapsPanel(modifier)
+    // NOTE: ActivityView embedding of the real Maps app renders black on this
+    // head unit (it's vendor/version-specific and unreliable), so the tile shows
+    // the Google Maps SDK map and the real app (with navigation) is available via
+    // the "Float real Maps" freeform window instead — see EmbeddedGoogleMapsPanel
+    // below, kept for reference/other units.
+    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+        GoogleMapsPanel(modifier)
+    } else {
+        LeafletMapsPanel(modifier)
     }
 }
 
