@@ -51,13 +51,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OpenAutoDash">
 
-        <!-- Google Maps SDK key, injected from the MAPS_API_KEY build property.
-             Empty when no key is supplied; the Maps tile then falls back to the
-             embedded OpenStreetMap view. -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
-
         <!-- MainActivity: standard launcher entry + acts as an Android Home app.
              Orientation is left responsive so the 50/50 layout adapts to
              landscape head units and portrait phone mounts. -->

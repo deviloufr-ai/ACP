@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -25,24 +23,6 @@ android {
         // Where the in-app updater looks for new releases.
         buildConfigField("String", "GITHUB_OWNER", "\"deviloufr-ai\"")
         buildConfigField("String", "GITHUB_REPO", "\"ACP\"")
-
-        // Google Maps SDK key. Resolved from (in order): -PMAPS_API_KEY=...,
-        // the MAPS_API_KEY env var (CI secret), or a MAPS_API_KEY line in the
-        // git-ignored local.properties. Never commit the key. When empty, the
-        // Maps tile falls back to the OpenStreetMap view.
-        val mapsApiKey: String = run {
-            val fromProp = project.findProperty("MAPS_API_KEY") as String?
-            val fromEnv: String? = System.getenv("MAPS_API_KEY")
-            val fromLocal = rootProject.file("local.properties")
-                .takeIf { it.exists() }
-                ?.let { f ->
-                    Properties().apply { f.inputStream().use { load(it) } }
-                        .getProperty("MAPS_API_KEY")
-                }
-            (fromProp ?: fromEnv ?: fromLocal ?: "").trim()
-        }
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
 
         vectorDrawables {
             useSupportLibrary = true
@@ -136,9 +116,6 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
-    // Real Google Maps rendered in a Compose tile.
-    implementation("com.google.maps.android:maps-compose:4.4.1")
     // Pure-Kotlin ADB client — lets the app self-install to /system/priv-app
     // over the head unit's root wireless-ADB socket (no Magisk/su needed).
     implementation("dev.mobile:dadb:1.2.10")

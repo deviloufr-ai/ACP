@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
@@ -61,7 +60,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -88,8 +86,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -428,10 +424,6 @@ fun AutomotiveDashboard() {
             title = { Text("Add widget", color = DashColors.TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AddChoiceRow(Icons.Filled.Map, BuiltinKind.MAPS.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MAPS))
-                    }
                     AddChoiceRow(Icons.Filled.Navigation, BuiltinKind.NAVMAP.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
@@ -688,9 +680,6 @@ private fun DashboardPage(
                     }
 
                     is DashboardItem.BuiltinWidget -> when (item.kind) {
-                        BuiltinKind.MAPS -> MapsCard(
-                            modifier = Modifier.width(420.dp).fillMaxHeight()
-                        )
                         BuiltinKind.NAVMAP -> Box(
                             modifier = Modifier.width(420.dp).fillMaxHeight().background(DashColors.Card)
                         ) {
@@ -943,42 +932,6 @@ private fun UpdateBanner(
 
                 else -> {}
             }
-        }
-    }
-}
-
-/** Rounded map surface. Clipping a hardware WebView to rounded corners renders
- *  it black on some head unit GPUs, so no rounded clip is applied here.
- *
- *  "Float real Maps" launches the actual Google Maps app in a freeform window
- *  sized to this tile — using the head unit's floating-window support, so you get
- *  the real app (with navigation) over the dashboard, no root or API key needed. */
-@Composable
-private fun MapsCard(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    var tileBounds by remember { mutableStateOf<android.graphics.Rect?>(null) }
-    Box(
-        modifier = modifier
-            .onGloballyPositioned { coords ->
-                val r = coords.boundsInWindow()
-                tileBounds = android.graphics.Rect(
-                    r.left.toInt(), r.top.toInt(), r.right.toInt(), r.bottom.toInt()
-                )
-            }
-            .background(DashColors.Card)
-    ) {
-        MapsPanel(modifier = Modifier.fillMaxSize())
-        FilledTonalButton(
-            onClick = {
-                tileBounds?.let {
-                    FreeformLauncher.launchInBounds(context, "com.google.android.apps.maps", it)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(8.dp)
-        ) {
-            Text("Float real Maps")
         }
     }
 }

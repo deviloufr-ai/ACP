@@ -9,8 +9,7 @@ import org.json.JSONObject
  * are rendered by our own Compose panels, not by the Android app-widget host.
  */
 enum class BuiltinKind(val label: String) {
-    MAPS("Google Maps"),
-    NAVMAP("Free map (MapLibre)"),
+    NAVMAP("Map (MapLibre)"),
     MEDIA("Music player"),
     TELEMETRY("OBD telemetry")
 }
@@ -41,7 +40,7 @@ object DashboardStore {
     /** Default layout when nothing is saved yet: Maps + music on page 1. */
     private fun defaultPages(): List<List<DashboardItem>> = listOf(
         listOf(
-            DashboardItem.BuiltinWidget(BuiltinKind.MAPS),
+            DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP),
             DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
         ),
         emptyList(),

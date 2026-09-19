@@ -5,9 +5,8 @@ import android.content.pm.ApplicationInfo
 
 /**
  * Self-installs the app into `/system/priv-app` on a **rooted** device, so it
- * runs as a privileged system app. That is what unlocks embedding the real
- * Google Maps app inside a dashboard panel (see [MapsPanel]) — the same
- * mechanism OEM/aftermarket car launchers use. Uses `su`; the user grants root
+ * runs as a privileged system app (the same mechanism OEM/aftermarket car
+ * launchers use to gain system privileges). Uses `su`; the user grants root
  * via Magisk.
  *
  * Does NOT reboot automatically unless asked ([reboot]). Writing to `/system`
