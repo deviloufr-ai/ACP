@@ -9,6 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
@@ -50,6 +52,10 @@ object ObdBluetoothManager {
 
     private const val PREFS = "obd_prefs"
     private const val KEY_MAC = "obd_device_mac"
+
+    // Serializes all adapter I/O: the 500ms poll loop and Scan/Clear must not
+    // hit the single RFCOMM socket at the same time (garbled replies / errors).
+    private val commandMutex = Mutex()
 
     private var appContext: Context? = null
     private var socket: BluetoothSocket? = null
@@ -172,7 +178,10 @@ object ObdBluetoothManager {
     /** Polls speed, RPM and coolant temperature once, updating [data]. */
     suspend fun poll(): Unit = withContext(Dispatchers.IO) {
         if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext
+        commandMutex.withLock { pollLocked() }
+    }
 
+    private fun pollLocked() {
         val speed = sendCommand("010D")?.let { parseSpeed(it) }
         val rpm = sendCommand("010C")?.let { parseRpm(it) }
         val coolant = sendCommand("0105")?.let { parseCoolant(it) }
@@ -202,16 +211,29 @@ object ObdBluetoothManager {
         if (_connectionState.value != ObdConnectionState.CONNECTED) {
             return@withContext Result.failure(IllegalStateException("OBD not connected"))
         }
-        val response = sendCommand("03")
-            ?: return@withContext Result.failure(IllegalStateException("No response from adapter"))
-        Result.success(parseDtcs(response))
+        commandMutex.withLock {
+            val response = sendCommand("03")
+                ?: return@withLock Result.failure(IllegalStateException("No response from adapter"))
+            Result.success(parseDtcs(response))
+        }
     }
 
     /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
-    suspend fun clearTroubleCodes(): Boolean = withContext(Dispatchers.IO) {
-        if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext false
-        val response = sendCommand("04")?.uppercase() ?: return@withContext false
-        response.contains("44") || response.contains("OK")
+    suspend fun clearTroubleCodes(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (_connectionState.value != ObdConnectionState.CONNECTED) {
+            return@withContext Result.failure(IllegalStateException("OBD not connected"))
+        }
+        commandMutex.withLock {
+            val raw = sendCommand("04")
+                ?: return@withLock Result.failure(IllegalStateException("No response from adapter"))
+            val r = raw.uppercase().trim()
+            if (r.contains("44") || r.contains("OK")) {
+                Result.success(Unit)
+            } else {
+                // Common cause: ignition must be ON (engine off) to clear codes.
+                Result.failure(IllegalStateException("Adapter replied \"$raw\". Turn ignition ON (engine off) and retry."))
+            }
+        }
     }
 
     /**

@@ -2,7 +2,6 @@ package com.openauto.dash
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 
 /**
@@ -22,19 +21,17 @@ object SplitLauncher {
             ?.resolveActivity(context.packageManager)?.flattenToShortString()
         val self = "${context.packageName}/.MainActivity"
 
-        // Preferred: root-driven split.
+        // Preferred: root-driven split. This unit reports Android 12 but behaves
+        // like Android 10, so use the split-primary(3)/secondary(4) modes; if the
+        // ROM ignores those, also try multi-window(6). Dock the dashboard first,
+        // then launch the target into the other pane.
         if (comp != null) {
             val rootOk = runCatching {
-                val primary: Int
-                val secondary: Int
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    primary = 6; secondary = 6
-                } else {
-                    primary = 3; secondary = 4
+                val script = buildString {
+                    append("am start --windowingMode 3 -n $self; sleep 0.6; ")
+                    append("am start --windowingMode 4 -n $comp; sleep 0.3; ")
+                    append("am start --windowingMode 6 -n $comp")
                 }
-                val script = "am start --windowingMode $primary -n $self; " +
-                    "sleep 0.6; " +
-                    "am start --windowingMode $secondary -n $comp"
                 Runtime.getRuntime().exec(arrayOf("su", "-c", script)).waitFor() == 0
             }.onFailure { Log.d("SplitLauncher", "root split failed", it) }.getOrDefault(false)
             if (rootOk) return true

@@ -15,7 +15,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -264,7 +263,13 @@ fun AutomotiveDashboard() {
         }
     }
 
-    LaunchedEffect(Unit) { autoConnectObd() }
+    // Keep the OBD link up "all the time": retry every 5s whenever it's down.
+    LaunchedEffect(Unit) {
+        while (true) {
+            autoConnectObd()
+            delay(5000)
+        }
+    }
 
     LaunchedEffect(obdConnection) {
         while (obdConnection == ObdConnectionState.CONNECTED) {
@@ -715,22 +720,24 @@ private fun DashboardPage(
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
-    // Tiles are laid out side by side (horizontal), filling the page height. The
-    // row scrolls horizontally only when the tiles overflow the screen width; a
-    // page that fits still swipes to the next dashboard normally.
+    // Side-by-side tiles that fill the screen (tuned for 1280x720). Widgets take
+    // equal weighted shares of the width so they use most of the space; app
+    // shortcuts stay compact. Swiping moves between the 3 dashboards.
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .horizontalScroll(rememberScrollState())
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         pageItems.forEachIndexed { index, item ->
-            EditableTile(editing = editing, onRemove = { onRemove(index) }) {
+            val tileModifier =
+                if (item is DashboardItem.AppShortcut) Modifier.width(104.dp).fillMaxHeight()
+                else Modifier.weight(1f).fillMaxHeight()
+            EditableTile(modifier = tileModifier, editing = editing, onRemove = { onRemove(index) }) {
                 when (item) {
                     is DashboardItem.AppShortcut -> Box(
-                        modifier = Modifier.width(116.dp).fillMaxHeight(),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         AppShortcutTile(
@@ -742,7 +749,7 @@ private fun DashboardPage(
 
                     is DashboardItem.BuiltinWidget -> when (item.kind) {
                         BuiltinKind.NAVMAP -> Box(
-                            modifier = Modifier.width(420.dp).fillMaxHeight().background(DashColors.Card)
+                            modifier = Modifier.fillMaxSize().background(DashColors.Card)
                         ) {
                             MapLibrePanel(modifier = Modifier.fillMaxSize())
                         }
@@ -751,30 +758,30 @@ private fun DashboardPage(
                             controller = mediaController,
                             hasAccess = hasMediaAccess,
                             context = context,
-                            modifier = Modifier.width(340.dp).fillMaxHeight()
+                            modifier = Modifier.fillMaxSize()
                         )
                         BuiltinKind.TELEMETRY -> ObdCard(
                             obdData = obdData,
                             connection = obdConnection,
                             onConnect = onConnectObd,
                             onPickDevice = onPickDevice,
-                            modifier = Modifier.width(440.dp).fillMaxHeight()
+                            modifier = Modifier.fillMaxSize()
                         )
                         BuiltinKind.OBD_DTC -> ObdDtcCard(
                             connection = obdConnection,
                             onConnect = onConnectObd,
-                            modifier = Modifier.width(340.dp).fillMaxHeight()
+                            modifier = Modifier.fillMaxSize()
                         )
                         BuiltinKind.OBD_ALL -> ObdAllCard(
                             obdData = obdData,
                             connection = obdConnection,
                             onConnect = onConnectObd,
-                            modifier = Modifier.width(360.dp).fillMaxHeight()
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
                     is DashboardItem.SystemWidget -> Card(
-                        modifier = Modifier.width(340.dp).fillMaxHeight()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
                     }
@@ -783,7 +790,7 @@ private fun DashboardPage(
         }
 
         Box(
-            modifier = Modifier.width(116.dp).fillMaxHeight(),
+            modifier = Modifier.width(96.dp).fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             AddTile(onClick = onAdd)
@@ -793,8 +800,13 @@ private fun DashboardPage(
 
 /** Wraps a tile, overlaying a remove (×) badge while [editing]. */
 @Composable
-private fun EditableTile(editing: Boolean, onRemove: () -> Unit, content: @Composable () -> Unit) {
-    Box {
+private fun EditableTile(
+    modifier: Modifier = Modifier,
+    editing: Boolean,
+    onRemove: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = modifier) {
         content()
         if (editing) {
             FilledIconButton(
@@ -1211,29 +1223,37 @@ private fun ObdCard(
                 valueColor = if (connected) DashColors.Good else DashColors.Muted
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Button(
-                    onClick = onConnect,
-                    enabled = connection != ObdConnectionState.CONNECTING,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DashColors.Accent,
-                        contentColor = DashColors.Background
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Bluetooth,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (connected) "Reconnect" else "Connect")
-                }
-                TextButton(onClick = onPickDevice) {
-                    Text(
-                        "Change adapter",
-                        color = DashColors.Muted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                if (connected) {
+                    // Connected: no Connect button, just a subtle status + change link.
+                    Text("Connected", color = DashColors.Good, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = onPickDevice) {
+                        Text("Change adapter", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                } else {
+                    Button(
+                        onClick = onConnect,
+                        enabled = connection != ObdConnectionState.CONNECTING,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DashColors.Accent,
+                            contentColor = DashColors.Background
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Bluetooth,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (connection == ObdConnectionState.CONNECTING) "…" else "Connect")
+                    }
+                    TextButton(onClick = onPickDevice) {
+                        Text(
+                            "Change adapter",
+                            color = DashColors.Muted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
             }
         }
@@ -1285,10 +1305,10 @@ private fun ObdDtcCard(
                         onClick = {
                             busy = true; message = null
                             scope.launch {
-                                val ok = ObdBluetoothManager.clearTroubleCodes()
+                                val res = ObdBluetoothManager.clearTroubleCodes()
                                 busy = false
-                                message = if (ok) "Cleared ✓" else "Clear failed"
-                                if (ok) codes = emptyList()
+                                res.onSuccess { message = "Cleared ✓"; codes = emptyList() }
+                                    .onFailure { message = it.message ?: "Clear failed" }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
@@ -1304,7 +1324,20 @@ private fun ObdDtcCard(
                 if (list != null && list.isNotEmpty()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         list.forEach { code ->
-                            Text(code, color = DashColors.Warning, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                            val dtc = ObdCodes.describe(code)
+                            Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                Text(
+                                    "${dtc.code} — ${dtc.title}",
+                                    color = DashColors.Warning,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    dtc.fix,
+                                    color = DashColors.TextSecondary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }
