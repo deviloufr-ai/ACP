@@ -86,8 +86,22 @@ fun Car3DPanel(modifier: Modifier = Modifier) {
 
     val frameCallback = remember {
         object : Choreographer.FrameCallback {
+            private var startNanos = 0L
             override fun doFrame(frameTimeNanos: Long) {
                 choreographer.postFrameCallback(this)
+                if (startNanos == 0L) startNanos = frameTimeNanos
+                // Drive any glTF animations baked into car.glb (e.g. "WheelSpin"),
+                // looping clip 0 on wall-clock time. Filament plays nothing on its
+                // own — without this the model is static.
+                modelViewer.animator?.let { animator ->
+                    if (animator.animationCount > 0) {
+                        val elapsed = (frameTimeNanos - startNanos) / 1_000_000_000.0
+                        val dur = animator.getAnimationDuration(0)
+                        val t = if (dur > 0f) (elapsed % dur).toFloat() else elapsed.toFloat()
+                        animator.applyAnimation(0, t)
+                        animator.updateBoneMatrices()
+                    }
+                }
                 modelViewer.render(frameTimeNanos)
             }
         }

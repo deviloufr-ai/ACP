@@ -1,0 +1,16 @@
+{
+  "name": "glb-edit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local tooling for inspecting and editing the launcher's GLB models (car.glb).",
+  "scripts": {
+    "inspect": "node scripts/inspect.mjs",
+    "animate": "node scripts/animate-rotate.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.1.0",
+    "@gltf-transform/extensions": "^4.1.0",
+    "@gltf-transform/functions": "^4.1.0"
+  }
+}

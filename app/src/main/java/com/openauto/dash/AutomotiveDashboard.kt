@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Navigation
@@ -89,6 +90,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -157,6 +160,7 @@ fun AutomotiveDashboard() {
 
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
+    var blockPagerSwipe by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     var showDevicePicker by remember { mutableStateOf(false) }
@@ -351,11 +355,13 @@ fun AutomotiveDashboard() {
         Box(modifier = Modifier.weight(1f)) {
             HorizontalPager(
                 state = pagerState,
+                userScrollEnabled = !blockPagerSwipe,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 DashboardPage(
                     pageItems = pages[page],
                     editing = editing,
+                    onModelTouch = { blockPagerSwipe = it },
                     appsByPackage = appsByPackage,
                     mediaState = mediaState,
                     mediaController = mediaController,
@@ -484,6 +490,10 @@ fun AutomotiveDashboard() {
                     AddChoiceRow(Icons.Filled.Speed, BuiltinKind.OBD_ALL.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_ALL))
+                    }
+                    AddChoiceRow(Icons.Filled.LocalGasStation, BuiltinKind.RANGE.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.RANGE))
                     }
                     AddChoiceRow(Icons.Filled.DirectionsCar, BuiltinKind.CAR3D.label) {
                         showWidgetMenu = false
@@ -712,6 +722,7 @@ private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
 private fun DashboardPage(
     pageItems: List<DashboardItem>,
     editing: Boolean,
+    onModelTouch: (Boolean) -> Unit,
     appsByPackage: Map<String, AppEntry>,
     mediaState: MediaState,
     mediaController: CarMediaController,
@@ -783,8 +794,26 @@ private fun DashboardPage(
                             onConnect = onConnectObd,
                             modifier = Modifier.fillMaxSize()
                         )
+                        BuiltinKind.RANGE -> RangeCard(
+                            obdData = obdData,
+                            connection = obdConnection,
+                            onConnect = onConnectObd,
+                            modifier = Modifier.fillMaxSize()
+                        )
                         BuiltinKind.CAR3D -> Box(
-                            modifier = Modifier.fillMaxSize().background(DashColors.Card)
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(DashColors.Card)
+                                // While a finger is on the model, block dashboard
+                                // swiping so touches only rotate/zoom the 3D car.
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                            onModelTouch(ev.changes.any { it.pressed })
+                                        }
+                                    }
+                                }
                         ) {
                             Car3DPanel(modifier = Modifier.fillMaxSize())
                         }
@@ -1398,6 +1427,61 @@ private fun DataRow(label: String, value: String) {
     ) {
         Text(label, color = DashColors.TextSecondary)
         Text(value, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// Citroën C4 Picasso rough figures for the estimate (until the CANbox gives the
+// real distance-to-empty).
+private const val TANK_LITERS = 60.0
+private const val AVG_L_PER_100KM = 6.5
+
+/** "How far before refill" — estimated from the OBD fuel level for now. */
+@Composable
+private fun RangeCard(
+    obdData: ObdData,
+    connection: ObdConnectionState,
+    onConnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val connected = connection == ObdConnectionState.CONNECTED
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("RANGE", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(10.dp))
+            if (!connected) {
+                Text("OBD not connected", color = DashColors.Muted)
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = onConnect,
+                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                ) { Text("Connect") }
+            } else {
+                val fuelPct = obdData.fuelLevelPct
+                if (fuelPct <= 0) {
+                    Text("Fuel level not reported by this car's OBD.", color = DashColors.Muted, textAlign = TextAlign.Center)
+                    Text("Real range will come from the CANbox once wired.", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                } else {
+                    val liters = fuelPct / 100.0 * TANK_LITERS
+                    val rangeKm = (liters / AVG_L_PER_100KM * 100).toInt()
+                    Text("$rangeKm km", color = DashColors.Speed, fontSize = 44.sp, fontWeight = FontWeight.Bold)
+                    Text("before refill (estimate)", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.height(12.dp))
+                    DataRow("Fuel level", "$fuelPct %")
+                    DataRow("Est. in tank", "%.0f / %.0f L".format(liters, TANK_LITERS))
+                    DataRow("Avg use", "%.1f L/100km".format(AVG_L_PER_100KM))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Estimated from OBD fuel level; the CANbox will give the real distance-to-empty once connected.",
+                        color = DashColors.Muted,
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
     }
 }
 

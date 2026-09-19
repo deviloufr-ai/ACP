@@ -14,6 +14,7 @@ enum class BuiltinKind(val label: String) {
     TELEMETRY("OBD telemetry"),
     OBD_DTC("OBD fault codes"),
     OBD_ALL("OBD all data"),
+    RANGE("Fuel & range"),
     CAR3D("3D car")
 }
 
