@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
@@ -55,6 +57,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -229,8 +232,21 @@ fun AutomotiveDashboard() {
         }
     }
 
+    // Auto-connect to the saved OBD adapter when permission is held and we're
+    // not already connected. Called on first launch and on every resume.
+    val autoConnectObd: () -> Unit = {
+        val state = ObdBluetoothManager.connectionState.value
+        if (state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR) {
+            val saved = ObdBluetoothManager.savedDeviceAddress()
+            val missingPerms = requiredBluetoothPermissions().any {
+                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (saved != null && !missingPerms) scope.launch { ObdBluetoothManager.connect(saved) }
+        }
+    }
+
     // Observe media; re-check notification access on resume so granting it in
-    // system settings takes effect without an app restart.
+    // system settings takes effect without an app restart. Also auto-connect OBD.
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         mediaController.start()
@@ -238,6 +254,7 @@ fun AutomotiveDashboard() {
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasMediaAccess = CarMediaController.hasNotificationAccess(context)
                 if (hasMediaAccess) mediaController.start()
+                autoConnectObd()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -246,6 +263,8 @@ fun AutomotiveDashboard() {
             mediaController.stop()
         }
     }
+
+    LaunchedEffect(Unit) { autoConnectObd() }
 
     LaunchedEffect(obdConnection) {
         while (obdConnection == ObdConnectionState.CONNECTED) {
@@ -311,6 +330,7 @@ fun AutomotiveDashboard() {
             obdConnection = obdConnection,
             editing = editing,
             onApps = { showAllApps = true },
+            onMaps = { SplitLauncher.launchAdjacent(context, "com.google.android.apps.maps") },
             onSplit = { showSplitPicker = true },
             onToggleEdit = { editing = !editing },
             onSystem = { showSystemDialog = true }
@@ -451,6 +471,14 @@ fun AutomotiveDashboard() {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.TELEMETRY))
                     }
+                    AddChoiceRow(Icons.Filled.Warning, BuiltinKind.OBD_DTC.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_DTC))
+                    }
+                    AddChoiceRow(Icons.Filled.Speed, BuiltinKind.OBD_ALL.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_ALL))
+                    }
                     AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
                         showWidgetMenu = false
                         addSystemWidget()
@@ -555,6 +583,7 @@ private fun TopBar(
     obdConnection: ObdConnectionState,
     editing: Boolean,
     onApps: () -> Unit,
+    onMaps: () -> Unit,
     onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
     onSystem: () -> Unit
@@ -722,6 +751,17 @@ private fun DashboardPage(
                             onConnect = onConnectObd,
                             onPickDevice = onPickDevice,
                             modifier = Modifier.width(440.dp).fillMaxHeight()
+                        )
+                        BuiltinKind.OBD_DTC -> ObdDtcCard(
+                            connection = obdConnection,
+                            onConnect = onConnectObd,
+                            modifier = Modifier.width(340.dp).fillMaxHeight()
+                        )
+                        BuiltinKind.OBD_ALL -> ObdAllCard(
+                            obdData = obdData,
+                            connection = obdConnection,
+                            onConnect = onConnectObd,
+                            modifier = Modifier.width(360.dp).fillMaxHeight()
                         )
                     }
 
@@ -1189,6 +1229,124 @@ private fun ObdCard(
                 }
             }
         }
+    }
+}
+
+/** Reads and clears OBD Diagnostic Trouble Codes (fault codes). */
+@Composable
+private fun ObdDtcCard(
+    connection: ObdConnectionState,
+    onConnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val connected = connection == ObdConnectionState.CONNECTED
+    var codes by remember { mutableStateOf<List<String>?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Text("FAULT CODES", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(10.dp))
+
+            if (!connected) {
+                Text("OBD not connected", color = DashColors.Muted)
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = onConnect,
+                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                ) { Text("Connect") }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        enabled = !busy,
+                        onClick = {
+                            busy = true; message = null
+                            scope.launch {
+                                val r = ObdBluetoothManager.readTroubleCodes()
+                                busy = false
+                                r.onSuccess { codes = it; message = if (it.isEmpty()) "No fault codes ✓" else null }
+                                    .onFailure { message = it.message ?: "Scan failed" }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                    ) { Text("Scan") }
+                    Button(
+                        enabled = !busy && codes?.isNotEmpty() == true,
+                        onClick = {
+                            busy = true; message = null
+                            scope.launch {
+                                val ok = ObdBluetoothManager.clearTroubleCodes()
+                                busy = false
+                                message = if (ok) "Cleared ✓" else "Clear failed"
+                                if (ok) codes = emptyList()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
+                    ) { Text("Clear") }
+                }
+                Spacer(Modifier.height(10.dp))
+                if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DashColors.Accent)
+                message?.let {
+                    Text(it, color = if (it.contains("fail", true)) DashColors.Warning else DashColors.Good)
+                    Spacer(Modifier.height(6.dp))
+                }
+                val list = codes
+                if (list != null && list.isNotEmpty()) {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        list.forEach { code ->
+                            Text(code, color = DashColors.Warning, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Shows every OBD value currently available. */
+@Composable
+private fun ObdAllCard(
+    obdData: ObdData,
+    connection: ObdConnectionState,
+    onConnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val connected = connection == ObdConnectionState.CONNECTED
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
+            Text("OBD DATA", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(10.dp))
+            if (!connected) {
+                Text("OBD not connected", color = DashColors.Muted)
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = onConnect,
+                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                ) { Text("Connect") }
+            } else {
+                DataRow("Speed", "${obdData.speedKmh} km/h")
+                DataRow("RPM", "${obdData.rpm}")
+                DataRow("Coolant", "${obdData.coolantTempC} °C")
+                DataRow("Intake air", "${obdData.intakeTempC} °C")
+                DataRow("Throttle", "${obdData.throttlePct} %")
+                DataRow("Engine load", "${obdData.engineLoadPct} %")
+                DataRow("Fuel level", "${obdData.fuelLevelPct} %")
+                DataRow("Battery", "%.1f V".format(obdData.voltage))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DataRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = DashColors.TextSecondary)
+        Text(value, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
     }
 }
 

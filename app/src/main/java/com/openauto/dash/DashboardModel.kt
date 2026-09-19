@@ -11,7 +11,9 @@ import org.json.JSONObject
 enum class BuiltinKind(val label: String) {
     NAVMAP("Map (MapLibre)"),
     MEDIA("Music player"),
-    TELEMETRY("OBD telemetry")
+    TELEMETRY("OBD telemetry"),
+    OBD_DTC("OBD fault codes"),
+    OBD_ALL("OBD all data")
 }
 
 /**

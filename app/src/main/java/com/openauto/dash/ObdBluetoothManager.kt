@@ -19,7 +19,12 @@ import java.util.UUID
 data class ObdData(
     val speedKmh: Int = 0,
     val rpm: Int = 0,
-    val coolantTempC: Int = 0
+    val coolantTempC: Int = 0,
+    val intakeTempC: Int = 0,
+    val throttlePct: Int = 0,
+    val engineLoadPct: Int = 0,
+    val fuelLevelPct: Int = 0,
+    val voltage: Double = 0.0
 )
 
 /** Connection lifecycle for the ELM327 adapter. */
@@ -171,12 +176,42 @@ object ObdBluetoothManager {
         val speed = sendCommand("010D")?.let { parseSpeed(it) }
         val rpm = sendCommand("010C")?.let { parseRpm(it) }
         val coolant = sendCommand("0105")?.let { parseCoolant(it) }
+        val intake = sendCommand("010F")?.let { tempFrom(it, "410F") }
+        val throttle = sendCommand("0111")?.let { percentFrom(it, "4111") }
+        val load = sendCommand("0104")?.let { percentFrom(it, "4104") }
+        val fuel = sendCommand("012F")?.let { percentFrom(it, "412F") }
+        val volt = sendCommand("ATRV")?.let { parseVoltage(it) }
 
         _data.value = _data.value.copy(
             speedKmh = speed ?: _data.value.speedKmh,
             rpm = rpm ?: _data.value.rpm,
-            coolantTempC = coolant ?: _data.value.coolantTempC
+            coolantTempC = coolant ?: _data.value.coolantTempC,
+            intakeTempC = intake ?: _data.value.intakeTempC,
+            throttlePct = throttle ?: _data.value.throttlePct,
+            engineLoadPct = load ?: _data.value.engineLoadPct,
+            fuelLevelPct = fuel ?: _data.value.fuelLevelPct,
+            voltage = volt ?: _data.value.voltage
         )
+    }
+
+    /**
+     * Reads stored Diagnostic Trouble Codes (OBD mode 03). Returns the decoded
+     * code list (e.g. "P0133"), empty if none, or a failure with a message.
+     */
+    suspend fun readTroubleCodes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        if (_connectionState.value != ObdConnectionState.CONNECTED) {
+            return@withContext Result.failure(IllegalStateException("OBD not connected"))
+        }
+        val response = sendCommand("03")
+            ?: return@withContext Result.failure(IllegalStateException("No response from adapter"))
+        Result.success(parseDtcs(response))
+    }
+
+    /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
+    suspend fun clearTroubleCodes(): Boolean = withContext(Dispatchers.IO) {
+        if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext false
+        val response = sendCommand("04")?.uppercase() ?: return@withContext false
+        response.contains("44") || response.contains("OK")
     }
 
     /**
@@ -231,6 +266,49 @@ object ObdBluetoothManager {
         val bytes = dataBytes(response, "4105") ?: return null
         val a = bytes.firstOrNull() ?: return null
         return a - 40
+    }
+
+    /** Temperature PIDs: value = A - 40 (°C). */
+    private fun tempFrom(response: String, header: String): Int? {
+        val a = dataBytes(response, header)?.firstOrNull() ?: return null
+        return a - 40
+    }
+
+    /** Percentage PIDs: value = A * 100 / 255. */
+    private fun percentFrom(response: String, header: String): Int? {
+        val a = dataBytes(response, header)?.firstOrNull() ?: return null
+        return (a * 100) / 255
+    }
+
+    /** Parses the ELM327 `ATRV` reply, e.g. "12.3V". */
+    private fun parseVoltage(response: String): Double? =
+        Regex("([0-9]+\\.?[0-9]*)").find(response)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+
+    /** Decodes a mode-03 reply into DTC strings like "P0133". */
+    private fun parseDtcs(response: String): List<String> {
+        val hex = response.uppercase().replace(Regex("[^0-9A-F]"), "")
+        val index = hex.indexOf("43")
+        if (index < 0) return emptyList()
+        val payload = hex.substring(index + 2)
+        val codes = mutableListOf<String>()
+        var i = 0
+        while (i + 4 <= payload.length) {
+            val a = payload.substring(i, i + 2).toIntOrNull(16) ?: break
+            val b = payload.substring(i + 2, i + 4).toIntOrNull(16) ?: break
+            i += 4
+            if (a == 0 && b == 0) continue
+            codes.add(decodeDtc(a, b))
+        }
+        return codes.distinct()
+    }
+
+    private fun decodeDtc(a: Int, b: Int): String {
+        val letter = charArrayOf('P', 'C', 'B', 'U')[(a and 0xC0) shr 6]
+        val d1 = (a and 0x30) shr 4
+        val d2 = a and 0x0F
+        val d3 = (b and 0xF0) shr 4
+        val d4 = b and 0x0F
+        return "%c%d%X%X%X".format(letter, d1, d2, d3, d4)
     }
 
     /** Extracts the data bytes that follow [header] (e.g. "410D") in [response]. */
