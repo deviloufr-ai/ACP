@@ -120,7 +120,12 @@ dependencies {
     // over the head unit's root wireless-ADB socket (no Magisk/su needed).
     implementation("dev.mobile:dadb:1.2.10")
     // MapLibre GL — free/open-source map (OpenFreeMap style, no token/API key).
-    implementation("org.maplibre.gl:android-sdk:11.11.0")
+    // Exclude its bundled GeoJSON/Turf so the navigation SDK's newer 7.x ones
+    // provide those classes (otherwise duplicate-class build failure).
+    implementation("org.maplibre.gl:android-sdk:11.11.0") {
+        exclude(group = "org.maplibre.gl", module = "android-sdk-geojson")
+        exclude(group = "org.maplibre.gl", module = "android-sdk-turf")
+    }
     // MapLibre Navigation — free turn-by-turn (routing via a free Valhalla server).
     implementation("org.maplibre.navigation:navigation-core:5.0.0-pre8")
     implementation("org.maplibre.navigation:navigation-ui-android:5.0.0-pre8")
