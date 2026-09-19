@@ -462,19 +462,20 @@ fun AutomotiveDashboard() {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Install OpenAuto Dash into /system/priv-app so it runs as a " +
-                            "privileged app and can embed the real Google Maps app — with " +
-                            "navigation — in the Maps tile, like OEM car launchers. It tries " +
-                            "the head unit's internal root ADB (127.0.0.1:${AdbInstaller.DEFAULT_PORT}) " +
-                            "first, then su. Reboot afterwards to activate it.",
+                        "Install OpenAuto Dash as a privileged system app so it can embed " +
+                            "the real Google Maps app — with navigation — in the Maps tile, " +
+                            "like OEM car launchers. With Magisk it installs systemlessly (a " +
+                            "Magisk module — works even though /system is full); otherwise it " +
+                            "uses su, or the internal root ADB (:${AdbInstaller.DEFAULT_PORT}). " +
+                            "Reboot afterwards to activate it.",
                         color = DashColors.TextSecondary,
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = when {
-                            !rootChecked -> "Checking su…"
-                            rootAvailable -> "su available ✓ (ADB :${AdbInstaller.DEFAULT_PORT} also tried)"
-                            else -> "No su — will use internal root ADB (:${AdbInstaller.DEFAULT_PORT})."
+                            !rootChecked -> "Checking root…"
+                            rootAvailable -> "Root (su) available ✓ — will use Magisk module if present"
+                            else -> "No su — will try internal root ADB (:${AdbInstaller.DEFAULT_PORT})."
                         },
                         color = if (rootAvailable) DashColors.Good else DashColors.Muted,
                         style = MaterialTheme.typography.labelLarge
