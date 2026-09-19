@@ -129,6 +129,10 @@ dependencies {
     // HTTP + JSON for the free routing/geocoding requests.
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
+    // Filament — real-time 3D renderer for the car model (glTF/GLB).
+    implementation("com.google.android.filament:filament-android:1.71.5")
+    implementation("com.google.android.filament:gltfio-android:1.71.5")
+    implementation("com.google.android.filament:filament-utils-android:1.71.5")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

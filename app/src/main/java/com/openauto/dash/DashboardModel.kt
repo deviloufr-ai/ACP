@@ -13,7 +13,8 @@ enum class BuiltinKind(val label: String) {
     MEDIA("Music player"),
     TELEMETRY("OBD telemetry"),
     OBD_DTC("OBD fault codes"),
-    OBD_ALL("OBD all data")
+    OBD_ALL("OBD all data"),
+    CAR3D("3D car")
 }
 
 /**

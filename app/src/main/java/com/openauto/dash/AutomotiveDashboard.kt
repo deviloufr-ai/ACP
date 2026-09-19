@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
@@ -484,6 +485,10 @@ fun AutomotiveDashboard() {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_ALL))
                     }
+                    AddChoiceRow(Icons.Filled.DirectionsCar, BuiltinKind.CAR3D.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAR3D))
+                    }
                     AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
                         showWidgetMenu = false
                         addSystemWidget()
@@ -778,6 +783,11 @@ private fun DashboardPage(
                             onConnect = onConnectObd,
                             modifier = Modifier.fillMaxSize()
                         )
+                        BuiltinKind.CAR3D -> Box(
+                            modifier = Modifier.fillMaxSize().background(DashColors.Card)
+                        ) {
+                            Car3DPanel(modifier = Modifier.fillMaxSize())
+                        }
                     }
 
                     is DashboardItem.SystemWidget -> Card(
