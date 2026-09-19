@@ -121,6 +121,12 @@ dependencies {
     implementation("dev.mobile:dadb:1.2.10")
     // MapLibre GL — free/open-source map (OpenFreeMap style, no token/API key).
     implementation("org.maplibre.gl:android-sdk:11.11.0")
+    // MapLibre Navigation — free turn-by-turn (routing via a free Valhalla server).
+    implementation("org.maplibre.navigation:navigation-core:5.0.0-pre8")
+    implementation("org.maplibre.navigation:navigation-ui-android:5.0.0-pre8")
+    // HTTP + JSON for the free routing/geocoding requests.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
