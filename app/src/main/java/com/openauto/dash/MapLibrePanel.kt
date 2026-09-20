@@ -2,9 +2,8 @@ package com.openauto.dash
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -76,12 +75,9 @@ import org.maplibre.android.style.layers.FillExtrusionLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.VectorSource
 import org.maplibre.geojson.Point
-import org.maplibre.navigation.android.navigation.ui.v5.NavigationLauncher
-import org.maplibre.navigation.android.navigation.ui.v5.NavigationLauncherOptions
 import org.maplibre.navigation.android.navigation.ui.v5.route.NavigationMapRoute
 import org.maplibre.navigation.core.models.DirectionsResponse
 import org.maplibre.navigation.core.models.DirectionsRoute
-import org.maplibre.navigation.core.models.RouteOptions
 import java.net.URLEncoder
 import java.util.Locale
 
@@ -133,22 +129,31 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var navRoute by remember { mutableStateOf<NavigationMapRoute?>(null) }
     var route by remember { mutableStateOf<DirectionsRoute?>(null) }
+    var destination by remember { mutableStateOf<Point?>(null) }
     var query by remember { mutableStateOf("") }
     var info by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
 
     fun clearRoute() {
-        route = null; info = null; error = null
+        route = null; destination = null; info = null; error = null
         navRoute?.removeRoute()
         mapRef?.markers?.forEach { mapRef?.removeMarker(it) }
     }
 
     fun routeTo(dest: Point) {
-        val map = mapRef ?: return
+        // Destination is set regardless of GPS so "Start" (Google Maps handoff)
+        // always works; the in-app route preview below just needs our own fix.
+        destination = dest
+        info = null
+        val map = mapRef
         @SuppressLint("MissingPermission")
-        val loc = map.locationComponent.lastKnownLocation
-        if (loc == null) { error = "Waiting for GPS location…"; return }
+        val loc = map?.locationComponent?.lastKnownLocation
+        if (map == null || loc == null) {
+            loading = false
+            error = "GPS not ready — Start still opens Google Maps"
+            return
+        }
         val origin = Point.fromLngLat(loc.longitude, loc.latitude)
         error = null; loading = true
         scope.launch {
@@ -159,19 +164,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
             result.onSuccess { resp ->
                 val first = resp.routes.firstOrNull()
                 if (first == null) { error = "No route found"; return@onSuccess }
-                route = first.copy(
-                    routeOptions = RouteOptions(
-                        baseUrl = "https://valhalla.routing",
-                        profile = "valhalla",
-                        user = "valhalla",
-                        accessToken = "valhalla",
-                        voiceInstructions = true,
-                        bannerInstructions = true,
-                        language = Locale.getDefault().language,
-                        coordinates = listOf(origin, dest),
-                        requestUuid = "0000-0000-0000-0000"
-                    )
-                )
+                route = first
                 navRoute?.addRoutes(resp.routes)
                 info = formatEta(first.distance, first.duration)
                 map.animateCamera(
@@ -184,11 +177,13 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
     fun searchAndRoute() {
         val q = query.trim()
         if (q.isEmpty() || loading) return
-        error = null; loading = true
+        error = null; info = null; loading = true
         scope.launch {
             val dest = withContext(Dispatchers.IO) { runCatching { geocode(q) }.getOrNull() }
             if (dest == null) { loading = false; error = "Address not found"; return@launch }
-            mapRef?.addMarker(MarkerOptions().position(LatLng(dest.latitude(), dest.longitude())))
+            val ll = LatLng(dest.latitude(), dest.longitude())
+            mapRef?.addMarker(MarkerOptions().position(ll))
+            mapRef?.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 14.0))
             loading = false
             routeTo(dest)
         }
@@ -273,10 +268,11 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
             }
         }
 
-        // Route info + Start (fullscreen turn-by-turn) / error.
+        // Route info / error + Start (hands off to Google Maps navigation).
         val currentInfo = info
         val currentError = error
-        if (currentInfo != null || currentError != null) {
+        val hasDest = destination != null
+        if (currentInfo != null || currentError != null || hasDest) {
             Surface(
                 color = OverlayBg,
                 shape = RoundedCornerShape(16.dp),
@@ -288,22 +284,12 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = currentInfo ?: currentError ?: "",
+                        text = currentInfo ?: currentError ?: "Ready to navigate",
                         color = if (currentError != null) Color(0xFFF28B82) else Color.White
                     )
-                    if (currentInfo != null && route != null) {
+                    if (hasDest) {
                         Button(
-                            onClick = {
-                                val activity = context.findActivity()
-                                val r = route
-                                if (activity != null && r != null) {
-                                    val options = NavigationLauncherOptions.builder()
-                                        .directionsRoute(r)
-                                        .shouldSimulateRoute(false)
-                                        .build()
-                                    NavigationLauncher.startNavigation(activity, options)
-                                }
-                            },
+                            onClick = { destination?.let { startGoogleNavigation(context, it) } },
                             colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Color(0xFF0B0C0F))
                         ) {
                             Icon(Icons.Filled.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -365,13 +351,25 @@ private fun hasLocationPerm(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
-private fun Context.findActivity(): Activity? {
-    var c: Context? = this
-    while (c is ContextWrapper) {
-        if (c is Activity) return c
-        c = c.baseContext
+/**
+ * Hand off turn-by-turn to Google Maps (or any nav app) via the free
+ * `google.navigation:` intent — no API key, no billing (that's the Directions API,
+ * not this). This is how Car Nebula and other launchers do navigation. Falls back
+ * to a generic `geo:` intent if Google Maps isn't installed.
+ */
+private fun startGoogleNavigation(context: Context, dest: Point) {
+    val lat = dest.latitude()
+    val lng = dest.longitude()
+    val nav = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("google.navigation:q=$lat,$lng&mode=d")).apply {
+        setPackage("com.google.android.apps.maps")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    return null
+    val started = runCatching { context.startActivity(nav) }.isSuccess
+    if (!started) {
+        val geo = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:$lat,$lng?q=$lat,$lng"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(geo) }
+    }
 }
 
 /** Geocodes a free-text address to a point via Nominatim (free, no key). */
