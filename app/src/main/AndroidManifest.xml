@@ -10,6 +10,14 @@
     <!-- Permission to bind real app widgets -->
     <uses-permission android:name="android.permission.BIND_APPWIDGET" tools:ignore="ProtectedPermissions" />
 
+    <!-- Embed another app (Google Maps) on a VirtualDisplay we own:
+         ADD_TRUSTED_DISPLAY lets a privileged app create a trusted virtual
+         display so activities can launch on it (and take input); INJECT_EVENTS
+         is a best-effort touch-forward path. Both are signature|privileged and
+         only take effect for the /system/priv-app install. -->
+    <uses-permission android:name="android.permission.ADD_TRUSTED_DISPLAY" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.INJECT_EVENTS" tools:ignore="ProtectedPermissions" />
+
     <!-- Location Permission for Maps -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
