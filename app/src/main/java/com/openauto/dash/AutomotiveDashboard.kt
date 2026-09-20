@@ -1445,78 +1445,100 @@ private fun DataRow(label: String, value: String) {
  */
 @Composable
 private fun CanMonitorCard(modifier: Modifier = Modifier) {
-    val entries by McuReader.entries.collectAsState()
+    val scope = rememberCoroutineScope()
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
     }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) { now = System.currentTimeMillis(); delay(400) }
+
+    // Two-capture differential: sample many frames while CLOSED, then while OPEN.
+    // Keep only rows that are stable within each state (≤2 distinct values) but
+    // disjoint between states — that filters out drifting analog sensors and
+    // leaves the discrete toggles (door/light/etc.).
+    var closed by remember { mutableStateOf<Map<String, Set<String>>?>(null) }
+    var opened by remember { mutableStateOf<Map<String, Set<String>>?>(null) }
+    var capturing by remember { mutableStateOf<String?>(null) }
+
+    fun capture(which: String) {
+        capturing = which
+        scope.launch {
+            val acc = HashMap<String, MutableSet<String>>()
+            val end = System.currentTimeMillis() + 3000
+            while (System.currentTimeMillis() < end) {
+                McuReader.entries.value.forEach { e ->
+                    acc.getOrPut(e.key) { mutableSetOf() }.add(e.hex)
+                }
+                delay(70)
+            }
+            if (which == "A") closed = acc else opened = acc
+            capturing = null
+        }
     }
-    // Freeze captures a baseline; while frozen we show ONLY rows that differ from
-    // it — so after freezing (doors closed) opening a door surfaces exactly the
-    // door row.
-    var baseline by remember { mutableStateOf<Map<String, String>?>(null) }
+
+    val result = remember(closed, opened) {
+        val c = closed
+        val o = opened
+        if (c == null || o == null) emptyList()
+        else (c.keys intersect o.keys).mapNotNull { k ->
+            val cs = c.getValue(k)
+            val os = o.getValue(k)
+            if (cs.size <= 2 && os.size <= 2 && cs.intersect(os).isEmpty()) {
+                Triple(k, cs.joinToString(" / "), os.joinToString(" / "))
+            } else null
+        }.sortedBy { it.first }
+    }
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("CAN MONITOR", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        if (baseline == null) "Close all doors, tap Freeze, then open a door."
-                        else "Changed since Freeze (open a door):",
-                        color = DashColors.Muted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+            Text("CAN MONITOR — find a signal", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(
+                "Doors CLOSED → Capture A. Then OPEN the door → Capture B. Only discrete signals that differ are shown.",
+                color = DashColors.Muted,
+                style = MaterialTheme.typography.labelSmall
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(
-                    onClick = {
-                        baseline = if (baseline == null) entries.associate { it.key to it.hex } else null
-                    },
+                    onClick = { capture("A") },
+                    enabled = capturing == null,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (baseline == null) DashColors.Accent else DashColors.CardHi,
-                        contentColor = if (baseline == null) DashColors.Background else DashColors.TextPrimary
+                        containerColor = if (closed != null) DashColors.Good else DashColors.Accent,
+                        contentColor = DashColors.Background
                     )
-                ) { Text(if (baseline == null) "Freeze" else "Live") }
+                ) { Text(if (capturing == "A") "…" else if (closed != null) "A ✓ closed" else "Capture A") }
+                Button(
+                    onClick = { capture("B") },
+                    enabled = capturing == null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (opened != null) DashColors.Good else DashColors.Accent,
+                        contentColor = DashColors.Background
+                    )
+                ) { Text(if (capturing == "B") "…" else if (opened != null) "B ✓ open" else "Capture B") }
+                if (closed != null || opened != null) {
+                    TextButton(onClick = { closed = null; opened = null }) {
+                        Text("Reset", color = DashColors.Muted)
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
 
-            val base = baseline
-            val shown = if (base == null) entries else entries.filter { base[it.key] != it.hex }
             when {
-                entries.isEmpty() ->
-                    Text("No MCU data yet (needs root; tailing mcu_services…).", color = DashColors.Muted)
-                base != null && shown.isEmpty() ->
-                    Text("No changes since Freeze — open a door now.", color = DashColors.Muted)
+                closed == null || opened == null ->
+                    Text("Capture A (closed), then B (open) to compare.", color = DashColors.Muted)
+                result.isEmpty() ->
+                    Text("No clean discrete difference. Do it with the engine OFF so sensors don't drift, and keep the door open during Capture B.", color = DashColors.Muted)
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    lazyColumnItems(shown, key = { it.key }) { e ->
-                        val hot = now - e.changedAt < 2500
-                        val highlight = base != null || hot
+                    lazyColumnItems(result, key = { it.first }) { row ->
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (highlight) DashColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
-                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                                .background(DashColors.Accent.copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(e.key, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                                Text(e.hex, color = if (highlight) DashColors.Accent else DashColors.TextPrimary, style = MaterialTheme.typography.bodySmall)
-                            }
-                            if (base != null) {
-                                base[e.key]?.let {
-                                    Text("was: $it", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
+                            Text(row.first, color = DashColors.TextPrimary, fontWeight = FontWeight.Bold)
+                            Text("closed: ${row.second}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                            Text("open:   ${row.third}", color = DashColors.Accent, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
