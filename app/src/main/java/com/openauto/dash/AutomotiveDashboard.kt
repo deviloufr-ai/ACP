@@ -11,14 +11,19 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -61,6 +66,7 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Widgets
@@ -91,13 +97,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -115,6 +126,9 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Android Auto ("Coolwalk") inspired palette: near-black backdrop, elevated
@@ -257,6 +271,7 @@ fun AutomotiveDashboard() {
     // system settings takes effect without an app restart. Also auto-connect OBD.
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
+        McuReader.setContext(context)
         mediaController.start()
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -376,6 +391,11 @@ fun AutomotiveDashboard() {
                     onPickDevice = onPickDevice,
                     onLaunchApp = onLaunchApp,
                     onRemove = { index -> removeAt(page, index) },
+                    onResize = { index, weight ->
+                        mutatePage(page) { list ->
+                            list.mapIndexed { i, it -> if (i == index) it.withWeight(weight) else it }
+                        }
+                    },
                     onAdd = { onAdd(page) }
                 )
             }
@@ -745,12 +765,22 @@ private fun DashboardPage(
     onPickDevice: () -> Unit,
     onLaunchApp: (String) -> Unit,
     onRemove: (Int) -> Unit,
+    onResize: (Int, Float) -> Unit,
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     // Side-by-side tiles that fill the screen (tuned for 1280x720). Widgets take
-    // equal weighted shares of the width so they use most of the space; app
-    // shortcuts stay compact. Swiping moves between the 3 dashboards.
+    // weighted shares of the width (adjustable via the resize handle in edit
+    // mode); app shortcuts stay compact. Swiping moves between the 3 dashboards.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val rowWidthPx = with(density) { maxWidth.toPx() }
+        val totalWeight = pageItems.filterNot { it is DashboardItem.AppShortcut }
+            .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
+        // How much weight a 1px horizontal drag represents (relative resize; the
+        // fixed-width shortcuts/AddTile make this an approximation, which is fine).
+        val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -759,10 +789,22 @@ private fun DashboardPage(
         verticalAlignment = Alignment.CenterVertically
     ) {
         pageItems.forEachIndexed { index, item ->
+            val resizable = item !is DashboardItem.AppShortcut
             val tileModifier =
                 if (item is DashboardItem.AppShortcut) Modifier.width(104.dp).fillMaxHeight()
-                else Modifier.weight(1f).fillMaxHeight()
-            EditableTile(modifier = tileModifier, editing = editing, onRemove = { onRemove(index) }) {
+                else Modifier.weight(item.tileWeight()).fillMaxHeight()
+            EditableTile(
+                modifier = tileModifier,
+                editing = editing,
+                resizable = resizable,
+                onRemove = { onRemove(index) },
+                onResizeActive = onModelTouch,
+                onResizeBy = { deltaPx ->
+                    val next = (item.tileWeight() + deltaPx * weightPerPx)
+                        .coerceIn(DashboardStore.MIN_TILE_WEIGHT, DashboardStore.MAX_TILE_WEIGHT)
+                    onResize(index, next)
+                }
+            ) {
                 when (item) {
                     is DashboardItem.AppShortcut -> Box(
                         modifier = Modifier.fillMaxSize(),
@@ -849,14 +891,23 @@ private fun DashboardPage(
             AddTile(onClick = onAdd)
         }
     }
+    }
 }
 
-/** Wraps a tile, overlaying a remove (×) badge while [editing]. */
+/**
+ * Wraps a tile, overlaying a remove (×) badge while [editing]. For [resizable]
+ * tiles it also shows a drag handle on the right edge that widens/narrows the
+ * tile; horizontal drags there are reported via [onResizeBy] (pixels) and
+ * [onResizeActive] toggles the pager swipe lock so the drag isn't stolen.
+ */
 @Composable
 private fun EditableTile(
     modifier: Modifier = Modifier,
     editing: Boolean,
+    resizable: Boolean = false,
     onRemove: () -> Unit,
+    onResizeActive: (Boolean) -> Unit = {},
+    onResizeBy: (Float) -> Unit = {},
     content: @Composable () -> Unit
 ) {
     Box(modifier = modifier) {
@@ -874,6 +925,36 @@ private fun EditableTile(
                 )
             ) {
                 Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+            }
+            if (resizable) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 2.dp)
+                        .width(26.dp)
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(DashColors.Accent.copy(alpha = 0.85f))
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = { onResizeActive(true) },
+                                onDragEnd = { onResizeActive(false) },
+                                onDragCancel = { onResizeActive(false) },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onResizeBy(dragAmount.x)
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SwapHoriz,
+                        contentDescription = "Resize width",
+                        tint = DashColors.Background,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -1246,41 +1327,24 @@ private fun ObdCard(
 ) {
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            HudStat(
-                label = "Speed",
-                value = if (connected) obdData.speedKmh.toString() else "--",
-                unit = "km/h",
-                valueColor = when {
-                    !connected -> DashColors.Muted
-                    obdData.speedKmh > SPEED_WARNING_KMH -> DashColors.Warning
-                    else -> DashColors.Speed
-                }
-            )
-            HudStat(
-                label = "RPM",
-                value = if (connected) obdData.rpm.toString() else "--",
-                unit = "rpm",
-                valueColor = if (connected) DashColors.Rpm else DashColors.Muted
-            )
-            HudStat(
-                label = "Coolant",
-                value = if (connected) obdData.coolantTempC.toString() else "--",
-                unit = "°C",
-                valueColor = if (connected) DashColors.Good else DashColors.Muted
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+            // Header: title + live connection status / connect button.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "TELEMETRY",
+                    color = DashColors.Accent,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
                 if (connected) {
-                    // Connected: no Connect button, just a subtle status + change link.
-                    Text("Connected", color = DashColors.Good, fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = onPickDevice) {
-                        Text("Change adapter", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    TextButton(onClick = onPickDevice, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        Icon(Icons.Filled.BluetoothConnected, null, tint = DashColors.Good, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Live", color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     Button(
@@ -1290,25 +1354,274 @@ private fun ObdCard(
                             containerColor = DashColors.Accent,
                             contentColor = DashColors.Background
                         ),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Bluetooth,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(if (connection == ObdConnectionState.CONNECTING) "…" else "Connect")
                     }
-                    TextButton(onClick = onPickDevice) {
-                        Text(
-                            "Change adapter",
-                            color = DashColors.Muted,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
+
+            // The two racing gauges fill most of the card, side by side.
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnalogGauge(
+                    value = if (connected) obdData.speedKmh.toFloat() else 0f,
+                    maxValue = 220f,
+                    valueText = if (connected) obdData.speedKmh.toString() else "--",
+                    label = "SPEED",
+                    unit = "km/h",
+                    accent = DashColors.Speed,
+                    redlineAccent = DashColors.Warning,
+                    redlineFraction = SPEED_WARNING_KMH / 220f,
+                    dimmed = !connected,
+                    modifier = Modifier.weight(1.15f).fillMaxHeight()
+                )
+                AnalogGauge(
+                    value = if (connected) obdData.rpm.toFloat() else 0f,
+                    maxValue = 7000f,
+                    valueText = if (connected) obdData.rpm.toString() else "--",
+                    label = "RPM",
+                    unit = "rpm",
+                    accent = DashColors.Rpm,
+                    redlineAccent = DashColors.Warning,
+                    redlineFraction = 0.82f,
+                    dimmed = !connected,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Secondary readouts as compact meter chips.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MeterChip(
+                    label = "Coolant",
+                    valueText = if (connected) "${obdData.coolantTempC}°" else "--",
+                    fraction = (obdData.coolantTempC / 120f),
+                    color = coolantColor(obdData.coolantTempC),
+                    dimmed = !connected,
+                    modifier = Modifier.weight(1f)
+                )
+                MeterChip(
+                    label = "Load",
+                    valueText = if (connected) "${obdData.engineLoadPct}%" else "--",
+                    fraction = obdData.engineLoadPct / 100f,
+                    color = DashColors.Accent,
+                    dimmed = !connected,
+                    modifier = Modifier.weight(1f)
+                )
+                MeterChip(
+                    label = "Battery",
+                    valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
+                    fraction = ((obdData.voltage - 11.0) / 4.0).toFloat(),
+                    color = if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning,
+                    dimmed = !connected,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+private fun coolantColor(tempC: Int): Color = when {
+    tempC >= 105 -> DashColors.Warning
+    tempC >= 75 -> DashColors.Good
+    else -> DashColors.Speed
+}
+
+/**
+ * A racing-style analog gauge: a 270° dark dial with tick marks, a coloured
+ * sweep arc (turning red past [redlineFraction]), an animated needle and a big
+ * digital readout in the middle. Scales to whatever size the tile gives it.
+ */
+@Composable
+private fun AnalogGauge(
+    value: Float,
+    maxValue: Float,
+    valueText: String,
+    label: String,
+    unit: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    redlineAccent: Color = DashColors.Warning,
+    redlineFraction: Float = 0.8f,
+    dimmed: Boolean = false,
+    majorTicks: Int = 9
+) {
+    val target = (value / maxValue).coerceIn(0f, 1f)
+    val frac by animateFloatAsState(
+        targetValue = if (dimmed) 0f else target,
+        animationSpec = tween(durationMillis = 500),
+        label = "gauge"
+    )
+    val startAngle = 135f      // 7:30 position (Compose: 0° = 3 o'clock, CW positive)
+    val sweepTotal = 270f
+    val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
+    val needleColor = if (dimmed) DashColors.Muted else sweepColor
+
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        val gaugePx = min(maxWidth.value, maxHeight.value)
+        val valueSize = (gaugePx * 0.20f).coerceIn(16f, 46f).sp
+        val unitSize = (gaugePx * 0.075f).coerceIn(8f, 14f).sp
+        val labelSize = (gaugePx * 0.085f).coerceIn(9f, 15f).sp
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val stroke = size.minDimension * 0.085f
+            val radius = (size.minDimension - stroke) / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val topLeft = Offset(center.x - radius, center.y - radius)
+            val arcSize = Size(radius * 2f, radius * 2f)
+
+            // Base track.
+            drawArc(
+                color = DashColors.CardHi,
+                startAngle = startAngle,
+                sweepAngle = sweepTotal,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+            // Dim redline zone on the track.
+            drawArc(
+                color = redlineAccent.copy(alpha = 0.35f),
+                startAngle = startAngle + sweepTotal * redlineFraction,
+                sweepAngle = sweepTotal * (1f - redlineFraction),
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+            // Active sweep (glow underlay + solid).
+            if (frac > 0f) {
+                drawArc(
+                    color = sweepColor.copy(alpha = 0.25f),
+                    startAngle = startAngle,
+                    sweepAngle = sweepTotal * frac,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
+                )
+                drawArc(
+                    color = sweepColor,
+                    startAngle = startAngle,
+                    sweepAngle = sweepTotal * frac,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round)
+                )
+            }
+            // Tick marks.
+            val tickOuter = radius - stroke * 0.6f
+            val tickInner = radius - stroke * 1.5f
+            for (i in 0 until majorTicks) {
+                val a = Math.toRadians((startAngle + sweepTotal * i / (majorTicks - 1)).toDouble())
+                val ca = cos(a).toFloat()
+                val sa = sin(a).toFloat()
+                drawLine(
+                    color = DashColors.TextSecondary.copy(alpha = 0.6f),
+                    start = Offset(center.x + ca * tickInner, center.y + sa * tickInner),
+                    end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
+                    strokeWidth = stroke * 0.16f,
+                    cap = StrokeCap.Round
+                )
+            }
+            // Needle + hub.
+            val needleA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
+            val nx = cos(needleA).toFloat()
+            val ny = sin(needleA).toFloat()
+            val needleLen = radius - stroke * 0.4f
+            drawLine(
+                color = needleColor,
+                start = Offset(center.x - nx * radius * 0.12f, center.y - ny * radius * 0.12f),
+                end = Offset(center.x + nx * needleLen, center.y + ny * needleLen),
+                strokeWidth = stroke * 0.35f,
+                cap = StrokeCap.Round
+            )
+            drawCircle(color = DashColors.Card, radius = stroke * 0.9f, center = center)
+            drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
+        }
+
+        // Digital readout in the middle.
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(top = gaugePx.times(0.10f).dp)
+        ) {
+            Text(
+                text = valueText,
+                color = if (dimmed) DashColors.Muted else DashColors.TextPrimary,
+                fontSize = valueSize,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(text = unit, color = DashColors.Muted, fontSize = unitSize)
+            Spacer(Modifier.height(2.dp))
+            Text(text = label, color = accent, fontSize = labelSize, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** Small labelled meter: value on top, a rounded progress track below. */
+@Composable
+private fun MeterChip(
+    label: String,
+    valueText: String,
+    fraction: Float,
+    color: Color,
+    dimmed: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(DashColors.CardHi)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, color = DashColors.TextSecondary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            Text(
+                valueText,
+                color = if (dimmed) DashColors.Muted else DashColors.TextPrimary,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(5.dp)
+                .clip(CircleShape)
+                .background(DashColors.Background)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (dimmed) 0f else fraction.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(color)
+            )
         }
     }
 }
@@ -1420,27 +1733,23 @@ private fun ObdAllCard(
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
                 ) { Text("Connect") }
             } else {
-                DataRow("Speed", "${obdData.speedKmh} km/h")
-                DataRow("RPM", "${obdData.rpm}")
-                DataRow("Coolant", "${obdData.coolantTempC} °C")
-                DataRow("Intake air", "${obdData.intakeTempC} °C")
-                DataRow("Throttle", "${obdData.throttlePct} %")
-                DataRow("Engine load", "${obdData.engineLoadPct} %")
-                DataRow("Fuel level", "${obdData.fuelLevelPct} %")
-                DataRow("Battery", "%.1f V".format(obdData.voltage))
+                MeterChip("Speed", "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("RPM", "${obdData.rpm}", obdData.rpm / 7000f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Coolant", "${obdData.coolantTempC} °C", obdData.coolantTempC / 120f, coolantColor(obdData.coolantTempC), false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Intake air", "${obdData.intakeTempC} °C", obdData.intakeTempC / 80f, DashColors.Accent, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Throttle", "${obdData.throttlePct} %", obdData.throttlePct / 100f, DashColors.Accent, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Engine load", "${obdData.engineLoadPct} %", obdData.engineLoadPct / 100f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Fuel level", "${obdData.fuelLevelPct} %", obdData.fuelLevelPct / 100f, DashColors.Good, false, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                MeterChip("Battery", "%.1f V".format(obdData.voltage), ((obdData.voltage - 11.0) / 4.0).toFloat(), if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning, false, Modifier.fillMaxWidth())
             }
         }
-    }
-}
-
-@Composable
-private fun DataRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = DashColors.TextSecondary)
-        Text(value, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1609,7 +1918,12 @@ private fun CanMonitorCard(modifier: Modifier = Modifier) {
 private const val TANK_LITERS = 60.0
 private const val AVG_L_PER_100KM = 6.5
 
-/** "How far before refill" — estimated from the OBD fuel level for now. */
+/**
+ * Fuel & range as a radial gauge. Fuel level comes from the **CANbox** (learned
+ * via the finder) when available — the C4 Picasso's OBD doesn't report it — and
+ * falls back to the OBD fuel PID if that ever works. Range is estimated from the
+ * tank size and average consumption until the CANbox gives a real distance.
+ */
 @Composable
 private fun RangeCard(
     obdData: ObdData,
@@ -1617,56 +1931,209 @@ private fun RangeCard(
     onConnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val connected = connection == ObdConnectionState.CONNECTED
+    // The CANbox stream (needs root) is the real fuel source; keep it running
+    // while this card is on screen so the learned byte decodes live.
+    DisposableEffect(Unit) {
+        McuReader.start()
+        onDispose { McuReader.stop() }
+    }
+    val canFuel by McuReader.fuelPercent.collectAsState()
+    val obdConnected = connection == ObdConnectionState.CONNECTED
+    val obdFuel = if (obdConnected) obdData.fuelLevelPct else 0
+
+    // Prefer CANbox fuel; fall back to OBD; null when neither is available yet.
+    val fuelPct: Int? = canFuel ?: obdFuel.takeIf { it > 0 }
+    val source = if (canFuel != null) "via CANbox" else if (obdFuel > 0) "via OBD" else null
+
+    var showFinder by remember { mutableStateOf(false) }
+
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("RANGE", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-            Spacer(Modifier.height(10.dp))
-            if (!connected) {
-                Text("OBD not connected", color = DashColors.Muted)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("FUEL & RANGE", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                source?.let {
+                    Text(it, color = if (canFuel != null) DashColors.Good else DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            if (fuelPct == null) {
+                // Nothing yet: explain and offer the finder / OBD connect.
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Muted, modifier = Modifier.size(44.dp))
                 Spacer(Modifier.height(10.dp))
+                Text(
+                    "This car's OBD doesn't report fuel. Learn it from the CANbox instead — needs root.",
+                    color = DashColors.Muted,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = onConnect,
+                    onClick = { showFinder = true },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                ) { Text("Connect") }
+                ) {
+                    Icon(Icons.Filled.Sensors, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Find fuel signal")
+                }
+                if (!obdConnected) {
+                    TextButton(onClick = onConnect) {
+                        Text("Try OBD fuel PID", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
             } else {
-                val fuelPct = obdData.fuelLevelPct
-                if (fuelPct <= 0) {
-                    Text("Fuel level not reported by this car's OBD.", color = DashColors.Muted, textAlign = TextAlign.Center)
-                    Text("Real range will come from the CANbox once wired.", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
-                } else {
-                    val liters = fuelPct / 100.0 * TANK_LITERS
-                    val rangeKm = (liters / AVG_L_PER_100KM * 100).toInt()
-                    Text("$rangeKm km", color = DashColors.Speed, fontSize = 44.sp, fontWeight = FontWeight.Bold)
-                    Text("before refill (estimate)", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.height(12.dp))
-                    DataRow("Fuel level", "$fuelPct %")
-                    DataRow("Est. in tank", "%.0f / %.0f L".format(liters, TANK_LITERS))
-                    DataRow("Avg use", "%.1f L/100km".format(AVG_L_PER_100KM))
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Estimated from OBD fuel level; the CANbox will give the real distance-to-empty once connected.",
-                        color = DashColors.Muted,
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center
+                val liters = fuelPct / 100.0 * TANK_LITERS
+                val rangeKm = (liters / AVG_L_PER_100KM * 100).toInt()
+
+                Spacer(Modifier.height(6.dp))
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    AnalogGauge(
+                        value = fuelPct.toFloat(),
+                        maxValue = 100f,
+                        valueText = "$rangeKm",
+                        label = "KM TO EMPTY",
+                        unit = "≈ range",
+                        accent = if (fuelPct <= 12) DashColors.Warning else DashColors.Good,
+                        // No redline band on fuel (more fill = more fuel); the whole
+                        // sweep just turns amber when the tank drops into reserve.
+                        redlineFraction = 1f,
+                        modifier = Modifier.fillMaxHeight()
                     )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MeterChip("Fuel", "$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
+                    MeterChip("In tank", "%.0f L".format(liters), (liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
+                    MeterChip("Avg use", "%.1f".format(AVG_L_PER_100KM), 0.5f, DashColors.Accent, false, Modifier.weight(1f))
+                }
+                if (canFuel == null) {
+                    TextButton(onClick = { showFinder = true }) {
+                        Text("Learn fuel from CANbox", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
         }
     }
+
+    if (showFinder) {
+        FuelFinderDialog(onDismiss = { showFinder = false })
+    }
 }
 
+/**
+ * Learns which CANbox/MCU byte is the fuel level. The user enters what their
+ * physical dash gauge reads right now; we rank the live MCU bytes by how well
+ * they match (both 0–255 and direct-percent scales), and picking one calibrates
+ * a full tank from that reading. Debug-flavoured, like the CAN monitor.
+ */
 @Composable
-private fun HudStat(label: String, value: String, unit: String, valueColor: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, color = valueColor, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        Text(text = unit, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-        Spacer(Modifier.height(2.dp))
-        Text(text = label, color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+private fun FuelFinderDialog(onDismiss: () -> Unit) {
+    DisposableEffect(Unit) {
+        McuReader.start()
+        onDispose { McuReader.stop() }
     }
+    val entries by McuReader.entries.collectAsState()
+    var currentPct by remember { mutableIntStateOf(50) }
+
+    // Rank every (frame, byte) by closeness to the entered % under either scale.
+    data class Cand(val key: String, val index: Int, val raw: Int, val asPct: Int, val err: Int)
+    val candidates = remember(entries, currentPct) {
+        entries.flatMap { e ->
+            e.bytes.mapIndexedNotNull { i, raw ->
+                if (raw in 1..254) {
+                    val pctDirect = raw
+                    val pct255 = raw * 100 / 255
+                    val best = if (kotlin.math.abs(pctDirect - currentPct) <= kotlin.math.abs(pct255 - currentPct)) pctDirect else pct255
+                    Cand(e.key, i, raw, best.coerceIn(0, 100), kotlin.math.abs(best - currentPct))
+                } else null
+            }
+        }.sortedBy { it.err }.take(12)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text("Find fuel signal", color = DashColors.TextPrimary) },
+        text = {
+            Column {
+                Text(
+                    "Read your car's fuel gauge, set it below, then tap the byte whose value matches. It's saved and calibrated so a full tank reads 100%.",
+                    color = DashColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Dash reads", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    FilledIconButton(
+                        onClick = { currentPct = (currentPct - 5).coerceAtLeast(5) },
+                        modifier = Modifier.size(34.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
+                    ) { Text("−") }
+                    Text("$currentPct%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold)
+                    FilledIconButton(
+                        onClick = { currentPct = (currentPct + 5).coerceAtMost(100) },
+                        modifier = Modifier.size(34.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
+                    ) { Text("+") }
+                }
+                Spacer(Modifier.height(10.dp))
+                if (entries.isEmpty()) {
+                    Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
+                } else {
+                    Text("Closest matches", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    LazyColumn(modifier = Modifier.fillMaxWidth().height(240.dp)) {
+                        lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(DashColors.CardHi)
+                                    .clickable {
+                                        // Calibrate: fullRaw = raw scaled so the entered % is exact.
+                                        val fullRaw = (c.raw * 100 / currentPct).coerceIn(1, 255)
+                                        McuReader.saveFuelMapping(c.key, c.index, fullRaw)
+                                        onDismiss()
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                                    Text("raw ${c.raw}  →  ~${c.asPct}%", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (McuReader.fuelConfigured) {
+                TextButton(onClick = { McuReader.clearFuelMapping(); onDismiss() }) {
+                    Text("Forget current", color = DashColors.Warning)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close", color = DashColors.Muted) }
+        }
+    )
 }
 
 @Composable

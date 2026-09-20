@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,60 @@ object McuReader {
     private val _doorState = MutableStateFlow<DoorState?>(null)
     val doorState: StateFlow<DoorState?> = _doorState.asStateFlow()
 
+    // --- Fuel (CANbox) ------------------------------------------------------
+    // The C4 Picasso's OBD does not report fuel level, but the CANbox does —
+    // somewhere in the MCU stream as a raw byte. We can't know which byte a
+    // priori (the firmware is stripped), so it's *learned*: the user picks the
+    // byte matching their dash gauge in the Range widget's finder, with a
+    // one-point calibration. [fullRaw] is the raw value that equals a full tank.
+    data class FuelMapping(val key: String, val byteIndex: Int, val fullRaw: Int)
+
+    @Volatile
+    private var fuelMapping: FuelMapping? = null
+    val fuelConfigured: Boolean get() = fuelMapping != null
+
+    private val _fuelPercent = MutableStateFlow<Int?>(null)
+    /** Live fuel level 0..100 decoded from the learned CANbox byte, or null. */
+    val fuelPercent: StateFlow<Int?> = _fuelPercent.asStateFlow()
+
+    private var appContext: Context? = null
+    private const val PREFS = "mcu_prefs"
+
+    /** Give McuReader an app context so the learned fuel mapping can persist. */
+    fun setContext(context: Context) {
+        if (appContext == null) {
+            appContext = context.applicationContext
+            loadFuelMapping()
+        }
+    }
+
+    private fun loadFuelMapping() {
+        val p = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return
+        val key = p.getString("fuel_key", null) ?: return
+        val idx = p.getInt("fuel_byte", -1)
+        val full = p.getInt("fuel_fullraw", -1)
+        if (idx >= 0 && full > 0) fuelMapping = FuelMapping(key, idx, full)
+    }
+
+    /** Persist the learned fuel byte + calibration; takes effect on the next frame. */
+    fun saveFuelMapping(key: String, byteIndex: Int, fullRaw: Int) {
+        val fm = FuelMapping(key, byteIndex, fullRaw.coerceAtLeast(1))
+        fuelMapping = fm
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.putString("fuel_key", fm.key)
+            ?.putInt("fuel_byte", fm.byteIndex)
+            ?.putInt("fuel_fullraw", fm.fullRaw)
+            ?.apply()
+    }
+
+    /** Forget the learned fuel byte (e.g. to re-run the finder). */
+    fun clearFuelMapping() {
+        fuelMapping = null
+        _fuelPercent.value = null
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.remove("fuel_key")?.remove("fuel_byte")?.remove("fuel_fullraw")?.apply()
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var job: Job? = null
     private var process: Process? = null
@@ -102,6 +157,13 @@ object McuReader {
         val changedAt = if (prev == null || prev.hex != hex) now else prev.changedAt
         latest[key] = Entry(key, cmdId, bytes, hex, changedAt)
         _entries.value = latest.values.sortedBy { it.key }
+
+        // Fuel: the learned CANbox byte → percent, calibrated against a full tank.
+        fuelMapping?.let { fm ->
+            if (key == fm.key && bytes.size > fm.byteIndex && fm.fullRaw > 0) {
+                _fuelPercent.value = (bytes[fm.byteIndex] * 100 / fm.fullRaw).coerceIn(0, 100)
+            }
+        }
 
         // Door bitfield: cmdId 65, [.. 0C 38 <bits> ..] → byte index 4.
         if (cmdId == 65 && bytes.size > 4 && bytes[2] == 0x0C && bytes[3] == 0x38) {

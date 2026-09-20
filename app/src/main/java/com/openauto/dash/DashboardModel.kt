@@ -28,8 +28,25 @@ enum class BuiltinKind(val label: String) {
  */
 sealed interface DashboardItem {
     data class AppShortcut(val packageName: String) : DashboardItem
-    data class BuiltinWidget(val kind: BuiltinKind) : DashboardItem
-    data class SystemWidget(val appWidgetId: Int) : DashboardItem
+    data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f) : DashboardItem
+    data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f) : DashboardItem
+}
+
+/**
+ * Relative width a tile occupies in its dashboard row. Widgets share the row by
+ * weight (so they can be made wider/narrower); app shortcuts stay a fixed width.
+ */
+fun DashboardItem.tileWeight(): Float = when (this) {
+    is DashboardItem.BuiltinWidget -> weight
+    is DashboardItem.SystemWidget -> weight
+    is DashboardItem.AppShortcut -> 1f
+}
+
+/** Returns a copy of this item with a new row weight (no-op for app shortcuts). */
+fun DashboardItem.withWeight(newWeight: Float): DashboardItem = when (this) {
+    is DashboardItem.BuiltinWidget -> copy(weight = newWeight)
+    is DashboardItem.SystemWidget -> copy(weight = newWeight)
+    is DashboardItem.AppShortcut -> this
 }
 
 /**
@@ -82,15 +99,25 @@ object DashboardStore {
 
     private fun DashboardItem.toJson(): JSONObject = when (this) {
         is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName)
-        is DashboardItem.BuiltinWidget -> JSONObject().put("t", "builtin").put("k", kind.name)
-        is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
+        is DashboardItem.BuiltinWidget ->
+            JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble())
+        is DashboardItem.SystemWidget ->
+            JSONObject().put("t", "widget").put("id", appWidgetId).put("w", weight.toDouble())
     }
 
     private fun JSONObject.toItem(): DashboardItem? = when (optString("t")) {
         "app" -> optString("pkg").takeIf { it.isNotBlank() }?.let { DashboardItem.AppShortcut(it) }
         "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
-            ?.let { DashboardItem.BuiltinWidget(it) }
-        "widget" -> optInt("id", -1).takeIf { it != -1 }?.let { DashboardItem.SystemWidget(it) }
+            ?.let { DashboardItem.BuiltinWidget(it, readWeight()) }
+        "widget" -> optInt("id", -1).takeIf { it != -1 }
+            ?.let { DashboardItem.SystemWidget(it, readWeight()) }
         else -> null
     }
+
+    /** Persisted tile weight, clamped to the same range the resize handle allows. */
+    private fun JSONObject.readWeight(): Float =
+        optDouble("w", 1.0).toFloat().coerceIn(MIN_TILE_WEIGHT, MAX_TILE_WEIGHT)
+
+    const val MIN_TILE_WEIGHT = 0.4f
+    const val MAX_TILE_WEIGHT = 4f
 }
