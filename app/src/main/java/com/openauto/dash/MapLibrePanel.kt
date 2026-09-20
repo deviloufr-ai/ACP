@@ -53,6 +53,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -61,6 +62,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponentActivationOptions
@@ -217,7 +219,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                 mapRef = map
                 map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
                     add3dBuildings(style)
-                    if (hasLocation) enableLocation(map, style, context)
+                    if (hasLocation) enableLocation(map, style, context, scope)
                     if (navRoute == null) navRoute = NavigationMapRoute(mv, map)
                     map.addOnMapClickListener { latLng ->
                         clearRoute()
@@ -304,7 +306,12 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
 }
 
 @SuppressLint("MissingPermission")
-private fun enableLocation(map: MapLibreMap, style: Style, context: Context) {
+private fun enableLocation(
+    map: MapLibreMap,
+    style: Style,
+    context: Context,
+    scope: kotlinx.coroutines.CoroutineScope
+) {
     if (!hasLocationPerm(context)) return
     runCatching {
         val lc = map.locationComponent
@@ -318,6 +325,27 @@ private fun enableLocation(map: MapLibreMap, style: Style, context: Context) {
         lc.renderMode = RenderMode.COMPASS
         lc.zoomWhileTracking(16.5)
         lc.tiltWhileTracking(45.0)
+    }
+    // TRACKING_GPS only re-centres on a FRESH fix; with only a last-known location
+    // the camera stays at the default world view. So explicitly zoom to the user as
+    // soon as any fix is available (retry briefly while GPS warms up).
+    scope.launch {
+        repeat(15) {
+            val loc = runCatching { map.locationComponent.lastKnownLocation }.getOrNull()
+            if (loc != null) {
+                map.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.Builder()
+                            .target(LatLng(loc.latitude, loc.longitude))
+                            .zoom(16.5)
+                            .tilt(45.0)
+                            .build()
+                    )
+                )
+                return@launch
+            }
+            delay(800)
+        }
     }
 }
 
