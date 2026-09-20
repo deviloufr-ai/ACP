@@ -10,7 +10,6 @@ import org.json.JSONObject
  */
 enum class BuiltinKind(val label: String) {
     NAVMAP("Map (MapLibre)"),
-    GMAPS_EMBED("Google Maps (embedded)"),
     MEDIA("Music player"),
     TELEMETRY("OBD telemetry"),
     OBD_DTC("OBD fault codes"),

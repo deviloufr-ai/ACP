@@ -81,20 +81,7 @@ object AdbInstaller {
         append("  mount -o remount,rw \$BASE 2>>\$ERR; mount -o remount,rw / 2>>\$ERR; ")
         append("  if mkdir -p \"\$DIR\" 2>>\$ERR && cp \"\$TMP\" \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; then ")
         append("    chmod 755 \"\$DIR\" 2>>\$ERR; chmod 644 \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; ")
-        append("    chcon u:object_r:system_file:s0 \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; ")
-        // Drop a privapp-permissions allowlist so a ROM with
-        // ro.control_privapp_permissions=enforce GRANTS our signature|privileged
-        // perms (ADD_TRUSTED_DISPLAY etc.) instead of boot-looping. Must live in
-        // the SAME partition's etc/permissions as the priv-app.
-        append("    PERM=\$BASE/etc/permissions; mkdir -p \"\$PERM\" 2>>\$ERR; ")
-        append("    XML=\"\$PERM/privapp-permissions-openautodash.xml\"; ")
-        append("    { echo '<permissions>'; ")
-        append("      echo '<privapp-permissions package=\"com.openauto.dash\">'; ")
-        append("      echo '<permission name=\"android.permission.ADD_TRUSTED_DISPLAY\"/>'; ")
-        append("      echo '<permission name=\"android.permission.INJECT_EVENTS\"/>'; ")
-        append("      echo '<permission name=\"android.permission.BIND_APPWIDGET\"/>'; ")
-        append("      echo '</privapp-permissions>'; echo '</permissions>'; } > \"\$XML\" 2>>\$ERR; ")
-        append("    chmod 644 \"\$XML\" 2>>\$ERR; chcon u:object_r:system_file:s0 \"\$XML\" 2>>\$ERR; sync; ")
+        append("    chcon u:object_r:system_file:s0 \"\$DIR/OpenAutoDash.apk\" 2>>\$ERR; sync; ")
         append("    echo \"OKINSTALL:\$DIR\"; break; ")
         append("  else rm -rf \"\$DIR\" 2>/dev/null; fi; ")
         append("done; ")

@@ -501,10 +501,6 @@ fun AutomotiveDashboard() {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    AddChoiceRow(Icons.Filled.Map, BuiltinKind.GMAPS_EMBED.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.GMAPS_EMBED))
-                    }
                     AddChoiceRow(Icons.Filled.Navigation, BuiltinKind.NAVMAP.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
@@ -832,11 +828,6 @@ private fun DashboardPage(
                             modifier = Modifier.fillMaxSize().background(DashColors.Card)
                         ) {
                             MapLibrePanel(modifier = Modifier.fillMaxSize())
-                        }
-                        BuiltinKind.GMAPS_EMBED -> Box(
-                            modifier = Modifier.fillMaxSize().background(DashColors.Card)
-                        ) {
-                            EmbeddedMapsPanel(modifier = Modifier.fillMaxSize())
                         }
                         BuiltinKind.MEDIA -> MediaCard(
                             mediaState = mediaState,
