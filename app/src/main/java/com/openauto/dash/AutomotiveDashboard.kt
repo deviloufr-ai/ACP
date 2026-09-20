@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -502,6 +503,10 @@ fun AutomotiveDashboard() {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAR3D))
                     }
+                    AddChoiceRow(Icons.Filled.SensorDoor, BuiltinKind.DOORS.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.DOORS))
+                    }
                     AddChoiceRow(Icons.Filled.Sensors, BuiltinKind.CAN_MON.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAN_MON))
@@ -807,6 +812,7 @@ private fun DashboardPage(
                             onConnect = onConnectObd,
                             modifier = Modifier.fillMaxSize()
                         )
+                        BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
                         BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
                         BuiltinKind.CAR3D -> Box(
                             modifier = Modifier
@@ -1435,6 +1441,67 @@ private fun DataRow(label: String, value: String) {
     ) {
         Text(label, color = DashColors.TextSecondary)
         Text(value, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Live door status decoded from the MCU door bitfield (65 / 0C / 38, byte 4). */
+@Composable
+private fun DoorsCard(modifier: Modifier = Modifier) {
+    val bits by McuReader.doorBits.collectAsState()
+    DisposableEffect(Unit) {
+        McuReader.start()
+        onDispose { McuReader.stop() }
+    }
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
+        ) {
+            Text("DOORS", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(10.dp))
+            val b = bits
+            if (b == null) {
+                Text("Waiting for MCU data… (needs root)", color = DashColors.Muted)
+            } else {
+                // Front-left (0x80) is confirmed; the rest are best-guess until mapped.
+                DoorStatusRow("Front left", b and 0x80 != 0, confirmed = true)
+                DoorStatusRow("Front right", b and 0x40 != 0, confirmed = false)
+                DoorStatusRow("Rear left", b and 0x20 != 0, confirmed = false)
+                DoorStatusRow("Rear right", b and 0x10 != 0, confirmed = false)
+                DoorStatusRow("Tailgate", b and 0x08 != 0, confirmed = false)
+                DoorStatusRow("Bonnet", b and 0x04 != 0, confirmed = false)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "raw 0x%02X  %s".format(b, Integer.toBinaryString(b or 0x100).substring(1)),
+                    color = DashColors.Muted,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    "Open each door and tell me which bit sets to confirm the map.",
+                    color = DashColors.Muted,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoorStatusRow(label: String, open: Boolean, confirmed: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            if (confirmed) label else "$label?",
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            if (open) "OPEN" else "closed",
+            color = if (open) DashColors.Warning else DashColors.Good,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

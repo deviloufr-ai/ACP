@@ -16,6 +16,7 @@ enum class BuiltinKind(val label: String) {
     OBD_ALL("OBD all data"),
     RANGE("Fuel & range"),
     CAR3D("3D car"),
+    DOORS("Doors"),
     CAN_MON("CAN monitor (debug)")
 }
 

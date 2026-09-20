@@ -28,6 +28,15 @@ object McuReader {
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
 
+    /**
+     * The door bitfield byte from the MCU status frame `41 FD 0C 38 <bits> …`
+     * (cmdId 65, sub 0x0C, subtype 0x38). Confirmed on the C4 Picasso: bit 0x80
+     * = front-left door. Other bits map to the other doors (to be confirmed).
+     * null until first seen.
+     */
+    private val _doorBits = MutableStateFlow<Int?>(null)
+    val doorBits: StateFlow<Int?> = _doorBits.asStateFlow()
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var job: Job? = null
     private var process: Process? = null
@@ -78,5 +87,10 @@ object McuReader {
         val changedAt = if (prev == null || prev.hex != hex) now else prev.changedAt
         latest[key] = Entry(key, cmdId, bytes, hex, changedAt)
         _entries.value = latest.values.sortedBy { it.key }
+
+        // Door bitfield: cmdId 65, [.. 0C 38 <bits> ..] → byte index 4.
+        if (cmdId == 65 && bytes.size > 4 && bytes[2] == 0x0C && bytes[3] == 0x38) {
+            _doorBits.value = bytes[4]
+        }
     }
 }
