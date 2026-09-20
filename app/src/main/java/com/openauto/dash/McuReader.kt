@@ -37,6 +37,21 @@ object McuReader {
     private val _doorBits = MutableStateFlow<Int?>(null)
     val doorBits: StateFlow<Int?> = _doorBits.asStateFlow()
 
+    /** Decoded door open/closed state (C4 Picasso bit map, confirmed 2026-09-20). */
+    data class DoorState(
+        val frontLeft: Boolean = false,
+        val frontRight: Boolean = false,
+        val rearLeft: Boolean = false,
+        val rearRight: Boolean = false,
+        val tailgate: Boolean = false,
+        val bonnet: Boolean = false
+    ) {
+        val anyOpen: Boolean get() = frontLeft || frontRight || rearLeft || rearRight || tailgate || bonnet
+    }
+
+    private val _doorState = MutableStateFlow<DoorState?>(null)
+    val doorState: StateFlow<DoorState?> = _doorState.asStateFlow()
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var job: Job? = null
     private var process: Process? = null
@@ -90,7 +105,16 @@ object McuReader {
 
         // Door bitfield: cmdId 65, [.. 0C 38 <bits> ..] → byte index 4.
         if (cmdId == 65 && bytes.size > 4 && bytes[2] == 0x0C && bytes[3] == 0x38) {
-            _doorBits.value = bytes[4]
+            val b = bytes[4]
+            _doorBits.value = b
+            _doorState.value = DoorState(
+                frontLeft = b and 0x80 != 0,
+                frontRight = b and 0x40 != 0,
+                rearLeft = b and 0x20 != 0,
+                rearRight = b and 0x10 != 0,
+                tailgate = b and 0x08 != 0,
+                bonnet = b and 0x04 != 0
+            )
         }
     }
 }

@@ -1447,7 +1447,7 @@ private fun DataRow(label: String, value: String) {
 /** Live door status decoded from the MCU door bitfield (65 / 0C / 38, byte 4). */
 @Composable
 private fun DoorsCard(modifier: Modifier = Modifier) {
-    val bits by McuReader.doorBits.collectAsState()
+    val doors by McuReader.doorState.collectAsState()
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
@@ -1458,27 +1458,21 @@ private fun DoorsCard(modifier: Modifier = Modifier) {
         ) {
             Text("DOORS", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
-            val b = bits
-            if (b == null) {
+            val d = doors
+            if (d == null) {
                 Text("Waiting for MCU data… (needs root)", color = DashColors.Muted)
             } else {
-                // Front-left (0x80) is confirmed; the rest are best-guess until mapped.
-                DoorStatusRow("Front left", b and 0x80 != 0, confirmed = true)
-                DoorStatusRow("Front right", b and 0x40 != 0, confirmed = false)
-                DoorStatusRow("Rear left", b and 0x20 != 0, confirmed = false)
-                DoorStatusRow("Rear right", b and 0x10 != 0, confirmed = false)
-                DoorStatusRow("Tailgate", b and 0x08 != 0, confirmed = false)
-                DoorStatusRow("Bonnet", b and 0x04 != 0, confirmed = false)
+                DoorStatusRow("Front left", d.frontLeft)
+                DoorStatusRow("Front right", d.frontRight)
+                DoorStatusRow("Rear left", d.rearLeft)
+                DoorStatusRow("Rear right", d.rearRight)
+                DoorStatusRow("Tailgate", d.tailgate)
+                DoorStatusRow("Bonnet", d.bonnet)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "raw 0x%02X  %s".format(b, Integer.toBinaryString(b or 0x100).substring(1)),
-                    color = DashColors.Muted,
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    "Open each door and tell me which bit sets to confirm the map.",
-                    color = DashColors.Muted,
-                    style = MaterialTheme.typography.labelSmall
+                    if (d.anyOpen) "A door is open" else "All closed",
+                    color = if (d.anyOpen) DashColors.Warning else DashColors.Good,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -1486,17 +1480,13 @@ private fun DoorsCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DoorStatusRow(label: String, open: Boolean, confirmed: Boolean) {
+private fun DoorStatusRow(label: String, open: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            if (confirmed) label else "$label?",
-            color = DashColors.TextPrimary,
-            fontWeight = FontWeight.Medium
-        )
+        Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
         Text(
             if (open) "OPEN" else "closed",
             color = if (open) DashColors.Warning else DashColors.Good,
