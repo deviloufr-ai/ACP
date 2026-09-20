@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -501,6 +502,16 @@ fun AutomotiveDashboard() {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    AddChoiceRow(Icons.Filled.Map, "Google Maps (live)") {
+                        showWidgetMenu = false
+                        if (!addSystemWidget.addPackage("com.google.android.apps.maps")) {
+                            Toast.makeText(
+                                context,
+                                "Google Maps has no home-screen widget on this unit",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
                     AddChoiceRow(Icons.Filled.Navigation, BuiltinKind.NAVMAP.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
@@ -539,7 +550,7 @@ fun AutomotiveDashboard() {
                     }
                     AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
                         showWidgetMenu = false
-                        addSystemWidget()
+                        addSystemWidget.pickFromList()
                     }
                 }
             },

@@ -113,8 +113,19 @@ fun HostedSystemWidget(appWidgetId: Int, modifier: Modifier = Modifier) {
  * widgets, e.g. Google Maps), binds the chosen provider, runs any configure step,
  * and calls [onAdded] with the ready widget id.
  */
+/**
+ * Two ways to add a hosted system widget: [pickFromList] opens our full picker,
+ * and [addPackage] binds the first widget a given app declares (one tap, used to
+ * drop the Google Maps widget straight onto the dashboard). [addPackage] returns
+ * false if that app declares no widget.
+ */
+class SystemWidgetAdder(
+    val pickFromList: () -> Unit,
+    val addPackage: (String) -> Boolean
+)
+
 @Composable
-fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): () -> Unit {
+fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
     val context = LocalContext.current
     val host = remember { WidgetHostHolder.acquire(context) }
     val manager = remember { AppWidgetManager.getInstance(context) }
@@ -176,13 +187,60 @@ fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): () -> Unit {
 
     if (showPicker) {
         SystemWidgetPickerDialog(
-            providers = remember { manager.installedProviders.sortedBy { it.loadLabel(context.packageManager).lowercase() } },
+            providers = remember { collectProviders(manager, context) },
             onPick = { showPicker = false; pick(it) },
             onDismiss = { showPicker = false }
         )
     }
 
-    return { showPicker = true }
+    fun addPackage(pkg: String): Boolean {
+        val info = runCatching { manager.getInstalledProvidersForPackage(pkg, null) }
+            .getOrNull()?.firstOrNull() ?: return false
+        pick(info)
+        return true
+    }
+
+    return SystemWidgetAdder(pickFromList = { showPicker = true }, addPackage = ::addPackage)
+}
+
+/**
+ * Build the picker's provider list. [AppWidgetManager.installedProviders] only
+ * returns providers in the HOME_SCREEN category, which silently drops widgets
+ * some apps (notably **Google Maps**) declare under a different category — so the
+ * unit's native launcher shows a live Maps widget but ours never listed it. We
+ * merge in each of those apps' providers explicitly via
+ * [AppWidgetManager.getInstalledProvidersForPackage], dedupe by provider
+ * component, and float them to the top so Maps is easy to find.
+ */
+private fun collectProviders(
+    manager: AppWidgetManager,
+    context: Context
+): List<AppWidgetProviderInfo> {
+    val pm = context.packageManager
+    val byComponent = LinkedHashMap<String, AppWidgetProviderInfo>()
+
+    // Priority apps whose widgets the default query tends to hide.
+    val priorityPackages = listOf(
+        "com.google.android.apps.maps",
+        "com.waze",
+        "com.google.android.apps.mapslite"
+    )
+    for (pkg in priorityPackages) {
+        runCatching { manager.getInstalledProvidersForPackage(pkg, null) }
+            .getOrNull()
+            ?.forEach { info -> byComponent[info.provider.flattenToString()] = info }
+    }
+
+    val priorityCount = byComponent.size
+
+    manager.installedProviders.forEach { info ->
+        byComponent.putIfAbsent(info.provider.flattenToString(), info)
+    }
+
+    val all = byComponent.values.toList()
+    val priority = all.take(priorityCount)
+    val rest = all.drop(priorityCount).sortedBy { it.loadLabel(pm).lowercase() }
+    return priority + rest
 }
 
 /** Our full widget picker: every installed AppWidget provider, icon + label. */
