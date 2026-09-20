@@ -1,50 +1,52 @@
 package com.openauto.dash
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.graphics.Rect
+import android.os.Build
 import android.util.Log
 
 /**
- * Opens an app in **split-screen** next to the dashboard so it stays visible
- * while the cards remain swipeable.
+ * Opens an app **beside the dashboard** in a freeform window.
  *
- * `FLAG_ACTIVITY_LAUNCH_ADJACENT` is ignored on this head unit (it just opens
- * fullscreen), so with root we drive the split via `am`: dock the dashboard to
- * the primary pane, then launch the target into the secondary pane. Windowing
- * mode ints — 3 = SPLIT_SCREEN_PRIMARY, 4 = SPLIT_SCREEN_SECONDARY (Android ≤11),
- * 6 = MULTI_WINDOW (Android 12+).
+ * This head unit ignores AOSP split-screen (`am --windowingMode 3/4` just opens
+ * fullscreen — its SystemUI has no split divider), but it DOES support freeform
+ * floating windows. So we launch the app in **freeform mode with launch bounds**
+ * covering one half of the screen. The user can move/resize it like the unit's
+ * native small-window.
  */
 object SplitLauncher {
 
-    fun launchAdjacent(context: Context, packageName: String): Boolean {
-        val comp = context.packageManager.getLaunchIntentForPackage(packageName)
-            ?.resolveActivity(context.packageManager)?.flattenToShortString()
-        val self = "${context.packageName}/.MainActivity"
+    private const val WINDOWING_MODE_FREEFORM = 5
 
-        // Preferred: root-driven split. This unit reports Android 12 but behaves
-        // like Android 10, so use the split-primary(3)/secondary(4) modes; if the
-        // ROM ignores those, also try multi-window(6). Dock the dashboard first,
-        // then launch the target into the other pane.
-        if (comp != null) {
-            val rootOk = runCatching {
-                val script = buildString {
-                    append("am start --windowingMode 3 -n $self; sleep 0.6; ")
-                    append("am start --windowingMode 4 -n $comp; sleep 0.3; ")
-                    append("am start --windowingMode 6 -n $comp")
-                }
-                Runtime.getRuntime().exec(arrayOf("su", "-c", script)).waitFor() == 0
-            }.onFailure { Log.d("SplitLauncher", "root split failed", it) }.getOrDefault(false)
-            if (rootOk) return true
+    fun launchAdjacent(context: Context, packageName: String): Boolean {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+        } ?: return false
+
+        val metrics = context.resources.displayMetrics
+        val w = metrics.widthPixels
+        val h = metrics.heightPixels
+        // Right half of the screen, leaving the dashboard visible on the left.
+        val bounds = Rect(w / 2, 0, w, h)
+
+        val options = ActivityOptions.makeBasic()
+        // Request freeform windowing mode (hidden API) so it opens as a movable
+        // window rather than fullscreen.
+        runCatching {
+            ActivityOptions::class.java
+                .getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType)
+                .invoke(options, WINDOWING_MODE_FREEFORM)
+        }.onFailure { Log.d("SplitLauncher", "setLaunchWindowingMode unavailable", it) }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching { options.setLaunchBounds(bounds) }
         }
 
-        // Fallback (no root): app-level adjacent launch.
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or
-                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-            )
-        } ?: return false
-        return runCatching { context.startActivity(intent); true }.getOrDefault(false)
+        return runCatching {
+            context.startActivity(intent, options.toBundle())
+            true
+        }.onFailure { Log.e("SplitLauncher", "freeform launch failed", it) }.getOrDefault(false)
     }
 }
