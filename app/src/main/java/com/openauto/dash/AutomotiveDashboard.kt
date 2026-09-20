@@ -179,6 +179,7 @@ fun AutomotiveDashboard() {
 
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
+    var showSplitEnable by remember { mutableStateOf(false) }
     var blockPagerSwipe by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
@@ -360,8 +361,11 @@ fun AutomotiveDashboard() {
             obdConnection = obdConnection,
             editing = editing,
             onApps = { showAllApps = true },
-            onMaps = { SplitLauncher.launchAdjacent(context, "com.google.android.apps.maps") },
-            onSplit = { showSplitPicker = true },
+            onMaps = { SplitLauncher.launchSplit(context, "com.google.android.apps.maps") },
+            onSplit = {
+                if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
+                else showSplitEnable = true
+            },
             onToggleEdit = { editing = !editing },
             onSystem = { showSystemDialog = true }
         )
@@ -483,9 +487,38 @@ fun AutomotiveDashboard() {
             title = "Split screen with…",
             onPick = { app ->
                 showSplitPicker = false
-                SplitLauncher.launchAdjacent(context, app.packageName)
+                SplitLauncher.launchSplit(context, app.packageName)
             },
             onDismiss = { showSplitPicker = false }
+        )
+    }
+
+    if (showSplitEnable) {
+        AlertDialog(
+            onDismissRequest = { showSplitEnable = false },
+            containerColor = DashColors.Card,
+            title = { Text("Enable split screen", color = DashColors.TextPrimary) },
+            text = {
+                Text(
+                    "This ROM blocks the usual split-screen APIs, so OpenAuto Dash " +
+                        "uses the system's own split — the same one you get from recents. " +
+                        "Turn on \"OpenAuto Dash\" under Settings → Accessibility once to allow it.",
+                    color = DashColors.Muted
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSplitEnable = false
+                    SplitLauncher.openAccessibilitySettings(context)
+                }) {
+                    Text("Open settings", color = DashColors.TextPrimary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSplitEnable = false }) {
+                    Text("Cancel", color = DashColors.Muted)
+                }
+            }
         )
     }
 

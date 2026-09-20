@@ -87,6 +87,22 @@
             </intent-filter>
         </service>
 
+        <!-- Triggers the system's built-in split-screen (the same path as the
+             recents long-press gesture) via GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN.
+             Enabled once by the user under Settings → Accessibility. -->
+        <service
+            android:name=".SplitAccessibilityService"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/split_accessibility_config" />
+        </service>
+
         <!-- FileProvider used to share the downloaded update APK with the installer. -->
         <provider
             android:name="androidx.core.content.FileProvider"

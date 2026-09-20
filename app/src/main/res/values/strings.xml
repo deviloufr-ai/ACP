@@ -8,4 +8,5 @@
     <string name="temp_celsius">°C</string>
     <string name="battery_level">Battery</string>
     <string name="coolant_temp">Coolant Temp</string>
+    <string name="split_a11y_description">Lets OpenAuto Dash open apps in split-screen next to the dashboard, using the same system split the recents screen uses. No screen content is read.</string>
 </resources>

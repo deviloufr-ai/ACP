@@ -5,23 +5,90 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 
 /**
- * Opens an app in a **freeform floating window**.
+ * Opens an app alongside the dashboard, preferring the system's real
+ * split-screen and falling back to a freeform floating window.
  *
- * This head unit's ROM ignores AOSP split-screen and blocks `am task resize`
- * ("resizeTask not allowed"), so we can't tile two app windows side-by-side.
- * The best it allows is launching the app in freeform mode — it appears as a
- * movable/resizable floating window (the system picks the position; our bounds
- * are a hint it may ignore). For a map that stays put while the dashboard is
- * used, prefer the in-app MapLibre map widget instead.
+ * **Preferred path — system split via accessibility.** This head unit's ROM
+ * ignores AOSP split-screen and blocks `am task resize` ("resizeTask not
+ * allowed"), so we can't tile two windows through the windowing APIs. But the
+ * ROM *does* support split the manual way — recents → long-press an app → drag
+ * to a side — because that goes through SystemUI, not the AOSP APIs. When the
+ * [SplitAccessibilityService] is enabled we drive that same SystemUI path with
+ * `GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN`: it docks the foreground task (the
+ * dashboard), then we fill the other half with [Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT].
+ *
+ * **Fallback — freeform.** If the service isn't enabled, we launch the app in
+ * freeform mode: a movable/resizable floating window (the system picks the
+ * position; our bounds are a hint it may ignore).
  */
 object SplitLauncher {
 
+    private const val TAG = "SplitLauncher"
     private const val WINDOWING_MODE_FREEFORM = 5
 
-    fun launchAdjacent(context: Context, packageName: String): Boolean {
+    /**
+     * Delay between docking the foreground task and launching the second app,
+     * so the system has settled into split mode and honours LAUNCH_ADJACENT.
+     */
+    private const val SPLIT_SETTLE_MS = 400L
+
+    /**
+     * Open [packageName] in split-screen next to the current app.
+     *
+     * Uses the system split path when [SplitAccessibilityService] is enabled,
+     * otherwise falls back to a freeform floating window. Returns true when a
+     * launch strategy was dispatched.
+     */
+    fun launchSplit(context: Context, packageName: String): Boolean {
+        if (SplitAccessibilityService.requestSplit()) {
+            // The foreground app (the dashboard) is now docked into one half.
+            // Fill the other half once the system settles into split mode.
+            Handler(Looper.getMainLooper()).postDelayed(
+                { launchIntoAdjacent(context, packageName) },
+                SPLIT_SETTLE_MS
+            )
+            return true
+        }
+        return launchFreeform(context, packageName)
+    }
+
+    /** Whether the system-split path is available (accessibility service on). */
+    fun isSystemSplitAvailable(): Boolean = SplitAccessibilityService.isConnected
+
+    /** Deep-link the user to Accessibility settings to enable the split service. */
+    fun openAccessibilitySettings(context: Context) {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }.onFailure { Log.e(TAG, "open accessibility settings failed", it) }
+    }
+
+    /** Launch [packageName] into the other split pane via the public flag. */
+    private fun launchIntoAdjacent(context: Context, packageName: String): Boolean {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT
+            )
+        } ?: return false
+
+        return runCatching {
+            context.startActivity(intent)
+            true
+        }.onFailure { Log.e(TAG, "adjacent launch failed", it) }.getOrDefault(false)
+    }
+
+    /** Fallback: launch [packageName] as a freeform floating window. */
+    fun launchFreeform(context: Context, packageName: String): Boolean {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         } ?: return false
@@ -34,7 +101,7 @@ object SplitLauncher {
             ActivityOptions::class.java
                 .getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType)
                 .invoke(options, WINDOWING_MODE_FREEFORM)
-        }.onFailure { Log.d("SplitLauncher", "setLaunchWindowingMode unavailable", it) }
+        }.onFailure { Log.d(TAG, "setLaunchWindowingMode unavailable", it) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             runCatching { options.setLaunchBounds(bounds) }
         }
@@ -42,6 +109,6 @@ object SplitLauncher {
         return runCatching {
             context.startActivity(intent, options.toBundle())
             true
-        }.onFailure { Log.e("SplitLauncher", "freeform launch failed", it) }.getOrDefault(false)
+        }.onFailure { Log.e(TAG, "freeform launch failed", it) }.getOrDefault(false)
     }
 }

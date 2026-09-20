@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Config for SplitAccessibilityService. It observes nothing (no event types,
+  no window content) — it only needs to exist so the launcher can call
+  performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) to enter split-screen.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="false"
+    android:canRetrieveWindowContent="false"
+    android:notificationTimeout="0"
+    android:description="@string/split_a11y_description" />
