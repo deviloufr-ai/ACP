@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items as lazyColumnItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -54,6 +56,7 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Splitscreen
@@ -499,6 +502,10 @@ fun AutomotiveDashboard() {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAR3D))
                     }
+                    AddChoiceRow(Icons.Filled.Sensors, BuiltinKind.CAN_MON.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAN_MON))
+                    }
                     AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
                         showWidgetMenu = false
                         addSystemWidget()
@@ -800,6 +807,7 @@ private fun DashboardPage(
                             onConnect = onConnectObd,
                             modifier = Modifier.fillMaxSize()
                         )
+                        BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
                         BuiltinKind.CAR3D -> Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1427,6 +1435,59 @@ private fun DataRow(label: String, value: String) {
     ) {
         Text(label, color = DashColors.TextSecondary)
         Text(value, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * Debug widget: live view of the CANbox/MCU stream (needs root). Each row is a
+ * cmdId → bytes; a row highlights when its value changes. Open a door / toggle a
+ * light and watch which row flips — that's its cmdId, which we then map to state.
+ */
+@Composable
+private fun CanMonitorCard(modifier: Modifier = Modifier) {
+    val entries by McuReader.entries.collectAsState()
+    DisposableEffect(Unit) {
+        McuReader.start()
+        onDispose { McuReader.stop() }
+    }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) { now = System.currentTimeMillis(); delay(400) }
+    }
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+            Text("CAN MONITOR", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(
+                "Open a door / toggle a light — the row that flips is its cmdId.",
+                color = DashColors.Muted,
+                style = MaterialTheme.typography.labelSmall
+            )
+            Spacer(Modifier.height(8.dp))
+            if (entries.isEmpty()) {
+                Text("No MCU data yet (needs root; tailing mcu_services…).", color = DashColors.Muted)
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    lazyColumnItems(entries, key = { it.key }) { e ->
+                        val hot = now - e.changedAt < 2500
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (hot) DashColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(e.key, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                e.hex,
+                                color = if (hot) DashColors.Accent else DashColors.TextPrimary,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
