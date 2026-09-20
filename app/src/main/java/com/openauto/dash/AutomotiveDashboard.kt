@@ -1454,35 +1454,69 @@ private fun CanMonitorCard(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         while (true) { now = System.currentTimeMillis(); delay(400) }
     }
+    // Freeze captures a baseline; while frozen we show ONLY rows that differ from
+    // it — so after freezing (doors closed) opening a door surfaces exactly the
+    // door row.
+    var baseline by remember { mutableStateOf<Map<String, String>?>(null) }
+
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            Text("CAN MONITOR", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-            Text(
-                "Open a door / toggle a light — the row that flips is its cmdId.",
-                color = DashColors.Muted,
-                style = MaterialTheme.typography.labelSmall
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("CAN MONITOR", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        if (baseline == null) "Close all doors, tap Freeze, then open a door."
+                        else "Changed since Freeze (open a door):",
+                        color = DashColors.Muted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                Button(
+                    onClick = {
+                        baseline = if (baseline == null) entries.associate { it.key to it.hex } else null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (baseline == null) DashColors.Accent else DashColors.CardHi,
+                        contentColor = if (baseline == null) DashColors.Background else DashColors.TextPrimary
+                    )
+                ) { Text(if (baseline == null) "Freeze" else "Live") }
+            }
             Spacer(Modifier.height(8.dp))
-            if (entries.isEmpty()) {
-                Text("No MCU data yet (needs root; tailing mcu_services…).", color = DashColors.Muted)
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    lazyColumnItems(entries, key = { it.key }) { e ->
+
+            val base = baseline
+            val shown = if (base == null) entries else entries.filter { base[it.key] != it.hex }
+            when {
+                entries.isEmpty() ->
+                    Text("No MCU data yet (needs root; tailing mcu_services…).", color = DashColors.Muted)
+                base != null && shown.isEmpty() ->
+                    Text("No changes since Freeze — open a door now.", color = DashColors.Muted)
+                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    lazyColumnItems(shown, key = { it.key }) { e ->
                         val hot = now - e.changedAt < 2500
-                        Row(
+                        val highlight = base != null || hot
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (hot) DashColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
-                                .padding(horizontal = 8.dp, vertical = 5.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .background(if (highlight) DashColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
                         ) {
-                            Text(e.key, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                e.hex,
-                                color = if (hot) DashColors.Accent else DashColors.TextPrimary,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(e.key, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+                                Text(e.hex, color = if (highlight) DashColors.Accent else DashColors.TextPrimary, style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (base != null) {
+                                base[e.key]?.let {
+                                    Text("was: $it", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                     }
                 }
