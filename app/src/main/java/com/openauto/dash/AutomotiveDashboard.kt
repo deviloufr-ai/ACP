@@ -878,6 +878,9 @@ private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
 
 // --- A single dashboard page -------------------------------------------------
 
+/** Natural height of a full widget tile stacked in the scrollable split-screen column. */
+private val SPLIT_WIDGET_HEIGHT = 300.dp
+
 @Composable
 private fun DashboardPage(
     pageItems: List<DashboardItem>,
@@ -969,19 +972,20 @@ private fun DashboardPage(
         }
 
         if (inSplitMode) {
-            // Sharing the screen: the pane is narrow and tall, so stack every tile
-            // vertically (filling the width) instead of the side-by-side row.
+            // Sharing the screen: the pane is narrow and tall. Stack tiles
+            // vertically at their natural height (no shrinking to fit) and let
+            // the column scroll when they overflow the pane.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 pageItems.indices.forEach { index ->
                     val item = pageItems[index]
-                    val mod = if (item.isCompactTile()) Modifier.fillMaxWidth().height(96.dp)
-                        else Modifier.fillMaxWidth().weight(item.tileWeight())
-                    renderTile(index, mod)
+                    val h = if (item.isCompactTile()) 96.dp else SPLIT_WIDGET_HEIGHT
+                    renderTile(index, Modifier.fillMaxWidth().height(h))
                 }
             }
         } else {
