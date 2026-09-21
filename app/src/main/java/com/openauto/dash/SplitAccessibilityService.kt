@@ -2,10 +2,24 @@ package com.openauto.dash
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.Path
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.util.Log
+import android.widget.TextView
+import kotlin.math.hypot
 
 /**
  * A minimal [AccessibilityService] whose only job is to trigger the system's
@@ -29,15 +43,18 @@ class SplitAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         Log.d(TAG, "connected")
+        showSwapOverlay()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         instance = null
+        hideSwapOverlay()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         instance = null
+        hideSwapOverlay()
         super.onDestroy()
     }
 
@@ -72,10 +89,143 @@ class SplitAccessibilityService : AccessibilityService() {
             .getOrDefault(false)
     }
 
+    // --- Global floating swap button ----------------------------------------
+    //
+    // A draggable button that floats above every app (not just the launcher) so
+    // the split panes can be swapped from anywhere. It rides on a
+    // TYPE_ACCESSIBILITY_OVERLAY window, which this already-enabled service may
+    // add without the separate "draw over other apps" permission. Tap = swap;
+    // long-press then drag = reposition (the spot is remembered).
+
+    private var overlayView: View? = null
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showSwapOverlay() {
+        if (overlayView != null) return
+        val wm = getSystemService(WINDOW_SERVICE) as? WindowManager ?: return
+
+        val size = dp(56)
+        val button = TextView(this).apply {
+            text = "⇄"
+            textSize = 26f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            elevation = dp(6).toFloat()
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(OVERLAY_COLOR)
+                setStroke(dp(2), 0x66000000)
+            }
+        }
+
+        val metrics = resources.displayMetrics
+        val prefs = getSharedPreferences(OVERLAY_PREFS, Context.MODE_PRIVATE)
+        val params = WindowManager.LayoutParams(
+            size, size,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = prefs.getInt(KEY_X, metrics.widthPixels - size - dp(16))
+            y = prefs.getInt(KEY_Y, (metrics.heightPixels - size) / 2)
+        }
+
+        button.setOnTouchListener(swapTouchListener(wm, button, params, prefs))
+
+        runCatching { wm.addView(button, params) }
+            .onSuccess { overlayView = button }
+            .onFailure { Log.e(TAG, "add swap overlay failed", it) }
+    }
+
+    /** Tap vs. long-press-then-drag handling for the floating swap button. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun swapTouchListener(
+        wm: WindowManager,
+        button: View,
+        params: WindowManager.LayoutParams,
+        prefs: android.content.SharedPreferences
+    ): View.OnTouchListener {
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        val longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
+        val handler = Handler(Looper.getMainLooper())
+
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var dragging = false
+        var movedOff = false
+
+        val armDrag = Runnable {
+            if (!movedOff) {
+                dragging = true
+                button.animate().scaleX(1.15f).scaleY(1.15f).alpha(0.9f).setDuration(120).start()
+            }
+        }
+
+        return View.OnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX; downY = event.rawY
+                    startX = params.x; startY = params.y
+                    dragging = false; movedOff = false
+                    handler.postDelayed(armDrag, longPressMs)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downX
+                    val dy = event.rawY - downY
+                    if (!dragging && hypot(dx, dy) > slop) {
+                        // Moved before the long-press armed dragging: it's neither a
+                        // tap nor a move — cancel both so nothing fires.
+                        movedOff = true
+                        handler.removeCallbacks(armDrag)
+                    }
+                    if (dragging) {
+                        params.x = startX + dx.toInt()
+                        params.y = startY + dy.toInt()
+                        runCatching { wm.updateViewLayout(button, params) }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(armDrag)
+                    button.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(120).start()
+                    if (dragging) {
+                        prefs.edit().putInt(KEY_X, params.x).putInt(KEY_Y, params.y).apply()
+                    } else if (!movedOff) {
+                        swapPanes()
+                    }
+                    dragging = false; movedOff = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun hideSwapOverlay() {
+        val view = overlayView ?: return
+        overlayView = null
+        runCatching {
+            (getSystemService(WINDOW_SERVICE) as? WindowManager)?.removeView(view)
+        }.onFailure { Log.e(TAG, "remove swap overlay failed", it) }
+    }
+
     companion object {
         private const val TAG = "SplitA11yService"
         private const val TAP_MS = 40L
         private const val GAP_MS = 80L
+
+        private const val OVERLAY_PREFS = "split_overlay_prefs"
+        private const val KEY_X = "swap_x"
+        private const val KEY_Y = "swap_y"
+        private val OVERLAY_COLOR = 0xFF1A73E8.toInt()
 
         @Volatile
         private var instance: SplitAccessibilityService? = null
