@@ -2384,10 +2384,13 @@ private fun RangeCard(
                     MeterChip("In tank", "%.0f L".format(liters), (liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
                     MeterChip("Avg use", "%.1f".format(AVG_L_PER_100KM), 0.5f, DashColors.Accent, false, Modifier.weight(1f))
                 }
-                if (canFuel == null) {
-                    TextButton(onClick = { showFinder = true }) {
-                        Text("Learn fuel from CANbox", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                    }
+                // Always reachable, so a learned mapping can be recalibrated or forgotten.
+                TextButton(onClick = { showFinder = true }) {
+                    Text(
+                        if (canFuel == null) "Learn fuel from CANbox" else "Recalibrate fuel",
+                        color = DashColors.Muted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }
