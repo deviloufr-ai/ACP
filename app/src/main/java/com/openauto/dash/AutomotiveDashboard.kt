@@ -1211,6 +1211,7 @@ private fun DashboardPage(
             ) {
                 TileContent(
                     item = item,
+                    editing = editing && !inSplitMode,
                     appsByPackage = appsByPackage,
                     mediaState = mediaState,
                     mediaController = mediaController,
@@ -1299,6 +1300,7 @@ private fun DashboardPage(
 @Composable
 private fun TileContent(
     item: DashboardItem,
+    editing: Boolean,
     appsByPackage: Map<String, AppEntry>,
     mediaState: MediaState,
     mediaController: CarMediaController,
@@ -1320,6 +1322,7 @@ private fun TileContent(
             AppShortcutTile(
                 app = appsByPackage[item.packageName],
                 packageName = item.packageName,
+                editing = editing,
                 onClick = { onLaunchApp(item.packageName) }
             )
         }
@@ -1333,6 +1336,7 @@ private fun TileContent(
                 secondaryApp = appsByPackage[item.secondaryPackage],
                 primaryPackage = item.primaryPackage,
                 secondaryPackage = item.secondaryPackage,
+                editing = editing,
                 onClick = { onLaunchSplitPair(item.primaryPackage, item.secondaryPackage) }
             )
         }
@@ -1540,11 +1544,18 @@ private fun EditableTile(
 }
 
 @Composable
-private fun AppShortcutTile(app: AppEntry?, packageName: String, onClick: () -> Unit) {
+private fun AppShortcutTile(
+    app: AppEntry?,
+    packageName: String,
+    editing: Boolean = false,
+    onClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            // Disable launching while editing so the tile's long-press starts a
+            // drag (to reorder / stack) instead of opening the app.
+            .clickable(enabled = !editing, onClick = onClick)
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1579,12 +1590,14 @@ private fun SplitPairTile(
     secondaryApp: AppEntry?,
     primaryPackage: String,
     secondaryPackage: String,
+    editing: Boolean = false,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            // Disabled while editing so a long-press starts a drag, not a launch.
+            .clickable(enabled = !editing, onClick = onClick)
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
