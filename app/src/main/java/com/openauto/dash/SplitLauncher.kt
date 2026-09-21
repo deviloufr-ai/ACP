@@ -58,6 +58,42 @@ object SplitLauncher {
         return launchFreeform(context, packageName)
     }
 
+    /**
+     * Time to wait for the freshly launched primary app to reach the foreground
+     * before docking it, so [SplitAccessibilityService] splits the right task.
+     */
+    private const val PRIMARY_SETTLE_MS = 700L
+
+    /**
+     * Open a preselected pair of apps in split-screen: launch [primary] full
+     * screen, dock it once it's foreground, then fill the other half with
+     * [secondary]. Falls back to a freeform floating [secondary] window when the
+     * accessibility service isn't enabled. Returns true if [primary] launched.
+     */
+    fun launchSplitPair(context: Context, primary: String, secondary: String): Boolean {
+        val primaryIntent = context.packageManager.getLaunchIntentForPackage(primary)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        } ?: return false
+
+        val launched = runCatching {
+            context.startActivity(primaryIntent)
+            true
+        }.onFailure { Log.e(TAG, "primary launch failed", it) }.getOrDefault(false)
+        if (!launched) return false
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (SplitAccessibilityService.requestSplit()) {
+                Handler(Looper.getMainLooper()).postDelayed(
+                    { launchIntoAdjacent(context, secondary) },
+                    SPLIT_SETTLE_MS
+                )
+            } else {
+                launchFreeform(context, secondary)
+            }
+        }, PRIMARY_SETTLE_MS)
+        return true
+    }
+
     /** Whether the system-split path is available (accessibility service on). */
     fun isSystemSplitAvailable(): Boolean = SplitAccessibilityService.isConnected
 

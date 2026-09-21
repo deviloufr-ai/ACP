@@ -191,6 +191,10 @@ fun AutomotiveDashboard() {
     var showAddMenu by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
     var showWidgetMenu by remember { mutableStateOf(false) }
+    // Two-step picker for creating a saved split-pair tile.
+    var showPairPrimaryPicker by remember { mutableStateOf(false) }
+    var showPairSecondaryPicker by remember { mutableStateOf(false) }
+    var pairPrimaryPackage by remember { mutableStateOf<String?>(null) }
 
     // System-app install (root) — unlocks embedding the real Google Maps app.
     var showSystemDialog by remember { mutableStateOf(false) }
@@ -344,6 +348,11 @@ fun AutomotiveDashboard() {
         if (AppLauncher.launch(context, pkg)) showAllApps = false
     }
 
+    val onLaunchSplitPair: (String, String) -> Unit = { primary, secondary ->
+        if (SplitLauncher.isSystemSplitAvailable()) SplitLauncher.launchSplitPair(context, primary, secondary)
+        else showSplitEnable = true
+    }
+
     val onAdd: (Int) -> Unit = { page ->
         addTargetPage = page
         showAddMenu = true
@@ -395,6 +404,7 @@ fun AutomotiveDashboard() {
                     onConnectObd = onConnectObd,
                     onPickDevice = onPickDevice,
                     onLaunchApp = onLaunchApp,
+                    onLaunchSplitPair = onLaunchSplitPair,
                     onRemove = { index -> removeAt(page, index) },
                     onResize = { index, weight ->
                         mutatePage(page) { list ->
@@ -455,6 +465,11 @@ fun AutomotiveDashboard() {
                         showAddMenu = false
                         showAppPicker = true
                     }
+                    AddChoiceRow(Icons.Filled.Splitscreen, "Add app pair (split)") {
+                        showAddMenu = false
+                        pairPrimaryPackage = null
+                        showPairPrimaryPicker = true
+                    }
                     AddChoiceRow(Icons.Filled.Widgets, "Add widget") {
                         showAddMenu = false
                         showWidgetMenu = true
@@ -490,6 +505,38 @@ fun AutomotiveDashboard() {
                 SplitLauncher.launchSplit(context, app.packageName)
             },
             onDismiss = { showSplitPicker = false }
+        )
+    }
+
+    if (showPairPrimaryPicker) {
+        AppPickerDialog(
+            apps = apps,
+            title = "Split pair — first app (left)",
+            onPick = { app ->
+                pairPrimaryPackage = app.packageName
+                showPairPrimaryPicker = false
+                showPairSecondaryPicker = true
+            },
+            onDismiss = { showPairPrimaryPicker = false }
+        )
+    }
+
+    if (showPairSecondaryPicker) {
+        AppPickerDialog(
+            apps = apps,
+            title = "Split pair — second app (right)",
+            onPick = { app ->
+                showPairSecondaryPicker = false
+                val primary = pairPrimaryPackage
+                pairPrimaryPackage = null
+                if (primary != null && addTargetPage >= 0) {
+                    addItem(addTargetPage, DashboardItem.SplitPair(primary, app.packageName))
+                }
+            },
+            onDismiss = {
+                showPairSecondaryPicker = false
+                pairPrimaryPackage = null
+            }
         )
     }
 
@@ -803,6 +850,7 @@ private fun DashboardPage(
     onConnectObd: () -> Unit,
     onPickDevice: () -> Unit,
     onLaunchApp: (String) -> Unit,
+    onLaunchSplitPair: (String, String) -> Unit,
     onRemove: (Int) -> Unit,
     onResize: (Int, Float) -> Unit,
     onAdd: () -> Unit
@@ -814,7 +862,7 @@ private fun DashboardPage(
     // mode); app shortcuts stay compact. Swiping moves between the 3 dashboards.
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val rowWidthPx = with(density) { maxWidth.toPx() }
-        val totalWeight = pageItems.filterNot { it is DashboardItem.AppShortcut }
+        val totalWeight = pageItems.filterNot { it.isCompactTile() }
             .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
         // How much weight a 1px horizontal drag represents (relative resize; the
         // fixed-width shortcuts/AddTile make this an approximation, which is fine).
@@ -828,10 +876,12 @@ private fun DashboardPage(
         verticalAlignment = Alignment.CenterVertically
     ) {
         pageItems.forEachIndexed { index, item ->
-            val resizable = item !is DashboardItem.AppShortcut
-            val tileModifier =
-                if (item is DashboardItem.AppShortcut) Modifier.width(104.dp).fillMaxHeight()
-                else Modifier.weight(item.tileWeight()).fillMaxHeight()
+            val resizable = !item.isCompactTile()
+            val tileModifier = when (item) {
+                is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
+                is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
+                else -> Modifier.weight(item.tileWeight()).fillMaxHeight()
+            }
             EditableTile(
                 modifier = tileModifier,
                 editing = editing,
@@ -853,6 +903,19 @@ private fun DashboardPage(
                             app = appsByPackage[item.packageName],
                             packageName = item.packageName,
                             onClick = { onLaunchApp(item.packageName) }
+                        )
+                    }
+
+                    is DashboardItem.SplitPair -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SplitPairTile(
+                            primaryApp = appsByPackage[item.primaryPackage],
+                            secondaryApp = appsByPackage[item.secondaryPackage],
+                            primaryPackage = item.primaryPackage,
+                            secondaryPackage = item.secondaryPackage,
+                            onClick = { onLaunchSplitPair(item.primaryPackage, item.secondaryPackage) }
                         )
                     }
 
@@ -1030,6 +1093,78 @@ private fun AppShortcutTile(app: AppEntry?, packageName: String, onClick: () -> 
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun SplitPairTile(
+    primaryApp: AppEntry?,
+    secondaryApp: AppEntry?,
+    primaryPackage: String,
+    secondaryPackage: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .height(64.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(DashColors.CardHi)
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                PairIcon(primaryApp)
+                Icon(
+                    Icons.Filled.Splitscreen,
+                    contentDescription = null,
+                    tint = DashColors.Accent,
+                    modifier = Modifier.size(16.dp)
+                )
+                PairIcon(secondaryApp)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "${primaryApp?.label ?: primaryPackage.substringAfterLast('.')} | " +
+                (secondaryApp?.label ?: secondaryPackage.substringAfterLast('.')),
+            color = DashColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun PairIcon(app: AppEntry?) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(DashColors.Card),
+        contentAlignment = Alignment.Center
+    ) {
+        if (app != null) {
+            AppIcon(icon = app.icon, size = 26.dp)
+        } else {
+            Icon(
+                Icons.Filled.Apps,
+                contentDescription = null,
+                tint = DashColors.Muted,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 

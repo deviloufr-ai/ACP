@@ -28,9 +28,15 @@ enum class BuiltinKind(val label: String) {
  */
 sealed interface DashboardItem {
     data class AppShortcut(val packageName: String) : DashboardItem
+    /** Launches two apps side-by-side in split-screen (see [SplitLauncher]). */
+    data class SplitPair(val primaryPackage: String, val secondaryPackage: String) : DashboardItem
     data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f) : DashboardItem
     data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f) : DashboardItem
 }
+
+/** Compact fixed-width icon tiles, as opposed to weighted widget cards. */
+fun DashboardItem.isCompactTile(): Boolean =
+    this is DashboardItem.AppShortcut || this is DashboardItem.SplitPair
 
 /**
  * Relative width a tile occupies in its dashboard row. Widgets share the row by
@@ -40,13 +46,15 @@ fun DashboardItem.tileWeight(): Float = when (this) {
     is DashboardItem.BuiltinWidget -> weight
     is DashboardItem.SystemWidget -> weight
     is DashboardItem.AppShortcut -> 1f
+    is DashboardItem.SplitPair -> 1f
 }
 
-/** Returns a copy of this item with a new row weight (no-op for app shortcuts). */
+/** Returns a copy of this item with a new row weight (no-op for compact tiles). */
 fun DashboardItem.withWeight(newWeight: Float): DashboardItem = when (this) {
     is DashboardItem.BuiltinWidget -> copy(weight = newWeight)
     is DashboardItem.SystemWidget -> copy(weight = newWeight)
     is DashboardItem.AppShortcut -> this
+    is DashboardItem.SplitPair -> this
 }
 
 /**
@@ -99,6 +107,8 @@ object DashboardStore {
 
     private fun DashboardItem.toJson(): JSONObject = when (this) {
         is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName)
+        is DashboardItem.SplitPair ->
+            JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage)
         is DashboardItem.BuiltinWidget ->
             JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble())
         is DashboardItem.SystemWidget ->
@@ -107,6 +117,11 @@ object DashboardStore {
 
     private fun JSONObject.toItem(): DashboardItem? = when (optString("t")) {
         "app" -> optString("pkg").takeIf { it.isNotBlank() }?.let { DashboardItem.AppShortcut(it) }
+        "split" -> {
+            val a = optString("a")
+            val b = optString("b")
+            if (a.isNotBlank() && b.isNotBlank()) DashboardItem.SplitPair(a, b) else null
+        }
         "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
             ?.let { DashboardItem.BuiltinWidget(it, readWeight()) }
         "widget" -> optInt("id", -1).takeIf { it != -1 }
