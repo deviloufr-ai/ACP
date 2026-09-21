@@ -177,14 +177,15 @@ class SplitAccessibilityService : AccessibilityService() {
         var downY = 0f
         var startX = 0
         var startY = 0
-        var dragging = false
-        var movedOff = false
+        var dragging = false   // long-press held → in move mode
+        var moved = false      // actually repositioned the button while dragging
 
+        // Only a long-press puts the button into move mode. A plain tap — even one
+        // that jitters a few pixels, which is normal on a car touchscreen — is not
+        // treated as a drag, so it still swaps on release.
         val armDrag = Runnable {
-            if (!movedOff) {
-                dragging = true
-                button.animate().scaleX(1.15f).scaleY(1.15f).alpha(0.9f).setDuration(120).start()
-            }
+            dragging = true
+            button.animate().scaleX(1.15f).scaleY(1.15f).alpha(0.9f).setDuration(120).start()
         }
 
         return View.OnTouchListener { _, event ->
@@ -192,22 +193,22 @@ class SplitAccessibilityService : AccessibilityService() {
                 MotionEvent.ACTION_DOWN -> {
                     downX = event.rawX; downY = event.rawY
                     startX = params.x; startY = params.y
-                    dragging = false; movedOff = false
+                    dragging = false; moved = false
                     handler.postDelayed(armDrag, longPressMs)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - downX
                     val dy = event.rawY - downY
-                    if (!dragging && hypot(dx, dy) > slop) {
-                        // Moved before the long-press armed dragging: it's neither a
-                        // tap nor a move — cancel both so nothing fires.
-                        movedOff = true
+                    // A big move before the long-press fires cancels move mode, so
+                    // it stays a tap (swap) rather than snapping into a drag.
+                    if (!dragging && hypot(dx, dy) > slop * 3) {
                         handler.removeCallbacks(armDrag)
                     }
                     if (dragging) {
                         params.x = startX + dx.toInt()
                         params.y = startY + dy.toInt()
+                        if (hypot(dx, dy) > slop) moved = true
                         runCatching { wm.updateViewLayout(button, params) }
                     }
                     true
@@ -215,12 +216,14 @@ class SplitAccessibilityService : AccessibilityService() {
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(armDrag)
                     button.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(120).start()
-                    if (dragging) {
+                    if (moved) {
+                        // A real drag: remember where it was moved to.
                         prefs.edit().putInt(KEY_X, params.x).putInt(KEY_Y, params.y).apply()
-                    } else if (!movedOff) {
+                    } else if (event.action == MotionEvent.ACTION_UP) {
+                        // Tap (or long-press without moving): swap the panes.
                         swapPanes()
                     }
-                    dragging = false; movedOff = false
+                    dragging = false; moved = false
                     true
                 }
                 else -> false
