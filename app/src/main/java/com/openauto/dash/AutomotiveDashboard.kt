@@ -246,6 +246,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
     }
 
+    // Reorder a tile within its page (edit-mode ◀ ▶ buttons).
+    fun moveItem(page: Int, from: Int, to: Int) {
+        mutatePage(page) { list ->
+            if (from !in list.indices || to !in list.indices) list
+            else list.toMutableList().apply { add(to, removeAt(from)) }
+        }
+    }
+
     // System app-widget picker; adds the bound widget to the page that requested it.
     val addSystemWidget = rememberSystemWidgetAdder { id ->
         if (addTargetPage in 0 until DashboardStore.PAGE_COUNT) {
@@ -411,6 +419,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onResize = { index, weight ->
                         mutatePage(page) { list ->
                             list.mapIndexed { i, it -> if (i == index) it.withWeight(weight) else it }
+                        }
+                    },
+                    onMove = { from, to -> moveItem(page, from, to) },
+                    onToggleHalf = { index ->
+                        mutatePage(page) { list ->
+                            list.mapIndexed { i, it -> if (i == index) it.withHalf(!it.isHalf()) else it }
                         }
                     },
                     onAdd = { onAdd(page) }
@@ -856,43 +870,52 @@ private fun DashboardPage(
     onLaunchSplitPair: (String, String) -> Unit,
     onRemove: (Int) -> Unit,
     onResize: (Int, Float) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onToggleHalf: (Int) -> Unit,
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    // Side-by-side tiles that fill the screen (tuned for 1280x720). Widgets take
-    // weighted shares of the width (adjustable via the resize handle in edit
-    // mode); app shortcuts stay compact. Swiping moves between the 3 dashboards.
+    // Side-by-side columns that fill the screen (tuned for 1280x720). Widgets take
+    // weighted shares of the width; app shortcuts stay compact. A widget marked
+    // "half" (edit mode) takes half the height so two stack in one column instead
+    // of each eating a full column. Swiping moves between the 3 dashboards.
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val rowWidthPx = with(density) { maxWidth.toPx() }
         val totalWeight = pageItems.filterNot { it.isCompactTile() }
             .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
-        // How much weight a 1px horizontal drag represents (relative resize; the
-        // fixed-width shortcuts/AddTile make this an approximation, which is fine).
         val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
 
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // When sharing the screen (split-screen), the pane is too small for the
-        // full multi-tile row, so collapse to just the first widget of the page.
-        val renderItems = if (inSplitMode) pageItems.take(1) else pageItems
-        renderItems.forEachIndexed { index, item ->
-            val resizable = !inSplitMode && !item.isCompactTile()
-            val tileModifier = when {
-                inSplitMode -> Modifier.weight(1f).fillMaxHeight()
-                item is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
-                item is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
-                else -> Modifier.weight(item.tileWeight()).fillMaxHeight()
+        // Group the flat item list into columns: each full widget / compact tile is
+        // its own column; consecutive half widgets pack two-per-column (stacked).
+        val columns = ArrayList<MutableList<Int>>()
+        run {
+            var halfBuf: MutableList<Int>? = null
+            pageItems.forEachIndexed { i, it ->
+                if (!it.isCompactTile() && it.isHalf()) {
+                    val buf = halfBuf?.takeIf { b -> b.size < 2 }
+                        ?: ArrayList<Int>().also { columns.add(it); halfBuf = it }
+                    buf.add(i)
+                } else {
+                    halfBuf = null
+                    columns.add(arrayListOf(i))
+                }
             }
+        }
+
+        val renderTile: @Composable (Int, Modifier) -> Unit = { index, mod ->
+            val item = pageItems[index]
             EditableTile(
-                modifier = tileModifier,
+                modifier = mod,
                 editing = editing && !inSplitMode,
-                resizable = resizable,
+                resizable = !inSplitMode && !item.isCompactTile(),
+                canMoveLeft = index > 0,
+                canMoveRight = index < pageItems.lastIndex,
+                onMoveLeft = { onMove(index, index - 1) },
+                onMoveRight = { onMove(index, index + 1) },
+                halfToggle = !item.isCompactTile(),
+                isHalf = item.isHalf(),
+                onToggleHalf = { onToggleHalf(index) },
                 onRemove = { onRemove(index) },
                 onResizeActive = onModelTouch,
                 onResizeBy = { deltaPx ->
@@ -993,15 +1016,49 @@ private fun DashboardPage(
             }
         }
 
-        if (!inSplitMode) {
-            Box(
-                modifier = Modifier.width(96.dp).fillMaxHeight(),
-                contentAlignment = Alignment.Center
+        if (inSplitMode) {
+            // Split-screen pane is too small for the full row: show the first widget only.
+            Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                if (pageItems.isNotEmpty()) renderTile(0, Modifier.fillMaxSize())
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                AddTile(onClick = onAdd)
+                columns.forEach { col ->
+                    val first = pageItems[col.first()]
+                    when {
+                        first.isCompactTile() -> {
+                            val w = if (first is DashboardItem.SplitPair) 120.dp else 104.dp
+                            renderTile(col.first(), Modifier.width(w).fillMaxHeight())
+                        }
+                        col.size > 1 || first.isHalf() -> {
+                            val colWeight = col.maxOf { pageItems[it].tileWeight() }
+                            Column(
+                                modifier = Modifier.weight(colWeight).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                col.forEach { index ->
+                                    renderTile(index, Modifier.weight(1f).fillMaxWidth())
+                                }
+                            }
+                        }
+                        else -> renderTile(col.first(), Modifier.weight(first.tileWeight()).fillMaxHeight())
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.width(96.dp).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AddTile(onClick = onAdd)
+                }
             }
         }
-    }
     }
 }
 
@@ -1016,6 +1073,13 @@ private fun EditableTile(
     modifier: Modifier = Modifier,
     editing: Boolean,
     resizable: Boolean = false,
+    canMoveLeft: Boolean = false,
+    canMoveRight: Boolean = false,
+    onMoveLeft: () -> Unit = {},
+    onMoveRight: () -> Unit = {},
+    halfToggle: Boolean = false,
+    isHalf: Boolean = false,
+    onToggleHalf: () -> Unit = {},
     onRemove: () -> Unit,
     onResizeActive: (Boolean) -> Unit = {},
     onResizeBy: (Float) -> Unit = {},
@@ -1036,6 +1100,46 @@ private fun EditableTile(
                 )
             ) {
                 Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+            }
+            if (halfToggle) {
+                FilledIconButton(
+                    onClick = onToggleHalf,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .size(30.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = if (isHalf) DashColors.Accent else DashColors.CardHi,
+                        contentColor = if (isHalf) DashColors.Background else DashColors.TextPrimary
+                    )
+                ) {
+                    Icon(Icons.Filled.Splitscreen, contentDescription = "Toggle half height", modifier = Modifier.size(17.dp))
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (canMoveLeft) {
+                    FilledIconButton(
+                        onClick = onMoveLeft,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("◀") }
+                }
+                if (canMoveRight) {
+                    FilledIconButton(
+                        onClick = onMoveRight,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("▶") }
+                }
             }
             if (resizable) {
                 Box(
