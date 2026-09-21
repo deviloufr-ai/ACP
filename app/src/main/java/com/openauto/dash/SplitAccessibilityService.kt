@@ -1,7 +1,9 @@
 package com.openauto.dash
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.graphics.Path
 import android.view.accessibility.AccessibilityEvent
 import android.util.Log
 
@@ -49,8 +51,31 @@ class SplitAccessibilityService : AccessibilityService() {
             .onFailure { Log.e(TAG, "toggle split-screen failed", it) }
             .getOrDefault(false)
 
+    /**
+     * Swap the two split-screen panes by dispatching a **double-tap on the split
+     * divider** — the AOSP gesture SystemUI maps to "swap". The divider sits on
+     * the boundary between the two 50/50 panes, i.e. the centre of the display,
+     * so we tap there. Gesture dispatch is global, so it can hit the divider even
+     * though it lies outside our own pane.
+     */
+    private fun swapPanes(): Boolean {
+        val m = resources.displayMetrics
+        val cx = m.widthPixels / 2f
+        val cy = m.heightPixels / 2f
+        val path = Path().apply { moveTo(cx, cy) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0L, TAP_MS))
+            .addStroke(GestureDescription.StrokeDescription(path, TAP_MS + GAP_MS, TAP_MS))
+            .build()
+        return runCatching { dispatchGesture(gesture, null, null) }
+            .onFailure { Log.e(TAG, "swap gesture failed", it) }
+            .getOrDefault(false)
+    }
+
     companion object {
         private const val TAG = "SplitA11yService"
+        private const val TAP_MS = 40L
+        private const val GAP_MS = 80L
 
         @Volatile
         private var instance: SplitAccessibilityService? = null
@@ -63,5 +88,11 @@ class SplitAccessibilityService : AccessibilityService() {
          * is not enabled/bound, so callers can fall back to another strategy.
          */
         fun requestSplit(): Boolean = instance?.toggleSplitScreen() ?: false
+
+        /**
+         * Swap the left/right (or top/bottom) split panes. Returns false when the
+         * service is not enabled/bound.
+         */
+        fun swapSplit(): Boolean = instance?.swapPanes() ?: false
     }
 }
