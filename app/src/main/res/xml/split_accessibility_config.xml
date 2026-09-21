@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Config for SplitAccessibilityService. It observes nothing (no event types,
-  no window content) — it only needs to exist so the launcher can call
-  performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) to enter split-screen.
+  Config for SplitAccessibilityService. It drives the system split path via
+  performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) and swaps panes with a
+  dispatched gesture. It also watches window changes (flagRetrieveInteractiveWindows
+  + canRetrieveWindowContent) purely to tell whether the screen is currently in
+  split mode, so the floating swap button is shown only then. No window *content*
+  is read — only the window list's types/count.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"
-    android:canRetrieveWindowContent="false"
+    android:canRetrieveWindowContent="true"
     android:notificationTimeout="0"
     android:description="@string/split_a11y_description" />

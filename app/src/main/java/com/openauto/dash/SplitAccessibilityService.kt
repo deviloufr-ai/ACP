@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import android.util.Log
 import android.widget.TextView
 import kotlin.math.hypot
@@ -43,7 +44,7 @@ class SplitAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         Log.d(TAG, "connected")
-        showSwapOverlay()
+        updateOverlayForSplit()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -58,10 +59,28 @@ class SplitAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    // No events are observed and there is nothing to interrupt; the service is
-    // only ever driven imperatively via [requestSplit].
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    // Window changes are the only events we watch, and only to keep the floating
+    // swap button visible exactly while the screen is split.
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        updateOverlayForSplit()
+    }
+
     override fun onInterrupt() {}
+
+    /**
+     * True when the display is currently showing two apps side by side. Detected
+     * by counting visible application windows: a single full-screen app (or the
+     * launcher home) has one, a split has two. Only window types/count are read,
+     * never any window content.
+     */
+    private fun isInSplitMode(): Boolean = runCatching {
+        windows?.count { it.type == AccessibilityWindowInfo.TYPE_APPLICATION } ?: 0
+    }.getOrDefault(0) >= 2
+
+    /** Show the floating swap button while split, hide it otherwise. */
+    private fun updateOverlayForSplit() {
+        if (isInSplitMode()) showSwapOverlay() else hideSwapOverlay()
+    }
 
     private fun toggleSplitScreen(): Boolean =
         runCatching { performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) }
