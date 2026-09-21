@@ -159,7 +159,7 @@ private const val SPEED_WARNING_KMH = 110
  * Apps button opens the full app drawer. Nothing launches automatically.
  */
 @Composable
-fun AutomotiveDashboard() {
+fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -394,6 +394,7 @@ fun AutomotiveDashboard() {
                 DashboardPage(
                     pageItems = pages[page],
                     editing = editing,
+                    inSplitMode = inSplitMode,
                     onModelTouch = { blockPagerSwipe = it },
                     appsByPackage = appsByPackage,
                     mediaState = mediaState,
@@ -840,6 +841,7 @@ private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
 private fun DashboardPage(
     pageItems: List<DashboardItem>,
     editing: Boolean,
+    inSplitMode: Boolean,
     onModelTouch: (Boolean) -> Unit,
     appsByPackage: Map<String, AppEntry>,
     mediaState: MediaState,
@@ -875,16 +877,20 @@ private fun DashboardPage(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        pageItems.forEachIndexed { index, item ->
-            val resizable = !item.isCompactTile()
-            val tileModifier = when (item) {
-                is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
-                is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
+        // When sharing the screen (split-screen), the pane is too small for the
+        // full multi-tile row, so collapse to just the first widget of the page.
+        val renderItems = if (inSplitMode) pageItems.take(1) else pageItems
+        renderItems.forEachIndexed { index, item ->
+            val resizable = !inSplitMode && !item.isCompactTile()
+            val tileModifier = when {
+                inSplitMode -> Modifier.weight(1f).fillMaxHeight()
+                item is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
+                item is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
                 else -> Modifier.weight(item.tileWeight()).fillMaxHeight()
             }
             EditableTile(
                 modifier = tileModifier,
-                editing = editing,
+                editing = editing && !inSplitMode,
                 resizable = resizable,
                 onRemove = { onRemove(index) },
                 onResizeActive = onModelTouch,
@@ -986,11 +992,13 @@ private fun DashboardPage(
             }
         }
 
-        Box(
-            modifier = Modifier.width(96.dp).fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            AddTile(onClick = onAdd)
+        if (!inSplitMode) {
+            Box(
+                modifier = Modifier.width(96.dp).fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                AddTile(onClick = onAdd)
+            }
         }
     }
     }
