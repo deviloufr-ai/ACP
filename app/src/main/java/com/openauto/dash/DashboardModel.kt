@@ -30,8 +30,26 @@ sealed interface DashboardItem {
     data class AppShortcut(val packageName: String) : DashboardItem
     /** Launches two apps side-by-side in split-screen (see [SplitLauncher]). */
     data class SplitPair(val primaryPackage: String, val secondaryPackage: String) : DashboardItem
-    data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f) : DashboardItem
-    data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f) : DashboardItem
+    data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
+    data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
+}
+
+/**
+ * A "half" widget is a small card that takes only half the row height, so two of
+ * them stack in one column instead of each eating a full-height slot. Compact
+ * icon tiles (shortcuts / split pairs) are never half.
+ */
+fun DashboardItem.isHalf(): Boolean = when (this) {
+    is DashboardItem.BuiltinWidget -> half
+    is DashboardItem.SystemWidget -> half
+    else -> false
+}
+
+/** Returns a copy toggled between half-height and full-height (no-op otherwise). */
+fun DashboardItem.withHalf(h: Boolean): DashboardItem = when (this) {
+    is DashboardItem.BuiltinWidget -> copy(half = h)
+    is DashboardItem.SystemWidget -> copy(half = h)
+    else -> this
 }
 
 /** Compact fixed-width icon tiles, as opposed to weighted widget cards. */
@@ -110,9 +128,9 @@ object DashboardStore {
         is DashboardItem.SplitPair ->
             JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage)
         is DashboardItem.BuiltinWidget ->
-            JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble())
+            JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble()).put("h", half)
         is DashboardItem.SystemWidget ->
-            JSONObject().put("t", "widget").put("id", appWidgetId).put("w", weight.toDouble())
+            JSONObject().put("t", "widget").put("id", appWidgetId).put("w", weight.toDouble()).put("h", half)
     }
 
     private fun JSONObject.toItem(): DashboardItem? = when (optString("t")) {
@@ -123,9 +141,9 @@ object DashboardStore {
             if (a.isNotBlank() && b.isNotBlank()) DashboardItem.SplitPair(a, b) else null
         }
         "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
-            ?.let { DashboardItem.BuiltinWidget(it, readWeight()) }
+            ?.let { DashboardItem.BuiltinWidget(it, readWeight(), optBoolean("h", false)) }
         "widget" -> optInt("id", -1).takeIf { it != -1 }
-            ?.let { DashboardItem.SystemWidget(it, readWeight()) }
+            ?.let { DashboardItem.SystemWidget(it, readWeight(), optBoolean("h", false)) }
         else -> null
     }
 

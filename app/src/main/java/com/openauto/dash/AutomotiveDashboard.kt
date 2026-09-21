@@ -130,6 +130,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -244,6 +245,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val item = pages.getOrNull(page)?.getOrNull(index) ?: return
         if (item is DashboardItem.SystemWidget) WidgetHostHolder.delete(context, item.appWidgetId)
         mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
+    }
+
+    // Reorder a tile within its page (edit-mode ◀ ▶ buttons).
+    fun moveItem(page: Int, from: Int, to: Int) {
+        mutatePage(page) { list ->
+            if (from !in list.indices || to !in list.indices) list
+            else list.toMutableList().apply { add(to, removeAt(from)) }
+        }
     }
 
     // System app-widget picker; adds the bound widget to the page that requested it.
@@ -411,6 +420,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onResize = { index, weight ->
                         mutatePage(page) { list ->
                             list.mapIndexed { i, it -> if (i == index) it.withWeight(weight) else it }
+                        }
+                    },
+                    onMove = { from, to -> moveItem(page, from, to) },
+                    onToggleHalf = { index ->
+                        mutatePage(page) { list ->
+                            list.mapIndexed { i, it -> if (i == index) it.withHalf(!it.isHalf()) else it }
                         }
                     },
                     onAdd = { onAdd(page) }
@@ -875,80 +890,52 @@ private fun DashboardPage(
     onLaunchSplitPair: (String, String) -> Unit,
     onRemove: (Int) -> Unit,
     onResize: (Int, Float) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onToggleHalf: (Int) -> Unit,
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    // Side-by-side tiles that fill the screen (tuned for 1280x720). Widgets take
-    // weighted shares of the width (adjustable via the resize handle in edit
-    // mode); app shortcuts stay compact. Swiping moves between the 3 dashboards.
+    // Side-by-side columns that fill the screen (tuned for 1280x720). Widgets take
+    // weighted shares of the width; app shortcuts stay compact. A widget marked
+    // "half" (edit mode) takes half the height so two stack in one column instead
+    // of each eating a full column. Swiping moves between the 3 dashboards.
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val rowWidthPx = with(density) { maxWidth.toPx() }
         val totalWeight = pageItems.filterNot { it.isCompactTile() }
             .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
-        // How much weight a 1px horizontal drag represents (relative resize; the
-        // fixed-width shortcuts/AddTile make this an approximation, which is fine).
         val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
 
-    if (inSplitMode) {
-        // Sharing the screen: the pane is narrow and tall, so stack every tile
-        // vertically (filling the width) instead of the side-by-side row.
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            pageItems.forEachIndexed { index, item ->
-                // Widgets share the height by weight; compact icon tiles keep a
-                // fixed height so they don't stretch to fill the column.
-                val tileModifier =
-                    if (item.isCompactTile()) Modifier.fillMaxWidth().height(96.dp)
-                    else Modifier.fillMaxWidth().weight(item.tileWeight())
-                EditableTile(
-                    modifier = tileModifier,
-                    editing = false,
-                    resizable = false,
-                    onRemove = { onRemove(index) },
-                    onResizeActive = onModelTouch
-                ) {
-                    TileContent(
-                        item = item,
-                        appsByPackage = appsByPackage,
-                        mediaState = mediaState,
-                        mediaController = mediaController,
-                        hasMediaAccess = hasMediaAccess,
-                        context = context,
-                        obdData = obdData,
-                        obdConnection = obdConnection,
-                        onConnectObd = onConnectObd,
-                        onPickDevice = onPickDevice,
-                        onLaunchApp = onLaunchApp,
-                        onLaunchSplitPair = onLaunchSplitPair,
-                        onModelTouch = onModelTouch
-                    )
+        // Group the flat item list into columns: each full widget / compact tile
+        // is its own column; consecutive half widgets pack two-per-column (stacked).
+        val columns = ArrayList<MutableList<Int>>()
+        run {
+            var halfBuf: MutableList<Int>? = null
+            pageItems.forEachIndexed { i, it ->
+                if (!it.isCompactTile() && it.isHalf()) {
+                    val buf = halfBuf?.takeIf { b -> b.size < 2 }
+                        ?: ArrayList<Int>().also { columns.add(it); halfBuf = it }
+                    buf.add(i)
+                } else {
+                    halfBuf = null
+                    columns.add(arrayListOf(i))
                 }
             }
         }
-    } else {
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        pageItems.forEachIndexed { index, item ->
-            val resizable = !item.isCompactTile()
-            val tileModifier = when (item) {
-                is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
-                is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
-                else -> Modifier.weight(item.tileWeight()).fillMaxHeight()
-            }
+
+        val renderTile: @Composable (Int, Modifier) -> Unit = { index, mod ->
+            val item = pageItems[index]
             EditableTile(
-                modifier = tileModifier,
-                editing = editing,
-                resizable = resizable,
+                modifier = mod,
+                editing = editing && !inSplitMode,
+                resizable = !inSplitMode && !item.isCompactTile(),
+                canMoveLeft = index > 0,
+                canMoveRight = index < pageItems.lastIndex,
+                onMoveLeft = { onMove(index, index - 1) },
+                onMoveRight = { onMove(index, index + 1) },
+                halfToggle = !item.isCompactTile(),
+                isHalf = item.isHalf(),
+                onToggleHalf = { onToggleHalf(index) },
                 onRemove = { onRemove(index) },
                 onResizeActive = onModelTouch,
                 onResizeBy = { deltaPx ->
@@ -975,21 +962,67 @@ private fun DashboardPage(
             }
         }
 
-        Box(
-            modifier = Modifier.width(96.dp).fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            AddTile(onClick = onAdd)
+        if (inSplitMode) {
+            // Sharing the screen: the pane is narrow and tall, so stack every tile
+            // vertically (filling the width) instead of the side-by-side row.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                pageItems.indices.forEach { index ->
+                    val item = pageItems[index]
+                    val mod = if (item.isCompactTile()) Modifier.fillMaxWidth().height(96.dp)
+                        else Modifier.fillMaxWidth().weight(item.tileWeight())
+                    renderTile(index, mod)
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                columns.forEach { col ->
+                    val first = pageItems[col.first()]
+                    when {
+                        first.isCompactTile() -> {
+                            val w = if (first is DashboardItem.SplitPair) 120.dp else 104.dp
+                            renderTile(col.first(), Modifier.width(w).fillMaxHeight())
+                        }
+                        col.size > 1 || first.isHalf() -> {
+                            val colWeight = col.maxOf { pageItems[it].tileWeight() }
+                            Column(
+                                modifier = Modifier.weight(colWeight).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                col.forEach { index ->
+                                    renderTile(index, Modifier.weight(1f).fillMaxWidth())
+                                }
+                            }
+                        }
+                        else -> renderTile(col.first(), Modifier.weight(first.tileWeight()).fillMaxHeight())
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.width(96.dp).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AddTile(onClick = onAdd)
+                }
+            }
         }
-    }
-    }
     }
 }
 
 /**
- * Renders the inner content of one dashboard tile (the widget card, app
- * shortcut, split pair, or hosted system widget). Shared by the horizontal
- * row layout and the vertical split-screen stack so both look identical.
+ * Renders the inner content of one dashboard tile (widget card, app shortcut,
+ * split pair, or hosted system widget). Shared by the horizontal row layout and
+ * the vertical split-screen stack so both look identical.
  */
 @Composable
 private fun TileContent(
@@ -1109,6 +1142,13 @@ private fun EditableTile(
     modifier: Modifier = Modifier,
     editing: Boolean,
     resizable: Boolean = false,
+    canMoveLeft: Boolean = false,
+    canMoveRight: Boolean = false,
+    onMoveLeft: () -> Unit = {},
+    onMoveRight: () -> Unit = {},
+    halfToggle: Boolean = false,
+    isHalf: Boolean = false,
+    onToggleHalf: () -> Unit = {},
     onRemove: () -> Unit,
     onResizeActive: (Boolean) -> Unit = {},
     onResizeBy: (Float) -> Unit = {},
@@ -1129,6 +1169,46 @@ private fun EditableTile(
                 )
             ) {
                 Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+            }
+            if (halfToggle) {
+                FilledIconButton(
+                    onClick = onToggleHalf,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .size(30.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = if (isHalf) DashColors.Accent else DashColors.CardHi,
+                        contentColor = if (isHalf) DashColors.Background else DashColors.TextPrimary
+                    )
+                ) {
+                    Icon(Icons.Filled.Splitscreen, contentDescription = "Toggle half height", modifier = Modifier.size(17.dp))
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (canMoveLeft) {
+                    FilledIconButton(
+                        onClick = onMoveLeft,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("◀") }
+                }
+                if (canMoveRight) {
+                    FilledIconButton(
+                        onClick = onMoveRight,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("▶") }
+                }
             }
             if (resizable) {
                 Box(
@@ -2309,10 +2389,13 @@ private fun RangeCard(
 }
 
 /**
- * Learns which CANbox/MCU byte is the fuel level. The user enters what their
- * physical dash gauge reads right now; we rank the live MCU bytes by how well
- * they match (both 0–255 and direct-percent scales), and picking one calibrates
- * a full tank from that reading. Debug-flavoured, like the CAN monitor.
+ * Learns which CANbox/MCU byte is the fuel level with a **two-point capture**
+ * (like the door A/B differential). A single snapshot is unreliable — many bytes
+ * happen to read ~60% at one moment, including static ones — so instead the user
+ * captures the frames at one fuel level, waits until the gauge has visibly
+ * changed, captures again, and we only offer bytes that actually **moved in the
+ * same direction** as the fuel and map consistently to the same full tank. That
+ * excludes the static byte that got picked before and stayed at 60%.
  */
 @Composable
 private fun FuelFinderDialog(onDismiss: () -> Unit) {
@@ -2321,21 +2404,42 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
         onDispose { McuReader.stop() }
     }
     val entries by McuReader.entries.collectAsState()
-    var currentPct by remember { mutableIntStateOf(50) }
+    var currentPct by remember { mutableIntStateOf(60) }
+    var capA by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
+    var pctA by remember { mutableIntStateOf(0) }
+    var capB by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
+    var pctB by remember { mutableIntStateOf(0) }
 
-    // Rank every (frame, byte) by closeness to the entered % under either scale.
-    data class Cand(val key: String, val index: Int, val raw: Int, val asPct: Int, val err: Int)
-    val candidates = remember(entries, currentPct) {
-        entries.flatMap { e ->
-            e.bytes.mapIndexedNotNull { i, raw ->
-                if (raw in 1..254) {
-                    val pctDirect = raw
-                    val pct255 = raw * 100 / 255
-                    val best = if (kotlin.math.abs(pctDirect - currentPct) <= kotlin.math.abs(pct255 - currentPct)) pctDirect else pct255
-                    Cand(e.key, i, raw, best.coerceIn(0, 100), kotlin.math.abs(best - currentPct))
-                } else null
+    fun snapshot(): Map<String, List<Int>> = entries.associate { it.key to it.bytes }
+
+    // Bytes that changed in the same direction as the fuel and map to a
+    // consistent full-tank raw across both captures. err = disagreement between
+    // the two implied full-tank values (lower = better fit).
+    data class Cand(val key: String, val index: Int, val rawA: Int, val rawB: Int, val fullRaw: Int, val err: Int)
+    val candidates = remember(capA, capB, pctA, pctB) {
+        val a = capA; val b = capB
+        if (a == null || b == null || pctA == pctB || pctA == 0 || pctB == 0) {
+            emptyList()
+        } else {
+            val fuelDir = if (pctB > pctA) 1 else -1
+            val out = ArrayList<Cand>()
+            for ((key, av) in a) {
+                val bv = b[key] ?: continue
+                val n = minOf(av.size, bv.size)
+                for (i in 0 until n) {
+                    val ra = av[i]; val rb = bv[i]
+                    if (ra !in 1..255 || rb !in 1..255 || ra == rb) continue
+                    val byteDir = if (rb > ra) 1 else -1
+                    if (byteDir != fuelDir) continue                       // must track fuel
+                    val fullA = ra * 100f / pctA
+                    val fullB = rb * 100f / pctB
+                    val fullRaw = ((fullA + fullB) / 2f).roundToInt().coerceIn(1, 255)
+                    if (fullRaw < maxOf(ra, rb)) continue                  // full tank ≥ current
+                    out.add(Cand(key, i, ra, rb, fullRaw, kotlin.math.abs(fullA - fullB).roundToInt()))
+                }
             }
-        }.sortedBy { it.err }.take(12)
+            out.sortedWith(compareBy({ it.err }, { -kotlin.math.abs(it.rawB - it.rawA) })).take(12)
+        }
     }
 
     AlertDialog(
@@ -2345,7 +2449,7 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "Read your car's fuel gauge, set it below, then tap the byte whose value matches. It's saved and calibrated so a full tank reads 100%.",
+                    "Two-step: set your dash gauge %, tap Capture A. Later — once the gauge has changed a few % — set the new value and tap Capture B. Only bytes that actually moved with the fuel are offered.",
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -2365,34 +2469,60 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
                     ) { Text("+") }
                 }
                 Spacer(Modifier.height(10.dp))
-                if (entries.isEmpty()) {
-                    Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
-                } else {
-                    Text("Closest matches", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    LazyColumn(modifier = Modifier.fillMaxWidth().height(240.dp)) {
-                        lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 3.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(DashColors.CardHi)
-                                    .clickable {
-                                        // Calibrate: fullRaw = raw scaled so the entered % is exact.
-                                        val fullRaw = (c.raw * 100 / currentPct).coerceIn(1, 255)
-                                        McuReader.saveFuelMapping(c.key, c.index, fullRaw)
-                                        onDismiss()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = { capA = snapshot(); pctA = currentPct },
+                        colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
+                    ) { Text(if (capA == null) "Capture A" else "A ✓ $pctA%") }
+                    TextButton(
+                        onClick = { capB = snapshot(); pctB = currentPct },
+                        enabled = capA != null,
+                        colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
+                    ) { Text(if (capB == null) "Capture B" else "B ✓ $pctB%") }
+                    if (capA != null || capB != null) {
+                        TextButton(
+                            onClick = { capA = null; capB = null; pctA = 0; pctB = 0 },
+                            colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Muted)
+                        ) { Text("Reset") }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                when {
+                    entries.isEmpty() ->
+                        Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
+                    capA == null ->
+                        Text("Set your current fuel %, then tap Capture A.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                    capB == null ->
+                        Text("Captured at $pctA%. Drive until the gauge drops a few %, set the new value, then Capture B.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                    pctA == pctB ->
+                        Text("A and B are the same %. Capture B at a different fuel level.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    candidates.isEmpty() ->
+                        Text("No byte tracked the change. Recapture B after a bigger drop.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    else -> {
+                        Text("Bytes that moved with the fuel", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(210.dp)) {
+                            lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(DashColors.CardHi)
+                                        .clickable {
+                                            McuReader.saveFuelMapping(c.key, c.index, c.fullRaw)
+                                            onDismiss()
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                                        Text("${c.rawA} → ${c.rawB}  ·  full≈${c.fullRaw}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                                     }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
-                                    Text("raw ${c.raw}  →  ~${c.asPct}%", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                    Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                                 }
-                                Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
