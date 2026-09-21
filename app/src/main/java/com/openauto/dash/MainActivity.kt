@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -18,6 +20,12 @@ import androidx.core.view.WindowInsetsControllerCompat
  */
 class MainActivity : ComponentActivity() {
 
+    // Whether the launcher is sharing the screen (split-screen / freeform). The
+    // dashboard collapses to a single widget in this state. configChanges keeps
+    // the activity alive across the transition, so we drive it via a Compose
+    // state updated from onMultiWindowModeChanged.
+    private val inMultiWindow = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -27,13 +35,19 @@ class MainActivity : ComponentActivity() {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
         )
 
+        inMultiWindow.value = isInMultiWindowMode
         enableImmersiveFullscreen()
 
         setContent {
             OpenAutoDashTheme {
-                AutomotiveDashboard()
+                AutomotiveDashboard(inSplitMode = inMultiWindow.value)
             }
         }
+    }
+
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+        inMultiWindow.value = isInMultiWindowMode
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
