@@ -62,9 +62,9 @@ sealed interface DashboardItem {
     ) : DashboardItem
 }
 
-/** The dashboard grid: 10 cells across, 6 down. */
-const val GRID_COLS = 10
-const val GRID_ROWS = 6
+/** The dashboard grid: 12 cells across, 7 down. */
+const val GRID_COLS = 12
+const val GRID_ROWS = 7
 
 /** Compact icon tiles (shortcuts / split pairs) vs. larger widget cards. */
 fun DashboardItem.isCompactTile(): Boolean =

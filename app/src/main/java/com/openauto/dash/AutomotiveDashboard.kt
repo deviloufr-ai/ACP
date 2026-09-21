@@ -17,6 +17,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -351,11 +352,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Resize a tile to span w x h cells, keeping its top-left (drag the handle).
+    // Resize a tile to span w x h cells, keeping its top-left. Width/height are
+    // capped at the grid edge from the tile's position so it grows in place
+    // instead of being shoved left/up to make a too-big span fit.
     fun resizeCell(page: Int, index: Int, w: Int, h: Int) {
         mutatePage(page) { list ->
             if (index !in list.indices) list
-            else list.mapIndexed { i, it -> if (i == index) it.withCell(it.x, it.y, w, h) else it }
+            else list.mapIndexed { i, it ->
+                if (i != index) it
+                else {
+                    val cw = w.coerceIn(it.minW(), GRID_COLS - it.x)
+                    val ch = h.coerceIn(it.minH(), GRID_ROWS - it.y)
+                    it.withCell(it.x, it.y, cw, ch)
+                }
+            }
         }
     }
 
@@ -1052,18 +1062,36 @@ private fun DashboardPage(
         val cellWpx = with(density) { cellW.toPx() }
         val cellHpx = with(density) { cellH.toPx() }
 
+        // While a tile is dragged / resized, [preview] holds the cell rectangle
+        // (x, y, w, h) it will snap to, drawn as a highlighted ghost.
+        var preview by remember { mutableStateOf<IntArray?>(null) }
+
         if (editing) {
-            // Faint grid guide-lines while arranging.
+            // Grid guide-lines while arranging.
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val line = DashColors.CardHi.copy(alpha = 0.5f)
-                for (c in 1 until GRID_COLS) {
-                    val x = cellWpx * c
-                    drawLine(line, Offset(x, 0f), Offset(x, size.height), 1f)
+                val line = DashColors.TextSecondary.copy(alpha = 0.28f)
+                for (c in 0..GRID_COLS) {
+                    val x = (cellWpx * c).coerceAtMost(size.width - 0.5f)
+                    drawLine(line, Offset(x, 0f), Offset(x, size.height), 2f)
                 }
-                for (r in 1 until GRID_ROWS) {
-                    val y = cellHpx * r
-                    drawLine(line, Offset(0f, y), Offset(size.width, y), 1f)
+                for (r in 0..GRID_ROWS) {
+                    val y = (cellHpx * r).coerceAtMost(size.height - 0.5f)
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), 2f)
                 }
+            }
+
+            // Snap-target ghost, above the resting tiles but below the dragged one.
+            preview?.let { p ->
+                Box(
+                    modifier = Modifier
+                        .zIndex(0.5f)
+                        .offset(cellW * p[0], cellH * p[1])
+                        .size(cellW * p[2], cellH * p[3])
+                        .padding(3.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(DashColors.Accent.copy(alpha = 0.22f))
+                        .border(2.dp, DashColors.Accent, RoundedCornerShape(18.dp))
+                )
             }
         }
 
@@ -1080,6 +1108,8 @@ private fun DashboardPage(
                 onMoveCell = onMoveCell,
                 onResizeCell = onResizeCell,
                 onRemove = onRemove,
+                onPreview = { x, y, w, h -> preview = intArrayOf(x, y, w, h) },
+                onPreviewClear = { preview = null },
                 content = { tileContent(item) }
             )
         }
@@ -1109,6 +1139,8 @@ private fun GridTile(
     onMoveCell: (Int, Int, Int) -> Unit,
     onResizeCell: (Int, Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
+    onPreview: (Int, Int, Int, Int) -> Unit,
+    onPreviewClear: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -1120,6 +1152,13 @@ private fun GridTile(
     val basePxY = with(density) { (cellH * item.y).toPx() }
     val basePxW = with(density) { (cellW * item.w).toPx() }
     val basePxH = with(density) { (cellH * item.h).toPx() }
+
+    // Snapped cell the tile will land on — kept identical to moveCell / resizeCell
+    // so the highlighted ghost matches the committed result exactly.
+    fun snapX() = ((basePxX + dragOffset.x) / cellWpx).roundToInt().coerceIn(0, GRID_COLS - item.w)
+    fun snapY() = ((basePxY + dragOffset.y) / cellHpx).roundToInt().coerceIn(0, GRID_ROWS - item.h)
+    fun snapW() = ((basePxW + resizeExtra.x) / cellWpx).roundToInt().coerceIn(item.minW(), GRID_COLS - item.x)
+    fun snapH() = ((basePxH + resizeExtra.y) / cellHpx).roundToInt().coerceIn(item.minH(), GRID_ROWS - item.y)
 
     val offsetX = with(density) { (basePxX + dragOffset.x).toDp() }
     val offsetY = with(density) { (basePxY + dragOffset.y).toDp() }
@@ -1147,15 +1186,20 @@ private fun GridTile(
                     .fillMaxSize()
                     .pointerInput(index) {
                         detectDragGesturesAfterLongPress(
-                            onDragStart = { active = true; onModelTouch(true) },
-                            onDrag = { change, delta -> change.consume(); dragOffset += delta },
-                            onDragEnd = {
-                                val nx = ((basePxX + dragOffset.x) / cellWpx).roundToInt()
-                                val ny = ((basePxY + dragOffset.y) / cellHpx).roundToInt()
-                                onMoveCell(index, nx, ny)
-                                dragOffset = Offset.Zero; active = false; onModelTouch(false)
+                            onDragStart = {
+                                active = true; onModelTouch(true); onPreview(snapX(), snapY(), item.w, item.h)
                             },
-                            onDragCancel = { dragOffset = Offset.Zero; active = false; onModelTouch(false) }
+                            onDrag = { change, delta ->
+                                change.consume(); dragOffset += delta
+                                onPreview(snapX(), snapY(), item.w, item.h)
+                            },
+                            onDragEnd = {
+                                onMoveCell(index, snapX(), snapY())
+                                dragOffset = Offset.Zero; active = false; onModelTouch(false); onPreviewClear()
+                            },
+                            onDragCancel = {
+                                dragOffset = Offset.Zero; active = false; onModelTouch(false); onPreviewClear()
+                            }
                         )
                     }
             )
@@ -1180,15 +1224,20 @@ private fun GridTile(
                     .background(DashColors.Accent.copy(alpha = 0.85f))
                     .pointerInput(index) {
                         detectDragGestures(
-                            onDragStart = { active = true; onModelTouch(true) },
-                            onDrag = { change, delta -> change.consume(); resizeExtra += delta },
-                            onDragEnd = {
-                                val nw = ((basePxW + resizeExtra.x) / cellWpx).roundToInt()
-                                val nh = ((basePxH + resizeExtra.y) / cellHpx).roundToInt()
-                                onResizeCell(index, nw, nh)
-                                resizeExtra = Offset.Zero; active = false; onModelTouch(false)
+                            onDragStart = {
+                                active = true; onModelTouch(true); onPreview(item.x, item.y, snapW(), snapH())
                             },
-                            onDragCancel = { resizeExtra = Offset.Zero; active = false; onModelTouch(false) }
+                            onDrag = { change, delta ->
+                                change.consume(); resizeExtra += delta
+                                onPreview(item.x, item.y, snapW(), snapH())
+                            },
+                            onDragEnd = {
+                                onResizeCell(index, snapW(), snapH())
+                                resizeExtra = Offset.Zero; active = false; onModelTouch(false); onPreviewClear()
+                            },
+                            onDragCancel = {
+                                resizeExtra = Offset.Zero; active = false; onModelTouch(false); onPreviewClear()
+                            }
                         )
                     },
                 contentAlignment = Alignment.Center
