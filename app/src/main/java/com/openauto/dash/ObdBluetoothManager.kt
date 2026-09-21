@@ -189,7 +189,12 @@ object ObdBluetoothManager {
         val throttle = sendCommand("0111")?.let { percentFrom(it, "4111") }
         val load = sendCommand("0104")?.let { percentFrom(it, "4104") }
         val fuel = sendCommand("012F")?.let { percentFrom(it, "412F") }
-        val volt = sendCommand("ATRV")?.let { parseVoltage(it) }
+        // Prefer the ECU's control-module voltage (PID 0142) — it reads the real
+        // bus voltage. Many ELM327 clones report a miscalibrated ATRV (e.g. 16.9V
+        // when the bus is ~14.5V), so ATRV is only a fallback when 0142 is
+        // unsupported.
+        val volt = sendCommand("0142")?.let { parseControlModuleVoltage(it) }
+            ?: sendCommand("ATRV")?.let { parseVoltage(it) }
 
         _data.value = _data.value.copy(
             speedKmh = speed ?: _data.value.speedKmh,
@@ -305,6 +310,13 @@ object ObdBluetoothManager {
     /** Parses the ELM327 `ATRV` reply, e.g. "12.3V". */
     private fun parseVoltage(response: String): Double? =
         Regex("([0-9]+\\.?[0-9]*)").find(response)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+
+    /** Control-module voltage (PID 0142): value = ((A*256)+B) / 1000 volts. */
+    private fun parseControlModuleVoltage(response: String): Double? {
+        val bytes = dataBytes(response, "4142") ?: return null
+        if (bytes.size < 2) return null
+        return ((bytes[0] * 256) + bytes[1]) / 1000.0
+    }
 
     /** Decodes a mode-03 reply into DTC strings like "P0133". */
     private fun parseDtcs(response: String): List<String> {
