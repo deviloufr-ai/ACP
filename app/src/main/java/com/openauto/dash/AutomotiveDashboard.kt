@@ -432,11 +432,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 )
             }
 
-            // Floating swap button (bottom-centre) — only while split-screen is
-            // active. Swaps the two panes via the accessibility service.
-            if (inSplitMode && SplitLauncher.isSystemSplitAvailable()) {
+            // Floating swap button (bottom-centre), shown whenever the launcher
+            // shares the screen — regardless of how the split was started (our
+            // accessibility path or the OS's manual recents gesture). Swapping
+            // needs the accessibility service; if it isn't on, tapping prompts to
+            // enable it instead of silently doing nothing.
+            if (inSplitMode) {
                 FloatingActionButton(
-                    onClick = { SplitLauncher.swapSplit() },
+                    onClick = {
+                        if (SplitLauncher.isSystemSplitAvailable()) SplitLauncher.swapSplit()
+                        else showSplitEnable = true
+                    },
                     containerColor = DashColors.Accent,
                     contentColor = Color.Black,
                     modifier = Modifier

@@ -50,11 +50,25 @@ class MainActivity : ComponentActivity() {
         inMultiWindow.value = isInMultiWindowMode
     }
 
+    // Some head-unit ROMs don't reliably deliver onMultiWindowModeChanged, so
+    // also re-check on resume and on the config change that entering split fires.
+    override fun onResume() {
+        super.onResume()
+        inMultiWindow.value = isInMultiWindowMode
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        inMultiWindow.value = isInMultiWindowMode
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // Re-hide the system bars whenever we regain focus (they can reappear
         // after a transient swipe or returning from another app).
         if (hasFocus) enableImmersiveFullscreen()
+        // Focus changes accompany entering/leaving split on some ROMs.
+        inMultiWindow.value = isInMultiWindowMode
     }
 
     private fun enableImmersiveFullscreen() {
