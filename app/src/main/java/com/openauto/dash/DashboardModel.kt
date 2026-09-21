@@ -27,29 +27,35 @@ enum class BuiltinKind(val label: String) {
  *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder].
  */
 sealed interface DashboardItem {
-    data class AppShortcut(val packageName: String) : DashboardItem
+    data class AppShortcut(val packageName: String, val half: Boolean = false) : DashboardItem
     /** Launches two apps side-by-side in split-screen (see [SplitLauncher]). */
-    data class SplitPair(val primaryPackage: String, val secondaryPackage: String) : DashboardItem
+    data class SplitPair(
+        val primaryPackage: String,
+        val secondaryPackage: String,
+        val half: Boolean = false
+    ) : DashboardItem
     data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
     data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
 }
 
 /**
- * A "half" widget is a small card that takes only half the row height, so two of
- * them stack in one column instead of each eating a full-height slot. Compact
- * icon tiles (shortcuts / split pairs) are never half.
+ * A "half" tile takes only a share of the row height so several stack in one
+ * column instead of each eating a full-height slot. Any tile — widget card or
+ * compact icon (shortcut / split pair) — can be stacked this way.
  */
 fun DashboardItem.isHalf(): Boolean = when (this) {
+    is DashboardItem.AppShortcut -> half
+    is DashboardItem.SplitPair -> half
     is DashboardItem.BuiltinWidget -> half
     is DashboardItem.SystemWidget -> half
-    else -> false
 }
 
-/** Returns a copy toggled between half-height and full-height (no-op otherwise). */
+/** Returns a copy toggled between stacked (half) and standalone height. */
 fun DashboardItem.withHalf(h: Boolean): DashboardItem = when (this) {
+    is DashboardItem.AppShortcut -> copy(half = h)
+    is DashboardItem.SplitPair -> copy(half = h)
     is DashboardItem.BuiltinWidget -> copy(half = h)
     is DashboardItem.SystemWidget -> copy(half = h)
-    else -> this
 }
 
 /** Compact fixed-width icon tiles, as opposed to weighted widget cards. */
@@ -124,9 +130,9 @@ object DashboardStore {
     }
 
     private fun DashboardItem.toJson(): JSONObject = when (this) {
-        is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName)
+        is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName).put("h", half)
         is DashboardItem.SplitPair ->
-            JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage)
+            JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage).put("h", half)
         is DashboardItem.BuiltinWidget ->
             JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble()).put("h", half)
         is DashboardItem.SystemWidget ->
@@ -134,11 +140,12 @@ object DashboardStore {
     }
 
     private fun JSONObject.toItem(): DashboardItem? = when (optString("t")) {
-        "app" -> optString("pkg").takeIf { it.isNotBlank() }?.let { DashboardItem.AppShortcut(it) }
+        "app" -> optString("pkg").takeIf { it.isNotBlank() }
+            ?.let { DashboardItem.AppShortcut(it, optBoolean("h", false)) }
         "split" -> {
             val a = optString("a")
             val b = optString("b")
-            if (a.isNotBlank() && b.isNotBlank()) DashboardItem.SplitPair(a, b) else null
+            if (a.isNotBlank() && b.isNotBlank()) DashboardItem.SplitPair(a, b, optBoolean("h", false)) else null
         }
         "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
             ?.let { DashboardItem.BuiltinWidget(it, readWeight(), optBoolean("h", false)) }

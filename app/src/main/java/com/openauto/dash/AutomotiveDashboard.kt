@@ -343,15 +343,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Move a widget up/down through the vertical stack (edit-mode ▲ ▼ buttons).
-    // Swaps with the adjacent widget and marks both "stacked" (half) so the
-    // column packer groups them into one over/under column. Compact icon tiles
-    // (app shortcuts / split pairs) never stack, so a move into one is ignored.
+    // Move a tile up/down through the vertical stack (edit-mode ▲ ▼ buttons).
+    // Swaps with the adjacent tile and marks both "stacked" (half) so the column
+    // packer groups them into one over/under column. Works for any tile — widget
+    // card or compact icon (shortcut / split pair).
     fun stackMove(page: Int, index: Int, dir: Int) {
         mutatePage(page) { list ->
             val j = index + dir
             if (index !in list.indices || j !in list.indices) return@mutatePage list
-            if (list[index].isCompactTile() || list[j].isCompactTile()) return@mutatePage list
             list.toMutableList().apply {
                 val moved = this[index].withHalf(true)
                 this[index] = this[j].withHalf(true)
@@ -360,12 +359,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Drop a dragged widget directly above/below a target widget and stack them
+    // Drop a dragged tile directly above/below a target tile and stack them
     // (vertical drag-to-stack). Both are marked "stacked" so they share a column.
     fun stackAt(page: Int, from: Int, target: Int, below: Boolean) {
         mutatePage(page) { list ->
             if (from !in list.indices || target !in list.indices || from == target) return@mutatePage list
-            if (list[from].isCompactTile() || list[target].isCompactTile()) return@mutatePage list
             list.toMutableList().apply {
                 val moved = removeAt(from).withHalf(true)
                 val t = if (from < target) target - 1 else target
@@ -1057,15 +1055,15 @@ private fun DashboardPage(
             .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
         val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
 
-        // Group the flat item list into columns: each full widget / compact tile
-        // is its own column; a run of consecutive "stacked" (half) widgets packs
-        // into one over/under column, sharing its height (no fixed cap — the user
-        // stacks as many as they like via the ▲ ▼ buttons or vertical drag).
+        // Group the flat item list into columns: each standalone tile is its own
+        // column; a run of consecutive "stacked" (half) tiles — widgets or icons
+        // alike — packs into one over/under column, sharing its height (no fixed
+        // cap; the user stacks as many as they like via ▲ ▼ or vertical drag).
         val columns = ArrayList<MutableList<Int>>()
         run {
             var halfBuf: MutableList<Int>? = null
             pageItems.forEachIndexed { i, it ->
-                if (!it.isCompactTile() && it.isHalf()) {
+                if (it.isHalf()) {
                     val buf = halfBuf
                         ?: ArrayList<Int>().also { columns.add(it); halfBuf = it }
                     buf.add(i)
@@ -1125,16 +1123,14 @@ private fun DashboardPage(
                                 }
                             },
                             onDragEnd = {
-                                // Drop over the top or bottom band of another widget
+                                // Drop over the top or bottom band of another tile
                                 // stacks the dragged one above/below it; the middle
                                 // band leaves the horizontal reorder from onDrag.
                                 val from = dragIndex
-                                val dragged = from?.let { pageItems.getOrNull(it) }
-                                if (from != null && dragged != null && !dragged.isCompactTile()) {
+                                if (from != null && from in pageItems.indices) {
                                     val hit = tileBounds.entries
                                         .firstOrNull { (i, r) -> i != from && r.contains(dragPointer) }
-                                    val targetItem = hit?.let { pageItems.getOrNull(it.key) }
-                                    if (hit != null && targetItem != null && !targetItem.isCompactTile()) {
+                                    if (hit != null && hit.key in pageItems.indices) {
                                         val r = hit.value
                                         val fracY = if (r.height > 0f) (dragPointer.y - r.top) / r.height else 0.5f
                                         when {
@@ -1158,14 +1154,12 @@ private fun DashboardPage(
                 canMoveRight = index < pageItems.lastIndex,
                 onMoveLeft = { onMove(index, index - 1) },
                 onMoveRight = { onMove(index, index + 1) },
-                // Vertical stacking is between widgets only (icon tiles stay compact).
-                canMoveUp = !item.isCompactTile() && index > 0 &&
-                    !pageItems[index - 1].isCompactTile(),
-                canMoveDown = !item.isCompactTile() && index < pageItems.lastIndex &&
-                    !pageItems[index + 1].isCompactTile(),
+                // Any tile can stack above/below any neighbour on the page.
+                canMoveUp = index > 0,
+                canMoveDown = index < pageItems.lastIndex,
                 onMoveUp = { onStackMove(index, -1) },
                 onMoveDown = { onStackMove(index, 1) },
-                halfToggle = !item.isCompactTile(),
+                halfToggle = true,
                 isHalf = item.isHalf(),
                 onToggleHalf = { onToggleHalf(index) },
                 onRemove = { onRemove(index) },
@@ -1221,23 +1215,29 @@ private fun DashboardPage(
             ) {
                 columns.forEach { col ->
                     val first = pageItems[col.first()]
+                    val stacked = col.size > 1 || first.isHalf()
+                    // A column of only icon tiles keeps their compact fixed width;
+                    // any widget in the column makes it share the row by weight.
+                    val allCompact = col.all { pageItems[it].isCompactTile() }
+                    val compactWidth =
+                        if (col.any { pageItems[it] is DashboardItem.SplitPair }) 120.dp else 104.dp
                     when {
-                        first.isCompactTile() -> {
-                            val w = if (first is DashboardItem.SplitPair) 120.dp else 104.dp
-                            renderTile(col.first(), Modifier.width(w).fillMaxHeight())
+                        !stacked && first.isCompactTile() ->
+                            renderTile(col.first(), Modifier.width(compactWidth).fillMaxHeight())
+                        !stacked ->
+                            renderTile(col.first(), Modifier.weight(first.tileWeight()).fillMaxHeight())
+                        allCompact -> Column(
+                            modifier = Modifier.width(compactWidth).fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            col.forEach { index -> renderTile(index, Modifier.weight(1f).fillMaxWidth()) }
                         }
-                        col.size > 1 || first.isHalf() -> {
-                            val colWeight = col.maxOf { pageItems[it].tileWeight() }
-                            Column(
-                                modifier = Modifier.weight(colWeight).fillMaxHeight(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                col.forEach { index ->
-                                    renderTile(index, Modifier.weight(1f).fillMaxWidth())
-                                }
-                            }
+                        else -> Column(
+                            modifier = Modifier.weight(col.maxOf { pageItems[it].tileWeight() }).fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            col.forEach { index -> renderTile(index, Modifier.weight(1f).fillMaxWidth()) }
                         }
-                        else -> renderTile(col.first(), Modifier.weight(first.tileWeight()).fillMaxHeight())
                     }
                 }
 
