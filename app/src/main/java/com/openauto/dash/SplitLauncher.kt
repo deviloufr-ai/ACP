@@ -97,6 +97,9 @@ object SplitLauncher {
     /** Whether the system-split path is available (accessibility service on). */
     fun isSystemSplitAvailable(): Boolean = SplitAccessibilityService.isConnected
 
+    /** Swap the two split-screen panes (left/right). Needs the accessibility service. */
+    fun swapSplit(): Boolean = SplitAccessibilityService.swapSplit()
+
     /** Deep-link the user to Accessibility settings to enable the split service. */
     fun openAccessibilitySettings(context: Context) {
         runCatching {
