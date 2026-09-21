@@ -1150,21 +1150,17 @@ private fun DashboardPage(
                                 onModelTouch(true) // lock the pager while dragging
                             },
                             onDrag = { change, delta ->
+                                // Just float the tile under the finger. The drop
+                                // action is decided once, on release, so a live
+                                // reorder can't steal the target out from under it.
                                 change.consume()
                                 dragPointer += delta
-                                val from = dragIndex ?: return@detectDragGesturesAfterLongPress
-                                val target = tileBounds.entries
-                                    .firstOrNull { (i, r) -> i != from && r.contains(dragPointer) }
-                                    ?.key
-                                if (target != null && target != from) {
-                                    onMove(from, target)
-                                    dragIndex = target
-                                }
                             },
                             onDragEnd = {
-                                // Drop over the top or bottom band of another tile
-                                // stacks the dragged one above/below it; the middle
-                                // band leaves the horizontal reorder from onDrag.
+                                // Drop over the top or bottom third of another tile
+                                // stacks the dragged one above/below it (works for
+                                // widgets and app/pair icons alike); the middle band
+                                // drops it into that tile's position (horizontal move).
                                 val from = dragIndex
                                 if (from != null && from in pageItems.indices) {
                                     val hit = tileBounds.entries
@@ -1175,7 +1171,7 @@ private fun DashboardPage(
                                         when {
                                             fracY < 0.30f -> onStackAt(from, hit.key, false)
                                             fracY > 0.70f -> onStackAt(from, hit.key, true)
-                                            else -> {}
+                                            else -> onMove(from, hit.key)
                                         }
                                     }
                                 }
