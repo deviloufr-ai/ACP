@@ -12,9 +12,10 @@
     <color name="on_primary">#FFFFFF</color>
     <color name="on_secondary">#000000</color>
 
-    <!-- Dark Theme Background -->
-    <color name="background">#0B0D10</color>
-    <color name="surface">#15181E</color>
+    <!-- Window background (day). Overridden in values-night for the dark scheme.
+         Only styles the launch window before Compose takes over. -->
+    <color name="background">#F1F3F4</color>
+    <color name="surface">#FFFFFF</color>
     
     <!-- Telemetry Colors (High Contrast) -->
     <color name="telemetry_speed">#81D4FA</color>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night window background (headlights on). See values/colors.xml for the
+         day values; only styles the launch window before Compose takes over. -->
+    <color name="background">#0B0D10</color>
+    <color name="surface">#15181E</color>
+</resources>

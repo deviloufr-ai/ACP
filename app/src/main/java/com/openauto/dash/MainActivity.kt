@@ -5,8 +5,10 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -82,12 +84,14 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * High-contrast dark theme tuned for glare-free reading while driving.
+ * Follows the head unit's day/night mode (driven by the car's light sensor):
+ * a high-contrast dark scheme at night for glare-free reading, a bright scheme
+ * by day so the UI stays legible in sunlight.
  */
 @Composable
 fun OpenAutoDashTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
+    val colorScheme = if (isSystemInDarkTheme()) {
+        darkColorScheme(
             primary = Color(0xFF5B8DEF),
             secondary = Color(0xFF2DD4BF),
             background = Color(0xFF0B0D10),
@@ -95,7 +99,17 @@ fun OpenAutoDashTheme(content: @Composable () -> Unit) {
             onPrimary = Color.White,
             onBackground = Color.White,
             onSurface = Color.White
-        ),
-        content = content
-    )
+        )
+    } else {
+        lightColorScheme(
+            primary = Color(0xFF1A73E8),
+            secondary = Color(0xFF0FA895),
+            background = Color(0xFFF1F3F4),
+            surface = Color(0xFFFFFFFF),
+            onPrimary = Color.White,
+            onBackground = Color(0xFF202124),
+            onSurface = Color(0xFF202124)
+        )
+    }
+    MaterialTheme(colorScheme = colorScheme, content = content)
 }
