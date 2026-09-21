@@ -966,7 +966,9 @@ private fun DashboardPage(
             val dragging = dragIndex == index
             val tileModifier = mod
                 .onGloballyPositioned { coords ->
-                    tileBounds[index] = Rect(coords.positionInRoot(), coords.size.toSize())
+                    // Origin of this tile in root coordinates (localToRoot is stable
+                    // across Compose versions, unlike positionInRoot()).
+                    tileBounds[index] = Rect(coords.localToRoot(Offset.Zero), coords.size.toSize())
                 }
                 .zIndex(if (dragging) 1f else 0f)
                 .graphicsLayer {
