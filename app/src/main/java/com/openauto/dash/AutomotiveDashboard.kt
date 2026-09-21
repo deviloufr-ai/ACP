@@ -343,6 +343,38 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
+    // Move a widget up/down through the vertical stack (edit-mode ▲ ▼ buttons).
+    // Swaps with the adjacent widget and marks both "stacked" (half) so the
+    // column packer groups them into one over/under column. Compact icon tiles
+    // (app shortcuts / split pairs) never stack, so a move into one is ignored.
+    fun stackMove(page: Int, index: Int, dir: Int) {
+        mutatePage(page) { list ->
+            val j = index + dir
+            if (index !in list.indices || j !in list.indices) return@mutatePage list
+            if (list[index].isCompactTile() || list[j].isCompactTile()) return@mutatePage list
+            list.toMutableList().apply {
+                val moved = this[index].withHalf(true)
+                this[index] = this[j].withHalf(true)
+                this[j] = moved
+            }
+        }
+    }
+
+    // Drop a dragged widget directly above/below a target widget and stack them
+    // (vertical drag-to-stack). Both are marked "stacked" so they share a column.
+    fun stackAt(page: Int, from: Int, target: Int, below: Boolean) {
+        mutatePage(page) { list ->
+            if (from !in list.indices || target !in list.indices || from == target) return@mutatePage list
+            if (list[from].isCompactTile() || list[target].isCompactTile()) return@mutatePage list
+            list.toMutableList().apply {
+                val moved = removeAt(from).withHalf(true)
+                val t = if (from < target) target - 1 else target
+                this[t] = this[t].withHalf(true)
+                add((if (below) t + 1 else t).coerceIn(0, size), moved)
+            }
+        }
+    }
+
     // System app-widget picker; adds the bound widget to the page that requested it.
     val addSystemWidget = rememberSystemWidgetAdder { id ->
         if (addTargetPage in 0 until DashboardStore.PAGE_COUNT) {
@@ -511,6 +543,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         }
                     },
                     onMove = { from, to -> moveItem(page, from, to) },
+                    onStackMove = { index, dir -> stackMove(page, index, dir) },
+                    onStackAt = { from, target, below -> stackAt(page, from, target, below) },
                     onToggleHalf = { index ->
                         mutatePage(page) { list ->
                             list.mapIndexed { i, it -> if (i == index) it.withHalf(!it.isHalf()) else it }
@@ -988,6 +1022,8 @@ private fun DashboardPage(
     onRemove: (Int) -> Unit,
     onResize: (Int, Float) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onStackMove: (Int, Int) -> Unit,
+    onStackAt: (Int, Int, Boolean) -> Unit,
     onToggleHalf: (Int) -> Unit,
     onAdd: () -> Unit
 ) {
@@ -1022,13 +1058,15 @@ private fun DashboardPage(
         val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
 
         // Group the flat item list into columns: each full widget / compact tile
-        // is its own column; consecutive half widgets pack two-per-column (stacked).
+        // is its own column; a run of consecutive "stacked" (half) widgets packs
+        // into one over/under column, sharing its height (no fixed cap — the user
+        // stacks as many as they like via the ▲ ▼ buttons or vertical drag).
         val columns = ArrayList<MutableList<Int>>()
         run {
             var halfBuf: MutableList<Int>? = null
             pageItems.forEachIndexed { i, it ->
                 if (!it.isCompactTile() && it.isHalf()) {
-                    val buf = halfBuf?.takeIf { b -> b.size < 2 }
+                    val buf = halfBuf
                         ?: ArrayList<Int>().also { columns.add(it); halfBuf = it }
                     buf.add(i)
                 } else {
@@ -1086,7 +1124,28 @@ private fun DashboardPage(
                                     dragIndex = target
                                 }
                             },
-                            onDragEnd = { dragIndex = null; onModelTouch(false) },
+                            onDragEnd = {
+                                // Drop over the top or bottom band of another widget
+                                // stacks the dragged one above/below it; the middle
+                                // band leaves the horizontal reorder from onDrag.
+                                val from = dragIndex
+                                val dragged = from?.let { pageItems.getOrNull(it) }
+                                if (from != null && dragged != null && !dragged.isCompactTile()) {
+                                    val hit = tileBounds.entries
+                                        .firstOrNull { (i, r) -> i != from && r.contains(dragPointer) }
+                                    val targetItem = hit?.let { pageItems.getOrNull(it.key) }
+                                    if (hit != null && targetItem != null && !targetItem.isCompactTile()) {
+                                        val r = hit.value
+                                        val fracY = if (r.height > 0f) (dragPointer.y - r.top) / r.height else 0.5f
+                                        when {
+                                            fracY < 0.30f -> onStackAt(from, hit.key, false)
+                                            fracY > 0.70f -> onStackAt(from, hit.key, true)
+                                            else -> {}
+                                        }
+                                    }
+                                }
+                                dragIndex = null; onModelTouch(false)
+                            },
                             onDragCancel = { dragIndex = null; onModelTouch(false) }
                         )
                     }
@@ -1099,6 +1158,13 @@ private fun DashboardPage(
                 canMoveRight = index < pageItems.lastIndex,
                 onMoveLeft = { onMove(index, index - 1) },
                 onMoveRight = { onMove(index, index + 1) },
+                // Vertical stacking is between widgets only (icon tiles stay compact).
+                canMoveUp = !item.isCompactTile() && index > 0 &&
+                    !pageItems[index - 1].isCompactTile(),
+                canMoveDown = !item.isCompactTile() && index < pageItems.lastIndex &&
+                    !pageItems[index + 1].isCompactTile(),
+                onMoveUp = { onStackMove(index, -1) },
+                onMoveDown = { onStackMove(index, 1) },
                 halfToggle = !item.isCompactTile(),
                 isHalf = item.isHalf(),
                 onToggleHalf = { onToggleHalf(index) },
@@ -1313,6 +1379,10 @@ private fun EditableTile(
     canMoveRight: Boolean = false,
     onMoveLeft: () -> Unit = {},
     onMoveRight: () -> Unit = {},
+    canMoveUp: Boolean = false,
+    canMoveDown: Boolean = false,
+    onMoveUp: () -> Unit = {},
+    onMoveDown: () -> Unit = {},
     halfToggle: Boolean = false,
     isHalf: Boolean = false,
     onToggleHalf: () -> Unit = {},
@@ -1375,6 +1445,25 @@ private fun EditableTile(
                             containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
                         )
                     ) { Text("▶") }
+                }
+                // ▲ ▼ stack this widget above / below its neighbour.
+                if (canMoveUp) {
+                    FilledIconButton(
+                        onClick = onMoveUp,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("▲") }
+                }
+                if (canMoveDown) {
+                    FilledIconButton(
+                        onClick = onMoveDown,
+                        modifier = Modifier.size(30.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
+                        )
+                    ) { Text("▼") }
                 }
             }
             if (resizable) {
