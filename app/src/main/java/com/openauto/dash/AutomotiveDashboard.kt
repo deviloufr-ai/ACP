@@ -1065,6 +1065,9 @@ private fun DashboardPage(
         // While a tile is dragged / resized, [preview] holds the cell rectangle
         // (x, y, w, h) it will snap to, drawn as a highlighted ghost.
         var preview by remember { mutableStateOf<IntArray?>(null) }
+        // Safety net: never leave the ghost stranded once a move/resize commits
+        // (pageItems changes) or edit mode is toggled.
+        LaunchedEffect(pageItems, editing) { preview = null }
 
         if (editing) {
             // Grid guide-lines while arranging.

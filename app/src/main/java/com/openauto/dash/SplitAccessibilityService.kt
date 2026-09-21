@@ -8,6 +8,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.PointF
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
@@ -90,17 +92,18 @@ class SplitAccessibilityService : AccessibilityService() {
             .getOrDefault(false)
 
     /**
-     * Swap the two split-screen panes by dispatching a **double-tap on the split
-     * divider** — the AOSP gesture SystemUI maps to "swap". The divider sits on
-     * the boundary between the two 50/50 panes, i.e. the centre of the display,
-     * so we tap there. Gesture dispatch is global, so it can hit the divider even
-     * though it lies outside our own pane.
+     * Swap the two split-screen panes with a **double-tap on the split divider** —
+     * the AOSP gesture SystemUI maps to "swap". We locate the divider from the two
+     * app windows' bounds (the boundary between them) rather than assuming a 50/50
+     * centre split, since this head unit uses off-centre split ratios. Falls back
+     * to the display centre if the windows can't be read.
      */
     private fun swapPanes(): Boolean {
-        val m = resources.displayMetrics
-        val cx = m.widthPixels / 2f
-        val cy = m.heightPixels / 2f
-        val path = Path().apply { moveTo(cx, cy) }
+        val p = splitDividerPoint() ?: PointF(
+            resources.displayMetrics.widthPixels / 2f,
+            resources.displayMetrics.heightPixels / 2f
+        )
+        val path = Path().apply { moveTo(p.x, p.y) }
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0L, TAP_MS))
             .addStroke(GestureDescription.StrokeDescription(path, TAP_MS + GAP_MS, TAP_MS))
@@ -109,6 +112,38 @@ class SplitAccessibilityService : AccessibilityService() {
             .onFailure { Log.e(TAG, "swap gesture failed", it) }
             .getOrDefault(false)
     }
+
+    /**
+     * The midpoint of the divider between the two split panes, in screen pixels.
+     * Detects a left/right split (vertical divider) vs. top/bottom (horizontal)
+     * from the app windows' bounds. Null when there aren't two app windows.
+     */
+    private fun splitDividerPoint(): PointF? = runCatching {
+        val rects = windows
+            ?.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            ?.map { Rect().also { r -> it.getBoundsInScreen(r) } }
+            ?.filter { it.width() > 0 && it.height() > 0 }
+            ?: return null
+        if (rects.size < 2) return null
+
+        val byX = rects.sortedBy { it.left }
+        val a = byX.first()
+        val b = byX.last()
+        if (b.left >= a.right - 8) {
+            // Side by side: vertical divider on the boundary between a and b.
+            val x = (a.right + b.left) / 2f
+            val y = (maxOf(a.top, b.top) + minOf(a.bottom, b.bottom)) / 2f
+            PointF(x, y)
+        } else {
+            // Stacked: horizontal divider between the top and bottom windows.
+            val byY = rects.sortedBy { it.top }
+            val c = byY.first()
+            val d = byY.last()
+            val y = (c.bottom + d.top) / 2f
+            val x = (maxOf(c.left, d.left) + minOf(c.right, d.right)) / 2f
+            PointF(x, y)
+        }
+    }.getOrNull()
 
     // --- Global floating swap button ----------------------------------------
     //
