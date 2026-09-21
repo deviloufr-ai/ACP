@@ -870,6 +870,47 @@ private fun DashboardPage(
         // fixed-width shortcuts/AddTile make this an approximation, which is fine).
         val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
 
+    if (inSplitMode) {
+        // Sharing the screen: the pane is narrow and tall, so stack every tile
+        // vertically (filling the width) instead of the side-by-side row.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            pageItems.forEachIndexed { index, item ->
+                // Widgets share the height by weight; compact icon tiles keep a
+                // fixed height so they don't stretch to fill the column.
+                val tileModifier =
+                    if (item.isCompactTile()) Modifier.fillMaxWidth().height(96.dp)
+                    else Modifier.fillMaxWidth().weight(item.tileWeight())
+                EditableTile(
+                    modifier = tileModifier,
+                    editing = false,
+                    resizable = false,
+                    onRemove = { onRemove(index) },
+                    onResizeActive = onModelTouch
+                ) {
+                    TileContent(
+                        item = item,
+                        appsByPackage = appsByPackage,
+                        mediaState = mediaState,
+                        mediaController = mediaController,
+                        hasMediaAccess = hasMediaAccess,
+                        context = context,
+                        obdData = obdData,
+                        obdConnection = obdConnection,
+                        onConnectObd = onConnectObd,
+                        onPickDevice = onPickDevice,
+                        onLaunchApp = onLaunchApp,
+                        onLaunchSplitPair = onLaunchSplitPair,
+                        onModelTouch = onModelTouch
+                    )
+                }
+            }
+        }
+    } else {
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -877,20 +918,16 @@ private fun DashboardPage(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // When sharing the screen (split-screen), the pane is too small for the
-        // full multi-tile row, so collapse to just the first widget of the page.
-        val renderItems = if (inSplitMode) pageItems.take(1) else pageItems
-        renderItems.forEachIndexed { index, item ->
-            val resizable = !inSplitMode && !item.isCompactTile()
-            val tileModifier = when {
-                inSplitMode -> Modifier.weight(1f).fillMaxHeight()
-                item is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
-                item is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
+        pageItems.forEachIndexed { index, item ->
+            val resizable = !item.isCompactTile()
+            val tileModifier = when (item) {
+                is DashboardItem.AppShortcut -> Modifier.width(104.dp).fillMaxHeight()
+                is DashboardItem.SplitPair -> Modifier.width(120.dp).fillMaxHeight()
                 else -> Modifier.weight(item.tileWeight()).fillMaxHeight()
             }
             EditableTile(
                 modifier = tileModifier,
-                editing = editing && !inSplitMode,
+                editing = editing,
                 resizable = resizable,
                 onRemove = { onRemove(index) },
                 onResizeActive = onModelTouch,
@@ -900,107 +937,144 @@ private fun DashboardPage(
                     onResize(index, next)
                 }
             ) {
-                when (item) {
-                    is DashboardItem.AppShortcut -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AppShortcutTile(
-                            app = appsByPackage[item.packageName],
-                            packageName = item.packageName,
-                            onClick = { onLaunchApp(item.packageName) }
-                        )
-                    }
-
-                    is DashboardItem.SplitPair -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SplitPairTile(
-                            primaryApp = appsByPackage[item.primaryPackage],
-                            secondaryApp = appsByPackage[item.secondaryPackage],
-                            primaryPackage = item.primaryPackage,
-                            secondaryPackage = item.secondaryPackage,
-                            onClick = { onLaunchSplitPair(item.primaryPackage, item.secondaryPackage) }
-                        )
-                    }
-
-                    is DashboardItem.BuiltinWidget -> when (item.kind) {
-                        BuiltinKind.NAVMAP -> Box(
-                            modifier = Modifier.fillMaxSize().background(DashColors.Card)
-                        ) {
-                            MapLibrePanel(modifier = Modifier.fillMaxSize())
-                        }
-                        BuiltinKind.MEDIA -> MediaCard(
-                            mediaState = mediaState,
-                            controller = mediaController,
-                            hasAccess = hasMediaAccess,
-                            context = context,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        BuiltinKind.TELEMETRY -> ObdCard(
-                            obdData = obdData,
-                            connection = obdConnection,
-                            onConnect = onConnectObd,
-                            onPickDevice = onPickDevice,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        BuiltinKind.OBD_DTC -> ObdDtcCard(
-                            connection = obdConnection,
-                            onConnect = onConnectObd,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        BuiltinKind.OBD_ALL -> ObdAllCard(
-                            obdData = obdData,
-                            connection = obdConnection,
-                            onConnect = onConnectObd,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        BuiltinKind.RANGE -> RangeCard(
-                            obdData = obdData,
-                            connection = obdConnection,
-                            onConnect = onConnectObd,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
-                        BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
-                        BuiltinKind.CAR3D -> Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(DashColors.Card)
-                                // While a finger is on the model, block dashboard
-                                // swiping so touches only rotate/zoom the 3D car.
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val ev = awaitPointerEvent(PointerEventPass.Initial)
-                                            onModelTouch(ev.changes.any { it.pressed })
-                                        }
-                                    }
-                                }
-                        ) {
-                            Car3DPanel(modifier = Modifier.fillMaxSize())
-                        }
-                    }
-
-                    is DashboardItem.SystemWidget -> Card(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
-                    }
-                }
+                TileContent(
+                    item = item,
+                    appsByPackage = appsByPackage,
+                    mediaState = mediaState,
+                    mediaController = mediaController,
+                    hasMediaAccess = hasMediaAccess,
+                    context = context,
+                    obdData = obdData,
+                    obdConnection = obdConnection,
+                    onConnectObd = onConnectObd,
+                    onPickDevice = onPickDevice,
+                    onLaunchApp = onLaunchApp,
+                    onLaunchSplitPair = onLaunchSplitPair,
+                    onModelTouch = onModelTouch
+                )
             }
         }
 
-        if (!inSplitMode) {
-            Box(
-                modifier = Modifier.width(96.dp).fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                AddTile(onClick = onAdd)
-            }
+        Box(
+            modifier = Modifier.width(96.dp).fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            AddTile(onClick = onAdd)
         }
     }
+    }
+    }
+}
+
+/**
+ * Renders the inner content of one dashboard tile (the widget card, app
+ * shortcut, split pair, or hosted system widget). Shared by the horizontal
+ * row layout and the vertical split-screen stack so both look identical.
+ */
+@Composable
+private fun TileContent(
+    item: DashboardItem,
+    appsByPackage: Map<String, AppEntry>,
+    mediaState: MediaState,
+    mediaController: CarMediaController,
+    hasMediaAccess: Boolean,
+    context: android.content.Context,
+    obdData: ObdData,
+    obdConnection: ObdConnectionState,
+    onConnectObd: () -> Unit,
+    onPickDevice: () -> Unit,
+    onLaunchApp: (String) -> Unit,
+    onLaunchSplitPair: (String, String) -> Unit,
+    onModelTouch: (Boolean) -> Unit
+) {
+    when (item) {
+        is DashboardItem.AppShortcut -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            AppShortcutTile(
+                app = appsByPackage[item.packageName],
+                packageName = item.packageName,
+                onClick = { onLaunchApp(item.packageName) }
+            )
+        }
+
+        is DashboardItem.SplitPair -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            SplitPairTile(
+                primaryApp = appsByPackage[item.primaryPackage],
+                secondaryApp = appsByPackage[item.secondaryPackage],
+                primaryPackage = item.primaryPackage,
+                secondaryPackage = item.secondaryPackage,
+                onClick = { onLaunchSplitPair(item.primaryPackage, item.secondaryPackage) }
+            )
+        }
+
+        is DashboardItem.BuiltinWidget -> when (item.kind) {
+            BuiltinKind.NAVMAP -> Box(
+                modifier = Modifier.fillMaxSize().background(DashColors.Card)
+            ) {
+                MapLibrePanel(modifier = Modifier.fillMaxSize())
+            }
+            BuiltinKind.MEDIA -> MediaCard(
+                mediaState = mediaState,
+                controller = mediaController,
+                hasAccess = hasMediaAccess,
+                context = context,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.TELEMETRY -> ObdCard(
+                obdData = obdData,
+                connection = obdConnection,
+                onConnect = onConnectObd,
+                onPickDevice = onPickDevice,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.OBD_DTC -> ObdDtcCard(
+                connection = obdConnection,
+                onConnect = onConnectObd,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.OBD_ALL -> ObdAllCard(
+                obdData = obdData,
+                connection = obdConnection,
+                onConnect = onConnectObd,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.RANGE -> RangeCard(
+                obdData = obdData,
+                connection = obdConnection,
+                onConnect = onConnectObd,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.CAR3D -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DashColors.Card)
+                    // While a finger is on the model, block dashboard swiping so
+                    // touches only rotate/zoom the 3D car.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                onModelTouch(ev.changes.any { it.pressed })
+                            }
+                        }
+                    }
+            ) {
+                Car3DPanel(modifier = Modifier.fillMaxSize())
+            }
+        }
+
+        is DashboardItem.SystemWidget -> Card(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
+        }
     }
 }
 
