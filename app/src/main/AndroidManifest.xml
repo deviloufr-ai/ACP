@@ -29,6 +29,11 @@
     <!-- In-app updater: download and install new APKs from GitHub Releases -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Floating split-swap button drawn over other apps. Auto-granted for the
+         privileged /system/priv-app install; touchable, unlike an accessibility
+         overlay which some ROMs render as pass-through only. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Hardware Requirements -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />

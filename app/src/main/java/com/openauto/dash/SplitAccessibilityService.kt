@@ -9,8 +9,10 @@ import android.graphics.Color
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -139,11 +141,21 @@ class SplitAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Prefer a real app overlay — it reliably receives touch. An accessibility
+        // overlay is the fallback (some ROMs make it pass-through, so it can't be
+        // tapped or dragged), used only when the draw-over-apps op isn't granted.
+        val overlayType =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Settings.canDrawOverlays(this)) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            }
+
         val metrics = resources.displayMetrics
         val prefs = getSharedPreferences(OVERLAY_PREFS, Context.MODE_PRIVATE)
         val params = WindowManager.LayoutParams(
             size, size,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
