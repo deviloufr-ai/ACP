@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +69,7 @@ import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -122,6 +124,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
@@ -327,7 +330,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         DashboardStore.save(context, pages)
     }
 
-    fun addItem(page: Int, item: DashboardItem) = mutatePage(page) { it + item }
+    // Add a tile at the first free grid cell that fits its default span (falls
+    // back to the top-left, allowing overlap, when the page is full).
+    fun addItem(page: Int, item: DashboardItem) = mutatePage(page) { list ->
+        val cell = DashboardStore.firstFreeCell(list, item.w, item.h) ?: (0 to 0)
+        list + item.withCell(cell.first, cell.second, item.w, item.h)
+    }
 
     fun removeAt(page: Int, index: Int) {
         val item = pages.getOrNull(page)?.getOrNull(index) ?: return
@@ -335,85 +343,19 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
     }
 
-    // Reorder a tile within its page (edit-mode ◀ ▶ buttons).
-    fun moveItem(page: Int, from: Int, to: Int) {
+    // Move a tile's top-left to grid cell (x, y), keeping its span (drag-to-place).
+    fun moveCell(page: Int, index: Int, x: Int, y: Int) {
         mutatePage(page) { list ->
-            if (from !in list.indices || to !in list.indices) list
-            else list.toMutableList().apply { add(to, removeAt(from)) }
+            if (index !in list.indices) list
+            else list.mapIndexed { i, it -> if (i == index) it.withCell(x, y, it.w, it.h) else it }
         }
     }
 
-    // Move a tile left/right between columns (edit-mode ◀ ▶ buttons). The tile is
-    // popped out of any stack (marked standalone) and placed one column over, so
-    // ◀ ▶ change horizontal position — distinct from the vertical ▲ ▼ which
-    // reorder within a stack. Column grouping mirrors the layout's (runs of
-    // consecutive "stacked"/half tiles share a column).
-    fun moveHorizontal(page: Int, index: Int, dir: Int) {
+    // Resize a tile to span w x h cells, keeping its top-left (drag the handle).
+    fun resizeCell(page: Int, index: Int, w: Int, h: Int) {
         mutatePage(page) { list ->
-            if (index !in list.indices) return@mutatePage list
-            val cols = ArrayList<ArrayList<DashboardItem>>()
-            var buf: ArrayList<DashboardItem>? = null
-            list.forEach { itm ->
-                if (itm.isHalf()) {
-                    val b = buf ?: ArrayList<DashboardItem>().also { cols.add(it); buf = it }
-                    b.add(itm)
-                } else {
-                    buf = null
-                    cols.add(arrayListOf(itm))
-                }
-            }
-            // Locate the tile's column/row by walking in flat order.
-            var ci = -1
-            var ri = -1
-            var n = 0
-            for (c in cols.indices) {
-                for (r in cols[c].indices) {
-                    if (n == index) { ci = c; ri = r }
-                    n++
-                }
-            }
-            if (ci < 0) return@mutatePage list
-            val moved = cols[ci].removeAt(ri).withHalf(false) // becomes its own column
-            val srcEmptied = cols[ci].isEmpty()
-            if (srcEmptied) cols.removeAt(ci)
-            val dest = when {
-                dir < 0 && srcEmptied -> ci - 1
-                dir < 0 -> ci
-                else -> ci + 1
-            }.coerceIn(0, cols.size)
-            cols.add(dest, arrayListOf(moved))
-            cols.flatten()
-        }
-    }
-
-    // Stack a tile vertically with its neighbour (edit-mode ▲ ▼ buttons). Swaps
-    // with the adjacent tile and marks both "stacked" (half) so the packer groups
-    // them into one over/under column — this is how a stack is *created* by
-    // button. Within an existing stack it just reorders the tile up/down. Works
-    // for every tile: widget card, app shortcut or split pair.
-    fun stackMove(page: Int, index: Int, dir: Int) {
-        mutatePage(page) { list ->
-            val j = index + dir
-            if (index !in list.indices || j !in list.indices) return@mutatePage list
-            list.toMutableList().apply {
-                val moved = this[index].withHalf(true)
-                this[index] = this[j].withHalf(true)
-                this[j] = moved
-            }
-        }
-    }
-
-    // Drop a dragged tile directly above/below a target tile and stack them
-    // (vertical drag-to-stack). Both are marked "stacked" so they share a column.
-    fun stackAt(page: Int, from: Int, target: Int, below: Boolean) {
-        mutatePage(page) { list ->
-            if (from !in list.indices || target !in list.indices || from == target) return@mutatePage list
-            list.toMutableList().apply {
-                val moved = removeAt(from).withHalf(true)
-                val t = if (from < target) target - 1 else target
-                this[t] = this[t].withHalf(true)
-                add((if (below) t + 1 else t).coerceIn(0, size), moved)
-            }
+            if (index !in list.indices) list
+            else list.mapIndexed { i, it -> if (i == index) it.withCell(it.x, it.y, w, h) else it }
         }
     }
 
@@ -579,20 +521,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onLaunchApp = onLaunchApp,
                     onLaunchSplitPair = onLaunchSplitPair,
                     onRemove = { index -> removeAt(page, index) },
-                    onResize = { index, weight ->
-                        mutatePage(page) { list ->
-                            list.mapIndexed { i, it -> if (i == index) it.withWeight(weight) else it }
-                        }
-                    },
-                    onMove = { from, to -> moveItem(page, from, to) },
-                    onMoveHorizontal = { index, dir -> moveHorizontal(page, index, dir) },
-                    onStackMove = { index, dir -> stackMove(page, index, dir) },
-                    onStackAt = { from, target, below -> stackAt(page, from, target, below) },
-                    onToggleHalf = { index ->
-                        mutatePage(page) { list ->
-                            list.mapIndexed { i, it -> if (i == index) it.withHalf(!it.isHalf()) else it }
-                        }
-                    },
+                    onMoveCell = { index, x, y -> moveCell(page, index, x, y) },
+                    onResizeCell = { index, w, h -> resizeCell(page, index, w, h) },
                     onAdd = { onAdd(page) }
                 )
             }
@@ -1063,247 +993,212 @@ private fun DashboardPage(
     onLaunchApp: (String) -> Unit,
     onLaunchSplitPair: (String, String) -> Unit,
     onRemove: (Int) -> Unit,
-    onResize: (Int, Float) -> Unit,
-    onMove: (Int, Int) -> Unit,
-    onMoveHorizontal: (Int, Int) -> Unit,
-    onStackMove: (Int, Int) -> Unit,
-    onStackAt: (Int, Int, Boolean) -> Unit,
-    onToggleHalf: (Int) -> Unit,
+    onMoveCell: (Int, Int, Int) -> Unit,
+    onResizeCell: (Int, Int, Int) -> Unit,
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    // Long-press drag-to-reorder, like rearranging icons on an Android home
-    // screen. Every tile reports its on-screen bounds; while a tile is held and
-    // dragged we find which tile the finger is over and reorder the list live, so
-    // the other tiles flow out of the way. App shortcuts and split-pair tiles are
-    // ordinary tiles here, so they reorder freely amongst each other and the
-    // widget cards. The edit-mode ◀ ▶ buttons remain as an explicit alternative.
-    val tileBounds = remember { mutableStateMapOf<Int, Rect>() }
-    var dragIndex by remember { mutableStateOf<Int?>(null) }
-    var dragPointer by remember { mutableStateOf(Offset.Zero) } // finger position, root coords
-    var grabOffset by remember { mutableStateOf(Offset.Zero) }  // finger offset within the grabbed tile
-
-    // Drop bounds for slots that no longer exist (e.g. after a tile is removed) so
-    // a stale rectangle can't be picked as a drop target on the next drag.
-    LaunchedEffect(pageItems.size) {
-        tileBounds.keys.filter { it >= pageItems.size }.forEach { tileBounds.remove(it) }
+    // Renders one tile's inner content with all the shared dependencies wired in.
+    val tileContent: @Composable (DashboardItem) -> Unit = { item ->
+        TileContent(
+            item = item,
+            editing = editing && !inSplitMode,
+            appsByPackage = appsByPackage,
+            mediaState = mediaState,
+            mediaController = mediaController,
+            hasMediaAccess = hasMediaAccess,
+            context = context,
+            obdData = obdData,
+            obdConnection = obdConnection,
+            onConnectObd = onConnectObd,
+            onPickDevice = onPickDevice,
+            onLaunchApp = onLaunchApp,
+            onLaunchSplitPair = onLaunchSplitPair,
+            onModelTouch = onModelTouch
+        )
     }
 
-    // Side-by-side columns that fill the screen (tuned for 1280x720). Widgets take
-    // weighted shares of the width; app shortcuts stay compact. A widget marked
-    // "half" (edit mode) takes half the height so two stack in one column instead
-    // of each eating a full column. Swiping moves between the 3 dashboards.
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val rowWidthPx = with(density) { maxWidth.toPx() }
-        val totalWeight = pageItems.filterNot { it.isCompactTile() }
-            .sumOf { it.tileWeight().toDouble() }.toFloat().coerceAtLeast(0.01f)
-        val weightPerPx = totalWeight / rowWidthPx.coerceAtLeast(1f)
+    if (inSplitMode) {
+        // Sharing the screen: the pane is narrow and tall, so ignore the grid and
+        // stack tiles vertically at a natural height, scrolling when they overflow.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            pageItems.forEach { item ->
+                val h = if (item.isCompactTile()) 96.dp else SPLIT_WIDGET_HEIGHT
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(h)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(DashColors.Bar)
+                ) { tileContent(item) }
+            }
+        }
+        return
+    }
 
-        // Group the flat item list into columns: each standalone tile is its own
-        // column; a run of consecutive "stacked" (half) tiles — widgets or icons
-        // alike — packs into one over/under column, sharing its height (no fixed
-        // cap; the user stacks as many as they like via ▲ ▼ or vertical drag).
-        val columns = ArrayList<MutableList<Int>>()
-        run {
-            var halfBuf: MutableList<Int>? = null
-            pageItems.forEachIndexed { i, it ->
-                if (it.isHalf()) {
-                    val buf = halfBuf
-                        ?: ArrayList<Int>().also { columns.add(it); halfBuf = it }
-                    buf.add(i)
-                } else {
-                    halfBuf = null
-                    columns.add(arrayListOf(i))
+    // Free placement on a GRID_COLS x GRID_ROWS grid: each tile sits at its own
+    // cell rectangle and can be dragged to any cell and resized by its handle.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+        val cellW = maxWidth / GRID_COLS
+        val cellH = maxHeight / GRID_ROWS
+        val cellWpx = with(density) { cellW.toPx() }
+        val cellHpx = with(density) { cellH.toPx() }
+
+        if (editing) {
+            // Faint grid guide-lines while arranging.
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val line = DashColors.CardHi.copy(alpha = 0.5f)
+                for (c in 1 until GRID_COLS) {
+                    val x = cellWpx * c
+                    drawLine(line, Offset(x, 0f), Offset(x, size.height), 1f)
+                }
+                for (r in 1 until GRID_ROWS) {
+                    val y = cellHpx * r
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), 1f)
                 }
             }
         }
 
-        // Per-tile grid position, so the move buttons know which axes are open:
-        // ◀ ▶ change column (horizontal), ▲ ▼ reorder within a stacked column.
-        val colOf = HashMap<Int, Int>()
-        val colSizeOf = HashMap<Int, Int>()
-        columns.forEachIndexed { ci, col ->
-            col.forEach { idx -> colOf[idx] = ci; colSizeOf[idx] = col.size }
+        pageItems.forEachIndexed { index, item ->
+            GridTile(
+                index = index,
+                item = item,
+                cellW = cellW,
+                cellH = cellH,
+                cellWpx = cellWpx,
+                cellHpx = cellHpx,
+                editing = editing,
+                onModelTouch = onModelTouch,
+                onMoveCell = onMoveCell,
+                onResizeCell = onResizeCell,
+                onRemove = onRemove,
+                content = { tileContent(item) }
+            )
         }
-        val lastColumn = columns.lastIndex
 
-        // Reorder drag is offered in the normal (non-split) layout only; the split
-        // pane is a scrolling column where vertical drags belong to the scroller.
-        val reorderable = !inSplitMode && pageItems.size > 1
+        // "+" to add a tile (placed at the first free cell by the caller).
+        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
+            AddTile(onClick = onAdd)
+        }
+    }
+}
 
-        val renderTile: @Composable (Int, Modifier) -> Unit = { index, mod ->
-            val item = pageItems[index]
-            val dragging = dragIndex == index
-            val tileModifier = mod
-                .onGloballyPositioned { coords ->
-                    tileBounds[index] = Rect(coords.positionInRoot(), coords.size.toSize())
-                }
-                .zIndex(if (dragging) 1f else 0f)
-                .graphicsLayer {
-                    if (dragging) {
-                        val settled = tileBounds[index]
-                        if (settled != null) {
-                            translationX = dragPointer.x - grabOffset.x - settled.left
-                            translationY = dragPointer.y - grabOffset.y - settled.top
-                        }
-                        scaleX = 1.08f
-                        scaleY = 1.08f
-                        alpha = 0.95f
-                        shadowElevation = 24f
-                    }
-                }
-                .let { base ->
-                    if (!reorderable) base
-                    else base.pointerInput(index, pageItems.size) {
+/**
+ * One tile placed on the dashboard grid. Fixed at its cell rectangle normally;
+ * in edit mode it can be long-press-dragged to another cell (snapping on drop),
+ * resized by the bottom-right handle, or removed.
+ */
+@Composable
+private fun GridTile(
+    index: Int,
+    item: DashboardItem,
+    cellW: Dp,
+    cellH: Dp,
+    cellWpx: Float,
+    cellHpx: Float,
+    editing: Boolean,
+    onModelTouch: (Boolean) -> Unit,
+    onMoveCell: (Int, Int, Int) -> Unit,
+    onResizeCell: (Int, Int, Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    content: @Composable () -> Unit
+) {
+    val density = LocalDensity.current
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var resizeExtra by remember { mutableStateOf(Offset.Zero) }
+    var active by remember { mutableStateOf(false) }
+
+    val basePxX = with(density) { (cellW * item.x).toPx() }
+    val basePxY = with(density) { (cellH * item.y).toPx() }
+    val basePxW = with(density) { (cellW * item.w).toPx() }
+    val basePxH = with(density) { (cellH * item.h).toPx() }
+
+    val offsetX = with(density) { (basePxX + dragOffset.x).toDp() }
+    val offsetY = with(density) { (basePxY + dragOffset.y).toDp() }
+    val widthDp = with(density) { (basePxW + resizeExtra.x).coerceAtLeast(cellWpx).toDp() }
+    val heightDp = with(density) { (basePxH + resizeExtra.y).coerceAtLeast(cellHpx).toDp() }
+
+    Box(
+        modifier = Modifier
+            .offset(offsetX, offsetY)
+            .size(widthDp, heightDp)
+            .zIndex(if (active) 1f else 0f)
+            .padding(3.dp)
+            .graphicsLayer {
+                if (active) { scaleX = 1.03f; scaleY = 1.03f; shadowElevation = 20f }
+            }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) { content() }
+
+        if (editing) {
+            // Transparent scrim over the content captures the long-press drag so
+            // even map / widget tiles (whose content eats touches) can be moved,
+            // and taps don't reach the content. The buttons below sit above it.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(index) {
                         detectDragGesturesAfterLongPress(
-                            onDragStart = { startLocal ->
-                                val b = tileBounds[index] ?: return@detectDragGesturesAfterLongPress
-                                grabOffset = startLocal
-                                dragPointer = b.topLeft + startLocal
-                                dragIndex = index
-                                onModelTouch(true) // lock the pager while dragging
-                            },
-                            onDrag = { change, delta ->
-                                // Just float the tile under the finger. The drop
-                                // action is decided once, on release, so a live
-                                // reorder can't steal the target out from under it.
-                                change.consume()
-                                dragPointer += delta
-                            },
+                            onDragStart = { active = true; onModelTouch(true) },
+                            onDrag = { change, delta -> change.consume(); dragOffset += delta },
                             onDragEnd = {
-                                // Drop over the top or bottom third of another tile
-                                // stacks the dragged one above/below it (works for
-                                // widgets and app/pair icons alike); the middle band
-                                // drops it into that tile's position (horizontal move).
-                                val from = dragIndex
-                                if (from != null && from in pageItems.indices) {
-                                    val hit = tileBounds.entries
-                                        .firstOrNull { (i, r) -> i != from && r.contains(dragPointer) }
-                                    if (hit != null && hit.key in pageItems.indices) {
-                                        val r = hit.value
-                                        val fracY = if (r.height > 0f) (dragPointer.y - r.top) / r.height else 0.5f
-                                        when {
-                                            fracY < 0.30f -> onStackAt(from, hit.key, false)
-                                            fracY > 0.70f -> onStackAt(from, hit.key, true)
-                                            else -> onMove(from, hit.key)
-                                        }
-                                    }
-                                }
-                                dragIndex = null; onModelTouch(false)
+                                val nx = ((basePxX + dragOffset.x) / cellWpx).roundToInt()
+                                val ny = ((basePxY + dragOffset.y) / cellHpx).roundToInt()
+                                onMoveCell(index, nx, ny)
+                                dragOffset = Offset.Zero; active = false; onModelTouch(false)
                             },
-                            onDragCancel = { dragIndex = null; onModelTouch(false) }
+                            onDragCancel = { dragOffset = Offset.Zero; active = false; onModelTouch(false) }
                         )
                     }
-                }
-            EditableTile(
-                modifier = tileModifier,
-                editing = editing && !inSplitMode,
-                resizable = !inSplitMode && !item.isCompactTile(),
-                // ◀ ▶ move the tile between columns (horizontal), popping it out of
-                // a stack if needed. Enabled when a column exists to move toward, or
-                // the tile can pop out of a multi-tile stack.
-                canMoveLeft = (colOf[index] ?: 0) > 0 || (colSizeOf[index] ?: 1) > 1,
-                canMoveRight = (colOf[index] ?: 0) < lastColumn || (colSizeOf[index] ?: 1) > 1,
-                onMoveLeft = { onMoveHorizontal(index, -1) },
-                onMoveRight = { onMoveHorizontal(index, 1) },
-                // ▲ ▼ stack the tile vertically with its neighbour (creating a
-                // stack from side-by-side tiles), and reorder it up/down once
-                // inside one. Available whenever there's a neighbour to stack with.
-                canMoveUp = index > 0,
-                canMoveDown = index < pageItems.lastIndex,
-                onMoveUp = { onStackMove(index, -1) },
-                onMoveDown = { onStackMove(index, 1) },
-                halfToggle = true,
-                isHalf = item.isHalf(),
-                onToggleHalf = { onToggleHalf(index) },
-                onRemove = { onRemove(index) },
-                onResizeActive = onModelTouch,
-                onResizeBy = { deltaPx ->
-                    val next = (item.tileWeight() + deltaPx * weightPerPx)
-                        .coerceIn(DashboardStore.MIN_TILE_WEIGHT, DashboardStore.MAX_TILE_WEIGHT)
-                    onResize(index, next)
-                }
-            ) {
-                TileContent(
-                    item = item,
-                    editing = editing && !inSplitMode,
-                    appsByPackage = appsByPackage,
-                    mediaState = mediaState,
-                    mediaController = mediaController,
-                    hasMediaAccess = hasMediaAccess,
-                    context = context,
-                    obdData = obdData,
-                    obdConnection = obdConnection,
-                    onConnectObd = onConnectObd,
-                    onPickDevice = onPickDevice,
-                    onLaunchApp = onLaunchApp,
-                    onLaunchSplitPair = onLaunchSplitPair,
-                    onModelTouch = onModelTouch
+            )
+
+            FilledIconButton(
+                onClick = { onRemove(index) },
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(30.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = DashColors.Warning, contentColor = Color.Black
                 )
-            }
-        }
-
-        if (inSplitMode) {
-            // Sharing the screen: the pane is narrow and tall. Stack tiles
-            // vertically at their natural height (no shrinking to fit) and let
-            // the column scroll when they overflow the pane.
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                pageItems.indices.forEach { index ->
-                    val item = pageItems[index]
-                    val h = if (item.isCompactTile()) 96.dp else SPLIT_WIDGET_HEIGHT
-                    renderTile(index, Modifier.fillMaxWidth().height(h))
-                }
+                Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
             }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                columns.forEach { col ->
-                    val first = pageItems[col.first()]
-                    val stacked = col.size > 1 || first.isHalf()
-                    // A column of only icon tiles keeps their compact fixed width;
-                    // any widget in the column makes it share the row by weight.
-                    val allCompact = col.all { pageItems[it].isCompactTile() }
-                    val compactWidth =
-                        if (col.any { pageItems[it] is DashboardItem.SplitPair }) 120.dp else 104.dp
-                    when {
-                        !stacked && first.isCompactTile() ->
-                            renderTile(col.first(), Modifier.width(compactWidth).fillMaxHeight())
-                        !stacked ->
-                            renderTile(col.first(), Modifier.weight(first.tileWeight()).fillMaxHeight())
-                        allCompact -> Column(
-                            modifier = Modifier.width(compactWidth).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            col.forEach { index -> renderTile(index, Modifier.weight(1f).fillMaxWidth()) }
-                        }
-                        else -> Column(
-                            modifier = Modifier.weight(col.maxOf { pageItems[it].tileWeight() }).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            col.forEach { index -> renderTile(index, Modifier.weight(1f).fillMaxWidth()) }
-                        }
-                    }
-                }
 
-                Box(
-                    modifier = Modifier.width(96.dp).fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AddTile(onClick = onAdd)
-                }
+            // Bottom-right resize handle: drag to change the cell span.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(DashColors.Accent.copy(alpha = 0.85f))
+                    .pointerInput(index) {
+                        detectDragGestures(
+                            onDragStart = { active = true; onModelTouch(true) },
+                            onDrag = { change, delta -> change.consume(); resizeExtra += delta },
+                            onDragEnd = {
+                                val nw = ((basePxW + resizeExtra.x) / cellWpx).roundToInt()
+                                val nh = ((basePxH + resizeExtra.y) / cellHpx).roundToInt()
+                                onResizeCell(index, nw, nh)
+                                resizeExtra = Offset.Zero; active = false; onModelTouch(false)
+                            },
+                            onDragCancel = { resizeExtra = Offset.Zero; active = false; onModelTouch(false) }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.OpenInFull,
+                    contentDescription = "Resize",
+                    tint = DashColors.Background,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -1420,142 +1315,6 @@ private fun TileContent(
             modifier = Modifier.fillMaxSize()
         ) {
             HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
-        }
-    }
-}
-
-/**
- * Wraps a tile, overlaying a remove (×) badge while [editing]. For [resizable]
- * tiles it also shows a drag handle on the right edge that widens/narrows the
- * tile; horizontal drags there are reported via [onResizeBy] (pixels) and
- * [onResizeActive] toggles the pager swipe lock so the drag isn't stolen.
- */
-@Composable
-private fun EditableTile(
-    modifier: Modifier = Modifier,
-    editing: Boolean,
-    resizable: Boolean = false,
-    canMoveLeft: Boolean = false,
-    canMoveRight: Boolean = false,
-    onMoveLeft: () -> Unit = {},
-    onMoveRight: () -> Unit = {},
-    canMoveUp: Boolean = false,
-    canMoveDown: Boolean = false,
-    onMoveUp: () -> Unit = {},
-    onMoveDown: () -> Unit = {},
-    halfToggle: Boolean = false,
-    isHalf: Boolean = false,
-    onToggleHalf: () -> Unit = {},
-    onRemove: () -> Unit,
-    onResizeActive: (Boolean) -> Unit = {},
-    onResizeBy: (Float) -> Unit = {},
-    content: @Composable () -> Unit
-) {
-    Box(modifier = modifier) {
-        content()
-        if (editing) {
-            FilledIconButton(
-                onClick = onRemove,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(30.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = DashColors.Warning,
-                    contentColor = Color.Black
-                )
-            ) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
-            }
-            if (halfToggle) {
-                FilledIconButton(
-                    onClick = onToggleHalf,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(4.dp)
-                        .size(30.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = if (isHalf) DashColors.Accent else DashColors.CardHi,
-                        contentColor = if (isHalf) DashColors.Background else DashColors.TextPrimary
-                    )
-                ) {
-                    Icon(Icons.Filled.Splitscreen, contentDescription = "Toggle half height", modifier = Modifier.size(17.dp))
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (canMoveLeft) {
-                    FilledIconButton(
-                        onClick = onMoveLeft,
-                        modifier = Modifier.size(30.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
-                        )
-                    ) { Text("◀") }
-                }
-                if (canMoveRight) {
-                    FilledIconButton(
-                        onClick = onMoveRight,
-                        modifier = Modifier.size(30.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
-                        )
-                    ) { Text("▶") }
-                }
-                // ▲ ▼ stack this widget above / below its neighbour.
-                if (canMoveUp) {
-                    FilledIconButton(
-                        onClick = onMoveUp,
-                        modifier = Modifier.size(30.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
-                        )
-                    ) { Text("▲") }
-                }
-                if (canMoveDown) {
-                    FilledIconButton(
-                        onClick = onMoveDown,
-                        modifier = Modifier.size(30.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary
-                        )
-                    ) { Text("▼") }
-                }
-            }
-            if (resizable) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 2.dp)
-                        .width(26.dp)
-                        .height(72.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(DashColors.Accent.copy(alpha = 0.85f))
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { onResizeActive(true) },
-                                onDragEnd = { onResizeActive(false) },
-                                onDragCancel = { onResizeActive(false) },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    onResizeBy(dragAmount.x)
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.SwapHoriz,
-                        contentDescription = "Resize width",
-                        tint = DashColors.Background,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
         }
     }
 }

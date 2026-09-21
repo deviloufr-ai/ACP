@@ -21,64 +21,71 @@ enum class BuiltinKind(val label: String) {
 }
 
 /**
- * One tile on a dashboard page:
+ * One tile on a dashboard page, placed freely on a [GRID_COLS] x [GRID_ROWS]
+ * grid. [x],[y] are the top-left cell (0-based) and [w],[h] are the span in
+ * cells. Tiles may be moved and resized to any cell rectangle that fits.
+ *
  *  - [AppShortcut]  a small icon that launches an installed app,
- *  - [BuiltinWidget] one of our own large cards (Maps / media / OBD),
+ *  - [SplitPair]    launches two apps side-by-side in split-screen,
+ *  - [BuiltinWidget] one of our own cards (Maps / media / OBD),
  *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder].
  */
 sealed interface DashboardItem {
-    data class AppShortcut(val packageName: String, val half: Boolean = false) : DashboardItem
-    /** Launches two apps side-by-side in split-screen (see [SplitLauncher]). */
+    val x: Int
+    val y: Int
+    val w: Int
+    val h: Int
+
+    data class AppShortcut(
+        val packageName: String,
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 2, override val h: Int = 2
+    ) : DashboardItem
+
     data class SplitPair(
         val primaryPackage: String,
         val secondaryPackage: String,
-        val half: Boolean = false
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 2, override val h: Int = 2
     ) : DashboardItem
-    data class BuiltinWidget(val kind: BuiltinKind, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
-    data class SystemWidget(val appWidgetId: Int, val weight: Float = 1f, val half: Boolean = false) : DashboardItem
+
+    data class BuiltinWidget(
+        val kind: BuiltinKind,
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 5, override val h: Int = 3
+    ) : DashboardItem
+
+    data class SystemWidget(
+        val appWidgetId: Int,
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 5, override val h: Int = 3
+    ) : DashboardItem
 }
 
-/**
- * A "half" tile takes only a share of the row height so several stack in one
- * column instead of each eating a full-height slot. Any tile — widget card or
- * compact icon (shortcut / split pair) — can be stacked this way.
- */
-fun DashboardItem.isHalf(): Boolean = when (this) {
-    is DashboardItem.AppShortcut -> half
-    is DashboardItem.SplitPair -> half
-    is DashboardItem.BuiltinWidget -> half
-    is DashboardItem.SystemWidget -> half
-}
+/** The dashboard grid: 10 cells across, 6 down. */
+const val GRID_COLS = 10
+const val GRID_ROWS = 6
 
-/** Returns a copy toggled between stacked (half) and standalone height. */
-fun DashboardItem.withHalf(h: Boolean): DashboardItem = when (this) {
-    is DashboardItem.AppShortcut -> copy(half = h)
-    is DashboardItem.SplitPair -> copy(half = h)
-    is DashboardItem.BuiltinWidget -> copy(half = h)
-    is DashboardItem.SystemWidget -> copy(half = h)
-}
-
-/** Compact fixed-width icon tiles, as opposed to weighted widget cards. */
+/** Compact icon tiles (shortcuts / split pairs) vs. larger widget cards. */
 fun DashboardItem.isCompactTile(): Boolean =
     this is DashboardItem.AppShortcut || this is DashboardItem.SplitPair
 
-/**
- * Relative width a tile occupies in its dashboard row. Widgets share the row by
- * weight (so they can be made wider/narrower); app shortcuts stay a fixed width.
- */
-fun DashboardItem.tileWeight(): Float = when (this) {
-    is DashboardItem.BuiltinWidget -> weight
-    is DashboardItem.SystemWidget -> weight
-    is DashboardItem.AppShortcut -> 1f
-    is DashboardItem.SplitPair -> 1f
-}
+/** Smallest span this tile may be resized to (icons stay small, widgets bigger). */
+fun DashboardItem.minW(): Int = if (isCompactTile()) 1 else 3
+fun DashboardItem.minH(): Int = if (isCompactTile()) 1 else 2
 
-/** Returns a copy of this item with a new row weight (no-op for compact tiles). */
-fun DashboardItem.withWeight(newWeight: Float): DashboardItem = when (this) {
-    is DashboardItem.BuiltinWidget -> copy(weight = newWeight)
-    is DashboardItem.SystemWidget -> copy(weight = newWeight)
-    is DashboardItem.AppShortcut -> this
-    is DashboardItem.SplitPair -> this
+/** Returns a copy placed at cell [x],[y] spanning [w] x [h], clamped to the grid. */
+fun DashboardItem.withCell(x: Int, y: Int, w: Int, h: Int): DashboardItem {
+    val cw = w.coerceIn(minW(), GRID_COLS)
+    val ch = h.coerceIn(minH(), GRID_ROWS)
+    val cx = x.coerceIn(0, GRID_COLS - cw)
+    val cy = y.coerceIn(0, GRID_ROWS - ch)
+    return when (this) {
+        is DashboardItem.AppShortcut -> copy(x = cx, y = cy, w = cw, h = ch)
+        is DashboardItem.SplitPair -> copy(x = cx, y = cy, w = cw, h = ch)
+        is DashboardItem.BuiltinWidget -> copy(x = cx, y = cy, w = cw, h = ch)
+        is DashboardItem.SystemWidget -> copy(x = cx, y = cy, w = cw, h = ch)
+    }
 }
 
 /**
@@ -94,9 +101,11 @@ object DashboardStore {
 
     /** Default layout when nothing is saved yet: Maps + music on page 1. */
     private fun defaultPages(): List<List<DashboardItem>> = listOf(
-        listOf(
-            DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP),
-            DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
+        autoPlace(
+            listOf(
+                DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP),
+                DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
+            )
         ),
         emptyList(),
         emptyList()
@@ -114,8 +123,12 @@ object DashboardStore {
             }
         }.getOrNull() ?: return defaultPages()
 
-        // Always return exactly PAGE_COUNT pages (pad with empty / truncate extras).
-        return List(PAGE_COUNT) { p -> parsed.getOrElse(p) { emptyList() } }
+        // Always return exactly PAGE_COUNT pages; auto-place any page whose tiles
+        // predate grid coordinates (migrated from the old column layout).
+        return List(PAGE_COUNT) { p ->
+            val page = parsed.getOrElse(p) { emptyList() }
+            if (page.any { it.x < 0 }) autoPlace(page) else page
+        }
     }
 
     fun save(context: Context, pages: List<List<DashboardItem>>) {
@@ -129,35 +142,92 @@ object DashboardStore {
             .edit().putString(KEY_PAGES, json.toString()).apply()
     }
 
-    private fun DashboardItem.toJson(): JSONObject = when (this) {
-        is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName).put("h", half)
-        is DashboardItem.SplitPair ->
-            JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage).put("h", half)
-        is DashboardItem.BuiltinWidget ->
-            JSONObject().put("t", "builtin").put("k", kind.name).put("w", weight.toDouble()).put("h", half)
-        is DashboardItem.SystemWidget ->
-            JSONObject().put("t", "widget").put("id", appWidgetId).put("w", weight.toDouble()).put("h", half)
+    /** First cell where a [w] x [h] tile fits without overlapping [occupied]. */
+    fun firstFreeCell(items: List<DashboardItem>, w: Int, h: Int): Pair<Int, Int>? {
+        val occ = occupancy(items)
+        return firstFree(occ, w.coerceIn(1, GRID_COLS), h.coerceIn(1, GRID_ROWS))
     }
 
-    private fun JSONObject.toItem(): DashboardItem? = when (optString("t")) {
-        "app" -> optString("pkg").takeIf { it.isNotBlank() }
-            ?.let { DashboardItem.AppShortcut(it, optBoolean("h", false)) }
-        "split" -> {
-            val a = optString("a")
-            val b = optString("b")
-            if (a.isNotBlank() && b.isNotBlank()) DashboardItem.SplitPair(a, b, optBoolean("h", false)) else null
+    private fun occupancy(items: List<DashboardItem>): Array<BooleanArray> {
+        val occ = Array(GRID_ROWS) { BooleanArray(GRID_COLS) }
+        items.forEach { mark(occ, it.x, it.y, it.w, it.h, true) }
+        return occ
+    }
+
+    private fun firstFree(occ: Array<BooleanArray>, w: Int, h: Int): Pair<Int, Int>? {
+        for (y in 0..GRID_ROWS - h) {
+            for (x in 0..GRID_COLS - w) {
+                if (fits(occ, x, y, w, h)) return x to y
+            }
         }
-        "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
-            ?.let { DashboardItem.BuiltinWidget(it, readWeight(), optBoolean("h", false)) }
-        "widget" -> optInt("id", -1).takeIf { it != -1 }
-            ?.let { DashboardItem.SystemWidget(it, readWeight(), optBoolean("h", false)) }
-        else -> null
+        return null
     }
 
-    /** Persisted tile weight, clamped to the same range the resize handle allows. */
-    private fun JSONObject.readWeight(): Float =
-        optDouble("w", 1.0).toFloat().coerceIn(MIN_TILE_WEIGHT, MAX_TILE_WEIGHT)
+    private fun fits(occ: Array<BooleanArray>, x: Int, y: Int, w: Int, h: Int): Boolean {
+        for (yy in y until y + h) for (xx in x until x + w) {
+            if (yy !in 0 until GRID_ROWS || xx !in 0 until GRID_COLS || occ[yy][xx]) return false
+        }
+        return true
+    }
 
-    const val MIN_TILE_WEIGHT = 0.4f
-    const val MAX_TILE_WEIGHT = 4f
+    private fun mark(occ: Array<BooleanArray>, x: Int, y: Int, w: Int, h: Int, v: Boolean) {
+        for (yy in y until y + h) for (xx in x until x + w) {
+            if (yy in 0 until GRID_ROWS && xx in 0 until GRID_COLS) occ[yy][xx] = v
+        }
+    }
+
+    /** Flow tiles onto the grid in order, first free cell for each (migration). */
+    private fun autoPlace(items: List<DashboardItem>): List<DashboardItem> {
+        val occ = Array(GRID_ROWS) { BooleanArray(GRID_COLS) }
+        return items.map { item ->
+            val w = item.w.coerceIn(item.minW(), GRID_COLS)
+            val h = item.h.coerceIn(item.minH(), GRID_ROWS)
+            val pos = firstFree(occ, w, h) ?: (0 to 0)
+            mark(occ, pos.first, pos.second, w, h, true)
+            item.withCell(pos.first, pos.second, w, h)
+        }
+    }
+
+    private fun DashboardItem.toJson(): JSONObject {
+        val o = when (this) {
+            is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName)
+            is DashboardItem.SplitPair ->
+                JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage)
+            is DashboardItem.BuiltinWidget -> JSONObject().put("t", "builtin").put("k", kind.name)
+            is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
+        }
+        return o.put("gx", x).put("gy", y).put("gw", w).put("gh", h)
+    }
+
+    /** Copy with x = -1, the sentinel load() uses to auto-place migrated tiles. */
+    private fun DashboardItem.markUnplaced(): DashboardItem = when (this) {
+        is DashboardItem.AppShortcut -> copy(x = -1)
+        is DashboardItem.SplitPair -> copy(x = -1)
+        is DashboardItem.BuiltinWidget -> copy(x = -1)
+        is DashboardItem.SystemWidget -> copy(x = -1)
+    }
+
+    private fun JSONObject.toItem(): DashboardItem? {
+        val gx = optInt("gx", -1)
+        val gy = optInt("gy", -1)
+        val gw = optInt("gw", -1)
+        val gh = optInt("gh", -1)
+        fun place(item: DashboardItem): DashboardItem =
+            if (gx >= 0 && gy >= 0 && gw > 0 && gh > 0) item.withCell(gx, gy, gw, gh)
+            else item.markUnplaced()
+
+        return when (optString("t")) {
+            "app" -> optString("pkg").takeIf { it.isNotBlank() }
+                ?.let { place(DashboardItem.AppShortcut(it)) }
+            "split" -> {
+                val a = optString("a"); val b = optString("b")
+                if (a.isNotBlank() && b.isNotBlank()) place(DashboardItem.SplitPair(a, b)) else null
+            }
+            "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
+                ?.let { place(DashboardItem.BuiltinWidget(it)) }
+            "widget" -> optInt("id", -1).takeIf { it != -1 }
+                ?.let { place(DashboardItem.SystemWidget(it)) }
+            else -> null
+        }
+    }
 }
