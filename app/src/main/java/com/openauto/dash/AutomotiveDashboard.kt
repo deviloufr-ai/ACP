@@ -19,6 +19,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -100,15 +102,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -117,6 +122,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
@@ -905,6 +912,24 @@ private fun DashboardPage(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+
+    // Long-press drag-to-reorder, like rearranging icons on an Android home
+    // screen. Every tile reports its on-screen bounds; while a tile is held and
+    // dragged we find which tile the finger is over and reorder the list live, so
+    // the other tiles flow out of the way. App shortcuts and split-pair tiles are
+    // ordinary tiles here, so they reorder freely amongst each other and the
+    // widget cards. The edit-mode ◀ ▶ buttons remain as an explicit alternative.
+    val tileBounds = remember { mutableStateMapOf<Int, Rect>() }
+    var dragIndex by remember { mutableStateOf<Int?>(null) }
+    var dragPointer by remember { mutableStateOf(Offset.Zero) } // finger position, root coords
+    var grabOffset by remember { mutableStateOf(Offset.Zero) }  // finger offset within the grabbed tile
+
+    // Drop bounds for slots that no longer exist (e.g. after a tile is removed) so
+    // a stale rectangle can't be picked as a drop target on the next drag.
+    LaunchedEffect(pageItems.size) {
+        tileBounds.keys.filter { it >= pageItems.size }.forEach { tileBounds.remove(it) }
+    }
+
     // Side-by-side columns that fill the screen (tuned for 1280x720). Widgets take
     // weighted shares of the width; app shortcuts stay compact. A widget marked
     // "half" (edit mode) takes half the height so two stack in one column instead
@@ -932,10 +957,61 @@ private fun DashboardPage(
             }
         }
 
+        // Reorder drag is offered in the normal (non-split) layout only; the split
+        // pane is a scrolling column where vertical drags belong to the scroller.
+        val reorderable = !inSplitMode && pageItems.size > 1
+
         val renderTile: @Composable (Int, Modifier) -> Unit = { index, mod ->
             val item = pageItems[index]
+            val dragging = dragIndex == index
+            val tileModifier = mod
+                .onGloballyPositioned { coords ->
+                    tileBounds[index] = Rect(coords.positionInRoot(), coords.size.toSize())
+                }
+                .zIndex(if (dragging) 1f else 0f)
+                .graphicsLayer {
+                    if (dragging) {
+                        val settled = tileBounds[index]
+                        if (settled != null) {
+                            translationX = dragPointer.x - grabOffset.x - settled.left
+                            translationY = dragPointer.y - grabOffset.y - settled.top
+                        }
+                        scaleX = 1.08f
+                        scaleY = 1.08f
+                        alpha = 0.95f
+                        shadowElevation = 24f
+                    }
+                }
+                .let { base ->
+                    if (!reorderable) base
+                    else base.pointerInput(index, pageItems.size) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { startLocal ->
+                                val b = tileBounds[index] ?: return@detectDragGesturesAfterLongPress
+                                grabOffset = startLocal
+                                dragPointer = b.topLeft + startLocal
+                                dragIndex = index
+                                onModelTouch(true) // lock the pager while dragging
+                            },
+                            onDrag = { change, delta ->
+                                change.consume()
+                                dragPointer += delta
+                                val from = dragIndex ?: return@detectDragGesturesAfterLongPress
+                                val target = tileBounds.entries
+                                    .firstOrNull { (i, r) -> i != from && r.contains(dragPointer) }
+                                    ?.key
+                                if (target != null && target != from) {
+                                    onMove(from, target)
+                                    dragIndex = target
+                                }
+                            },
+                            onDragEnd = { dragIndex = null; onModelTouch(false) },
+                            onDragCancel = { dragIndex = null; onModelTouch(false) }
+                        )
+                    }
+                }
             EditableTile(
-                modifier = mod,
+                modifier = tileModifier,
                 editing = editing && !inSplitMode,
                 resizable = !inSplitMode && !item.isCompactTile(),
                 canMoveLeft = index > 0,
