@@ -129,6 +129,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -2207,10 +2208,13 @@ private fun RangeCard(
 }
 
 /**
- * Learns which CANbox/MCU byte is the fuel level. The user enters what their
- * physical dash gauge reads right now; we rank the live MCU bytes by how well
- * they match (both 0–255 and direct-percent scales), and picking one calibrates
- * a full tank from that reading. Debug-flavoured, like the CAN monitor.
+ * Learns which CANbox/MCU byte is the fuel level with a **two-point capture**
+ * (like the door A/B differential). A single snapshot is unreliable — many bytes
+ * happen to read ~60% at one moment, including static ones — so instead the user
+ * captures the frames at one fuel level, waits until the gauge has visibly
+ * changed, captures again, and we only offer bytes that actually **moved in the
+ * same direction** as the fuel and map consistently to the same full tank. That
+ * excludes the static byte that got picked before and stayed at 60%.
  */
 @Composable
 private fun FuelFinderDialog(onDismiss: () -> Unit) {
@@ -2219,21 +2223,42 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
         onDispose { McuReader.stop() }
     }
     val entries by McuReader.entries.collectAsState()
-    var currentPct by remember { mutableIntStateOf(50) }
+    var currentPct by remember { mutableIntStateOf(60) }
+    var capA by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
+    var pctA by remember { mutableIntStateOf(0) }
+    var capB by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
+    var pctB by remember { mutableIntStateOf(0) }
 
-    // Rank every (frame, byte) by closeness to the entered % under either scale.
-    data class Cand(val key: String, val index: Int, val raw: Int, val asPct: Int, val err: Int)
-    val candidates = remember(entries, currentPct) {
-        entries.flatMap { e ->
-            e.bytes.mapIndexedNotNull { i, raw ->
-                if (raw in 1..254) {
-                    val pctDirect = raw
-                    val pct255 = raw * 100 / 255
-                    val best = if (kotlin.math.abs(pctDirect - currentPct) <= kotlin.math.abs(pct255 - currentPct)) pctDirect else pct255
-                    Cand(e.key, i, raw, best.coerceIn(0, 100), kotlin.math.abs(best - currentPct))
-                } else null
+    fun snapshot(): Map<String, List<Int>> = entries.associate { it.key to it.bytes }
+
+    // Bytes that changed in the same direction as the fuel and map to a
+    // consistent full-tank raw across both captures. err = disagreement between
+    // the two implied full-tank values (lower = better fit).
+    data class Cand(val key: String, val index: Int, val rawA: Int, val rawB: Int, val fullRaw: Int, val err: Int)
+    val candidates = remember(capA, capB, pctA, pctB) {
+        val a = capA; val b = capB
+        if (a == null || b == null || pctA == pctB || pctA == 0 || pctB == 0) {
+            emptyList()
+        } else {
+            val fuelDir = if (pctB > pctA) 1 else -1
+            val out = ArrayList<Cand>()
+            for ((key, av) in a) {
+                val bv = b[key] ?: continue
+                val n = minOf(av.size, bv.size)
+                for (i in 0 until n) {
+                    val ra = av[i]; val rb = bv[i]
+                    if (ra !in 1..255 || rb !in 1..255 || ra == rb) continue
+                    val byteDir = if (rb > ra) 1 else -1
+                    if (byteDir != fuelDir) continue                       // must track fuel
+                    val fullA = ra * 100f / pctA
+                    val fullB = rb * 100f / pctB
+                    val fullRaw = ((fullA + fullB) / 2f).roundToInt().coerceIn(1, 255)
+                    if (fullRaw < maxOf(ra, rb)) continue                  // full tank ≥ current
+                    out.add(Cand(key, i, ra, rb, fullRaw, kotlin.math.abs(fullA - fullB).roundToInt()))
+                }
             }
-        }.sortedBy { it.err }.take(12)
+            out.sortedWith(compareBy({ it.err }, { -kotlin.math.abs(it.rawB - it.rawA) })).take(12)
+        }
     }
 
     AlertDialog(
@@ -2243,7 +2268,7 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "Read your car's fuel gauge, set it below, then tap the byte whose value matches. It's saved and calibrated so a full tank reads 100%.",
+                    "Two-step: set your dash gauge %, tap Capture A. Later — once the gauge has changed a few % — set the new value and tap Capture B. Only bytes that actually moved with the fuel are offered.",
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -2263,34 +2288,60 @@ private fun FuelFinderDialog(onDismiss: () -> Unit) {
                     ) { Text("+") }
                 }
                 Spacer(Modifier.height(10.dp))
-                if (entries.isEmpty()) {
-                    Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
-                } else {
-                    Text("Closest matches", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    LazyColumn(modifier = Modifier.fillMaxWidth().height(240.dp)) {
-                        lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 3.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(DashColors.CardHi)
-                                    .clickable {
-                                        // Calibrate: fullRaw = raw scaled so the entered % is exact.
-                                        val fullRaw = (c.raw * 100 / currentPct).coerceIn(1, 255)
-                                        McuReader.saveFuelMapping(c.key, c.index, fullRaw)
-                                        onDismiss()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = { capA = snapshot(); pctA = currentPct },
+                        colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
+                    ) { Text(if (capA == null) "Capture A" else "A ✓ $pctA%") }
+                    TextButton(
+                        onClick = { capB = snapshot(); pctB = currentPct },
+                        enabled = capA != null,
+                        colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
+                    ) { Text(if (capB == null) "Capture B" else "B ✓ $pctB%") }
+                    if (capA != null || capB != null) {
+                        TextButton(
+                            onClick = { capA = null; capB = null; pctA = 0; pctB = 0 },
+                            colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Muted)
+                        ) { Text("Reset") }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                when {
+                    entries.isEmpty() ->
+                        Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
+                    capA == null ->
+                        Text("Set your current fuel %, then tap Capture A.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                    capB == null ->
+                        Text("Captured at $pctA%. Drive until the gauge drops a few %, set the new value, then Capture B.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                    pctA == pctB ->
+                        Text("A and B are the same %. Capture B at a different fuel level.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    candidates.isEmpty() ->
+                        Text("No byte tracked the change. Recapture B after a bigger drop.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    else -> {
+                        Text("Bytes that moved with the fuel", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(210.dp)) {
+                            lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(DashColors.CardHi)
+                                        .clickable {
+                                            McuReader.saveFuelMapping(c.key, c.index, c.fullRaw)
+                                            onDismiss()
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                                        Text("${c.rawA} → ${c.rawB}  ·  full≈${c.fullRaw}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                                     }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
-                                    Text("raw ${c.raw}  →  ~${c.asPct}%", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                    Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                                 }
-                                Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
