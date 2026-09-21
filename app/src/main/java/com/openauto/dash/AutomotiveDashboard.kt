@@ -343,19 +343,46 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Move a tile up/down through the vertical stack (edit-mode ▲ ▼ buttons).
-    // Swaps with the adjacent tile and marks both "stacked" (half) so the column
-    // packer groups them into one over/under column. Works for any tile — widget
-    // card or compact icon (shortcut / split pair).
-    fun stackMove(page: Int, index: Int, dir: Int) {
+    // Move a tile left/right between columns (edit-mode ◀ ▶ buttons). The tile is
+    // popped out of any stack (marked standalone) and placed one column over, so
+    // ◀ ▶ change horizontal position — distinct from the vertical ▲ ▼ which
+    // reorder within a stack. Column grouping mirrors the layout's (runs of
+    // consecutive "stacked"/half tiles share a column).
+    fun moveHorizontal(page: Int, index: Int, dir: Int) {
         mutatePage(page) { list ->
-            val j = index + dir
-            if (index !in list.indices || j !in list.indices) return@mutatePage list
-            list.toMutableList().apply {
-                val moved = this[index].withHalf(true)
-                this[index] = this[j].withHalf(true)
-                this[j] = moved
+            if (index !in list.indices) return@mutatePage list
+            val cols = ArrayList<ArrayList<DashboardItem>>()
+            var buf: ArrayList<DashboardItem>? = null
+            list.forEach { itm ->
+                if (itm.isHalf()) {
+                    val b = buf ?: ArrayList<DashboardItem>().also { cols.add(it); buf = it }
+                    b.add(itm)
+                } else {
+                    buf = null
+                    cols.add(arrayListOf(itm))
+                }
             }
+            // Locate the tile's column/row by walking in flat order.
+            var ci = -1
+            var ri = -1
+            var n = 0
+            for (c in cols.indices) {
+                for (r in cols[c].indices) {
+                    if (n == index) { ci = c; ri = r }
+                    n++
+                }
+            }
+            if (ci < 0) return@mutatePage list
+            val moved = cols[ci].removeAt(ri).withHalf(false) // becomes its own column
+            val srcEmptied = cols[ci].isEmpty()
+            if (srcEmptied) cols.removeAt(ci)
+            val dest = when {
+                dir < 0 && srcEmptied -> ci - 1
+                dir < 0 -> ci
+                else -> ci + 1
+            }.coerceIn(0, cols.size)
+            cols.add(dest, arrayListOf(moved))
+            cols.flatten()
         }
     }
 
@@ -541,7 +568,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         }
                     },
                     onMove = { from, to -> moveItem(page, from, to) },
-                    onStackMove = { index, dir -> stackMove(page, index, dir) },
+                    onMoveHorizontal = { index, dir -> moveHorizontal(page, index, dir) },
                     onStackAt = { from, target, below -> stackAt(page, from, target, below) },
                     onToggleHalf = { index ->
                         mutatePage(page) { list ->
@@ -1020,7 +1047,7 @@ private fun DashboardPage(
     onRemove: (Int) -> Unit,
     onResize: (Int, Float) -> Unit,
     onMove: (Int, Int) -> Unit,
-    onStackMove: (Int, Int) -> Unit,
+    onMoveHorizontal: (Int, Int) -> Unit,
     onStackAt: (Int, Int, Boolean) -> Unit,
     onToggleHalf: (Int) -> Unit,
     onAdd: () -> Unit
@@ -1073,6 +1100,18 @@ private fun DashboardPage(
                 }
             }
         }
+
+        // Per-tile grid position, so the move buttons know which axes are open:
+        // ◀ ▶ change column (horizontal), ▲ ▼ reorder within a stacked column.
+        val colOf = HashMap<Int, Int>()
+        val rowOf = HashMap<Int, Int>()
+        val colSizeOf = HashMap<Int, Int>()
+        columns.forEachIndexed { ci, col ->
+            col.forEachIndexed { ri, idx ->
+                colOf[idx] = ci; rowOf[idx] = ri; colSizeOf[idx] = col.size
+            }
+        }
+        val lastColumn = columns.lastIndex
 
         // Reorder drag is offered in the normal (non-split) layout only; the split
         // pane is a scrolling column where vertical drags belong to the scroller.
@@ -1150,15 +1189,19 @@ private fun DashboardPage(
                 modifier = tileModifier,
                 editing = editing && !inSplitMode,
                 resizable = !inSplitMode && !item.isCompactTile(),
-                canMoveLeft = index > 0,
-                canMoveRight = index < pageItems.lastIndex,
-                onMoveLeft = { onMove(index, index - 1) },
-                onMoveRight = { onMove(index, index + 1) },
-                // Any tile can stack above/below any neighbour on the page.
-                canMoveUp = index > 0,
-                canMoveDown = index < pageItems.lastIndex,
-                onMoveUp = { onStackMove(index, -1) },
-                onMoveDown = { onStackMove(index, 1) },
+                // ◀ ▶ move the tile between columns (horizontal), popping it out of
+                // a stack if needed. Enabled when a column exists to move toward, or
+                // the tile can pop out of a multi-tile stack.
+                canMoveLeft = (colOf[index] ?: 0) > 0 || (colSizeOf[index] ?: 1) > 1,
+                canMoveRight = (colOf[index] ?: 0) < lastColumn || (colSizeOf[index] ?: 1) > 1,
+                onMoveLeft = { onMoveHorizontal(index, -1) },
+                onMoveRight = { onMoveHorizontal(index, 1) },
+                // ▲ ▼ reorder the tile within its stacked column (vertical); shown
+                // only when it actually sits in a stack with room to move.
+                canMoveUp = (rowOf[index] ?: 0) > 0,
+                canMoveDown = (rowOf[index] ?: 0) < (colSizeOf[index] ?: 1) - 1,
+                onMoveUp = { onMove(index, index - 1) },
+                onMoveDown = { onMove(index, index + 1) },
                 halfToggle = true,
                 isHalf = item.isHalf(),
                 onToggleHalf = { onToggleHalf(index) },
