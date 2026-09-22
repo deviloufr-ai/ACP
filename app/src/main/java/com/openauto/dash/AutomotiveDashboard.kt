@@ -163,6 +163,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // System-app install (root) — unlocks embedding the real Google Maps app.
     var showSystemDialog by remember { mutableStateOf(false) }
+
+    // Docked app windows sit above dialogs on this head unit; have them step
+    // aside while anything modal, or the app drawer, is open, and the moment a
+    // page swipe starts, so they vanish with the swipe instead of after it.
+    val modalOpen = showThemePicker || showAllApps || showSplitPicker || showSplitEnable ||
+        showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
+        layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
+        launchBarEditor != null
+    val stepAside = modalOpen || pagerState.isScrollInProgress
+    LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
     var rootChecked by remember { mutableStateOf(false) }
     var rootAvailable by remember { mutableStateOf(false) }
     var systemBusy by remember { mutableStateOf(false) }

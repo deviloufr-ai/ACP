@@ -103,6 +103,32 @@ object PipAnchor {
     /** True while the "Maps left" layout's permanent dock is on screen. */
     val dockActive = MutableStateFlow(false)
 
+    /**
+     * True while a dialog or the app drawer is open. Docked windows are drawn
+     * above everything on this head unit, so they would cover the dialog; the
+     * tiles slide their windows off the right edge meanwhile and dock them
+     * again afterwards.
+     */
+    val steppedAside = MutableStateFlow(false)
+
+    /** Slides [packageName]'s window off the right edge at its current size (a thin strip stays visible). */
+    fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
+        scope.launch {
+            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+            val b = win.bounds ?: return@launch
+            val dm = context.resources.displayMetrics
+            if (b.left >= dm.widthPixels - ASIDE_SLIVER_PX) return@launch // already aside
+            val w = b.right - b.left
+            val h = b.bottom - b.top
+            val left = dm.widthPixels - ASIDE_SLIVER_PX
+            runCatching { resize(context, win, ScreenRect(left, b.top, left + w, b.top + h)) }
+                .onFailure { Log.w(TAG, "park aside failed", it) }
+            Log.i(TAG, "$packageName stepped aside for a dialog")
+        }
+    }
+
+    private const val ASIDE_SLIVER_PX = 4
+
     /** Screen-pixel rectangle; a plain data class so the parser is JVM-testable. */
     data class ScreenRect(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
@@ -634,9 +660,14 @@ internal fun PipAnchorCard(
 
     // Re-target after the tile settles: a page swipe or a drag in edit mode
     // moves it many times per second, and each ADB round trip costs real time.
-    LaunchedEffect(target, started) {
+    val steppedAside by PipAnchor.steppedAside.collectAsState()
+    LaunchedEffect(target, started, steppedAside) {
         val rect = target ?: return@LaunchedEffect
         if (!started) return@LaunchedEffect
+        if (steppedAside) {
+            PipAnchor.parkAside(context, packageName)
+            return@LaunchedEffect
+        }
         delay(350)
         PipAnchor.track(context, rect, packageName)
     }
