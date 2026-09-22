@@ -271,7 +271,8 @@ internal fun RpmBar(
     val accent = DashColors.Accent
     val warning = DashColors.Warning
     val glow = DashColors.Glow
-    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else DashColors.Background
+    // Bare themes have no card behind the bar, so a background-coloured track would vanish.
+    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background
     val overRedline = frac >= redlineFraction
 
     Column(modifier = modifier) {
@@ -592,8 +593,7 @@ internal fun MeterChip(
     Column(
         modifier = modifier
             .clip(chipShape)
-            .background(if (glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi)
-            .border(1.dp, DashColors.Line, chipShape)
+            .itemFill(if (glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, chipShape)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(
@@ -616,7 +616,7 @@ internal fun MeterChip(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(CircleShape)
-                .background(if (glass) Color.Black.copy(alpha = 0.35f) else DashColors.Background)
+                .background(if (glass) Color.Black.copy(alpha = 0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background)
         ) {
             Box(
                 modifier = Modifier

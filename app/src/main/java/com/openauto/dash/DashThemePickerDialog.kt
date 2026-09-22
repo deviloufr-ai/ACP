@@ -34,7 +34,7 @@ fun DashThemePickerDialog(selected: DashThemeMode, onSelect: (DashThemeMode) -> 
         containerColor = DashColors.Card,
         title = { Text("Dashboard theme", color = DashColors.TextPrimary) },
         text = {
-            // Seven options can outgrow a 720p head unit; let the list scroll.
+            // Eight options can outgrow a 720p head unit; let the list scroll.
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -59,6 +59,7 @@ private fun ThemeOption(mode: DashThemeMode, selected: Boolean, onClick: () -> U
         DashThemeMode.CLEAN_LIGHT -> Brush.linearGradient(listOf(Color.White, Color(0xFFDCE8F7)))
         DashThemeMode.DARK_GLASS -> Brush.linearGradient(listOf(Color(0xFF05070B), Color(0xFF233A5F)))
         DashThemeMode.SPORTY -> Brush.linearGradient(listOf(Color(0xFF08090B), Color(0xFFFF334A)))
+        DashThemeMode.FLOATING -> Brush.linearGradient(listOf(Color(0xFF0C1424), Color(0xFF06080D), Color(0xFF7CC4FF)))
     }
     Row(
         modifier = Modifier.fillMaxWidth().border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)

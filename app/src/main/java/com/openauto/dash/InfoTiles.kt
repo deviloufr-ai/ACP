@@ -373,8 +373,7 @@ private fun AgendaRow(e: AgendaEvent) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi)
-            .border(1.dp, DashColors.Line, RoundedCornerShape(12.dp))
+            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -535,8 +534,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi)
-                                .border(1.dp, DashColors.Line, RoundedCornerShape(12.dp))
+                                .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
                                 .clickable { runCatching { n.contentIntent?.send() } }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -643,8 +641,7 @@ private fun SmallAction(label: String, icon: ImageVector? = null, onClick: () ->
     Row(
         modifier = Modifier
             .clip(shape)
-            .background(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi)
-            .border(1.dp, DashColors.Line, shape)
+            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
