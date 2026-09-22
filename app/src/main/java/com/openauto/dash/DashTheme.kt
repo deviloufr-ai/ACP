@@ -1,0 +1,100 @@
+package com.openauto.dash
+
+import android.content.Context
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+
+enum class DashThemeMode(val title: String, val description: String) {
+    AUTO("Auto", "Follow the car's day/night mode"),
+    NEON_DARK("Neon Dark", "Blue + violet futuristic cockpit"),
+    CLEAN_LIGHT("Clean Light", "Bright, minimal and easy to read"),
+    DARK_GLASS("Dark Glass", "Premium dark glass aesthetic"),
+    SPORTY("Sporty", "Black + red performance cockpit")
+}
+
+data class DashPalette(
+    val Background: Color, val Bar: Color, val Card: Color, val CardHi: Color,
+    val Accent: Color, val Speed: Color, val Rpm: Color, val Warning: Color,
+    val Good: Color, val Muted: Color, val TextPrimary: Color, val TextSecondary: Color
+)
+
+private val AutoDarkPalette = DashPalette(
+    Color(0xFF0B0C0F), Color(0xFF141518), Color(0xFF1E2024), Color(0xFF2A2D33),
+    Color(0xFF8AB4F8), Color(0xFF8AB4F8), Color(0xFFF6AD7B), Color(0xFFF28B82),
+    Color(0xFF81C995), Color(0xFF9AA0A6), Color(0xFFE8EAED), Color(0xFF9AA0A6)
+)
+private val AutoLightPalette = DashPalette(
+    Color(0xFFF1F3F4), Color.White, Color.White, Color(0xFFE3E6EA),
+    Color(0xFF1A73E8), Color(0xFF1A73E8), Color(0xFFE8710A), Color(0xFFD93025),
+    Color(0xFF188038), Color(0xFF5F6368), Color(0xFF202124), Color(0xFF5F6368)
+)
+private val NeonDarkPalette = DashPalette(
+    Color(0xFF030817), Color(0xFF071126), Color(0xFF0A1935), Color(0xFF13294A),
+    Color(0xFF4B9BFF), Color(0xFF43A5FF), Color(0xFFA46BFF), Color(0xFFFF5F72),
+    Color(0xFF36E0A0), Color(0xFF8292B0), Color(0xFFF4F7FF), Color(0xFFB5C0D6)
+)
+private val CleanLightPalette = DashPalette(
+    Color(0xFFF5F7FA), Color.White, Color.White, Color(0xFFEAF0F7),
+    Color(0xFF246BCE), Color(0xFF246BCE), Color(0xFF8A5A00), Color(0xFFC62828),
+    Color(0xFF177245), Color(0xFF667085), Color(0xFF101828), Color(0xFF667085)
+)
+private val DarkGlassPalette = DashPalette(
+    Color(0xFF05070B), Color(0xCC101722), Color(0xCC101A2A), Color(0xCC1B2A42),
+    Color(0xFF68A8FF), Color(0xFF68A8FF), Color(0xFF9C7BFF), Color(0xFFFF6B7A),
+    Color(0xFF55D6A5), Color(0xFF8B98AD), Color(0xFFF7F9FC), Color(0xFFB6C0D0)
+)
+private val SportyPalette = DashPalette(
+    Color(0xFF07080A), Color(0xFF0D0F12), Color(0xFF12161B), Color(0xFF20262D),
+    Color(0xFFFF334A), Color(0xFFFF334A), Color(0xFFFF8A3D), Color(0xFFFF334A),
+    Color(0xFF4DDC7A), Color(0xFF8B929B), Color(0xFFF6F7F9), Color(0xFFB3B8C0)
+)
+
+object DashThemeStore {
+    private const val PREFS = "dashboard_theme"
+    private const val KEY = "mode"
+
+    fun load(context: Context): DashThemeMode = runCatching {
+        DashThemeMode.valueOf(
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY, DashThemeMode.AUTO.name) ?: DashThemeMode.AUTO.name
+        )
+    }.getOrDefault(DashThemeMode.AUTO)
+
+    fun save(context: Context, mode: DashThemeMode) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY, mode.name).apply()
+    }
+}
+
+object DashColors {
+    private var current by mutableStateOf(AutoDarkPalette)
+
+    @Composable
+    fun Sync(mode: DashThemeMode) {
+        val target = when (mode) {
+            DashThemeMode.AUTO -> if (isSystemInDarkTheme()) AutoDarkPalette else AutoLightPalette
+            DashThemeMode.NEON_DARK -> NeonDarkPalette
+            DashThemeMode.CLEAN_LIGHT -> CleanLightPalette
+            DashThemeMode.DARK_GLASS -> DarkGlassPalette
+            DashThemeMode.SPORTY -> SportyPalette
+        }
+        if (current != target) current = target
+    }
+
+    val Background get() = current.Background
+    val Bar get() = current.Bar
+    val Card get() = current.Card
+    val CardHi get() = current.CardHi
+    val Accent get() = current.Accent
+    val Speed get() = current.Speed
+    val Rpm get() = current.Rpm
+    val Warning get() = current.Warning
+    val Good get() = current.Good
+    val Muted get() = current.Muted
+    val TextPrimary get() = current.TextPrimary
+    val TextSecondary get() = current.TextSecondary
+}

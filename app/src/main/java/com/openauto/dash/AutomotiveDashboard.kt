@@ -19,7 +19,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
@@ -64,6 +63,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SensorDoor
@@ -146,101 +146,6 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * The launcher's semantic palette. Every screen reads its colours from here, so
- * flipping the active [DashPalette] re-themes the whole UI at once.
- *
- * The head unit already switches its system day/night mode from the car's light
- * sensor (headlights on -> night). We mirror that: [DarkPalette] (near-black,
- * glare-free) at night, [LightPalette] (bright, high-contrast) by day. The swap
- * is driven by [DashColors.SyncWithSystem], called once at the dashboard root.
- */
-private data class DashPalette(
-    val Background: Color,
-    val Bar: Color,
-    val Card: Color,
-    val CardHi: Color,
-    val Accent: Color,
-    val Speed: Color,
-    val Rpm: Color,
-    val Warning: Color,
-    val Good: Color,
-    val Muted: Color,
-    val TextPrimary: Color,
-    val TextSecondary: Color,
-)
-
-/**
- * Android Auto ("Coolwalk") inspired night palette: near-black backdrop,
- * elevated dark cards, Google-blue accent and the four Assistant brand colours.
- */
-private val DarkPalette = DashPalette(
-    Background = Color(0xFF0B0C0F),
-    Bar = Color(0xFF141518),
-    Card = Color(0xFF1E2024),
-    CardHi = Color(0xFF2A2D33),
-    Accent = Color(0xFF8AB4F8),
-    Speed = Color(0xFF8AB4F8),
-    Rpm = Color(0xFFF6AD7B),
-    Warning = Color(0xFFF28B82),
-    Good = Color(0xFF81C995),
-    Muted = Color(0xFF9AA0A6),
-    TextPrimary = Color(0xFFE8EAED),
-    TextSecondary = Color(0xFF9AA0A6),
-)
-
-/**
- * Daytime light palette: soft off-white backdrop, white cards and the deeper,
- * fully saturated Google hues so text and accents stay legible in sunlight.
- */
-private val LightPalette = DashPalette(
-    Background = Color(0xFFF1F3F4),
-    Bar = Color(0xFFFFFFFF),
-    Card = Color(0xFFFFFFFF),
-    CardHi = Color(0xFFE3E6EA),
-    Accent = Color(0xFF1A73E8),
-    Speed = Color(0xFF1A73E8),
-    Rpm = Color(0xFFE8710A),
-    Warning = Color(0xFFD93025),
-    Good = Color(0xFF188038),
-    Muted = Color(0xFF5F6368),
-    TextPrimary = Color(0xFF202124),
-    TextSecondary = Color(0xFF5F6368),
-)
-
-/**
- * Live palette proxy. Composables read [DashColors].Background etc. exactly as
- * before; the backing [current] palette is a snapshot state, so a day/night swap
- * recomposes everything that reads a colour.
- */
-private object DashColors {
-    private var current by mutableStateOf(DarkPalette)
-
-    /**
-     * Follow the OS day/night signal (which the head unit derives from the car's
-     * light sensor). Call once from the root composable; it re-runs on config
-     * changes because [isSystemInDarkTheme] subscribes to the UI mode.
-     */
-    @Composable
-    fun SyncWithSystem() {
-        val target = if (isSystemInDarkTheme()) DarkPalette else LightPalette
-        if (current !== target) current = target
-    }
-
-    val Background: Color get() = current.Background
-    val Bar: Color get() = current.Bar
-    val Card: Color get() = current.Card
-    val CardHi: Color get() = current.CardHi
-    val Accent: Color get() = current.Accent
-    val Speed: Color get() = current.Speed
-    val Rpm: Color get() = current.Rpm
-    val Warning: Color get() = current.Warning
-    val Good: Color get() = current.Good
-    val Muted: Color get() = current.Muted
-    val TextPrimary: Color get() = current.TextPrimary
-    val TextSecondary: Color get() = current.TextSecondary
-}
-
 private const val SPEED_WARNING_KMH = 110
 
 /**
@@ -251,10 +156,10 @@ private const val SPEED_WARNING_KMH = 110
  */
 @Composable
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
-    // Re-theme light/dark from the head unit's day/night mode (car light sensor).
-    DashColors.SyncWithSystem()
-
     val context = LocalContext.current
+    var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
+    var showThemePicker by remember { mutableStateOf(false) }
+    DashColors.Sync(themeMode)
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
@@ -500,6 +405,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 else showSplitEnable = true
             },
             onToggleEdit = { editing = !editing },
+            onTheme = { showThemePicker = true },
             onSystem = { showSystemDialog = true }
         )
 
@@ -578,6 +484,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             count = DashboardStore.PAGE_COUNT,
             current = pagerState.currentPage,
             onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
+        )
+    }
+
+    if (showThemePicker) {
+        DashThemePickerDialog(
+            selected = themeMode,
+            onSelect = {
+                themeMode = it
+                DashThemeStore.save(context, it)
+            },
+            onDismiss = { showThemePicker = false }
         )
     }
 
@@ -871,6 +788,7 @@ private fun TopBar(
     onMaps: () -> Unit,
     onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
+    onTheme: () -> Unit,
     onSystem: () -> Unit
 ) {
     Surface(color = DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
@@ -944,6 +862,14 @@ private fun TopBar(
                 Icon(
                     imageVector = Icons.Filled.Build,
                     contentDescription = "System app",
+                    tint = DashColors.TextSecondary
+                )
+            }
+
+            IconButton(onClick = onTheme) {
+                Icon(
+                    imageVector = Icons.Filled.Palette,
+                    contentDescription = "Dashboard theme",
                     tint = DashColors.TextSecondary
                 )
             }
