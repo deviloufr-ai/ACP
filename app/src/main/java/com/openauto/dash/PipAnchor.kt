@@ -382,22 +382,15 @@ object PipAnchor {
             noteFreeform(packageName, false)
             val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
             if (stack.mode == "freeform") {
-                // Put the dashboard above the window instead of closing it: instant,
-                // and the app keeps its state. Works when the dashboard runs as an
-                // ordinary task; as the Home task it stays at the bottom of the
-                // z-order, so if the window is still visible afterwards, close it.
-                // (Other docked windows get raised again by their own tiles.)
+                // Close it. Raising the dashboard above the window looked cheaper,
+                // but this ROM keeps floating windows drawn on top while reporting
+                // them as covered, so the window stayed over the edit handles and
+                // over other pages. The tile reopens it when it is back on screen.
                 setDashboardFocusable(context, true)
-                bringToFront(context, dashboardTaskId(context))
-                delay(400)
-                val after = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
-                if (after != null && after.visible) {
-                    val out = runCatching { shell(context, "am stack remove ${after.stackId}") }
-                        .getOrElse { "failed: ${it.message}" }
-                    Log.i(TAG, "dashboard could not cover $packageName; closed it: ${out.trim()}")
-                } else {
-                    Log.i(TAG, "$packageName window now behind the dashboard")
-                }
+                setAutoOpen(context, true, packageName)
+                val out = runCatching { shell(context, "am stack remove ${stack.stackId}") }
+                    .getOrElse { "failed: ${it.message}" }
+                Log.i(TAG, "closed $packageName while its tile is off screen: ${out.trim()}")
             } else {
                 val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4
