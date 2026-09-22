@@ -303,7 +303,7 @@ internal fun GridTile(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(index) {
+                    .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
                                 active = true; onModelTouch(true)
@@ -345,7 +345,7 @@ internal fun GridTile(
                     .size(30.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .background(DashColors.Accent.copy(alpha = 0.85f))
-                    .pointerInput(index) {
+                    .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGestures(
                             onDragStart = {
                                 active = true; onModelTouch(true)
