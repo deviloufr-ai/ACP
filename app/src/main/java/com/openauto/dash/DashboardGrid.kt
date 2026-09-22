@@ -441,6 +441,9 @@ internal fun TileContent(
         is DashboardItem.BuiltinWidget -> when (item.kind) {
             BuiltinKind.NAVMAP -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.Navigation, label = BuiltinKind.NAVMAP.label)
+            } else if (isEmulator) {
+                // MapLibre's native renderer segfaults on the emulator's software GL.
+                EditPlaceholder(icon = Icons.Filled.Navigation, label = "Map needs a real GPU", hint = "Not available on the emulator")
             } else Box(
                 modifier = Modifier.fillMaxSize().background(DashColors.Card)
             ) {
@@ -512,6 +515,9 @@ internal fun TileContent(
             BuiltinKind.AUDIO -> AudioCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAR3D -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
+            } else if (isEmulator) {
+                // Filament fails the same way as the map on the emulator.
+                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = "3D car needs a real GPU", hint = "Not available on the emulator")
             } else Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -596,7 +602,7 @@ internal fun tileKeys(items: List<DashboardItem>): List<String> {
 
 /** Static stand-in for a view-hosting tile while the dashboard is being arranged. */
 @Composable
-internal fun EditPlaceholder(icon: ImageVector, label: String) {
+internal fun EditPlaceholder(icon: ImageVector, label: String, hint: String = "Shown while arranging") {
     Card(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -606,7 +612,7 @@ internal fun EditPlaceholder(icon: ImageVector, label: String) {
             Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(40.dp))
             Spacer(Modifier.height(8.dp))
             Text(label, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-            Text("Shown while arranging", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+            Text(hint, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

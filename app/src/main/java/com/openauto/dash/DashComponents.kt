@@ -225,5 +225,21 @@ internal fun Bitmap.averageColor(): Color = runCatching {
 internal fun Context.launchSafely(intent: Intent): Boolean =
     runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
+/**
+ * True on an Android emulator. The GL-heavy tiles (MapLibre map, Filament 3D
+ * car) crash natively on the emulator's software renderer, so they show a
+ * placeholder there; everything else stays testable on an AVD.
+ */
+internal val isEmulator: Boolean by lazy {
+    val fp = android.os.Build.FINGERPRINT.lowercase()
+    val model = android.os.Build.MODEL.lowercase()
+    val product = android.os.Build.PRODUCT.lowercase()
+    val hw = android.os.Build.HARDWARE.lowercase()
+    fp.startsWith("generic") || fp.contains("emulator") || fp.contains("emu64") ||
+        model.contains("emulator") || model.contains("android sdk built for") ||
+        product.contains("sdk") || product.startsWith("emu") ||
+        hw.contains("goldfish") || hw.contains("ranchu") || hw.contains("cutf")
+}
+
 internal fun currentClock(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
