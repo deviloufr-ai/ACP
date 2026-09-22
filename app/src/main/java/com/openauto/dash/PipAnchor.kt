@@ -124,6 +124,12 @@ object PipAnchor {
             } else if (win == null) {
                 _status.value = Status(seen = lastSeen)
                 attempts = 0; lastStack = null
+                if (reopenPending) {
+                    reopenPending = false
+                    val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
+                    Log.i(TAG, "reopening Maps at $rect")
+                    SplitLauncher.launchFreeform(context, MAPS_PACKAGE, bounds)
+                }
             } else {
                 if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
                 val docked = win.bounds?.let { isClose(it, rect) } == true
@@ -145,7 +151,7 @@ object PipAnchor {
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
                     result.onFailure { publishError(it) }
-                    if (result.isSuccess && win.mode == "freeform") ensureStatusBarHidden(context)
+                    if (result.isSuccess) undoStatusBarPolicy(context)
                     _status.value = _status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else _status.value.error)
                 }
             }
@@ -156,22 +162,20 @@ object PipAnchor {
     private var statusBarPolicyChecked = false
 
     /**
-     * The system shows the status bar whenever the focused window is not
-     * immersive, and a docked Maps window takes focus when touched, covering
-     * the launcher's own top bar. Android 10's `policy_control` setting hides
-     * the status bar per package regardless of focus, so list both apps there
-     * once. (No-op on ROMs without that setting.)
+     * An earlier build wrote a per-app immersive policy hoping to keep the
+     * status bar hidden with a docked window. Android forces the bar whenever a
+     * freeform window is visible, so the policy achieved nothing; clear it once.
      */
-    private suspend fun ensureStatusBarHidden(context: Context) {
+    private suspend fun undoStatusBarPolicy(context: Context) {
         if (statusBarPolicyChecked) return
         statusBarPolicyChecked = true
         runCatching {
-            val wanted = "immersive.status=${context.packageName},$MAPS_PACKAGE"
             val current = shell(context, "settings get global policy_control").trim()
-            if (current.contains(context.packageName) && current.contains(MAPS_PACKAGE)) return
-            shell(context, "settings put global policy_control $wanted")
-            Log.i(TAG, "policy_control set to $wanted (was '$current')")
-        }.onFailure { Log.w(TAG, "could not set status-bar policy", it) }
+            if (current.startsWith("immersive.status=") && current.contains(context.packageName)) {
+                shell(context, "settings delete global policy_control")
+                Log.i(TAG, "cleared policy_control ('$current')")
+            }
+        }.onFailure { Log.w(TAG, "could not check status-bar policy", it) }
     }
 
     /** Give up after this many placement attempts per window, so we never fight SystemUI forever. */
@@ -207,35 +211,37 @@ object PipAnchor {
      * The tile left the screen: move the window out of the way, to a small
      * rectangle in the bottom-right corner of the display.
      */
-    fun park(context: Context) {
+    /** Set when [hide] closed a Maps window that [track] should bring back. */
+    @Volatile private var reopenPending = false
+
+    /**
+     * The tile left the screen. A freeform window cannot be hidden: the window
+     * manager keeps part of it on screen, and while any freeform window is
+     * visible Android forces the (transparent) status bar over the dashboard.
+     * So the window is closed and reopened when the tile is back; Maps keeps
+     * guiding from its notification meanwhile. Picture-in-picture, which the
+     * system keeps on screen anyway, is parked small in the bottom-right corner.
+     */
+    fun hide(context: Context) {
         scope.launch {
             val stack = runCatching { findFloatingWindow(context) }.getOrNull() ?: return@launch
-            val dm = context.resources.displayMetrics
-            val rect = if (stack.mode == "freeform" && stack.bounds != null) {
-                // A freeform window can leave the screen: slide it off the right
-                // edge at its current size, keeping a few pixels on screen in case
-                // the window manager insists on some part staying visible. Coming
-                // back is one resize to the tile.
-                val b = stack.bounds
-                val w = b.right - b.left
-                val h = b.bottom - b.top
-                val left = dm.widthPixels - HIDDEN_SLIVER_PX
-                ScreenRect(left, b.top, left + w, b.top + h)
+            if (stack.mode == "freeform") {
+                val out = runCatching { shell(context, "am stack remove ${stack.stackId}") }
+                    .getOrElse { "failed: ${it.message}" }
+                Log.i(TAG, "closed freeform ${stack.packageName}: ${out.trim()}")
+                reopenPending = stack.packageName == MAPS_PACKAGE
             } else {
-                // Picture-in-picture is kept on screen by SystemUI: park it small
-                // in the bottom-right corner instead.
+                val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4
                 val h = w * 9 / 16
                 val margin = (12 * dm.density).roundToInt()
-                ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
+                val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
+                runCatching { resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             }
-            runCatching { resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             closeConnection()
         }
     }
 
-    /** Pixels of a hidden freeform window left on screen at the right edge. */
-    private const val HIDDEN_SLIVER_PX = 4
 
     /** Summary of the last stack listing, e.g. "fullscreen dash · freeform maps". */
     @Volatile private var lastSeen: String? = null
@@ -363,7 +369,10 @@ object PipAnchor {
             val task = TASK.find(block) ?: continue
             val pkg = task.groupValues[2]
             if (pkg == selfPackage) continue
-            val b = BOUNDS.find(block)?.groupValues
+            // The stack's own bounds line comes first and, for freeform, spans
+            // the whole display; the window's bounds are on the task line.
+            val taskLine = block.substring(task.range.first).lineSequence().first()
+            val b = (BOUNDS.find(taskLine) ?: BOUNDS.find(block))?.groupValues
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
             found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode)
         }
@@ -411,30 +420,31 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
     val status by PipAnchor.status.collectAsState()
 
     var target by remember { mutableStateOf<PipAnchor.ScreenRect?>(null) }
-    var resumed by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
+    var started by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> resumed = true
-                // Another app took the screen: hide the window too, so it does
-                // not float over that app. Resume re-docks it.
-                Lifecycle.Event.ON_PAUSE -> { resumed = false; PipAnchor.park(context) }
+                Lifecycle.Event.ON_START -> started = true
+                // Another app took the whole screen: close the window so it does
+                // not float over that app; it reopens when the dashboard is back.
+                // (Touching the Maps window only *pauses* the launcher: not this.)
+                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.hide(context) }
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            PipAnchor.park(context)
+            PipAnchor.hide(context)
         }
     }
 
     // Re-target after the tile settles: a page swipe or a drag in edit mode
     // moves it many times per second, and each ADB round trip costs real time.
-    LaunchedEffect(target, resumed) {
+    LaunchedEffect(target, started) {
         val rect = target ?: return@LaunchedEffect
-        if (!resumed) return@LaunchedEffect
+        if (!started) return@LaunchedEffect
         delay(350)
         PipAnchor.track(context, rect)
     }

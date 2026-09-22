@@ -11,6 +11,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -367,6 +370,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         modifier = Modifier
             .fillMaxSize()
             .then(dashBackground())
+            // Android forces a transparent status bar whenever a floating
+            // (freeform) window is on screen, e.g. a docked Maps window. Lay out
+            // below it then; the inset is zero while the bar is hidden.
+            .windowInsetsPadding(WindowInsets.statusBars)
     ) {
         TopBar(
             currentPage = pagerState.currentPage,
