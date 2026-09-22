@@ -246,10 +246,7 @@ object NotificationFeed {
         val text = (n.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)
             ?: n.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT))?.toString()?.trim().orEmpty()
         if (title.isEmpty() && text.isEmpty()) return
-        val pm = context.packageManager
-        val label = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(sbn.packageName, 0)).toString() }
-            .getOrDefault(sbn.packageName)
-        val icon = runCatching { pm.getApplicationIcon(sbn.packageName).toBitmap(96, 96) }.getOrNull()
+        val (label, icon) = appIdentity(context, sbn.packageName)
         val item = NotifItem(sbn.key, sbn.packageName, label, title, text, sbn.postTime, icon, n.contentIntent)
         _items.value = (listOf(item) + _items.value.filter { it.key != sbn.key }).take(MAX)
     }
@@ -257,6 +254,20 @@ object NotificationFeed {
     fun onRemoved(sbn: StatusBarNotification) {
         _items.value = _items.value.filter { it.key != sbn.key }
     }
+
+    // Label + icon rasterisation per package, done once: this runs on the
+    // notification listener's main thread for every notification any app posts.
+    private val identityCache = HashMap<String, Pair<String, Bitmap?>>()
+
+    @Synchronized
+    private fun appIdentity(context: Context, packageName: String): Pair<String, Bitmap?> =
+        identityCache.getOrPut(packageName) {
+            val pm = context.packageManager
+            val label = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString() }
+                .getOrDefault(packageName)
+            val icon = runCatching { pm.getApplicationIcon(packageName).toBitmap(96, 96) }.getOrNull()
+            label to icon
+        }
 
     fun dismissAll() {
         _items.value = emptyList()

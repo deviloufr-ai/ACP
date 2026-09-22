@@ -63,6 +63,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -168,9 +169,13 @@ internal fun ClockCard(modifier: Modifier = Modifier) {
             delay(1000)
         }
     }
-    val time = remember(now) { SimpleDateFormat("HH:mm", Locale.getDefault()).format(now) }
-    val date = remember(now) { SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(now) }
-    val seconds = remember(now) { SimpleDateFormat("ss", Locale.getDefault()).format(now) }
+    val locale = Locale.getDefault()
+    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat("EEEE d MMMM", locale) }
+    val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
+    val time = timeFmt.format(now)
+    val date = dateFmt.format(now)
+    val seconds = secFmt.format(now)
 
     Card(modifier = modifier) {
         BoxWithConstraints(
@@ -570,10 +575,22 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
     var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
     var dragging by remember { mutableStateOf(false) }
     // Follow the hardware knob / other apps while nobody is dragging the slider.
+    // The system broadcasts VOLUME_CHANGED_ACTION on every change; a slow poll
+    // remains as a fallback for ROMs that don't send it.
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }
+        }
+        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+        runCatching { androidx.core.content.ContextCompat.registerReceiver(context, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) }
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
     LaunchedEffect(Unit) {
         while (true) {
+            delay(5000)
             if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-            delay(1000)
         }
     }
     val muted = volume == 0

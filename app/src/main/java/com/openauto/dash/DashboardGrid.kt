@@ -137,8 +137,9 @@ internal fun DashboardPage(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val keys = remember(pageItems) { tileKeys(pageItems) }
             pageItems.forEachIndexed { index, item ->
-                key(tileKey(pageItems, index)) {
+                key(keys[index]) {
                     val h = when {
                         item.isCompactTile() -> 96.dp
                         item is DashboardItem.LaunchBar -> 88.dp
@@ -202,11 +203,12 @@ internal fun DashboardPage(
             }
         }
 
+        val keys = remember(pageItems) { tileKeys(pageItems) }
         pageItems.forEachIndexed { index, item ->
             // Keyed by what the tile *is*, not its list position, so removing or
             // reordering another tile never re-creates this one (which would
             // rebuild a hosted map / widget view) or leaves it with stale state.
-            key(tileKey(pageItems, index)) {
+            key(keys[index]) {
                 GridTile(
                     index = index,
                     item = item,
@@ -565,7 +567,7 @@ internal fun AddTile(onClick: () -> Unit) {
  * Identity of a tile for Compose keys: what it is plus which occurrence it is,
  * so two shortcuts to the same app still get distinct keys.
  */
-internal fun tileKey(items: List<DashboardItem>, index: Int): String {
+internal fun tileKeys(items: List<DashboardItem>): List<String> {
     fun id(item: DashboardItem) = when (item) {
         is DashboardItem.AppShortcut -> "app:${item.packageName}"
         is DashboardItem.SplitPair -> "split:${item.primaryPackage}|${item.secondaryPackage}"
@@ -573,9 +575,13 @@ internal fun tileKey(items: List<DashboardItem>, index: Int): String {
         is DashboardItem.BuiltinWidget -> "builtin:${item.kind.name}"
         is DashboardItem.SystemWidget -> "widget:${item.appWidgetId}"
     }
-    val me = id(items[index])
-    val occurrence = items.subList(0, index).count { id(it) == me }
-    return "$me#$occurrence"
+    val seen = HashMap<String, Int>()
+    return items.map { item ->
+        val me = id(item)
+        val occurrence = seen[me] ?: 0
+        seen[me] = occurrence + 1
+        "$me#$occurrence"
+    }
 }
 
 /** Static stand-in for a view-hosting tile while the dashboard is being arranged. */

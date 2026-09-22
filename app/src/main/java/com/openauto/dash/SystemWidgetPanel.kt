@@ -28,11 +28,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -186,8 +189,14 @@ fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
     }
 
     if (showPicker) {
+        // Every installed provider (labels + previews) is enumerated on IO so
+        // opening the picker doesn't stall the UI thread.
+        var providers by remember { mutableStateOf<List<AppWidgetProviderInfo>>(emptyList()) }
+        LaunchedEffect(Unit) {
+            providers = withContext(Dispatchers.IO) { collectProviders(manager, context) }
+        }
         SystemWidgetPickerDialog(
-            providers = remember { collectProviders(manager, context) },
+            providers = providers,
             onPick = { showPicker = false; pick(it) },
             onDismiss = { showPicker = false }
         )

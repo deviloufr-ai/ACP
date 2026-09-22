@@ -58,6 +58,26 @@ import androidx.compose.runtime.setValue
  * Now-playing tile with album art, seek bar and transport controls.
  */
 
+/**
+ * Current playback position for the progress bar. Polls twice a second only
+ * while a track with a known duration is actually playing; paused or idle
+ * sessions are read once per state change and then left alone, so an idle
+ * media tile no longer recomposes at 2 Hz.
+ */
+@Composable
+internal fun rememberMediaPosition(mediaState: MediaState, controller: CarMediaController): Long {
+    var positionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(mediaState.isPlaying, mediaState.title, mediaState.durationMs) {
+        positionMs = controller.positionMs()
+        if (!mediaState.isPlaying || mediaState.durationMs <= 0L) return@LaunchedEffect
+        while (true) {
+            delay(500)
+            positionMs = controller.positionMs()
+        }
+    }
+    return positionMs
+}
+
 @Composable
 internal fun MediaCard(
     mediaState: MediaState,
@@ -70,13 +90,7 @@ internal fun MediaCard(
         OriginalMediaCard(mediaState, controller, hasAccess, context, modifier)
         return
     }
-    var positionMs by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(mediaState.isPlaying, mediaState.title, mediaState.durationMs) {
-        while (true) {
-            positionMs = controller.positionMs()
-            delay(500)
-        }
-    }
+    val positionMs = rememberMediaPosition(mediaState, controller)
     val fraction = if (mediaState.durationMs > 0L) {
         (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
     } else 0f

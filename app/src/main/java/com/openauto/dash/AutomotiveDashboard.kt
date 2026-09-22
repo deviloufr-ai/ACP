@@ -98,7 +98,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val mediaState by mediaController.mediaState.collectAsState()
     val updateStatus by updateManager.status.collectAsState()
 
-    val apps = remember { AppLauncher.loadApps(context) }
+    // Enumerating every launchable app (labels + icons) is the slowest part of
+    // a cold start, so it runs on IO; tiles render their placeholder until then.
+    var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        apps = withContext(Dispatchers.IO) { AppLauncher.loadApps(context) }
+    }
     val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
 
     var pages by remember { mutableStateOf(DashboardStore.load(context)) }
@@ -247,7 +252,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     LaunchedEffect(Unit) {
         while (true) {
             clock = currentClock()
-            delay(1000)
+            // The bar shows HH:mm, so wake at the next minute boundary (+ a beat).
+            delay(60_000L - System.currentTimeMillis() % 60_000L + 50L)
         }
     }
 
@@ -266,15 +272,21 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // Observe media; re-check notification access on resume so granting it in
     // system settings takes effect without an app restart. Also auto-connect OBD.
+    var resumed by remember { mutableStateOf(false) }
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
         mediaController.start()
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                hasMediaAccess = CarMediaController.hasNotificationAccess(context)
-                if (hasMediaAccess) mediaController.start()
-                autoConnectObd()
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    hasMediaAccess = CarMediaController.hasNotificationAccess(context)
+                    if (hasMediaAccess) mediaController.start()
+                    autoConnectObd()
+                    resumed = true
+                }
+                Lifecycle.Event.ON_PAUSE -> resumed = false
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -284,9 +296,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Keep the OBD link up "all the time": retry every 5s whenever it's down.
-    LaunchedEffect(Unit) {
-        while (true) {
+    // Keep the OBD link up while the dashboard is on screen: retry every 5s
+    // whenever it's down. Paused (another app fullscreen) means no retries; the
+    // resume observer above reconnects the moment we come back.
+    LaunchedEffect(resumed) {
+        while (resumed) {
             autoConnectObd()
             delay(5000)
         }

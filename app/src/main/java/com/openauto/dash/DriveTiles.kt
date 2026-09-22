@@ -475,11 +475,14 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                     ) { Text("Save parking spot") }
                 }
             } else {
-                val results = FloatArray(2)
                 val here = location
-                if (here != null) Location.distanceBetween(here.latitude, here.longitude, s.lat, s.lng, results)
-                val dist = if (here != null) results[0] else null
-                val bearing = if (here != null) results[1] else null
+                val (dist, bearing) = remember(here, s) {
+                    if (here == null) null to null else {
+                        val results = FloatArray(2)
+                        Location.distanceBetween(here.latitude, here.longitude, s.lat, s.lng, results)
+                        results[0] to results[1]
+                    }
+                }
                 Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier

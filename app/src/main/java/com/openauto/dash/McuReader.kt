@@ -111,7 +111,8 @@ object McuReader {
     private var job: Job? = null
     private var process: Process? = null
     private var refCount = 0
-    private val latest = LinkedHashMap<String, Entry>()
+    // Sorted by key so publishing is a plain copy, no per-line sort.
+    private val latest = java.util.TreeMap<String, Entry>()
 
     private val regex = Regex("""dispatchToClients - cmdId:\s*(\d+)\s*-\s*data\s*:\s*\[([0-9a-fA-F ]*)]""")
 
@@ -154,9 +155,12 @@ object McuReader {
         val hex = bytes.joinToString(" ") { "%02X".format(it) }
         val now = System.currentTimeMillis()
         val prev = latest[key]
-        val changedAt = if (prev == null || prev.hex != hex) now else prev.changedAt
+        val changed = prev == null || prev.hex != hex
+        val changedAt = if (changed) now else prev.changedAt
         latest[key] = Entry(key, cmdId, bytes, hex, changedAt)
-        _entries.value = latest.values.sortedBy { it.key }
+        // The CANbox repeats most frames several times a second; only a new
+        // value is worth waking every collector for.
+        if (changed) _entries.value = latest.values.toList()
 
         // Fuel: the learned CANbox byte → percent, calibrated against a full tank.
         fuelMapping?.let { fm ->
