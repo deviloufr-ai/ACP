@@ -14,11 +14,16 @@ android {
     val keystorePath = providers.environmentVariable("KEYSTORE_FILE").orNull
     val releaseKeystore = keystorePath?.let { file(it) }?.takeIf { it.exists() }
     val onCi = providers.environmentVariable("CI").orNull == "true"
-    if (onCi && releaseKeystore == null) {
-        throw GradleException(
-            "CI release build without a keystore: set the KEYSTORE_BASE64 / " +
-                "KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets."
-        )
+    // Enforced only when a release task is actually scheduled: the lint / unit
+    // test workflow builds debug and never prepares a keystore.
+    gradle.taskGraph.whenReady {
+        val buildsRelease = allTasks.any { it.project == project && it.name.contains("Release") }
+        if (onCi && releaseKeystore == null && buildsRelease) {
+            throw GradleException(
+                "CI release build without a keystore: set the KEYSTORE_BASE64 / " +
+                    "KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets."
+            )
+        }
     }
 
     defaultConfig {
