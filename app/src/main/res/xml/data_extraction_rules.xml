@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Same exclusions as backup_rules.xml for cloud backup and
+     device-to-device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="parking_spot.xml" />
+        <exclude domain="sharedpref" path="obd_prefs.xml" />
+        <exclude domain="sharedpref" path="car_bluetooth_mac.xml" />
+        <exclude domain="sharedpref" path="mcu_prefs.xml" />
+        <exclude domain="file" path="adb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="parking_spot.xml" />
+        <exclude domain="sharedpref" path="obd_prefs.xml" />
+        <exclude domain="sharedpref" path="car_bluetooth_mac.xml" />
+        <exclude domain="sharedpref" path="mcu_prefs.xml" />
+        <exclude domain="file" path="adb" />
+    </device-transfer>
+</data-extraction-rules>

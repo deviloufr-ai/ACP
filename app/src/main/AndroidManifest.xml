@@ -17,10 +17,10 @@
     <!-- Agenda and quick-dial widgets (asked for at runtime, only when those tiles are added) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    
+
     <!-- Internet for Maps and Media Streaming -->
     <uses-permission android:name="android.permission.INTERNET" />
-    
+
     <!-- Wake Lock to Keep Screen On -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
@@ -54,6 +54,8 @@
 
     <application
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"

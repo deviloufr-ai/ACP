@@ -8,14 +8,23 @@ android {
     namespace = "com.openauto.dash"
     compileSdk = 35
 
-    // Optional release signing key, supplied by CI via env vars. When absent
-    // (e.g. local builds), the release build falls back to the debug key.
-    val releaseKeystore = System.getenv("KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+    // Release signing key, supplied by CI via env vars. Local builds may fall
+    // back to the debug key; CI must not, because a debug-signed release can
+    // never be updated in place by a later properly signed one.
+    val keystorePath = providers.environmentVariable("KEYSTORE_FILE").orNull
+    val releaseKeystore = keystorePath?.let { file(it) }?.takeIf { it.exists() }
+    val onCi = providers.environmentVariable("CI").orNull == "true"
+    if (onCi && releaseKeystore == null) {
+        throw GradleException(
+            "CI release build without a keystore: set the KEYSTORE_BASE64 / " +
+                "KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets."
+        )
+    }
 
     defaultConfig {
         applicationId = "com.openauto.dash"
         minSdk = 29
-        targetSdk = 34
+        targetSdk = 35
         // Version is driven by CI (the Actions run number) so each build is
         // newer than the last; defaults keep local builds working.
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
@@ -34,16 +43,19 @@ android {
         if (releaseKeystore != null) {
             create("release") {
                 storeFile = releaseKeystore
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                storePassword = providers.environmentVariable("KEYSTORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("KEY_PASSWORD").orNull
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 + resource shrinking: the APK ships over the in-app updater to a
+            // head unit, so size matters. Keep rules live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
             // Sign with the persistent release key when available, otherwise the
             // debug key so the APK is still installable.
             signingConfig = if (releaseKeystore != null) {
@@ -73,9 +85,8 @@ android {
     }
 
     lint {
-        // Bluetooth/notification permissions are requested at runtime, so the
-        // static MissingPermission checks would otherwise fail CI.
-        abortOnError = false
+        // Errors fail CI; warnings (unused resources, newer versions) do not.
+        abortOnError = true
         checkReleaseBuilds = false
     }
 
@@ -105,11 +116,6 @@ dependencies {
 
     // Activity Compose
     implementation("androidx.activity:activity-compose:1.9.2")
-
-    // Media3 ExoPlayer (video/album-art rendering surface)
-    implementation("androidx.media3:media3-exoplayer:1.4.1")
-    implementation("androidx.media3:media3-ui:1.4.1")
-    implementation("androidx.media3:media3-session:1.4.1")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

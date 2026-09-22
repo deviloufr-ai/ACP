@@ -11,7 +11,11 @@ import android.util.Log
  * [BluetoothDevice.getName] throws SecurityException on API 31+ without
  * BLUETOOTH_CONNECT, which a receiver may not hold yet; treat that as unknown.
  */
-private fun BluetoothDevice.safeName(): String? = runCatching { name }.getOrNull()
+private fun BluetoothDevice.safeName(): String? = try {
+    name
+} catch (e: SecurityException) {
+    null
+}
 
 /** Version-safe read of the [BluetoothDevice] extra (typed getter deprecated on API 33+). */
 private fun Intent.bluetoothDevice(): BluetoothDevice? =
@@ -100,7 +104,11 @@ class AutoDriveReceiver : BroadcastReceiver() {
 
         val macAddress = device.address
         val deviceName = device.safeName() ?: "Unknown"
-        val bondState = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
+        val bondState = try {
+            device.bondState
+        } catch (e: SecurityException) {
+            BluetoothDevice.BOND_NONE
+        }
 
         prefs.edit().apply {
             putString(KEY_CONNECTED_DEVICE_MAC, macAddress)

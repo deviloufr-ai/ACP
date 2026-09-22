@@ -107,7 +107,11 @@ class UpdateManager(private val context: Context) {
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
             if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
-                return asset.optString("browser_download_url").ifBlank { null }
+                val url = asset.optString("browser_download_url").ifBlank { null } ?: continue
+                // The URL comes from a JSON document fetched over the network;
+                // only accept GitHub's own release hosts.
+                val host = Uri.parse(url).host.orEmpty()
+                if (url.startsWith("https://") && host in ALLOWED_DOWNLOAD_HOSTS) return url
             }
         }
         return null
@@ -140,7 +144,7 @@ class UpdateManager(private val context: Context) {
     /** Downloads the update APK, then launches the system installer. */
     suspend fun downloadAndInstall(info: UpdateInfo) {
         val apkFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), APK_NAME)
-        if (apkFile.exists()) apkFile.delete()
+        withContext(Dispatchers.IO) { if (apkFile.exists()) apkFile.delete() }
 
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.apkUrl))
@@ -201,5 +205,6 @@ class UpdateManager(private val context: Context) {
 
     companion object {
         private const val APK_NAME = "openauto-dash-update.apk"
+        private val ALLOWED_DOWNLOAD_HOSTS = setOf("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
     }
 }

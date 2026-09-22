@@ -38,15 +38,12 @@ jobs:
           # "tools" package was removed from the SDK repo and breaks the step.
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
+      # The committed wrapper pins Gradle 8.13 with a verified checksum; do not
+      # regenerate it here, that would silently drop the verification.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
 
-      - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.13
-
-      - name: Prepare signing key (optional)
+      - name: Prepare signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
@@ -54,9 +51,9 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
             echo "Release keystore prepared."
           else
-            echo "No KEYSTORE_BASE64 secret set — the release APK will be signed with the"
-            echo "debug key. It installs fine, but updates won't replace an install signed"
-            echo "with a different key until a persistent keystore secret is added."
+            echo "::error::No KEYSTORE_BASE64 secret set. A debug-signed release could never be"
+            echo "::error::updated in place, so the build stops here (Gradle enforces this too)."
+            exit 1
           fi
 
       - name: Build release APK
