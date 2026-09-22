@@ -419,24 +419,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             .then(dashBackground())
             .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
-        TopBar(
-            clock = clock,
-            versionName = updateManager.currentVersionName,
-            obdConnection = obdConnection,
-            obdData = obdData,
-            editing = editing,
-            layout = layout,
-            onLayout = switchLayout,
-            onApps = { showAllApps = true },
-            onConnectObd = onConnectObd,
-            onSplit = {
-                if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
-                else showSplitEnable = true
-            },
-            onToggleEdit = { editing = !editing },
-            onTheme = { showThemePicker = true },
-            onSystem = { showSystemDialog = true }
-        )
 
         UpdateBanner(
             status = updateStatus,
@@ -577,6 +559,28 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 }
             }
         }
+
+        // The bar lives at the bottom: the OS status bar owns the top edge on
+        // this head unit whenever a floating window is on screen, and it used to
+        // cover the launcher bar there.
+        TopBar(
+            clock = clock,
+            versionName = updateManager.currentVersionName,
+            obdConnection = obdConnection,
+            obdData = obdData,
+            editing = editing,
+            layout = layout,
+            onLayout = switchLayout,
+            onApps = { showAllApps = true },
+            onConnectObd = onConnectObd,
+            onSplit = {
+                if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
+                else showSplitEnable = true
+            },
+            onToggleEdit = { editing = !editing },
+            onTheme = { showThemePicker = true },
+            onSystem = { showSystemDialog = true }
+        )
 
         PageDots(
             count = DashboardStore.PAGE_COUNT,

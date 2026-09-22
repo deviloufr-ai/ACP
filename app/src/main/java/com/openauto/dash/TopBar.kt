@@ -130,7 +130,7 @@ internal fun StandardTopBar(m: TopBarModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (glass) Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp).then(glassPanel(RoundedCornerShape(20.dp)))
+                    if (glass) Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp).then(glassPanel(RoundedCornerShape(20.dp)))
                     else Modifier
                 )
                 .padding(horizontal = 6.dp, vertical = 2.dp),
