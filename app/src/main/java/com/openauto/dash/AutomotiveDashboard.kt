@@ -69,6 +69,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 /** How many layout steps Undo can walk back while arranging. */
 internal const val MAX_UNDO = 30
@@ -447,14 +450,24 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
 
             if (showAllApps) {
-                AppDrawer(
-                    apps = apps,
-                    onLaunch = { onLaunchApp(it.packageName) },
-                    onClose = { showAllApps = false },
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(10.dp)
-                )
+                        .background(DashColors.Background.copy(alpha = 0.72f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { showAllApps = false }
+                ) {
+                    AppDrawer(
+                        apps = apps,
+                        onLaunch = { onLaunchApp(it.packageName) },
+                        onClose = { showAllApps = false },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp)
+                    )
+                }
             }
         }
 

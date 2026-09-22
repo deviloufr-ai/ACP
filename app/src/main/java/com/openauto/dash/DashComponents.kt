@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.BorderStroke
 
 /*
  * Shared surfaces and controls: card, glass panel, page background, round buttons, helpers.
@@ -114,6 +115,22 @@ internal fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit
             content = content
         )
     }
+}
+
+/**
+ * Opaque card for overlays (the app drawer, sheets) that must hide whatever is
+ * behind them on every theme. Glass themes make the normal card translucent,
+ * which is right for tiles over the background but wrong for a panel over tiles.
+ */
+@Composable
+internal fun SolidCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(
+        modifier = modifier,
+        color = DashColors.Card.copy(alpha = 1f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, DashColors.Line),
+        content = content
+    )
 }
 
 /**

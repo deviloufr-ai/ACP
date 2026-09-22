@@ -423,7 +423,7 @@ internal fun AppDrawer(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier) {
+    SolidCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier

@@ -57,6 +57,12 @@ import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
+import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /*
  * The free-placement tile grid: page layout, drag / resize tiles, tile content routing.
@@ -132,18 +138,20 @@ internal fun DashboardPage(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             pageItems.forEachIndexed { index, item ->
-                val h = when {
-                    item.isCompactTile() -> 96.dp
-                    item is DashboardItem.LaunchBar -> 88.dp
-                    else -> SPLIT_WIDGET_HEIGHT
+                key(tileKey(pageItems, index)) {
+                    val h = when {
+                        item.isCompactTile() -> 96.dp
+                        item is DashboardItem.LaunchBar -> 88.dp
+                        else -> SPLIT_WIDGET_HEIGHT
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(h)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(DashColors.Bar)
+                    ) { tileContent(index, item) }
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(h)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DashColors.Bar)
-                ) { tileContent(index, item) }
             }
         }
         return
@@ -195,24 +203,29 @@ internal fun DashboardPage(
         }
 
         pageItems.forEachIndexed { index, item ->
-            GridTile(
-                index = index,
-                item = item,
-                cellW = cellW,
-                cellH = cellH,
-                cellWpx = cellWpx,
-                cellHpx = cellHpx,
-                editing = editing,
-                onModelTouch = onModelTouch,
-                onMoveCell = onMoveCell,
-                onResizeCell = onResizeCell,
-                canPlace = canPlace,
-                canMove = canMove,
-                onRemove = onRemove,
-                onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
-                onPreviewClear = { preview = null },
-                content = { tileContent(index, item) }
-            )
+            // Keyed by what the tile *is*, not its list position, so removing or
+            // reordering another tile never re-creates this one (which would
+            // rebuild a hosted map / widget view) or leaves it with stale state.
+            key(tileKey(pageItems, index)) {
+                GridTile(
+                    index = index,
+                    item = item,
+                    cellW = cellW,
+                    cellH = cellH,
+                    cellWpx = cellWpx,
+                    cellHpx = cellHpx,
+                    editing = editing,
+                    onModelTouch = onModelTouch,
+                    onMoveCell = onMoveCell,
+                    onResizeCell = onResizeCell,
+                    canPlace = canPlace,
+                    canMove = canMove,
+                    onRemove = onRemove,
+                    onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
+                    onPreviewClear = { preview = null },
+                    content = { tileContent(index, item) }
+                )
+            }
         }
 
         // "+" to add a tile only on an empty page; while arranging, the edit bar
@@ -424,7 +437,9 @@ internal fun TileContent(
         }
 
         is DashboardItem.BuiltinWidget -> when (item.kind) {
-            BuiltinKind.NAVMAP -> Box(
+            BuiltinKind.NAVMAP -> if (editing) {
+                EditPlaceholder(icon = Icons.Filled.Navigation, label = BuiltinKind.NAVMAP.label)
+            } else Box(
                 modifier = Modifier.fillMaxSize().background(DashColors.Card)
             ) {
                 MapLibrePanel(modifier = Modifier.fillMaxSize())
@@ -477,7 +492,9 @@ internal fun TileContent(
             )
             BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.CAR3D -> Box(
+            BuiltinKind.CAR3D -> if (editing) {
+                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
+            } else Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(DashColors.Card)
@@ -496,7 +513,9 @@ internal fun TileContent(
             }
         }
 
-        is DashboardItem.SystemWidget -> Card(
+        is DashboardItem.SystemWidget -> if (editing) {
+            EditPlaceholder(icon = Icons.Filled.Widgets, label = "App widget")
+        } else Card(
             modifier = Modifier.fillMaxSize()
         ) {
             HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
@@ -524,5 +543,39 @@ internal fun AddTile(onClick: () -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text("Add", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+/**
+ * Identity of a tile for Compose keys: what it is plus which occurrence it is,
+ * so two shortcuts to the same app still get distinct keys.
+ */
+internal fun tileKey(items: List<DashboardItem>, index: Int): String {
+    fun id(item: DashboardItem) = when (item) {
+        is DashboardItem.AppShortcut -> "app:${item.packageName}"
+        is DashboardItem.SplitPair -> "split:${item.primaryPackage}|${item.secondaryPackage}"
+        is DashboardItem.LaunchBar -> "bar"
+        is DashboardItem.BuiltinWidget -> "builtin:${item.kind.name}"
+        is DashboardItem.SystemWidget -> "widget:${item.appWidgetId}"
+    }
+    val me = id(items[index])
+    val occurrence = items.subList(0, index).count { id(it) == me }
+    return "$me#$occurrence"
+}
+
+/** Static stand-in for a view-hosting tile while the dashboard is being arranged. */
+@Composable
+internal fun EditPlaceholder(icon: ImageVector, label: String) {
+    Card(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(40.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(label, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+            Text("Shown while arranging", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
