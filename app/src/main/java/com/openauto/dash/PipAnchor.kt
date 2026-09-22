@@ -104,6 +104,33 @@ object PipAnchor {
     val dockActive = MutableStateFlow(false)
 
     /**
+     * The dashboard's content area in screen pixels (pages, without the bar).
+     * Windows are kept inside it: the ROM enforces a minimum size per app, so a
+     * window can come out taller than its tile, and it must then be moved up
+     * rather than be allowed to cover the launcher bar.
+     */
+    val allowedArea = MutableStateFlow<ScreenRect?>(null)
+
+    /** True when [b] lies inside [limit] (a few pixels of slack for rounding). */
+    internal fun withinArea(b: ScreenRect, limit: ScreenRect?, slack: Int = 4): Boolean =
+        limit == null || (b.top >= limit.top - slack && b.bottom <= limit.bottom + slack &&
+            b.left >= limit.left - slack && b.right <= limit.right + slack)
+
+    /**
+     * Moves [b] so it fits in [limit] without changing its size. If it is too
+     * tall, the bottom edge wins (the bar must stay clear) and the top overflows.
+     */
+    internal fun keepInside(b: ScreenRect, limit: ScreenRect): ScreenRect {
+        var dx = 0
+        var dy = 0
+        if (b.right > limit.right) dx = limit.right - b.right
+        if (b.left + dx < limit.left) dx = limit.left - b.left
+        if (b.bottom > limit.bottom) dy = limit.bottom - b.bottom
+        if (b.top + dy < limit.top && b.bottom - b.top <= limit.bottom - limit.top) dy = limit.top - b.top
+        return ScreenRect(b.left + dx, b.top + dy, b.right + dx, b.bottom + dy)
+    }
+
+    /**
      * True while a dialog or the app drawer is open. Docked windows are drawn
      * above everything on this head unit, so they would cover the dialog; the
      * tiles slide their windows off the right edge meanwhile and dock them
@@ -179,7 +206,10 @@ object PipAnchor {
                 }
             } else {
                 if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
-                val docked = win.bounds?.let { isClose(it, rect) } == true
+                val limit = allowedArea.value
+                val close = win.bounds?.let { isClose(it, rect) } == true
+                val inside = win.bounds?.let { withinArea(it, limit) } != false
+                val docked = close && inside
                 if (docked) attempts = 0
                 if (win.mode == "freeform") {
                     // Behind the dashboard (we came back to this page, or the user
@@ -207,8 +237,11 @@ object PipAnchor {
                     // Only when the system *refused* the commands: a swipe cannot
                     // resize, and its initial touch makes the PiP expand.
                     val useSwipe = attempts >= 3 && win.bounds != null && lastResult?.startsWith("failed") == true
+                    // The system gave the window its minimum size, larger than the
+                    // tile: keep that size but move it back above the bar.
+                    val wanted = if (close && !inside && win.bounds != null && limit != null) keepInside(win.bounds, limit) else rect
                     val result = runCatching {
-                        if (useSwipe) swipeTo(context, win.bounds!!, rect) else resize(context, win, rect)
+                        if (useSwipe) swipeTo(context, win.bounds!!, wanted) else resize(context, win, wanted)
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
                     result.onFailure { publishError(packageName, it) }

@@ -123,4 +123,20 @@ class PipAnchorTest {
         assertEquals(63, PipAnchor.parseFloatingWindow(listing, packageName = "com.google.android.apps.maps")!!.taskId)
         assertNull(PipAnchor.parseFloatingWindow(listing, packageName = "com.waze"))
     }
+
+    @Test
+    fun windowTallerThanItsTileIsMovedUpAboveTheBar() {
+        val area = PipAnchor.ScreenRect(0, 80, 1280, 640)
+        // Grown past the bottom of the content area: shifted up, size kept.
+        val grown = PipAnchor.ScreenRect(200, 300, 800, 700)
+        assertEquals(false, PipAnchor.withinArea(grown, area))
+        assertEquals(PipAnchor.ScreenRect(200, 240, 800, 640), PipAnchor.keepInside(grown, area))
+        // Already inside: untouched.
+        val ok = PipAnchor.ScreenRect(200, 100, 800, 600)
+        assertEquals(true, PipAnchor.withinArea(ok, area))
+        assertEquals(ok, PipAnchor.keepInside(ok, area))
+        // Taller than the whole area: the bottom edge wins, the top overflows.
+        val huge = PipAnchor.ScreenRect(0, 0, 640, 900)
+        assertEquals(640, PipAnchor.keepInside(huge, area).bottom)
+    }
 }

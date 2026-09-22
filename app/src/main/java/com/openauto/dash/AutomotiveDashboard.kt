@@ -67,6 +67,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -447,7 +451,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        val rootView = LocalView.current
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                // Docked app windows must stay inside this area, above the bar.
+                .onGloballyPositioned { coords ->
+                    val b = coords.boundsInRoot()
+                    val origin = IntArray(2).also { rootView.getLocationOnScreen(it) }
+                    PipAnchor.allowedArea.value = PipAnchor.ScreenRect(
+                        (b.left + origin[0]).roundToInt(), (b.top + origin[1]).roundToInt(),
+                        (b.right + origin[0]).roundToInt(), (b.bottom + origin[1]).roundToInt()
+                    )
+                }
+        ) {
             // "Maps left" layout: a permanent Google Maps dock takes the left half
             // and never leaves composition, so the window is placed once and
             // swiping pages never touches it. Not while the OS itself has us in
