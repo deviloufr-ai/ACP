@@ -189,14 +189,31 @@ object PipAnchor {
         scope.launch {
             val stack = runCatching { findFloatingWindow(context) }.getOrNull() ?: return@launch
             val dm = context.resources.displayMetrics
-            val w = dm.widthPixels / 4
-            val h = w * 9 / 16
-            val margin = (12 * dm.density).roundToInt()
-            val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
+            val rect = if (stack.mode == "freeform" && stack.bounds != null) {
+                // A freeform window can leave the screen: slide it off the right
+                // edge at its current size, keeping a few pixels on screen in case
+                // the window manager insists on some part staying visible. Coming
+                // back is one resize to the tile.
+                val b = stack.bounds
+                val w = b.right - b.left
+                val h = b.bottom - b.top
+                val left = dm.widthPixels - HIDDEN_SLIVER_PX
+                ScreenRect(left, b.top, left + w, b.top + h)
+            } else {
+                // Picture-in-picture is kept on screen by SystemUI: park it small
+                // in the bottom-right corner instead.
+                val w = dm.widthPixels / 4
+                val h = w * 9 / 16
+                val margin = (12 * dm.density).roundToInt()
+                ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
+            }
             runCatching { resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             closeConnection()
         }
     }
+
+    /** Pixels of a hidden freeform window left on screen at the right edge. */
+    private const val HIDDEN_SLIVER_PX = 4
 
     /** Summary of the last stack listing, e.g. "fullscreen dash · freeform maps". */
     @Volatile private var lastSeen: String? = null
@@ -378,7 +395,9 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> resumed = true
-                Lifecycle.Event.ON_PAUSE -> resumed = false
+                // Another app took the screen: hide the window too, so it does
+                // not float over that app. Resume re-docks it.
+                Lifecycle.Event.ON_PAUSE -> { resumed = false; PipAnchor.park(context) }
                 else -> Unit
             }
         }
