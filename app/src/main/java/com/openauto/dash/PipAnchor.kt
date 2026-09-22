@@ -143,25 +143,64 @@ object PipAnchor {
         // Android 10/11 accept both; the animated form is nicer when present.
         var out = shell(context, "am stack resize-animated $stackId $bounds")
         if (looksLikeError(out)) out = shell(context, "am stack resize $stackId $bounds")
-        if (looksLikeError(out)) error(out.trim().lines().first())
+        if (looksLikeError(out)) {
+            Log.w(TAG, "resize failed: ${out.trim()}")
+            error(out.trim().lines().first())
+        }
         Log.d(TAG, "PiP stack $stackId -> $bounds")
     }
 
     private fun looksLikeError(out: String): Boolean =
         out.contains("Error", ignoreCase = true) || out.contains("Exception") || out.contains("Unknown")
 
+    /** How shell commands reach the system: root via Magisk, or the ADB socket. */
+    private enum class Backend { SU, ADB }
+    private var backend: Backend? = null
+
     private suspend fun shell(context: Context, cmd: String): String = withContext(Dispatchers.IO) {
         io.withLock {
-            val conn = dadb ?: AdbInstaller.connect(context, AdbInstaller.DEFAULT_PORT).also { dadb = it }
-            try {
-                val res = conn.shell(cmd)
-                res.output + res.errorOutput
-            } catch (e: Exception) {
-                closeConnection()
-                throw e
+            val chosen = backend ?: (if (SystemInstaller.isRootAvailable()) Backend.SU else Backend.ADB)
+                .also { backend = it; Log.i(TAG, "shell backend: $it") }
+            when (chosen) {
+                Backend.SU -> suShell(cmd)
+                Backend.ADB -> adbShell(context, cmd)
             }
         }
     }
+
+    /** `su -c cmd`, bounded so a stuck root prompt can't pin the poller. */
+    private fun suShell(cmd: String): String {
+        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+        process.outputStream.close()
+        val out = StringBuilder()
+        val reader = Thread { out.append(process.inputStream.bufferedReader().readText()) }
+        val errReader = Thread { out.append(process.errorStream.bufferedReader().readText()) }
+        reader.start(); errReader.start()
+        if (!process.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.destroy()
+            throw IllegalStateException("su timed out")
+        }
+        reader.join(1000); errReader.join(1000)
+        if (process.exitValue() != 0 && out.isBlank()) throw IllegalStateException("su exit ${process.exitValue()}")
+        return out.toString()
+    }
+
+    private fun adbShell(context: Context, cmd: String): String {
+        val conn = dadb ?: AdbInstaller.connect(context, adbPort()).also { dadb = it }
+        try {
+            val res = conn.shell(cmd)
+            return res.output + res.errorOutput
+        } catch (e: Exception) {
+            closeConnection()
+            throw e
+        }
+    }
+
+    /** The unit's ADB TCP port from `service.adb.tcp.port`, else the K706 default. */
+    private fun adbPort(): Int = runCatching {
+        val p = Runtime.getRuntime().exec(arrayOf("getprop", "service.adb.tcp.port"))
+        p.inputStream.bufferedReader().readText().trim().toIntOrNull()
+    }.getOrNull() ?: AdbInstaller.DEFAULT_PORT
 
     private fun closeConnection() {
         runCatching { dadb?.close() }
@@ -172,7 +211,7 @@ object PipAnchor {
         Log.w(TAG, "PiP anchor error", e)
         val msg = when {
             e is java.net.ConnectException || e.message?.contains("Connection refused") == true ->
-                "Can't reach the head unit's ADB socket (port ${AdbInstaller.DEFAULT_PORT})"
+                "No root (Magisk) and the ADB socket on port ${adbPort()} isn't listening"
             else -> e.message ?: e.javaClass.simpleName
         }
         _status.value = _status.value.copy(error = msg)
