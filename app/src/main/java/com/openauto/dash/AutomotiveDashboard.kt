@@ -59,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.movableContentWithReceiverOf
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -177,7 +178,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
         layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
         launchBarEditor != null
-    val stepAside = modalOpen || pagerState.isScrollInProgress
+    val barMenuOpen by PipAnchor.menuOpen.collectAsState()
+    val stepAside = modalOpen || barMenuOpen || pagerState.isScrollInProgress
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
 
     // As soon as the current page changes (mid-swipe), close the windows whose
@@ -242,7 +244,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     /** Removing an app's last window tile ends the tile's keep-it-open duty. */
     fun releaseMapsAnchorIfGone() {
-        val keep = pages.flatten().mapNotNull {
+        // Both arrangements count: a window tile that exists only in the other
+        // layout must keep its app's keep-open intent.
+        val other = if (variant == "") "_half" else ""
+        val everywhere = pages.flatten() +
+            (if (DashboardStore.exists(context, other)) DashboardStore.load(context, other).flatten() else emptyList())
+        val keep = everywhere.mapNotNull {
             when {
                 it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
                 it is DashboardItem.AppWindow -> it.packageName
@@ -251,6 +258,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
         PipAnchor.releaseAutoOpenExcept(context, keep)
     }
+    // A layout switch adds or removes the Maps dock; redo the keep-open bookkeeping.
+    LaunchedEffect(layout) { releaseMapsAnchorIfGone() }
 
     fun removeAt(page: Int, index: Int) {
         val item = pages.getOrNull(page)?.getOrNull(index) ?: return
@@ -475,7 +484,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 DashLayout.MAPS_RIGHT -> Alignment.End
                 DashLayout.GRID -> null
             }
-            val mapsDock: @Composable RowScope.() -> Unit = {
+            // movableContent: switching Maps left <-> right moves the same dock
+            // instead of disposing and rebuilding it (which closed the window).
+            val mapsDock = remember {
+                movableContentWithReceiverOf<RowScope> {
                 Box(
                     modifier = Modifier
                         .weight(dockFraction)
@@ -487,6 +499,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         )
                 ) {
                     PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true)
+                }
                 }
             }
             // Drag the divider to trade width between the dock and the pages; the

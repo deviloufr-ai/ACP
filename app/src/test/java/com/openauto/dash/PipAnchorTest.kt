@@ -169,4 +169,26 @@ class PipAnchorTest {
         val strays = PipAnchor.strayWindows(listing, managed = setOf("com.google.android.apps.maps", "com.google.android.apps.youtube.music"), active = setOf("com.google.android.apps.maps"))
         assertEquals(listOf(8), strays.map { it.stackId })
     }
+
+    @Test
+    fun strayCheckIgnoresPinnedWindowsAndUnmanagedApps() {
+        val listing = """
+            Stack id=3 bounds=[960,420][1264,608] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=pinned mActivityType=standard} }
+              taskId=57: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[960,420][1264,608] userId=0 visible=true
+            Stack id=8 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=64: com.waze/com.waze.MainActivity bounds=[0,80][640,660] userId=0 visible=true
+        """.trimIndent()
+        val strays = PipAnchor.strayWindows(listing, managed = setOf("com.google.android.apps.maps"), active = emptySet())
+        assertEquals(emptyList<Int>(), strays.map { it.stackId })
+    }
+
+    @Test
+    fun keepInsideAlsoPullsBackHorizontally() {
+        val area = PipAnchor.ScreenRect(0, 80, 1280, 640)
+        assertEquals(PipAnchor.ScreenRect(880, 100, 1280, 400), PipAnchor.keepInside(PipAnchor.ScreenRect(1000, 100, 1400, 400), area))
+        assertEquals(PipAnchor.ScreenRect(0, 100, 400, 400), PipAnchor.keepInside(PipAnchor.ScreenRect(-50, 100, 350, 400), area))
+        assertEquals(true, PipAnchor.withinArea(PipAnchor.ScreenRect(-50, 100, 350, 400), null))
+    }
 }

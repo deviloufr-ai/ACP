@@ -231,10 +231,14 @@ internal fun DashboardPage(
                     content = {
                         val cellWpxF = with(density) { cellW.toPx() }
                         val cellHpxF = with(density) { cellH.toPx() }
+                        // The tile's inner padding eats a few dp of every span.
+                        val padPx = with(density) { 12.dp.toPx() }
                         tileContent(index, item) { wPx, hPx ->
-                            val cw = ceil(wPx / cellWpxF).toInt().coerceIn(item.w, GRID_COLS - item.x)
-                            val ch = ceil(hPx / cellHpxF).toInt().coerceIn(item.h, GRID_ROWS - item.y)
-                            if (cw > item.w || ch > item.h) onResizeCell(index, cw, ch)
+                            val cw = ceil((wPx + padPx) / cellWpxF).toInt().coerceIn(item.w, GRID_COLS - item.x)
+                            val ch = ceil((hPx + padPx) / cellHpxF).toInt().coerceIn(item.h, GRID_ROWS - item.y)
+                            // Grow silently, and only when nothing is in the way: a
+                            // notice here would loop, since dismissing it re-measures.
+                            if ((cw > item.w || ch > item.h) && canPlace(index, item.x, item.y, cw, ch)) onResizeCell(index, cw, ch)
                         }
                     }
                 )

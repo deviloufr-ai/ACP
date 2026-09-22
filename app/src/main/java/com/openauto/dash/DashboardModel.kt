@@ -203,14 +203,14 @@ object DashboardStore {
     /**
      * Layout variants keep separate arrangements: the full-width dashboard and
      * the half-width one beside a Maps dock cannot share tile positions. The
-     * default variant is "", others are a key suffix such as "_mapsleft".
+     * default variant is "", the docked layouts share "_half".
      */
     fun exists(context: Context, variant: String = ""): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_PAGES + variant)
 
     fun load(context: Context, variant: String = ""): List<List<DashboardItem>> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = prefs.getString(KEY_PAGES + variant, null) ?: return defaultPages()
+        val raw = prefs.getString(KEY_PAGES + variant, null) ?: run { retained.clear(); return defaultPages() }
 
         // A corrupt primary value falls back to the last good layout rather
         // than to the defaults; only when both are unreadable does the user
@@ -222,6 +222,7 @@ object DashboardStore {
             }
             ?: run {
                 Log.e(TAG, "Saved layout and its backup are both unreadable; using defaults")
+                retained.clear()
                 return defaultPages()
             }
 

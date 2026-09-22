@@ -114,7 +114,8 @@ class DashboardStoreTest {
                 DashboardItem.AppShortcut("com.example.a", 5, 0, 2, 2),
                 DashboardItem.SplitPair("com.example.a", "com.example.b", 7, 0, 2, 2),
                 DashboardItem.LaunchBar(listOf("com.example.a", "com.example.b"), 0, 3, 8, 1),
-                DashboardItem.SystemWidget(42, 0, 4, 5, 3)
+                DashboardItem.SystemWidget(42, 0, 4, 5, 3),
+                DashboardItem.AppWindow("com.google.android.apps.youtube.music", 5, 3, 5, 3)
             ),
             emptyList(),
             listOf(widget(BuiltinKind.CLOCK, 0, 0, 3, 2))

@@ -83,8 +83,8 @@ object PipAnchor {
         val lastResult: String? = null,
         /** Set once the tile has stopped fighting a system that keeps moving the window back. */
         val gaveUp: Boolean = false,
-        /** The window's bounds when the system made it clearly larger than the tile (its minimum size). */
-        val oversize: ScreenRect? = null
+        /** The window's size (w, h px) when the system made it clearly larger than the tile (its minimum size). */
+        val oversizePx: Pair<Int, Int>? = null
     )
 
     // One status per docked app: several tiles (Maps, YouTube Music, ...) can
@@ -97,24 +97,77 @@ object PipAnchor {
     val dockedPackages = MutableStateFlow<Set<String>>(emptySet())
     private val freeformNow = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
-    /** Packages a tile has ever tracked in this process, and those with a tile on screen right now. */
+    /**
+     * Packages a tile has tracked in this process. Together with the persisted
+     * auto-open intent this is what "managed" means: windows of these apps are
+     * ours to close when no tile shows them.
+     */
     private val managed = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    private val activeTiles = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * How many tiles currently show each app, counted from composition (a tile
+     * enters / leaves the screen), not from the tracking loop: the loop restarts
+     * on every re-target and a window must not look ownerless meanwhile.
+     */
+    private val tileCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    fun tileShown(packageName: String) {
+        tileCounts.merge(packageName, 1, Int::plus)
+        managed.add(packageName)
+        lastReopenAt.remove(packageName) // back on screen: reopen at once if needed
+    }
+
+    fun tileHidden(packageName: String) {
+        tileCounts.compute(packageName) { _, n -> if (n == null || n <= 1) null else n - 1 }
+    }
+
+    private fun activePackages(): Set<String> = tileCounts.keys.toSet()
+
+    private fun managedPackages(context: Context): Set<String> = managed + autoOpenPackages(context)
 
     /** Managed freeform windows whose tile is not on screen: they should not exist. */
     internal fun strayWindows(listing: String, managed: Set<String>, active: Set<String>): List<FloatingWindow> =
         allFloatingWindows(listing).filter { it.mode == "freeform" && it.packageName in managed && it.packageName !in active }
 
     private suspend fun closeStrays(context: Context, listing: String) {
-        for (stray in strayWindows(listing, managed, activeTiles)) {
-            val out = runCatching { shell(context, "am stack remove ${stray.stackId}") }.getOrElse { "failed: ${it.message}" }
-            Log.i(TAG, "closed stray ${stray.packageName} window (no tile on screen): ${out.trim()}")
+        for (stray in strayWindows(listing, managedPackages(context), activePackages())) {
+            closeWindow(context, stray, "no tile on screen")
         }
     }
 
+    /** Windows we closed ourselves; their disappearance must not count as "the user closed it". */
+    private val expectedGone = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * The one way a window is closed: removes its stack, forgets its state, and
+     * gives the dashboard its focus back when no docked window is left. Every
+     * close path goes through here so they cannot drift apart.
+     */
+    private suspend fun closeWindow(context: Context, win: FloatingWindow, reason: String) {
+        expectedGone.add(win.packageName)
+        noteFreeform(win.packageName, false)
+        statusFlow(win.packageName).value = Status(seen = lastSeen)
+        val out = runCatching { shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
+        Log.i(TAG, "closed ${win.packageName} ($reason): ${out.trim()}")
+        if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+    }
+
+    @Synchronized
     private fun noteFreeform(packageName: String, present: Boolean) {
         if (present) freeformNow.add(packageName) else freeformNow.remove(packageName)
         dockedPackages.value = freeformNow.toSet()
+    }
+
+    /** True while one of the bar's drop-down menus is open (they must not open under a docked window). */
+    val menuOpen = MutableStateFlow(false)
+
+    /** runCatching that never swallows coroutine cancellation. */
+    private inline fun <T> runGuarded(block: () -> T): Result<T> = try {
+        Result.success(block())
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        Result.failure(e)
     }
 
     /** True while the "Maps left" layout's permanent dock is on screen. */
@@ -168,6 +221,7 @@ object PipAnchor {
             runCatching { resize(context, win, ScreenRect(left, b.top, left + w, b.top + h)) }
                 .onFailure { Log.w(TAG, "park aside failed", it) }
             Log.i(TAG, "$packageName stepped aside for a dialog")
+            closeConnectionLocked()
         }
     }
 
@@ -206,30 +260,49 @@ object PipAnchor {
         var lastResult: String? = null
         val status = statusFlow(packageName)
         managed.add(packageName)
-        activeTiles.add(packageName)
-        try {
+        var hadWindow = false
+        var openAttempts = 0
         while (true) {
-            val lookup = runCatching { findFloatingWindow(context, packageName) }
+            val lookup = runGuarded { findFloatingWindow(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
             // hide() left behind (e.g. parked aside for a swipe) is closed here.
-            lastListing?.let { runCatching { closeStrays(context, it) } }
+            lastListing?.let { runGuarded { closeStrays(context, it) } }
             val win = lookup.getOrNull()
             if (lookup.isFailure) {
                 publishError(packageName, lookup.exceptionOrNull()!!)
                 attempts = 0; lastStack = null
             } else if (win == null) {
-                status.value = Status(seen = lastSeen)
+                status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null)
                 attempts = 0; lastStack = null
                 noteFreeform(packageName, false)
                 if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+                if (hadWindow && !expectedGone.remove(packageName)) {
+                    // Gone, and not by our hand: the user closed it. Respect that.
+                    Log.i(TAG, "$packageName closed by the user; not reopening")
+                    setAutoOpen(context, false, packageName)
+                }
+                hadWindow = false
                 val now = System.currentTimeMillis()
                 if (autoOpen(context, packageName) && now - (lastReopenAt[packageName] ?: 0L) > REOPEN_COOLDOWN_MS) {
-                    lastReopenAt[packageName] = now
-                    val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
-                    Log.i(TAG, "opening $packageName at $rect")
-                    SplitLauncher.launchFreeform(context, packageName, bounds)
+                    if (openAttempts >= 2) {
+                        // Launched twice and no window ever showed up: the app opened
+                        // fullscreen or refused. Stop, or Home would be trapped.
+                        Log.w(TAG, "$packageName never appeared as a window; giving up")
+                        setAutoOpen(context, false, packageName)
+                        status.value = status.value.copy(error = "Couldn't keep it open as a window")
+                        openAttempts = 0
+                    } else {
+                        openAttempts++
+                        lastReopenAt[packageName] = now
+                        val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
+                        Log.i(TAG, "opening $packageName at $rect (attempt $openAttempts)")
+                        SplitLauncher.launchFreeform(context, packageName, bounds)
+                    }
                 }
             } else {
+                hadWindow = true
+                openAttempts = 0
+                expectedGone.remove(packageName)
                 if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
                 val limit = allowedArea.value
                 val close = win.bounds?.let { isClose(it, rect) } == true
@@ -239,7 +312,9 @@ object PipAnchor {
                 if (win.mode == "freeform") {
                     // Behind the dashboard (we came back to this page, or the user
                     // touched the dashboard before focus was declined): raise it.
-                    if (!win.visible || win.behindDashboard) {
+                    val now = System.currentTimeMillis()
+                    if ((!win.visible || win.behindDashboard) && now - (lastRaiseAt[packageName] ?: 0L) > RAISE_COOLDOWN_MS) {
+                        lastRaiseAt[packageName] = now
                         Log.i(TAG, "raising $packageName above the dashboard")
                         if (!bringToFront(context, win.taskId)) {
                             lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
@@ -254,10 +329,10 @@ object PipAnchor {
                     pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
                     gaveUp = attempts >= MAX_ATTEMPTS,
-                    oversize = win.bounds?.takeIf { b ->
+                    oversizePx = win.bounds?.takeIf { b ->
                         (b.right - b.left) > (rect.right - rect.left) * 1.08f ||
                             (b.bottom - b.top) > (rect.bottom - rect.top) * 1.08f
-                    }
+                    }?.let { b -> (b.right - b.left) to (b.bottom - b.top) }
                 )
                 if (!docked && attempts < MAX_ATTEMPTS) {
                     attempts++
@@ -269,7 +344,7 @@ object PipAnchor {
                     // The system gave the window its minimum size, larger than the
                     // tile: keep that size but move it back above the bar.
                     val wanted = if (close && !inside && win.bounds != null && limit != null) keepInside(win.bounds, limit) else rect
-                    val result = runCatching {
+                    val result = runGuarded {
                         if (useSwipe) swipeTo(context, win.bounds!!, wanted) else resize(context, win, wanted)
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
@@ -280,10 +355,11 @@ object PipAnchor {
             }
             delay(POLL_MS)
         }
-        } finally {
-            activeTiles.remove(packageName)
-        }
     }
+
+    /** A window listed behind the dashboard is raised at most this often, so a wrong listing can't cause focus flicker. */
+    private const val RAISE_COOLDOWN_MS = 8_000L
+    private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     @Volatile private var overlayGrantTried = false
 
@@ -338,7 +414,7 @@ object PipAnchor {
     // takes it back when the window is gone. Side effect: no on-screen keyboard
     // for the dashboard while Maps is docked on the visible page.
 
-    private var focusDeclined = false
+    @Volatile private var focusDeclined = false
 
     private suspend fun setDashboardFocusable(context: Context, focusable: Boolean) {
         val activity = context.findActivity() ?: return
@@ -426,6 +502,12 @@ object PipAnchor {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(autoOpenKey(packageName), on).apply()
     }
 
+    /** Every app with a persisted keep-open intent. */
+    private fun autoOpenPackages(context: Context): Set<String> =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
+            .filter { (k, v) -> k.startsWith("auto_open_") && v == true }
+            .keys.map { if (it == "auto_open_maps") MAPS_PACKAGE else it.removePrefix("auto_open_") }.toSet()
+
     /** Stops keeping windows open for every app that no longer has a tile. */
     fun releaseAutoOpenExcept(context: Context, keep: Set<String>) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -453,13 +535,8 @@ object PipAnchor {
     fun closeForOtherApp(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            if (win.mode != "freeform") return@launch
-            setAutoOpen(context, true, packageName)
-            noteFreeform(packageName, false)
-            val out = runCatching { shell(context, "am stack remove ${win.stackId}") }
-                .getOrElse { "failed: ${it.message}" }
-            Log.i(TAG, "closed $packageName while another app is in front: ${out.trim()}")
-            closeConnection()
+            if (win.mode == "freeform") closeWindow(context, win, "another app is in front")
+            closeConnectionLocked()
         }
     }
 
@@ -471,14 +548,12 @@ object PipAnchor {
     fun closeAllExcept(context: Context, keep: Set<String>) {
         scope.launch {
             val listing = runCatching { shell(context, "am stack list") }.getOrNull() ?: return@launch
+            val mine = managedPackages(context)
             for (win in allFloatingWindows(listing, context.packageName)) {
-                if (win.mode != "freeform" || win.packageName !in managed || win.packageName in keep) continue
-                setAutoOpen(context, true, win.packageName)
-                noteFreeform(win.packageName, false)
-                val out = runCatching { shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
-                Log.i(TAG, "closed ${win.packageName} on page change: ${out.trim()}")
+                if (win.mode != "freeform" || win.packageName !in mine || win.packageName in keep) continue
+                closeWindow(context, win, "page change")
             }
-            closeConnection()
+            closeConnectionLocked()
         }
     }
 
@@ -490,17 +565,19 @@ object PipAnchor {
     fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             noteFreeform(packageName, false)
-            val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+            val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
+            if (stack == null) {
+                // Already gone (a page change closed it first): still hand focus back.
+                if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+                closeConnectionLocked()
+                return@launch
+            }
             if (stack.mode == "freeform") {
                 // Close it. Raising the dashboard above the window looked cheaper,
                 // but this ROM keeps floating windows drawn on top while reporting
                 // them as covered, so the window stayed over the edit handles and
                 // over other pages. The tile reopens it when it is back on screen.
-                setDashboardFocusable(context, true)
-                setAutoOpen(context, true, packageName)
-                val out = runCatching { shell(context, "am stack remove ${stack.stackId}") }
-                    .getOrElse { "failed: ${it.message}" }
-                Log.i(TAG, "closed $packageName while its tile is off screen: ${out.trim()}")
+                closeWindow(context, stack, "tile off screen")
             } else {
                 val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4
@@ -509,7 +586,7 @@ object PipAnchor {
                 val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
                 runCatching { resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             }
-            closeConnection()
+            closeConnectionLocked()
         }
     }
 
@@ -578,21 +655,28 @@ object PipAnchor {
     private fun suShell(cmd: String): String {
         val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
         process.outputStream.close()
+        // One builder per stream: the two readers run concurrently.
         val out = StringBuilder()
+        val err = StringBuilder()
         val reader = Thread { out.append(process.inputStream.bufferedReader().readText()) }
-        val errReader = Thread { out.append(process.errorStream.bufferedReader().readText()) }
+        val errReader = Thread { err.append(process.errorStream.bufferedReader().readText()) }
         reader.start(); errReader.start()
         if (!process.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
             process.destroy()
             throw IllegalStateException("su timed out")
         }
-        reader.join(1000); errReader.join(1000)
-        if (process.exitValue() != 0 && out.isBlank()) throw IllegalStateException("su exit ${process.exitValue()}")
-        return out.toString()
+        reader.join(2000); errReader.join(2000)
+        val exit = process.exitValue()
+        if (exit != 0) {
+            // "Permission denied", "not found"...: a failure, whatever it printed.
+            val why = (err.toString().ifBlank { out.toString() }).trim().lines().firstOrNull().orEmpty()
+            throw IllegalStateException("su exit $exit: $why".trim())
+        }
+        return out.toString() + err.toString()
     }
 
     private fun adbShell(context: Context, cmd: String): String {
-        val conn = dadb ?: AdbInstaller.connect(context, adbPort()).also { dadb = it }
+        val conn = dadb ?: AdbInstaller.connect(context, adbPort(), ADB_TIMEOUT_MS).also { dadb = it }
         try {
             val res = conn.shell(cmd)
             return res.output + res.errorOutput
@@ -608,10 +692,16 @@ object PipAnchor {
         p.inputStream.bufferedReader().readText().trim().toIntOrNull()
     }.getOrNull() ?: AdbInstaller.DEFAULT_PORT
 
+    /** A hung adbd must not hold the shell lock forever. */
+    private const val ADB_TIMEOUT_MS = 5_000
+
+    /** Only from inside [shell]'s lock. */
     private fun closeConnection() {
         runCatching { dadb?.close() }
         dadb = null
     }
+
+    private suspend fun closeConnectionLocked() = io.withLock { closeConnection() }
 
     private fun publishError(packageName: String, e: Throwable) {
         Log.w(TAG, "PiP anchor error", e)
@@ -733,9 +823,15 @@ internal fun PipAnchorCard(
     val status by PipAnchor.statusOf(packageName).collectAsState()
     // An app's minimum window size can exceed the tile; let the tile grow to it
     // rather than have the window spill over its neighbours.
-    LaunchedEffect(status.oversize) {
-        val b = status.oversize ?: return@LaunchedEffect
-        onWindowBiggerThanTile?.invoke(b.right - b.left, b.bottom - b.top)
+    LaunchedEffect(status.oversizePx) {
+        val (w, h) = status.oversizePx ?: return@LaunchedEffect
+        onWindowBiggerThanTile?.invoke(w, h)
+    }
+    // Counted while composed, so the window is never mistaken for a stray while
+    // the tracking loop is between restarts.
+    DisposableEffect(packageName) {
+        PipAnchor.tileShown(packageName)
+        onDispose { PipAnchor.tileHidden(packageName) }
     }
 
     var target by remember { mutableStateOf<PipAnchor.ScreenRect?>(null) }
@@ -756,7 +852,10 @@ internal fun PipAnchorCard(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            PipAnchor.hide(context, packageName)
+            // A Maps page tile standing down for the dock must not close the very
+            // window the dock is about to take over.
+            val handingOverToDock = isMaps && !isDock && PipAnchor.dockActive.value
+            if (!handingOverToDock) PipAnchor.hide(context, packageName)
         }
     }
 
@@ -777,7 +876,7 @@ internal fun PipAnchorCard(
     // The skin's frame (a round porthole, a chrome bezel...) over the docked Maps
     // window, only while it actually sits here and the dashboard is on screen.
     WindowFrameOverlay(
-        bounds = status.windowBounds.takeIf { isMaps && started && status.docked && status.pipPackage != null }
+        bounds = status.windowBounds.takeIf { isMaps && started && !steppedAside && status.docked && status.pipPackage != null }
     )
 
     Card(

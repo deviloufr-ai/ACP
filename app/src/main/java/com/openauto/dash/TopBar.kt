@@ -278,6 +278,8 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
 
 @Composable
 private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    // Docked windows are drawn above the bar's pop-ups; they step aside meanwhile.
+    androidx.compose.runtime.LaunchedEffect(open) { PipAnchor.menuOpen.value = open }
     DropdownMenu(
         expanded = open,
         onDismissRequest = onDismiss,
