@@ -217,20 +217,22 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+            // Dial ink follows the theme: white-on-dark was invisible on light palettes.
+            val ink = DashColors.TextPrimary
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val r = size.minDimension / 2f - 6.dp.toPx()
                     val c = Offset(size.width / 2f, size.height / 2f)
                     // Dial rotates so the current heading sits at the top.
                     rotate(degrees = -(heading ?: 0f), pivot = c) {
-                        drawCircle(color = Color.White.copy(alpha = 0.06f), radius = r, center = c)
+                        drawCircle(color = ink.copy(alpha = 0.10f), radius = r, center = c)
                         for (i in 0 until 72) {
                             val major = i % 18 == 0
                             val mid = i % 6 == 0
                             val a = Math.toRadians((i * 5 - 90).toDouble())
                             val inner = r - if (major) 14.dp.toPx() else if (mid) 9.dp.toPx() else 5.dp.toPx()
                             drawLine(
-                                color = if (major) accent else Color.White.copy(alpha = if (mid) 0.45f else 0.18f),
+                                color = if (major) accent else ink.copy(alpha = if (mid) 0.55f else 0.25f),
                                 start = Offset(c.x + cos(a).toFloat() * inner, c.y + sin(a).toFloat() * inner),
                                 end = Offset(c.x + cos(a).toFloat() * r, c.y + sin(a).toFloat() * r),
                                 strokeWidth = if (major) 3f else 1.5f,
@@ -310,7 +312,7 @@ internal fun TripCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             TileHeader("TRIP") {
-                TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text("Reset", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
@@ -375,10 +377,11 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             TileHeader("G-FORCE") {
-                TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text("Reset peaks", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
+            val ink = DashColors.TextPrimary
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     val r = size.minDimension / 2f - 4.dp.toPx()
@@ -386,12 +389,12 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
                     val scale = r / 1.2f   // 1.2 g at the rim
                     listOf(0.4f, 0.8f, 1.2f).forEach { ring ->
                         drawCircle(
-                            color = if (ring >= 1.2f) warning.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.14f),
+                            color = if (ring >= 1.2f) warning.copy(alpha = 0.5f) else ink.copy(alpha = 0.2f),
                             radius = ring * scale, center = c, style = Stroke(width = 1.5f)
                         )
                     }
-                    drawLine(Color.White.copy(alpha = 0.12f), Offset(c.x - r, c.y), Offset(c.x + r, c.y), 1f)
-                    drawLine(Color.White.copy(alpha = 0.12f), Offset(c.x, c.y - r), Offset(c.x, c.y + r), 1f)
+                    drawLine(ink.copy(alpha = 0.18f), Offset(c.x - r, c.y), Offset(c.x + r, c.y), 1f)
+                    drawLine(ink.copy(alpha = 0.18f), Offset(c.x, c.y - r), Offset(c.x, c.y + r), 1f)
                     val px = c.x + g.lateral.coerceIn(-1.2f, 1.2f) * scale
                     val py = c.y - g.longitudinal.coerceIn(-1.2f, 1.2f) * scale
                     val p = Offset(px, py)
@@ -445,7 +448,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             TileHeader("PARKING") {
                 if (spot != null) {
-                    TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                         Text("Clear", color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -495,7 +498,9 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                         // Arrow points from the car's heading towards the spot.
                         val heading = LocationFeed.headingDeg.collectAsState().value ?: 0f
                         Icon(
-                            Icons.Filled.Navigation, contentDescription = null, tint = DashColors.OnAccent,
+                            Icons.Filled.Navigation,
+                            contentDescription = bearing?.let { "Parked car is %.0f degrees to the %s".format(((it - heading + 360f) % 360f), if (((it - heading + 360f) % 360f) <= 180f) "right" else "left") },
+                            tint = DashColors.OnAccent,
                             modifier = Modifier.size(34.dp).rotate(((bearing ?: 0f) - heading + 360f) % 360f)
                         )
                     }
@@ -528,7 +533,7 @@ private fun walkTo(context: Context, spot: ParkingSpot) {
     val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }.onFailure {
         val geo = Uri.parse(String.format(Locale.US, "geo:%.6f,%.6f?q=%.6f,%.6f(Parked car)", spot.lat, spot.lng, spot.lat, spot.lng))
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, geo).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        context.launchSafely(Intent(Intent.ACTION_VIEW, geo))
     }
 }
 

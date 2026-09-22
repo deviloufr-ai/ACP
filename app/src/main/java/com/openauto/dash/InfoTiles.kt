@@ -251,9 +251,9 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
                     IconButton(
                         onClick = { scope.launch { busy = true; WeatherRepo.refresh(l.latitude, l.longitude, force = true); busy = false } },
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = if (busy) DashColors.Accent else DashColors.Muted, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh weather", tint = if (busy) DashColors.Accent else DashColors.Muted, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -344,7 +344,7 @@ internal fun CalendarCard(modifier: Modifier = Modifier) {
                             )
                         }
                     },
-                    modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                 ) { Text("Open", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
@@ -448,8 +448,8 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             TileHeader("QUICK DIAL") {
                 TextButton(
-                    onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
-                    modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) },
+                    modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                 ) { Text("Dialer", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
@@ -517,7 +517,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             TileHeader("NOTIFICATIONS") {
                 if (items.isNotEmpty()) {
-                    TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(28.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                         Text("Clear", color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -608,7 +608,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                     },
                     modifier = Modifier.size(44.dp)
                 ) {
-                    Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = "Mute",
+                    Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = if (muted) "Unmute" else "Mute",
                         tint = if (muted) DashColors.Warning else DashColors.TextPrimary, modifier = Modifier.size(26.dp))
                 }
                 Slider(
@@ -630,8 +630,8 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallAction("Sound") { runCatching { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
-                SmallAction("Bluetooth", Icons.Filled.Bluetooth) { runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+                SmallAction("Sound") { context.launchSafely(Intent(Settings.ACTION_SOUND_SETTINGS)) }
+                SmallAction("Bluetooth", Icons.Filled.Bluetooth) { context.launchSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
             }
         }
     }

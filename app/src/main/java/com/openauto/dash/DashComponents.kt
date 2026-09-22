@@ -2,6 +2,8 @@
 
 package com.openauto.dash
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -215,6 +217,13 @@ internal fun dashBackground(): Modifier {
 internal fun Bitmap.averageColor(): Color = runCatching {
     Color(Bitmap.createScaledBitmap(this, 1, 1, true).getPixel(0, 0))
 }.getOrDefault(Color.Gray)
+
+/**
+ * Starts [intent] as a new task, swallowing the ActivityNotFound / permission
+ * failures a stripped head-unit ROM can throw. True if it started.
+ */
+internal fun Context.launchSafely(intent: Intent): Boolean =
+    runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
 internal fun currentClock(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())

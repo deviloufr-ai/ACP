@@ -139,7 +139,7 @@ internal fun LaunchBarTile(
                         }
                     }
                 }
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Filled.Edit,
                         contentDescription = "Edit launch bar",
@@ -198,13 +198,13 @@ internal fun LaunchBarEditorDialog(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { current = current.swap(i, i - 1) }, enabled = i > 0, modifier = Modifier.size(34.dp)) {
+                        IconButton(onClick = { current = current.swap(i, i - 1) }, enabled = i > 0, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Move left", tint = if (i > 0) DashColors.TextSecondary else DashColors.Muted)
                         }
-                        IconButton(onClick = { current = current.swap(i, i + 1) }, enabled = i < current.lastIndex, modifier = Modifier.size(34.dp)) {
+                        IconButton(onClick = { current = current.swap(i, i + 1) }, enabled = i < current.lastIndex, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Move right", tint = if (i < current.lastIndex) DashColors.TextSecondary else DashColors.Muted)
                         }
-                        IconButton(onClick = { current = current.filterIndexed { j, _ -> j != i } }, modifier = Modifier.size(34.dp)) {
+                        IconButton(onClick = { current = current.filterIndexed { j, _ -> j != i } }, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Filled.Close, contentDescription = "Remove", tint = DashColors.Warning)
                         }
                     }

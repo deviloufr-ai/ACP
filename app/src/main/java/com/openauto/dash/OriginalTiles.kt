@@ -343,8 +343,8 @@ internal fun OriginalObdCard(
                 OriginalMeterChip(
                     label = "Battery",
                     valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
-                    fraction = ((obdData.voltage - 11.0) / 4.0).toFloat(),
-                    color = if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning,
+                    fraction = batteryFraction(obdData.voltage),
+                    color = batteryColor(obdData.voltage),
                     dimmed = !connected,
                     modifier = Modifier.weight(1f)
                 )
@@ -598,45 +598,7 @@ internal fun OriginalTopBar(
                 Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
             }
 
-            IconButton(onClick = onMaps) {
-                Icon(
-                    imageVector = Icons.Filled.Map,
-                    contentDescription = "Google Maps split-screen",
-                    tint = DashColors.TextSecondary
-                )
-            }
-
-            IconButton(onClick = onSplit) {
-                Icon(
-                    imageVector = Icons.Filled.Splitscreen,
-                    contentDescription = "Split screen with an app",
-                    tint = DashColors.TextSecondary
-                )
-            }
-
-            IconButton(onClick = onSystem) {
-                Icon(
-                    imageVector = Icons.Filled.Build,
-                    contentDescription = "System app",
-                    tint = DashColors.TextSecondary
-                )
-            }
-
-            IconButton(onClick = onTheme) {
-                Icon(
-                    imageVector = Icons.Filled.Palette,
-                    contentDescription = "Dashboard theme",
-                    tint = DashColors.TextSecondary
-                )
-            }
-
-            IconButton(onClick = onToggleEdit) {
-                Icon(
-                    imageVector = if (editing) Icons.Filled.Done else Icons.Filled.Edit,
-                    contentDescription = if (editing) "Done editing" else "Edit dashboards",
-                    tint = if (editing) DashColors.Accent else DashColors.TextSecondary
-                )
-            }
+            TopBarActions(editing, onMaps, onSplit, onSystem, onTheme, onToggleEdit)
         }
     }
 }

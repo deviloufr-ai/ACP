@@ -91,6 +91,22 @@ import androidx.compose.runtime.setValue
 
 internal const val SPEED_WARNING_KMH = 110
 
+/** Battery bar: 11 V empty to 15 V full; healthy between 12 and 15 V. */
+internal fun batteryFraction(voltage: Double): Float = ((voltage - 11.0) / 4.0).toFloat()
+internal fun batteryColor(voltage: Double): Color =
+    if (voltage in 12.0..15.0) DashColors.Good else DashColors.Warning
+
+/** The "connect first" body shared by the OBD cards. */
+@Composable
+internal fun ObdNotConnected(onConnect: () -> Unit) {
+    Text("OBD not connected", color = DashColors.Muted)
+    Spacer(Modifier.height(10.dp))
+    Button(
+        onClick = onConnect,
+        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+    ) { Text("Connect") }
+}
+
 @Composable
 internal fun ObdCard(
     obdData: ObdData,
@@ -195,8 +211,8 @@ internal fun ObdCard(
                     MeterChip(
                         label = "Battery",
                         valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
-                        fraction = ((obdData.voltage - 11.0) / 4.0).toFloat(),
-                        color = if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning,
+                        fraction = batteryFraction(obdData.voltage),
+                        color = batteryColor(obdData.voltage),
                         dimmed = !connected,
                         modifier = m
                     )
@@ -632,12 +648,7 @@ internal fun ObdDtcCard(
             Spacer(Modifier.height(10.dp))
 
             if (!connected) {
-                Text("OBD not connected", color = DashColors.Muted)
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = onConnect,
-                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                ) { Text("Connect") }
+                ObdNotConnected(onConnect)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
@@ -713,12 +724,7 @@ internal fun ObdAllCard(
             Text("OBD DATA", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
             if (!connected) {
-                Text("OBD not connected", color = DashColors.Muted)
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = onConnect,
-                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                ) { Text("Connect") }
+                ObdNotConnected(onConnect)
             } else {
                 MeterChip("Speed", "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -734,7 +740,7 @@ internal fun ObdAllCard(
                 Spacer(Modifier.height(8.dp))
                 MeterChip("Fuel level", "${obdData.fuelLevelPct} %", obdData.fuelLevelPct / 100f, DashColors.Good, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Battery", "%.1f V".format(obdData.voltage), ((obdData.voltage - 11.0) / 4.0).toFloat(), if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning, false, Modifier.fillMaxWidth())
+                MeterChip("Battery", "%.1f V".format(obdData.voltage), batteryFraction(obdData.voltage), batteryColor(obdData.voltage), false, Modifier.fillMaxWidth())
             }
         }
     }
@@ -933,13 +939,13 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                     Text("Dash reads", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
                     FilledIconButton(
                         onClick = { currentPct = (currentPct - 5).coerceAtLeast(5) },
-                        modifier = Modifier.size(34.dp),
+                        modifier = Modifier.size(44.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
                     ) { Text("−") }
                     Text("$currentPct%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold)
                     FilledIconButton(
                         onClick = { currentPct = (currentPct + 5).coerceAtMost(100) },
-                        modifier = Modifier.size(34.dp),
+                        modifier = Modifier.size(44.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
                     ) { Text("+") }
                 }

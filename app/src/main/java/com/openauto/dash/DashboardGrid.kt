@@ -331,12 +331,12 @@ internal fun GridTile(
             val shortTile = heightDp < 84.dp
             FilledIconButton(
                 onClick = { onRemove(index) },
-                modifier = Modifier.align(if (shortTile) Alignment.TopStart else Alignment.TopEnd).padding(4.dp).size(30.dp),
+                modifier = Modifier.align(if (shortTile) Alignment.TopStart else Alignment.TopEnd).padding(4.dp).size(40.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = DashColors.Warning, contentColor = Color.Black
                 )
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Close, contentDescription = "Remove ${item.describe()}", modifier = Modifier.size(18.dp))
             }
 
             // Bottom-right resize handle: drag to change the cell span.
@@ -344,8 +344,8 @@ internal fun GridTile(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp)
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(15.dp))
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
                     .background(DashColors.Accent.copy(alpha = 0.85f))
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGestures(
@@ -370,7 +370,7 @@ internal fun GridTile(
             ) {
                 Icon(
                     imageVector = Icons.Filled.OpenInFull,
-                    contentDescription = "Resize",
+                    contentDescription = "Resize ${item.describe()}",
                     tint = DashColors.Background,
                     modifier = Modifier.size(18.dp)
                 )
@@ -561,6 +561,15 @@ internal fun AddTile(onClick: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text("Add", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
     }
+}
+
+/** Short spoken name for a tile, for the edit controls' accessibility labels. */
+private fun DashboardItem.describe(): String = when (this) {
+    is DashboardItem.BuiltinWidget -> kind.label
+    is DashboardItem.AppShortcut -> packageName.substringAfterLast('.')
+    is DashboardItem.SplitPair -> "split pair"
+    is DashboardItem.LaunchBar -> "launch bar"
+    is DashboardItem.SystemWidget -> "widget"
 }
 
 /**

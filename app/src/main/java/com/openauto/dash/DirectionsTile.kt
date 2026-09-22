@@ -268,14 +268,14 @@ internal fun ManeuverIcon(nav: NavState, size: Dp) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,
-                contentDescription = null,
+                contentDescription = nav.instruction,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(size * 0.62f)
             )
         } else {
             Icon(
                 Icons.Filled.Directions,
-                contentDescription = null,
+                contentDescription = nav.instruction,
                 tint = DashColors.OnAccent,
                 modifier = Modifier.size(size * 0.55f)
             )
