@@ -1,6 +1,8 @@
 package com.openauto.dash
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -97,6 +99,44 @@ object McuReader {
             ?.putInt("fuel_byte", fm.byteIndex)
             ?.putInt("fuel_fullraw", fm.fullRaw)
             ?.apply()
+    }
+
+    // --- Fuel Finder: persisted Capture A ------------------------------------
+    // The two capture points are taken minutes to days apart (fuel only drops by
+    // actually driving), so Capture A is saved to prefs and survives closing the
+    // dialog and app restarts. Capture B is then taken later against this A.
+
+    /** Persist Capture A (fuel % + a snapshot of every frame's bytes). */
+    fun saveFuelCaptureA(pct: Int, snapshot: Map<String, List<Int>>) {
+        val json = JSONObject()
+        snapshot.forEach { (k, bytes) -> json.put(k, JSONArray(bytes)) }
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.putInt("fuelcapA_pct", pct)
+            ?.putString("fuelcapA_data", json.toString())
+            ?.apply()
+    }
+
+    /** The saved Capture A (fuel % to frame→bytes), or null if none is stored. */
+    fun loadFuelCaptureA(): Pair<Int, Map<String, List<Int>>>? {
+        val p = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return null
+        val pct = p.getInt("fuelcapA_pct", 0)
+        val data = p.getString("fuelcapA_data", null) ?: return null
+        if (pct <= 0) return null
+        return runCatching {
+            val obj = JSONObject(data)
+            val map = LinkedHashMap<String, List<Int>>()
+            obj.keys().forEach { k ->
+                val arr = obj.getJSONArray(k)
+                map[k] = (0 until arr.length()).map { arr.getInt(it) }
+            }
+            pct to (map as Map<String, List<Int>>)
+        }.getOrNull()
+    }
+
+    /** Discard the saved Capture A (on Reset or once a mapping is chosen). */
+    fun clearFuelCaptureA() {
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.remove("fuelcapA_pct")?.remove("fuelcapA_data")?.apply()
     }
 
     /** Forget the learned fuel byte (e.g. to re-run the finder). */

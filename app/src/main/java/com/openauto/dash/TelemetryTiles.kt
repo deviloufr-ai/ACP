@@ -885,9 +885,12 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
         onDispose { McuReader.stop() }
     }
     val entries by McuReader.entries.collectAsState()
-    var currentPct by remember { mutableIntStateOf(60) }
-    var capA by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
-    var pctA by remember { mutableIntStateOf(0) }
+    // Capture A is restored from storage, so you can tap Capture A, close this,
+    // drive for days, then reopen and Capture B against the same A.
+    val savedA = remember { McuReader.loadFuelCaptureA() }
+    var currentPct by remember { mutableIntStateOf(savedA?.first ?: 60) }
+    var capA by remember { mutableStateOf(savedA?.second) }
+    var pctA by remember { mutableIntStateOf(savedA?.first ?: 0) }
     var capB by remember { mutableStateOf<Map<String, List<Int>>?>(null) }
     var pctB by remember { mutableIntStateOf(0) }
 
@@ -930,7 +933,7 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "Two-step: set your dash gauge %, tap Capture A. Later — once the gauge has changed a few % — set the new value and tap Capture B. Only bytes that actually moved with the fuel are offered.",
+                    "Set your dash gauge %, tap Capture A — then close this and use the car normally. Days later, once the gauge has dropped a few %, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.",
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -952,7 +955,10 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        onClick = { capA = snapshot(); pctA = currentPct },
+                        onClick = {
+                            val snap = snapshot(); capA = snap; pctA = currentPct
+                            McuReader.saveFuelCaptureA(currentPct, snap)
+                        },
                         colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
                     ) { Text(if (capA == null) "Capture A" else "A ✓ $pctA%") }
                     TextButton(
@@ -962,7 +968,10 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                     ) { Text(if (capB == null) "Capture B" else "B ✓ $pctB%") }
                     if (capA != null || capB != null) {
                         TextButton(
-                            onClick = { capA = null; capB = null; pctA = 0; pctB = 0 },
+                            onClick = {
+                                capA = null; capB = null; pctA = 0; pctB = 0
+                                McuReader.clearFuelCaptureA()
+                            },
                             colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Muted)
                         ) { Text("Reset") }
                     }
@@ -974,7 +983,7 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                     capA == null ->
                         Text("Set your current fuel %, then tap Capture A.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                     capB == null ->
-                        Text("Captured at $pctA%. Drive until the gauge drops a few %, set the new value, then Capture B.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                        Text("Captured A at $pctA% (saved). You can close this and drive normally — come back once the gauge drops a few %, set the new value, then Capture B.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                     pctA == pctB ->
                         Text("A and B are the same %. Capture B at a different fuel level.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
                     candidates.isEmpty() ->
@@ -992,6 +1001,7 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                                         .background(DashColors.CardHi)
                                         .clickable {
                                             McuReader.saveFuelMapping(c.key, c.index, c.fullRaw)
+                                            McuReader.clearFuelCaptureA()
                                             onDismiss()
                                         }
                                         .padding(horizontal = 10.dp, vertical = 8.dp),
