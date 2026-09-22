@@ -185,10 +185,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     /** Add only when the tile fits; a full page must never create a hidden overlap. */
     fun addItem(page: Int, item: DashboardItem): Boolean = addItemAt(page, item) >= 0
 
+    /** Removing the last "Maps window" tile ends the tile's keep-Maps-open duty. */
+    fun releaseMapsAnchorIfGone() {
+        val anyLeft = pages.flatten().any { it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR }
+        if (!anyLeft) PipAnchor.setAutoOpen(context, false)
+    }
+
     fun removeAt(page: Int, index: Int) {
         val item = pages.getOrNull(page)?.getOrNull(index) ?: return
         if (item is DashboardItem.SystemWidget) WidgetHostHolder.delete(context, item.appWidgetId)
         mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
+        releaseMapsAnchorIfGone()
     }
 
     /** Replaces the tile at [index] (same cell) with [item], e.g. an edited launch bar. */
@@ -238,6 +245,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         pages.getOrNull(page)?.filterIsInstance<DashboardItem.SystemWidget>()
             ?.forEach { WidgetHostHolder.delete(context, it.appWidgetId) }
         mutatePage(page) { emptyList() }
+        releaseMapsAnchorIfGone()
     }
 
     // System app-widget picker; adds the bound widget to the page that requested it.

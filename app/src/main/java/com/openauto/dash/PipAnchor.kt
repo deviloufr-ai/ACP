@@ -124,10 +124,11 @@ object PipAnchor {
             } else if (win == null) {
                 _status.value = Status(seen = lastSeen)
                 attempts = 0; lastStack = null
-                if (reopenPending) {
-                    reopenPending = false
+                val now = System.currentTimeMillis()
+                if (autoOpen(context) && now - lastReopenAt > REOPEN_COOLDOWN_MS) {
+                    lastReopenAt = now
                     val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
-                    Log.i(TAG, "reopening Maps at $rect")
+                    Log.i(TAG, "opening Maps at $rect")
                     SplitLauncher.launchFreeform(context, MAPS_PACKAGE, bounds)
                 }
             } else {
@@ -211,8 +212,23 @@ object PipAnchor {
      * The tile left the screen: move the window out of the way, to a small
      * rectangle in the bottom-right corner of the display.
      */
-    /** Set when [hide] closed a Maps window that [track] should bring back. */
-    @Volatile private var reopenPending = false
+    private const val PREFS = "pip_anchor"
+    private const val KEY_AUTO_OPEN = "auto_open_maps"
+    private const val REOPEN_COOLDOWN_MS = 15_000L
+    private var lastReopenAt = 0L
+
+    /**
+     * Once the user has opened Maps from the tile, the tile's job is "Maps lives
+     * here": whenever it is on screen and no Maps window exists, whatever closed
+     * it (a page change, another app, a reboot), it opens one. Removing the
+     * tile ends that. Persisted so the Maps page survives a restart.
+     */
+    fun autoOpen(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_OPEN, false)
+
+    fun setAutoOpen(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO_OPEN, on).apply()
+    }
 
     /**
      * The tile left the screen. A freeform window cannot be hidden: the window
@@ -229,7 +245,6 @@ object PipAnchor {
                 val out = runCatching { shell(context, "am stack remove ${stack.stackId}") }
                     .getOrElse { "failed: ${it.message}" }
                 Log.i(TAG, "closed freeform ${stack.packageName}: ${out.trim()}")
-                reopenPending = stack.packageName == MAPS_PACKAGE
             } else {
                 val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4
@@ -475,6 +490,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
                     pkg != null && status.docked -> "Docked: $name (${status.mode})"
                     pkg != null && status.gaveUp -> "The system keeps $name where it is"
                     pkg != null -> "Moving $name here…"
+                    PipAnchor.autoOpen(context) -> "Opening Google Maps here\u2026"
                     else -> "Google Maps docks here.\nOpen it below, or start guidance and press Home."
                 },
                 color = when {
@@ -513,6 +529,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
                     onClick = {
                         val rect = target
                         val bounds = rect?.let { android.graphics.Rect(it.left, it.top, it.right, it.bottom) }
+                        PipAnchor.setAutoOpen(context, true)
                         if (!SplitLauncher.launchFreeform(context, PipAnchor.MAPS_PACKAGE, bounds)) {
                             val launch = context.packageManager.getLaunchIntentForPackage(PipAnchor.MAPS_PACKAGE)
                                 ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0"))
