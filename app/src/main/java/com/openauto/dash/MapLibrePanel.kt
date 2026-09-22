@@ -45,6 +45,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -251,7 +258,16 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
-        // Destination search bar.
+        // Destination search bar. Searching from the IME key, the search button
+        // or a hardware Enter all dismiss the keyboard first so the map is
+        // visible while the route loads.
+        val keyboard = LocalSoftwareKeyboardController.current
+        val focusManager = LocalFocusManager.current
+        fun submitSearch() {
+            keyboard?.hide()
+            focusManager.clearFocus()
+            searchAndRoute()
+        }
         Surface(
             color = OverlayBg,
             shape = RoundedCornerShape(16.dp),
@@ -263,7 +279,15 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                     onValueChange = { query = it },
                     placeholder = { Text("Where to?", color = Color(0xFF9AA0A6)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyUp &&
+                                (event.key == Key.Enter || event.key == Key.NumPadEnter)
+                            ) {
+                                submitSearch(); true
+                            } else false
+                        },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
@@ -272,13 +296,19 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                         cursorColor = Accent
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { searchAndRoute() })
+                    // Head-unit keyboards label the action key differently; accept them all.
+                    keyboardActions = KeyboardActions(
+                        onSearch = { submitSearch() },
+                        onDone = { submitSearch() },
+                        onGo = { submitSearch() },
+                        onSend = { submitSearch() }
+                    )
                 )
                 Spacer(Modifier.width(6.dp))
                 if (loading) {
                     CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Accent, strokeWidth = 3.dp)
                 } else {
-                    IconButton(onClick = { searchAndRoute() }) {
+                    IconButton(onClick = { submitSearch() }) {
                         Icon(Icons.Filled.Search, contentDescription = "Search", tint = Accent)
                     }
                 }
