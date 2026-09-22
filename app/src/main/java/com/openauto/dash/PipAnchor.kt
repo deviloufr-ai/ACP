@@ -145,11 +145,33 @@ object PipAnchor {
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
                     result.onFailure { publishError(it) }
+                    if (result.isSuccess && win.mode == "freeform") ensureStatusBarHidden(context)
                     _status.value = _status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else _status.value.error)
                 }
             }
             delay(POLL_MS)
         }
+    }
+
+    private var statusBarPolicyChecked = false
+
+    /**
+     * The system shows the status bar whenever the focused window is not
+     * immersive, and a docked Maps window takes focus when touched, covering
+     * the launcher's own top bar. Android 10's `policy_control` setting hides
+     * the status bar per package regardless of focus, so list both apps there
+     * once. (No-op on ROMs without that setting.)
+     */
+    private suspend fun ensureStatusBarHidden(context: Context) {
+        if (statusBarPolicyChecked) return
+        statusBarPolicyChecked = true
+        runCatching {
+            val wanted = "immersive.status=${context.packageName},$MAPS_PACKAGE"
+            val current = shell(context, "settings get global policy_control").trim()
+            if (current.contains(context.packageName) && current.contains(MAPS_PACKAGE)) return
+            shell(context, "settings put global policy_control $wanted")
+            Log.i(TAG, "policy_control set to $wanted (was '$current')")
+        }.onFailure { Log.w(TAG, "could not set status-bar policy", it) }
     }
 
     /** Give up after this many placement attempts per window, so we never fight SystemUI forever. */

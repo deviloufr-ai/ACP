@@ -96,6 +96,9 @@ class SplitAccessibilityService : AccessibilityService() {
      */
     private fun isInSplitMode(): Boolean {
         val (a, b) = splitPaneBounds() ?: return false
+        // A floating (freeform / picture-in-picture) window sits *over* the
+        // other app; genuine split panes never overlap. Not a split.
+        if (Rect.intersects(a, b)) return false
         val centerAx = a.left + a.width() / 2f
         val centerAy = a.top + a.height() / 2f
         val centerBx = b.left + b.width() / 2f
