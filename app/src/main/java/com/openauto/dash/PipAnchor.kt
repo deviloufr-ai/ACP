@@ -64,6 +64,7 @@ import kotlin.math.roundToInt
 object PipAnchor {
 
     private const val TAG = "PipAnchor"
+    const val MAPS_PACKAGE = "com.google.android.apps.maps"
     private const val POLL_MS = 2_500L
 
     /** What the tile shows. [pipPackage] is null while no PiP window exists. */
@@ -310,7 +311,7 @@ object PipAnchor {
      * Picks the floating window out of `am stack list` output. Each stack is a
      * block starting with `Stack id=N`; its configuration names the windowing
      * mode (`mWindowingMode=pinned` / `freeform`) and its tasks appear as
-     * `taskId=N: package/activity`. Pinned wins over freeform; our own package
+     * `taskId=N: package/activity`. Freeform wins over pinned; our own package
      * and the Home stack are never candidates.
      */
     internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash"): FloatingWindow? {
@@ -327,7 +328,8 @@ object PipAnchor {
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
             found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode)
         }
-        return found.firstOrNull { it.mode == "pinned" } ?: found.firstOrNull()
+        // A freeform window carries the full Maps UI; prefer it over a PiP.
+        return found.firstOrNull { it.mode == "freeform" } ?: found.firstOrNull()
     }
 
     /** "mode package" per stack, for the tile's diagnostic line. */
@@ -422,7 +424,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
                     pkg != null && status.docked -> "Docked: $name (${status.mode})"
                     pkg != null && status.gaveUp -> "The system keeps $name where it is"
                     pkg != null -> "Moving $name here…"
-                    else -> "The floating Maps window docks here.\nStart guidance in Google Maps, then press Home."
+                    else -> "Google Maps docks here.\nOpen it below, or start guidance and press Home."
                 },
                 color = when {
                     pkg != null && status.docked -> DashColors.Good
@@ -451,19 +453,26 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(6.dp))
                 Text("Windows: $seen", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
             }
-            if (pkg == null) {
+            // Full Maps UI in a window sized to this tile (a freeform task), the
+            // way the head unit's stock launcher shows it. Offered whenever the
+            // docked window is not already that.
+            if (status.mode != "freeform") {
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = {
-                        val launch = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.maps")
-                            ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0"))
-                        context.launchSafely(launch)
+                        val rect = target
+                        val bounds = rect?.let { android.graphics.Rect(it.left, it.top, it.right, it.bottom) }
+                        if (!SplitLauncher.launchFreeform(context, PipAnchor.MAPS_PACKAGE, bounds)) {
+                            val launch = context.packageManager.getLaunchIntentForPackage(PipAnchor.MAPS_PACKAGE)
+                                ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0"))
+                            context.launchSafely(launch)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
                     shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     modifier = Modifier.fillMaxWidth(0.8f)
-                ) { Text("Open Google Maps") }
+                ) { Text(if (pkg == null) "Open Maps here" else "Open full Maps here") }
             }
         }
     }

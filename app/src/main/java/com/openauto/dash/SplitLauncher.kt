@@ -127,13 +127,14 @@ object SplitLauncher {
     }
 
     /** Fallback: launch [packageName] as a freeform floating window. */
-    fun launchFreeform(context: Context, packageName: String): Boolean {
+    fun launchFreeform(context: Context, packageName: String, launchBounds: Rect? = null): Boolean {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         } ?: return false
 
         val m = context.resources.displayMetrics
-        val bounds = Rect(m.widthPixels / 2, 0, m.widthPixels, m.heightPixels)
+        // Right half of the screen unless the caller (a dashboard tile) says where.
+        val bounds = launchBounds ?: Rect(m.widthPixels / 2, 0, m.widthPixels, m.heightPixels)
 
         val options = ActivityOptions.makeBasic()
         runCatching {
