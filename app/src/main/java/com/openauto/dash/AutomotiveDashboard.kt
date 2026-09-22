@@ -12,8 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
@@ -87,6 +87,7 @@ internal const val MAX_UNDO = 30
  * media / OBD cards, or any real Android app-widget) via the "+" tile. A single
  * Apps button opens the full app drawer. Nothing launches automatically.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
@@ -380,14 +381,19 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         showAddMenu = true
     }
 
+    // Android forces a transparent status bar whenever a floating (freeform)
+    // window is on screen, i.e. while a Maps window is docked. Lay out below it
+    // then. Not via WindowInsets.statusBars: on Android 10 that stays at the
+    // bar's height even while the bar is hidden, which pushed the whole
+    // dashboard down permanently.
+    val pipStatus by PipAnchor.status.collectAsState()
+    val barForced = pipStatus.pipPackage != null && pipStatus.mode == "freeform"
+    val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .then(dashBackground())
-            // Android forces a transparent status bar whenever a floating
-            // (freeform) window is on screen, e.g. a docked Maps window. Lay out
-            // below it then; the inset is zero while the bar is hidden.
-            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
         TopBar(
             currentPage = pagerState.currentPage,
