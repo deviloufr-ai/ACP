@@ -108,4 +108,19 @@ class PipAnchorTest {
         """.trimIndent()
         assertEquals(false, PipAnchor.parseFloatingWindow(listing)!!.visible)
     }
+
+    @Test
+    fun packageFilterPicksTheRightWindowAmongSeveral() {
+        val listing = """
+            Stack id=7 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
+            Stack id=8 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=64: com.google.android.apps.youtube.music/.activities.MusicActivity bounds=[640,80][1280,660] userId=0 visible=true
+        """.trimIndent()
+        assertEquals(64, PipAnchor.parseFloatingWindow(listing, packageName = "com.google.android.apps.youtube.music")!!.taskId)
+        assertEquals(63, PipAnchor.parseFloatingWindow(listing, packageName = "com.google.android.apps.maps")!!.taskId)
+        assertNull(PipAnchor.parseFloatingWindow(listing, packageName = "com.waze"))
+    }
 }

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -152,6 +153,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var addTargetPage by remember { mutableIntStateOf(-1) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
+    var showAppWindowPicker by remember { mutableStateOf(false) }
     var showWidgetMenu by remember { mutableStateOf(false) }
     var layoutNotice by remember { mutableStateOf<String?>(null) }
     // Two-step picker for creating a saved split-pair tile.
@@ -208,10 +210,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     /** Add only when the tile fits; a full page must never create a hidden overlap. */
     fun addItem(page: Int, item: DashboardItem): Boolean = addItemAt(page, item) >= 0
 
-    /** Removing the last "Maps window" tile ends the tile's keep-Maps-open duty. */
+    /** Removing an app's last window tile ends the tile's keep-it-open duty. */
     fun releaseMapsAnchorIfGone() {
-        val anyLeft = pages.flatten().any { it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR }
-        if (!anyLeft) PipAnchor.setAutoOpen(context, false)
+        val keep = pages.flatten().mapNotNull {
+            when {
+                it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
+                it is DashboardItem.AppWindow -> it.packageName
+                else -> null
+            }
+        }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+        PipAnchor.releaseAutoOpenExcept(context, keep)
     }
 
     fun removeAt(page: Int, index: Int) {
@@ -402,8 +410,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // then. Not via WindowInsets.statusBars: on Android 10 that stays at the
     // bar's height even while the bar is hidden, which pushed the whole
     // dashboard down permanently.
-    val pipStatus by PipAnchor.status.collectAsState()
-    val barForced = pipStatus.pipPackage != null && pipStatus.mode == "freeform"
+    val dockedApps by PipAnchor.dockedPackages.collectAsState()
+    val barForced = dockedApps.isNotEmpty()
     val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
     Column(
         modifier = Modifier
@@ -652,6 +660,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         showAddMenu = false
                         showAppPicker = true
                     }
+                    AddChoiceRow(Icons.Filled.OpenInNew, "Add app window (runs in the tile)") {
+                        showAddMenu = false
+                        showAppWindowPicker = true
+                    }
                     AddChoiceRow(Icons.Filled.Splitscreen, "Add app pair (split)") {
                         showAddMenu = false
                         pairPrimaryPackage = null
@@ -680,6 +692,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
             },
             onDismiss = { showAppPicker = false }
+        )
+    }
+
+    if (showAppWindowPicker) {
+        AppPickerDialog(
+            apps = apps,
+            onPick = { app ->
+                showAppWindowPicker = false
+                if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppWindow(app.packageName))
+            },
+            onDismiss = { showAppWindowPicker = false }
         )
     }
 
