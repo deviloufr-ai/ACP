@@ -83,6 +83,8 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 
@@ -607,7 +609,33 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
         // The bar lives at the bottom: the OS status bar owns the top edge on
         // this head unit whenever a floating window is on screen, and it used to
-        // cover the launcher bar there.
+        // cover the launcher bar there. A horizontal swipe across the bar (or
+        // the page dots) changes page, for when a docked window covers the pages.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    var dragged = 0f
+                    val threshold = 48.dp.toPx()
+                    detectHorizontalDragGestures(
+                        onDragStart = { dragged = 0f },
+                        onDragEnd = {
+                            val step = when {
+                                dragged <= -threshold -> 1
+                                dragged >= threshold -> -1
+                                else -> 0
+                            }
+                            if (step != 0) {
+                                val next = (pagerState.currentPage + step).coerceIn(0, DashboardStore.PAGE_COUNT - 1)
+                                scope.launch { pagerState.animateScrollToPage(next) }
+                            }
+                        }
+                    ) { change, dx ->
+                        change.consume()
+                        dragged += dx
+                    }
+                }
+        ) {
         TopBar(
             clock = clock,
             versionName = updateManager.currentVersionName,
@@ -632,6 +660,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             current = pagerState.currentPage,
             onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
         )
+        }
     }
 
     launchBarEditor?.let { (page, index) ->

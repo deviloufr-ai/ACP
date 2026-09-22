@@ -51,6 +51,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.ceil
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -108,7 +109,7 @@ internal fun DashboardPage(
     val density = LocalDensity.current
 
     // Renders one tile's inner content with all the shared dependencies wired in.
-    val tileContent: @Composable (Int, DashboardItem) -> Unit = { index, item ->
+    val tileContent: @Composable (Int, DashboardItem, ((Int, Int) -> Unit)?) -> Unit = { index, item, fit ->
         TileContent(
             item = item,
             editing = editing && !inSplitMode,
@@ -124,7 +125,8 @@ internal fun DashboardPage(
             onLaunchApp = onLaunchApp,
             onLaunchSplitPair = onLaunchSplitPair,
             onEditLaunchBar = { onEditLaunchBar(index) },
-            onModelTouch = onModelTouch
+            onModelTouch = onModelTouch,
+            onFitToWindow = fit
         )
     }
 
@@ -152,7 +154,7 @@ internal fun DashboardPage(
                             .height(h)
                             .clip(RoundedCornerShape(20.dp))
                             .background(DashColors.Bar)
-                    ) { tileContent(index, item) }
+                    ) { tileContent(index, item, null) }
                 }
             }
         }
@@ -226,7 +228,15 @@ internal fun DashboardPage(
                     onRemove = onRemove,
                     onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
                     onPreviewClear = { preview = null },
-                    content = { tileContent(index, item) }
+                    content = {
+                        val cellWpxF = with(density) { cellW.toPx() }
+                        val cellHpxF = with(density) { cellH.toPx() }
+                        tileContent(index, item) { wPx, hPx ->
+                            val cw = ceil(wPx / cellWpxF).toInt().coerceIn(item.w, GRID_COLS - item.x)
+                            val ch = ceil(hPx / cellHpxF).toInt().coerceIn(item.h, GRID_ROWS - item.y)
+                            if (cw > item.w || ch > item.h) onResizeCell(index, cw, ch)
+                        }
+                    }
                 )
             }
         }
@@ -409,7 +419,9 @@ internal fun TileContent(
     onLaunchApp: (String) -> Unit,
     onLaunchSplitPair: (String, String) -> Unit,
     onEditLaunchBar: () -> Unit,
-    onModelTouch: (Boolean) -> Unit
+    onModelTouch: (Boolean) -> Unit,
+    /** Grid only: grow this tile to at least the given pixel size (a docked window's minimum). */
+    onFitToWindow: ((Int, Int) -> Unit)? = null
 ) {
     if (skinHandles(item)) {
         SkinTile(
@@ -435,7 +447,7 @@ internal fun TileContent(
             val label = appsByPackage[item.packageName]?.label ?: item.packageName.substringAfterLast('.')
             // While arranging, the window would cover its own tile's handles.
             if (editing) EditPlaceholder(icon = Icons.Filled.OpenInNew, label = "$label window")
-            else PipAnchorCard(modifier = Modifier.fillMaxSize(), packageName = item.packageName, appLabel = label)
+            else PipAnchorCard(modifier = Modifier.fillMaxSize(), packageName = item.packageName, appLabel = label, onWindowBiggerThanTile = onFitToWindow)
         }
 
         is DashboardItem.AppShortcut -> Box(
@@ -531,7 +543,7 @@ internal fun TileContent(
             BuiltinKind.COMPASS -> CompassCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PIP_ANCHOR -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.Map, label = BuiltinKind.PIP_ANCHOR.label)
-            } else PipAnchorCard(modifier = Modifier.fillMaxSize())
+            } else PipAnchorCard(modifier = Modifier.fillMaxSize(), onWindowBiggerThanTile = onFitToWindow)
             BuiltinKind.TRIP -> TripCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.GFORCE -> GForceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PARKING -> ParkingCard(modifier = Modifier.fillMaxSize())

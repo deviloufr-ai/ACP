@@ -82,7 +82,9 @@ object PipAnchor {
         /** Outcome of the last placement command, e.g. "am stack resize 3: ok". */
         val lastResult: String? = null,
         /** Set once the tile has stopped fighting a system that keeps moving the window back. */
-        val gaveUp: Boolean = false
+        val gaveUp: Boolean = false,
+        /** The window's bounds when the system made it clearly larger than the tile (its minimum size). */
+        val oversize: ScreenRect? = null
     )
 
     // One status per docked app: several tiles (Maps, YouTube Music, ...) can
@@ -251,7 +253,11 @@ object PipAnchor {
                 status.value = Status(
                     pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
-                    gaveUp = attempts >= MAX_ATTEMPTS
+                    gaveUp = attempts >= MAX_ATTEMPTS,
+                    oversize = win.bounds?.takeIf { b ->
+                        (b.right - b.left) > (rect.right - rect.left) * 1.08f ||
+                            (b.bottom - b.top) > (rect.bottom - rect.top) * 1.08f
+                    }
                 )
                 if (!docked && attempts < MAX_ATTEMPTS) {
                     attempts++
@@ -694,7 +700,9 @@ internal fun PipAnchorCard(
     modifier: Modifier = Modifier,
     isDock: Boolean = false,
     packageName: String = PipAnchor.MAPS_PACKAGE,
-    appLabel: String = "Maps"
+    appLabel: String = "Maps",
+    /** Called with the window's pixel size when the system makes it larger than the tile. */
+    onWindowBiggerThanTile: ((Int, Int) -> Unit)? = null
 ) {
     val context = LocalContext.current
     // With a permanent Maps dock on screen, a "Maps window" tile on a page must
@@ -723,6 +731,12 @@ internal fun PipAnchorCard(
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val status by PipAnchor.statusOf(packageName).collectAsState()
+    // An app's minimum window size can exceed the tile; let the tile grow to it
+    // rather than have the window spill over its neighbours.
+    LaunchedEffect(status.oversize) {
+        val b = status.oversize ?: return@LaunchedEffect
+        onWindowBiggerThanTile?.invoke(b.right - b.left, b.bottom - b.top)
+    }
 
     var target by remember { mutableStateOf<PipAnchor.ScreenRect?>(null) }
     var started by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
