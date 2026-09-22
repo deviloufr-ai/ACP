@@ -17,6 +17,9 @@ class MediaNotificationListenerService : NotificationListenerService() {
         runCatching { activeNotifications }.getOrNull()
             ?.filter { it.packageName in NavDirections.PACKAGES }
             ?.forEach { NavDirections.onPosted(this, it) }
+        runCatching { activeNotifications }.getOrNull()
+            ?.sortedBy { it.postTime }
+            ?.forEach { NotificationFeed.onPosted(this, it) }
     }
 
     override fun onListenerDisconnected() {
@@ -25,9 +28,11 @@ class MediaNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName in NavDirections.PACKAGES) NavDirections.onPosted(this, sbn)
+        NotificationFeed.onPosted(this, sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName in NavDirections.PACKAGES) NavDirections.onRemoved(sbn)
+        NotificationFeed.onRemoved(sbn)
     }
 }

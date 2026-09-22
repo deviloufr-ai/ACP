@@ -657,77 +657,26 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
 
     if (showWidgetMenu) {
-        AlertDialog(
-            onDismissRequest = { showWidgetMenu = false },
-            containerColor = DashColors.Card,
-            title = { Text("Add widget", color = DashColors.TextPrimary) },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AddChoiceRow(Icons.Filled.Navigation, BuiltinKind.NAVMAP.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
-                    }
-                    AddChoiceRow(Icons.Filled.Directions, BuiltinKind.NAVIGATION.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVIGATION, w = 4, h = 3))
-                    }
-                    AddChoiceRow(Icons.Filled.Apps, "App launch bar") {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) {
-                            // Open the editor right away so the new bar isn't left empty.
-                            val index = addItemAt(addTargetPage, DashboardItem.LaunchBar())
-                            if (index >= 0) launchBarEditor = addTargetPage to index
-                        }
-                    }
-                    AddChoiceRow(Icons.Filled.MusicNote, BuiltinKind.MEDIA.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MEDIA))
-                    }
-                    AddChoiceRow(Icons.Filled.Speed, BuiltinKind.TELEMETRY.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.TELEMETRY))
-                    }
-                    AddChoiceRow(Icons.Filled.Warning, BuiltinKind.OBD_DTC.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_DTC))
-                    }
-                    AddChoiceRow(Icons.Filled.Speed, BuiltinKind.OBD_ALL.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.OBD_ALL))
-                    }
-                    AddChoiceRow(Icons.Filled.LocalGasStation, BuiltinKind.RANGE.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.RANGE))
-                    }
-                    AddChoiceRow(Icons.Filled.DirectionsCar, BuiltinKind.CAR3D.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAR3D))
-                    }
-                    AddChoiceRow(Icons.Filled.SensorDoor, BuiltinKind.DOORS.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.DOORS))
-                    }
-                    AddChoiceRow(Icons.Filled.Sensors, BuiltinKind.CAN_MON.label) {
-                        showWidgetMenu = false
-                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.CAN_MON))
-                    }
-                    AddChoiceRow(Icons.Filled.Widgets, "System widget…") {
-                        showWidgetMenu = false
-                        addSystemWidget.pickFromList()
-                    }
+        WidgetPickerDialog(
+            onPickBuiltin = { kind ->
+                showWidgetMenu = false
+                if (addTargetPage >= 0) {
+                    addItem(addTargetPage, DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
                 }
             },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showWidgetMenu = false }) {
-                    Text("Cancel", color = DashColors.Muted)
+            onPickLaunchBar = {
+                showWidgetMenu = false
+                if (addTargetPage >= 0) {
+                    // Open the editor right away so the new bar isn't left empty.
+                    val index = addItemAt(addTargetPage, DashboardItem.LaunchBar())
+                    if (index >= 0) launchBarEditor = addTargetPage to index
                 }
-            }
+            },
+            onPickSystemWidget = {
+                showWidgetMenu = false
+                addSystemWidget.pickFromList()
+            },
+            onDismiss = { showWidgetMenu = false }
         )
     }
 

@@ -5,21 +5,49 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
+/** Sections of the "Add widget" catalogue. */
+enum class WidgetCategory(val title: String) {
+    DRIVING("DRIVING"),
+    NAVIGATION("NAVIGATION"),
+    VEHICLE("VEHICLE"),
+    INFO("INFO & COMMS"),
+    APPS("MEDIA & APPS")
+}
+
 /**
  * The kinds of built-in (app-provided) widgets a dashboard tile can show. These
  * are rendered by our own Compose panels, not by the Android app-widget host.
+ * [defaultW] x [defaultH] is the span a fresh tile gets. Names are persisted,
+ * so never rename an entry.
  */
-enum class BuiltinKind(val label: String) {
-    NAVMAP("Map (MapLibre)"),
-    NAVIGATION("Directions (Google Maps / Waze)"),
-    MEDIA("Music player"),
-    TELEMETRY("OBD telemetry"),
-    OBD_DTC("OBD fault codes"),
-    OBD_ALL("OBD all data"),
-    RANGE("Fuel & range"),
-    CAR3D("3D car"),
-    DOORS("Doors"),
-    CAN_MON("CAN monitor (debug)")
+enum class BuiltinKind(
+    val label: String,
+    val category: WidgetCategory,
+    val blurb: String,
+    val defaultW: Int = 5,
+    val defaultH: Int = 3
+) {
+    NAVMAP("Map", WidgetCategory.NAVIGATION, "Free 3D map with search and routing"),
+    NAVIGATION("Directions", WidgetCategory.NAVIGATION, "Next turn from Google Maps / Waze", 4, 3),
+    MEDIA("Music player", WidgetCategory.APPS, "Now playing with controls"),
+    TELEMETRY("Telemetry", WidgetCategory.VEHICLE, "Speed gauge, revs, coolant, load, battery"),
+    OBD_DTC("Fault codes", WidgetCategory.VEHICLE, "Read and clear OBD trouble codes", 3, 2),
+    OBD_ALL("All OBD data", WidgetCategory.VEHICLE, "Every live OBD value"),
+    RANGE("Fuel & range", WidgetCategory.VEHICLE, "Tank level and km to empty", 3, 3),
+    CAR3D("3D car", WidgetCategory.VEHICLE, "Spin the car model", 4, 3),
+    DOORS("Doors", WidgetCategory.VEHICLE, "Door and boot status from the MCU", 3, 2),
+    CAN_MON("CAN monitor", WidgetCategory.VEHICLE, "Raw CAN frames (debug)", 4, 3),
+    SPEED_HUD("Speed", WidgetCategory.DRIVING, "Big digital speed from OBD or GPS", 3, 2),
+    COMPASS("Compass", WidgetCategory.DRIVING, "Heading, altitude and GPS speed", 3, 3),
+    TRIP("Trip computer", WidgetCategory.DRIVING, "Distance, time, average and top speed", 4, 2),
+    GFORCE("G-force", WidgetCategory.DRIVING, "Cornering and braking g", 4, 2),
+    PARKING("Parking spot", WidgetCategory.NAVIGATION, "Save where you parked, walk back to it", 4, 2),
+    CLOCK("Clock", WidgetCategory.INFO, "Time and date, large", 3, 2),
+    WEATHER("Weather", WidgetCategory.INFO, "Conditions at the car (no account needed)", 4, 2),
+    CALENDAR("Agenda", WidgetCategory.INFO, "Your next calendar events", 4, 3),
+    QUICK_DIAL("Quick dial", WidgetCategory.INFO, "Starred contacts, one tap to call", 4, 2),
+    NOTIFICATIONS("Notifications", WidgetCategory.INFO, "Messages and alerts from your apps", 4, 3),
+    AUDIO("Audio", WidgetCategory.APPS, "Volume, mute, sound and Bluetooth settings", 3, 2)
 }
 
 /**

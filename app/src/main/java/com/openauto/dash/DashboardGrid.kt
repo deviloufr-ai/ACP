@@ -492,6 +492,21 @@ internal fun TileContent(
             )
             BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.SPEED_HUD -> SpeedHudCard(
+                obdData = obdData,
+                obdConnected = obdConnection == ObdConnectionState.CONNECTED,
+                modifier = Modifier.fillMaxSize()
+            )
+            BuiltinKind.COMPASS -> CompassCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.TRIP -> TripCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.GFORCE -> GForceCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.PARKING -> ParkingCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.CLOCK -> ClockCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.WEATHER -> WeatherCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.CALENDAR -> CalendarCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.QUICK_DIAL -> QuickDialCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.NOTIFICATIONS -> NotificationsCard(hasAccess = hasMediaAccess, modifier = Modifier.fillMaxSize())
+            BuiltinKind.AUDIO -> AudioCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAR3D -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
             } else Box(

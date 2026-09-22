@@ -13,6 +13,10 @@
     <!-- Location Permission for Maps -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Agenda and quick-dial widgets (asked for at runtime, only when those tiles are added) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     
     <!-- Internet for Maps and Media Streaming -->
     <uses-permission android:name="android.permission.INTERNET" />
