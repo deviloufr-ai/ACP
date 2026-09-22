@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -89,6 +91,7 @@ internal const val MAX_UNDO = 30
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
+    var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
     var showThemePicker by remember { mutableStateOf(false) }
     DashColors.Sync(themeMode)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -419,10 +422,26 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
 
         Box(modifier = Modifier.weight(1f)) {
+            // "Maps left" layout: a permanent Google Maps dock takes the left half
+            // and never leaves composition, so the window is placed once and
+            // swiping pages never touches it. Not while the OS itself has us in
+            // split-screen: half of a half is too small for either.
+            val mapsLeft = layout == DashLayout.MAPS_LEFT && !inSplitMode
+            Row(modifier = Modifier.fillMaxSize()) {
+            if (mapsLeft) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
+                ) {
+                    PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true)
+                }
+            }
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = !blockPagerSwipe,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.weight(1f).fillMaxHeight()
             ) { page ->
                 DashboardPage(
                     pageItems = pages[page],
@@ -451,6 +470,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     },
                     onAdd = { onAdd(page) }
                 )
+            }
             }
 
             // Floating swap button (bottom-centre), shown whenever the launcher
@@ -545,6 +565,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onSelect = {
                 themeMode = it
                 DashThemeStore.save(context, it)
+            },
+            layout = layout,
+            onLayout = {
+                layout = it
+                DashLayoutStore.save(context, it)
             },
             onDismiss = { showThemePicker = false }
         )

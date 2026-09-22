@@ -97,6 +97,29 @@ private val SportyPalette = DashPalette(
     BackgroundStops = listOf(Color(0xFF0D0F12), Color(0xFF07080A))
 )
 
+/** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
+enum class DashLayout(val title: String, val description: String) {
+    GRID("Dashboard only", "Swipeable pages fill the screen"),
+    MAPS_LEFT("Maps left, dashboard right", "Google Maps docked on the left half, pages swipe on the right")
+}
+
+object DashLayoutStore {
+    private const val PREFS = "dashboard_layout"
+    private const val KEY = "mode"
+
+    fun load(context: Context): DashLayout = runCatching {
+        DashLayout.valueOf(
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY, DashLayout.GRID.name) ?: DashLayout.GRID.name
+        )
+    }.getOrDefault(DashLayout.GRID)
+
+    fun save(context: Context, layout: DashLayout) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY, layout.name).apply()
+    }
+}
+
 object DashThemeStore {
     private const val PREFS = "dashboard_theme"
     private const val KEY = "mode"

@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,7 +31,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun DashThemePickerDialog(selected: DashThemeMode, onSelect: (DashThemeMode) -> Unit, onDismiss: () -> Unit) {
+fun DashThemePickerDialog(
+    selected: DashThemeMode,
+    onSelect: (DashThemeMode) -> Unit,
+    layout: DashLayout,
+    onLayout: (DashLayout) -> Unit,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
@@ -42,10 +51,37 @@ fun DashThemePickerDialog(selected: DashThemeMode, onSelect: (DashThemeMode) -> 
                 DashThemeMode.entries.forEach { mode ->
                     ThemeOption(mode, mode == selected) { onSelect(mode) }
                 }
+                Spacer(Modifier.size(8.dp))
+                Text("Layout", color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+                DashLayout.entries.forEach { l ->
+                    LayoutOption(l, l == layout) { onLayout(l) }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = DashColors.Accent) } }
     )
+}
+
+@Composable
+private fun LayoutOption(layout: DashLayout, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)
+            .background(DashColors.CardHi.copy(alpha = DashColors.CardHi.alpha * if (selected) 0.65f else 0.35f), shape)
+            .clickable(onClick = onClick).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (layout == DashLayout.MAPS_LEFT) Icons.Filled.Map else Icons.Filled.Dashboard,
+            contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(28.dp)
+        )
+        Spacer(Modifier.size(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(layout.title, color = DashColors.TextPrimary)
+            Text(layout.description, color = DashColors.TextSecondary)
+        }
+        if (selected) Icon(Icons.Filled.Check, contentDescription = "Selected", tint = DashColors.Accent)
+    }
 }
 
 @Composable

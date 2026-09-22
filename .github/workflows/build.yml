@@ -2,7 +2,10 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    # main publishes a release the in-app updater picks up; any other branch
+    # publishes a *pre-release* (ignored by the updater) for trying a branch on
+    # the head unit without merging it.
+    branches: [ '**' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -102,3 +105,16 @@ jobs:
           name: OpenAuto Dash v1.0.${{ github.run_number }}
           files: app/build/outputs/apk/release/app-release.apk
           body_path: ${{ runner.temp }}/release-notes.md
+
+      - name: Publish branch pre-release
+        if: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}-v1.0.${{ github.run_number }}
+          name: OpenAuto Dash v1.0.${{ github.run_number }} (${{ github.ref_name }})
+          prerelease: true
+          files: app/build/outputs/apk/release/app-release.apk
+          body: |
+            Test build of branch `${{ github.ref_name }}` at ${{ github.sha }}.
+            Signed with the release key, so it installs over the current version; a later
+            release from main will update over it again. The in-app updater ignores pre-releases.
