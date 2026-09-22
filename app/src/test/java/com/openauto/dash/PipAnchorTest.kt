@@ -139,4 +139,34 @@ class PipAnchorTest {
         val huge = PipAnchor.ScreenRect(0, 0, 640, 900)
         assertEquals(640, PipAnchor.keepInside(huge, area).bottom)
     }
+
+    @Test
+    fun windowListedBehindTheDashboardIsFlagged() {
+        val dash = """
+            Stack id=1 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=41: com.openauto.dash/com.openauto.dash.MainActivity bounds=[0,0][1280,720] userId=0 visible=true
+        """.trimIndent()
+        val maps = """
+            Stack id=7 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
+        """.trimIndent()
+        assertEquals(true, PipAnchor.parseFloatingWindow(dash + "\n" + maps)!!.behindDashboard)
+        assertEquals(false, PipAnchor.parseFloatingWindow(maps + "\n" + dash)!!.behindDashboard)
+    }
+
+    @Test
+    fun strayWindowsAreTheManagedOnesWithoutATile() {
+        val listing = """
+            Stack id=7 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
+            Stack id=8 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=64: com.google.android.apps.youtube.music/.MusicActivity bounds=[1276,80][1916,660] userId=0 visible=true
+        """.trimIndent()
+        val strays = PipAnchor.strayWindows(listing, managed = setOf("com.google.android.apps.maps", "com.google.android.apps.youtube.music"), active = setOf("com.google.android.apps.maps"))
+        assertEquals(listOf(8), strays.map { it.stackId })
+    }
 }

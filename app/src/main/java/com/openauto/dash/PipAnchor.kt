@@ -95,6 +95,21 @@ object PipAnchor {
     val dockedPackages = MutableStateFlow<Set<String>>(emptySet())
     private val freeformNow = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
+    /** Packages a tile has ever tracked in this process, and those with a tile on screen right now. */
+    private val managed = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val activeTiles = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /** Managed freeform windows whose tile is not on screen: they should not exist. */
+    internal fun strayWindows(listing: String, managed: Set<String>, active: Set<String>): List<FloatingWindow> =
+        allFloatingWindows(listing).filter { it.mode == "freeform" && it.packageName in managed && it.packageName !in active }
+
+    private suspend fun closeStrays(context: Context, listing: String) {
+        for (stray in strayWindows(listing, managed, activeTiles)) {
+            val out = runCatching { shell(context, "am stack remove ${stray.stackId}") }.getOrElse { "failed: ${it.message}" }
+            Log.i(TAG, "closed stray ${stray.packageName} window (no tile on screen): ${out.trim()}")
+        }
+    }
+
     private fun noteFreeform(packageName: String, present: Boolean) {
         if (present) freeformNow.add(packageName) else freeformNow.remove(packageName)
         dockedPackages.value = freeformNow.toSet()
@@ -170,7 +185,9 @@ object PipAnchor {
         val bounds: ScreenRect?,
         val mode: String,
         /** False when another stack (e.g. the dashboard's) covers it. */
-        val visible: Boolean = true
+        val visible: Boolean = true,
+        /** True when the dashboard's own stack is listed in front of this one (partly covering it). */
+        val behindDashboard: Boolean = false
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -186,8 +203,14 @@ object PipAnchor {
         var lastStack: Int? = null
         var lastResult: String? = null
         val status = statusFlow(packageName)
+        managed.add(packageName)
+        activeTiles.add(packageName)
+        try {
         while (true) {
             val lookup = runCatching { findFloatingWindow(context, packageName) }
+            // Safety net: a window whose tile left the screen but which a missed
+            // hide() left behind (e.g. parked aside for a swipe) is closed here.
+            lastListing?.let { runCatching { closeStrays(context, it) } }
             val win = lookup.getOrNull()
             if (lookup.isFailure) {
                 publishError(packageName, lookup.exceptionOrNull()!!)
@@ -214,7 +237,7 @@ object PipAnchor {
                 if (win.mode == "freeform") {
                     // Behind the dashboard (we came back to this page, or the user
                     // touched the dashboard before focus was declined): raise it.
-                    if (!win.visible) {
+                    if (!win.visible || win.behindDashboard) {
                         Log.i(TAG, "raising $packageName above the dashboard")
                         if (!bringToFront(context, win.taskId)) {
                             lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
@@ -250,6 +273,9 @@ object PipAnchor {
                 }
             }
             delay(POLL_MS)
+        }
+        } finally {
+            activeTiles.remove(packageName)
         }
     }
 
@@ -431,6 +457,25 @@ object PipAnchor {
         }
     }
 
+    /**
+     * Closes every managed window whose app is not in [keep]. Called the moment
+     * the pager's current page changes, so a window leaves with the swipe
+     * instead of a few seconds later when the old page is finally disposed.
+     */
+    fun closeAllExcept(context: Context, keep: Set<String>) {
+        scope.launch {
+            val listing = runCatching { shell(context, "am stack list") }.getOrNull() ?: return@launch
+            for (win in allFloatingWindows(listing, context.packageName)) {
+                if (win.mode != "freeform" || win.packageName !in managed || win.packageName in keep) continue
+                setAutoOpen(context, true, win.packageName)
+                noteFreeform(win.packageName, false)
+                val out = runCatching { shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
+                Log.i(TAG, "closed ${win.packageName} on page change: ${out.trim()}")
+            }
+            closeConnection()
+        }
+    }
+
     /** Back on screen: let [track] reopen the app at once instead of waiting out the cooldown. */
     fun expectReturn(packageName: String) {
         lastReopenAt.remove(packageName)
@@ -580,8 +625,19 @@ object PipAnchor {
      * and the Home stack are never candidates.
      */
     internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash", packageName: String? = null): FloatingWindow? {
+        val found = allFloatingWindows(output, selfPackage).filter { packageName == null || it.packageName == packageName }
+        // A freeform window carries the full app UI; prefer it over a PiP.
+        return found.firstOrNull { it.mode == "freeform" } ?: found.firstOrNull()
+    }
+
+    /** Every pinned or freeform window in the listing, front to back, ours excluded. */
+    internal fun allFloatingWindows(output: String, selfPackage: String = "com.openauto.dash"): List<FloatingWindow> {
         val found = mutableListOf<FloatingWindow>()
-        for (block in stackBlocks(output)) {
+        // `am stack list` is ordered front to back: the dashboard's own stack
+        // appearing before the window's means the dashboard is drawn over it.
+        val blocks = stackBlocks(output)
+        val selfIndex = blocks.indexOfFirst { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+        for ((index, block) in blocks.withIndex()) {
             val mode = windowingMode(block) ?: continue
             if (mode != "pinned" && mode != "freeform") continue
             if (block.contains("ActivityType=home")) continue
@@ -589,17 +645,16 @@ object PipAnchor {
             val task = TASK.find(block) ?: continue
             val pkg = task.groupValues[2]
             if (pkg == selfPackage) continue
-            if (packageName != null && pkg != packageName) continue
             // The stack's own bounds line comes first and, for freeform, spans
             // the whole display; the window's bounds are on the task line.
             val taskLine = block.substring(task.range.first).lineSequence().first()
             val b = (BOUNDS.find(taskLine) ?: BOUNDS.find(block))?.groupValues
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
             val visible = !taskLine.contains("visible=false")
-            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible)
+            val behind = selfIndex in 0 until index
+            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible, behind)
         }
-        // A freeform window carries the full Maps UI; prefer it over a PiP.
-        return found.firstOrNull { it.mode == "freeform" } ?: found.firstOrNull()
+        return found
     }
 
     /** "mode package" per stack, for the tile's diagnostic line. */

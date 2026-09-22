@@ -177,6 +177,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         launchBarEditor != null
     val stepAside = modalOpen || pagerState.isScrollInProgress
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
+
+    // As soon as the current page changes (mid-swipe), close the windows whose
+    // tile is not on the new page; waiting for the old page to be disposed left
+    // a strip of the window visible for a few seconds after the swipe.
+    LaunchedEffect(pagerState.currentPage, pages, layout) {
+        val onPage = pages.getOrNull(pagerState.currentPage).orEmpty().mapNotNull {
+            when {
+                it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
+                it is DashboardItem.AppWindow -> it.packageName
+                else -> null
+            }
+        }.toSet() + (if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet())
+        PipAnchor.closeAllExcept(context, onPage)
+    }
     var rootChecked by remember { mutableStateOf(false) }
     var rootAvailable by remember { mutableStateOf(false) }
     var systemBusy by remember { mutableStateOf(false) }
