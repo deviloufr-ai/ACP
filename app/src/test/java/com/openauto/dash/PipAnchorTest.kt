@@ -98,4 +98,14 @@ class PipAnchorTest {
         assertEquals(PipAnchor.ScreenRect(432, 73, 954, 683), win.bounds)
         assertEquals(513, win.taskId)
     }
+
+    @Test
+    fun hiddenWindowIsReportedAsNotVisible() {
+        val listing = """
+            Stack id=9 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=513: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[432,73][954,683] userId=0 visible=false
+        """.trimIndent()
+        assertEquals(false, PipAnchor.parseFloatingWindow(listing)!!.visible)
+    }
 }

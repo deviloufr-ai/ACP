@@ -100,7 +100,9 @@ object PipAnchor {
         val taskId: Int?,
         val packageName: String,
         val bounds: ScreenRect?,
-        val mode: String
+        val mode: String,
+        /** False when another stack (e.g. the dashboard's) covers it. */
+        val visible: Boolean = true
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -124,6 +126,7 @@ object PipAnchor {
             } else if (win == null) {
                 _status.value = Status(seen = lastSeen)
                 attempts = 0; lastStack = null
+                setDashboardFocusable(context, true)
                 val now = System.currentTimeMillis()
                 if (autoOpen(context) && now - lastReopenAt > REOPEN_COOLDOWN_MS) {
                     lastReopenAt = now
@@ -135,6 +138,17 @@ object PipAnchor {
                 if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
                 val docked = win.bounds?.let { isClose(it, rect) } == true
                 if (docked) attempts = 0
+                if (win.mode == "freeform") {
+                    // Behind the dashboard (we came back to this page, or the user
+                    // touched the dashboard before focus was declined): raise it.
+                    if (!win.visible) {
+                        Log.i(TAG, "raising Maps above the dashboard")
+                        if (!bringToFront(context, win.taskId)) {
+                            lastResult = "failed: could not raise Maps (task ${win.taskId})"
+                        }
+                    }
+                    setDashboardFocusable(context, false)
+                }
                 _status.value = Status(
                     pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
@@ -177,6 +191,49 @@ object PipAnchor {
                 Log.i(TAG, "cleared policy_control ('$current')")
             }
         }.onFailure { Log.w(TAG, "could not check status-bar policy", it) }
+    }
+
+    // --- Keeping the docked window in front ---------------------------------
+    //
+    // Touching the dashboard normally brings its window above the floating Maps
+    // window, which is why Maps "disappeared" on every touch. A window that
+    // declines key focus (FLAG_NOT_FOCUSABLE) still gets touches but is never
+    // raised by them, so the dashboard declines focus while Maps is docked and
+    // takes it back when the window is gone. Side effect: no on-screen keyboard
+    // for the dashboard while Maps is docked on the visible page.
+
+    private var focusDeclined = false
+
+    private suspend fun setDashboardFocusable(context: Context, focusable: Boolean) {
+        val activity = context.findActivity() ?: return
+        if (focusable != focusDeclined) return
+        focusDeclined = !focusable
+        withContext(Dispatchers.Main) {
+            val flag = android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            if (focusable) activity.window.clearFlags(flag) else activity.window.addFlags(flag)
+        }
+        Log.i(TAG, if (focusable) "dashboard takes focus again" else "dashboard declines focus while Maps is docked")
+    }
+
+    private fun dashboardTaskId(context: Context): Int? = context.findActivity()?.taskId
+
+    /** Raises a task; needs the normal REORDER_TASKS permission and a foreground caller, both true here. */
+    private fun bringToFront(context: Context, taskId: Int?): Boolean {
+        taskId ?: return false
+        return runCatching {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            am.moveTaskToFront(taskId, android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION)
+            true
+        }.onFailure { Log.w(TAG, "moveTaskToFront($taskId) failed", it) }.getOrDefault(false)
+    }
+
+    private fun Context.findActivity(): android.app.Activity? {
+        var c: Context? = this
+        while (c is android.content.ContextWrapper) {
+            if (c is android.app.Activity) return c
+            c = c.baseContext
+        }
+        return null
     }
 
     /** Give up after this many placement attempts per window, so we never fight SystemUI forever. */
@@ -242,9 +299,21 @@ object PipAnchor {
         scope.launch {
             val stack = runCatching { findFloatingWindow(context) }.getOrNull() ?: return@launch
             if (stack.mode == "freeform") {
-                val out = runCatching { shell(context, "am stack remove ${stack.stackId}") }
-                    .getOrElse { "failed: ${it.message}" }
-                Log.i(TAG, "closed freeform ${stack.packageName}: ${out.trim()}")
+                // Put the dashboard above the window instead of closing it: instant,
+                // and Maps keeps its state. Works when the dashboard runs as an
+                // ordinary task; as the Home task it stays at the bottom of the
+                // z-order, so if Maps is still visible afterwards, close it.
+                setDashboardFocusable(context, true)
+                bringToFront(context, dashboardTaskId(context))
+                delay(400)
+                val after = runCatching { findFloatingWindow(context) }.getOrNull()
+                if (after != null && after.visible) {
+                    val out = runCatching { shell(context, "am stack remove ${after.stackId}") }
+                        .getOrElse { "failed: ${it.message}" }
+                    Log.i(TAG, "dashboard could not cover Maps; closed it: ${out.trim()}")
+                } else {
+                    Log.i(TAG, "Maps window now behind the dashboard")
+                }
             } else {
                 val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4
@@ -389,7 +458,8 @@ object PipAnchor {
             val taskLine = block.substring(task.range.first).lineSequence().first()
             val b = (BOUNDS.find(taskLine) ?: BOUNDS.find(block))?.groupValues
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
-            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode)
+            val visible = !taskLine.contains("visible=false")
+            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible)
         }
         // A freeform window carries the full Maps UI; prefer it over a PiP.
         return found.firstOrNull { it.mode == "freeform" } ?: found.firstOrNull()
@@ -441,10 +511,11 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> started = true
-                // Another app took the whole screen: close the window so it does
-                // not float over that app; it reopens when the dashboard is back.
-                // (Touching the Maps window only *pauses* the launcher: not this.)
-                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.hide(context) }
+                // Another app took the whole screen: its task covers Maps, so there
+                // is nothing to hide; coming back, track() raises Maps again. Just
+                // stop polling meanwhile. (Touching the Maps window only *pauses*
+                // the launcher, which must not hide anything either.)
+                Lifecycle.Event.ON_STOP -> started = false
                 else -> Unit
             }
         }

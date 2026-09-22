@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <!-- Raise / lower the docked Google Maps window relative to the dashboard (normal permission) -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+
     <!-- Permission to bind real app widgets -->
     <uses-permission android:name="android.permission.BIND_APPWIDGET" tools:ignore="ProtectedPermissions" />
 
