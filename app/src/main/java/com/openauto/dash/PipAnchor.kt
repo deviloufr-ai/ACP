@@ -136,7 +136,9 @@ object PipAnchor {
                     attempts++
                     // Stack commands first; if the system keeps ignoring them,
                     // drag the window the way a finger would.
-                    val useSwipe = attempts >= 3 && win.bounds != null
+                    // Only when the system *refused* the commands: a swipe cannot
+                    // resize, and its initial touch makes the PiP expand.
+                    val useSwipe = attempts >= 3 && win.bounds != null && lastResult?.startsWith("failed") == true
                     val result = runCatching {
                         if (useSwipe) swipeTo(context, win.bounds!!, rect) else resize(context, win, rect)
                     }
@@ -212,7 +214,10 @@ object PipAnchor {
     }
 
     private suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String {
-        val bounds = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
+        // `am stack resize` / `am task resize` read LEFT TOP RIGHT BOTTOM as four
+        // separate arguments (the help text's "L,T,R,B" is wrong: a comma-joined
+        // value fails with NumberFormatException, confirmed on the head unit).
+        val bounds = "${rect.left} ${rect.top} ${rect.right} ${rect.bottom}"
         val attempts = if (win.mode == "pinned") {
             // Android 10/11 accept both; the animated form is nicer when present.
             listOf("am stack resize-animated ${win.stackId} $bounds", "am stack resize ${win.stackId} $bounds")
