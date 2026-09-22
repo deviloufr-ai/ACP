@@ -217,6 +217,9 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) { mv ->
             mv.getMapAsync { map ->
                 mapRef = map
+                // No MapLibre wordmark on the dashboard. The attribution (i)
+                // stays: the CARTO / OpenStreetMap tile terms require it.
+                map.uiSettings.isLogoEnabled = false
                 map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
                     add3dBuildings(style)
                     if (hasLocation) enableLocation(map, style, context, scope)

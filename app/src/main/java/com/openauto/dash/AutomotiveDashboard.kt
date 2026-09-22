@@ -6,6 +6,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.provider.Settings
@@ -13,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -51,10 +53,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
@@ -105,10 +110,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -122,11 +134,15 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
@@ -408,13 +424,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DashColors.Background)
+            .then(dashBackground())
     ) {
         TopBar(
             currentPage = pagerState.currentPage,
             clock = clock,
             versionName = updateManager.currentVersionName,
             obdConnection = obdConnection,
+            obdData = obdData,
             editing = editing,
             onApps = { showAllApps = true },
             onMaps = { SplitLauncher.launchSplit(context, "com.google.android.apps.maps") },
@@ -684,6 +701,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP))
                     }
+                    AddChoiceRow(Icons.Filled.Directions, BuiltinKind.NAVIGATION.label) {
+                        showWidgetMenu = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.NAVIGATION, w = 4, h = 3))
+                    }
                     AddChoiceRow(Icons.Filled.MusicNote, BuiltinKind.MEDIA.label) {
                         showWidgetMenu = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(BuiltinKind.MEDIA))
@@ -818,6 +839,7 @@ private fun TopBar(
     clock: String,
     versionName: String,
     obdConnection: ObdConnectionState,
+    obdData: ObdData,
     editing: Boolean,
     onApps: () -> Unit,
     onMaps: () -> Unit,
@@ -826,10 +848,17 @@ private fun TopBar(
     onTheme: () -> Unit,
     onSystem: () -> Unit
 ) {
-    Surface(color = DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
+    // Glass themes float the bar as its own panel over the gradient background;
+    // solid themes keep the flat full-width strip.
+    val glass = DashColors.Glass
+    Surface(color = if (glass) Color.Transparent else DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (glass) Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp).then(glassPanel(RoundedCornerShape(20.dp)))
+                    else Modifier
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -840,6 +869,7 @@ private fun TopBar(
                     containerColor = DashColors.CardHi,
                     contentColor = DashColors.TextPrimary
                 ),
+                border = if (glass) BorderStroke(1.dp, DashColors.Line) else null,
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Filled.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -847,35 +877,64 @@ private fun TopBar(
                 Text("Apps")
             }
 
-            Text(
-                text = "Dashboard ${currentPage + 1}",
-                color = DashColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleMedium
-            )
+            // Brand block: wordmark over the page / version line, like the mockup.
+            Column {
+                Text(
+                    text = "OPENAUTO DASH",
+                    color = DashColors.TextPrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.2.em,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = "Dashboard ${currentPage + 1} · v$versionName",
+                    color = DashColors.Muted,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 
-            val dotColor = when (obdConnection) {
-                ObdConnectionState.CONNECTED -> DashColors.Good
-                ObdConnectionState.CONNECTING -> DashColors.Speed
-                ObdConnectionState.ERROR -> DashColors.Warning
-                ObdConnectionState.DISCONNECTED -> DashColors.Muted
-            }
-            Icon(
-                imageVector = if (obdConnection == ObdConnectionState.CONNECTED) {
-                    Icons.Filled.BluetoothConnected
-                } else {
-                    Icons.Filled.Bluetooth
-                },
-                contentDescription = null,
-                tint = dotColor,
-                modifier = Modifier.size(16.dp)
+            Text(
+                text = clock,
+                color = DashColors.TextPrimary,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.02).em,
+                style = MaterialTheme.typography.titleLarge
             )
-            Column(horizontalAlignment = Alignment.End) {
-                Text(clock, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
-                Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.width(4.dp))
+
+            // Live status chips: OBD link, then battery and coolant while connected.
+            val connected = obdConnection == ObdConnectionState.CONNECTED
+            StatusChip(
+                label = "OBD",
+                value = when (obdConnection) {
+                    ObdConnectionState.CONNECTED -> "Connected"
+                    ObdConnectionState.CONNECTING -> "Connecting"
+                    ObdConnectionState.ERROR -> "Error"
+                    ObdConnectionState.DISCONNECTED -> "Off"
+                },
+                dot = when (obdConnection) {
+                    ObdConnectionState.CONNECTED -> DashColors.Good
+                    ObdConnectionState.CONNECTING -> DashColors.Speed
+                    ObdConnectionState.ERROR -> DashColors.Warning
+                    ObdConnectionState.DISCONNECTED -> DashColors.Muted
+                },
+                good = connected
+            )
+            if (connected) {
+                StatusChip(
+                    label = "Battery",
+                    value = "%.1fV".format(obdData.voltage),
+                    icon = Icons.Filled.BatteryStd
+                )
+                StatusChip(
+                    label = "Coolant",
+                    value = "${obdData.coolantTempC}°C",
+                    icon = Icons.Filled.Thermostat
+                )
             }
+            Spacer(Modifier.width(4.dp))
 
             IconButton(onClick = onMaps) {
                 Icon(
@@ -920,6 +979,61 @@ private fun TopBar(
     }
 }
 
+/** Top-bar status pill: a coloured dot or icon, a muted label and a bold value. */
+@Composable
+private fun StatusChip(
+    label: String,
+    value: String,
+    dot: Color? = null,
+    icon: ImageVector? = null,
+    good: Boolean = false
+) {
+    val shape = RoundedCornerShape(999.dp)
+    val fill: Brush = if (good) {
+        Brush.horizontalGradient(listOf(DashColors.Good.copy(alpha = 0.20f), DashColors.Accent.copy(alpha = 0.12f)))
+    } else if (DashColors.Glass) {
+        SolidColor(Color.White.copy(alpha = 0.05f))
+    } else SolidColor(DashColors.CardHi)
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, if (good) DashColors.Good.copy(alpha = 0.35f) else DashColors.Line, shape)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (dot != null) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .drawBehind {
+                        if (good) drawCircle(color = dot.copy(alpha = 0.45f), radius = size.minDimension)
+                    }
+                    .clip(CircleShape)
+                    .background(dot)
+            )
+            Spacer(Modifier.width(8.dp))
+        } else if (icon != null) {
+            Icon(icon, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            label,
+            color = if (good) DashColors.Good else DashColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            value,
+            color = if (good) DashColors.Good else DashColors.TextPrimary,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+    }
+}
+
 @Composable
 private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
     Row(
@@ -932,10 +1046,10 @@ private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
         repeat(count) { index ->
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 5.dp)
-                    .size(if (index == current) 11.dp else 8.dp)
+                    .padding(horizontal = 4.dp)
+                    .size(width = if (index == current) 22.dp else 8.dp, height = 8.dp)
                     .clip(CircleShape)
-                    .background(if (index == current) DashColors.Accent else DashColors.CardHi)
+                    .background(if (index == current) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
                     .clickable { onSelect(index) }
             )
         }
@@ -1285,7 +1399,22 @@ private fun TileContent(
                 modifier = Modifier.fillMaxSize().background(DashColors.Card)
             ) {
                 MapLibrePanel(modifier = Modifier.fillMaxSize())
+                // Google Maps / Waze next turn, floated over the MapLibre map.
+                val nav by NavDirections.state.collectAsState()
+                if (nav.active) {
+                    DirectionsBanner(
+                        nav = nav,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(horizontal = 10.dp, vertical = 10.dp)
+                    )
+                }
             }
+            BuiltinKind.NAVIGATION -> DirectionsCard(
+                hasAccess = hasMediaAccess,
+                context = context,
+                modifier = Modifier.fillMaxSize()
+            )
             BuiltinKind.MEDIA -> MediaCard(
                 mediaState = mediaState,
                 controller = mediaController,
@@ -1366,7 +1495,8 @@ private fun AppShortcutTile(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(DashColors.CardHi),
+                .background(DashColors.CardHi)
+                .border(1.dp, DashColors.Line, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (app != null) {
@@ -1641,6 +1771,14 @@ private fun MediaCard(
         (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
     } else 0f
 
+    val art = mediaState.artwork
+    val accent = DashColors.Accent
+    val accent2 = DashColors.Accent2
+    val glow = DashColors.Glow
+    // The cover's dominant colour bleeds out beneath it, like light off a screen.
+    val bleed = remember(art, accent) { art?.averageColor() ?: accent }
+    val artShape = RoundedCornerShape(20.dp)
+
     Card(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -1651,12 +1789,23 @@ private fun MediaCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(DashColors.CardHi),
+                        .size(88.dp)
+                        .drawBehind {
+                            val c = Offset(size.width * 0.5f, size.height * 0.8f)
+                            val r = size.maxDimension * 1.05f
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    listOf(bleed.copy(alpha = 0.25f + 0.35f * glow), Color.Transparent),
+                                    center = c, radius = r
+                                ),
+                                radius = r, center = c
+                            )
+                        }
+                        .clip(artShape)
+                        .background(Brush.linearGradient(listOf(accent, accent2)))
+                        .border(1.dp, Color.White.copy(alpha = 0.22f), artShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    val art = mediaState.artwork
                     if (art != null) {
                         Image(
                             bitmap = art.asImageBitmap(),
@@ -1668,19 +1817,43 @@ private fun MediaCard(
                         Icon(
                             imageVector = Icons.Filled.MusicNote,
                             contentDescription = null,
-                            tint = DashColors.TextSecondary,
-                            modifier = Modifier.size(38.dp)
+                            tint = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier.size(42.dp)
                         )
                     }
+                    // Glossy sheen over the top-left corner.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color.White.copy(alpha = 0.28f), Color.Transparent),
+                                    start = Offset.Zero,
+                                    end = Offset(240f, 240f)
+                                )
+                            )
+                    )
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "NOW PLAYING",
-                        color = DashColors.Accent,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (mediaState.isPlaying) {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(DashColors.Good)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = "NOW PLAYING",
+                            color = DashColors.Accent,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = when {
@@ -1695,7 +1868,7 @@ private fun MediaCard(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = mediaState.artist.ifBlank { if (hasAccess) "—" else "Tap to enable" },
+                        text = mediaState.artist.ifBlank { if (hasAccess) "\u2014" else "Tap to enable" },
                         color = DashColors.TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1706,20 +1879,10 @@ private fun MediaCard(
 
             if (hasAccess) {
                 if (mediaState.durationMs > 0L) {
-                    Spacer(Modifier.height(14.dp))
-                    LinearProgressIndicator(
-                        progress = { fraction },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(CircleShape),
-                        color = DashColors.Accent,
-                        trackColor = DashColors.CardHi
-                    )
+                    Spacer(Modifier.height(10.dp))
+                    MediaProgress(fraction = fraction)
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(formatTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
@@ -1734,38 +1897,29 @@ private fun MediaCard(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { controller.previous() }, modifier = Modifier.size(56.dp)) {
-                        Icon(
-                            imageVector = Icons.Filled.SkipPrevious,
-                            contentDescription = "Previous",
-                            tint = DashColors.TextPrimary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    FilledIconButton(
-                        onClick = { controller.playPause() },
-                        modifier = Modifier.size(68.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = DashColors.Accent,
-                            contentColor = DashColors.Background
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (mediaState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = "Play/Pause",
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    IconButton(onClick = { controller.next() }, modifier = Modifier.size(56.dp)) {
-                        Icon(
-                            imageVector = Icons.Filled.SkipNext,
-                            contentDescription = "Next",
-                            tint = DashColors.TextPrimary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
+                    GlassRoundButton(
+                        icon = Icons.Filled.SkipPrevious,
+                        contentDescription = "Previous",
+                        size = 52.dp,
+                        iconSize = 30.dp,
+                        onClick = { controller.previous() }
+                    )
+                    Spacer(Modifier.width(18.dp))
+                    GradientRoundButton(
+                        icon = if (mediaState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        size = 70.dp,
+                        iconSize = 38.dp,
+                        onClick = { controller.playPause() }
+                    )
+                    Spacer(Modifier.width(18.dp))
+                    GlassRoundButton(
+                        icon = Icons.Filled.SkipNext,
+                        contentDescription = "Next",
+                        size = 52.dp,
+                        iconSize = 30.dp,
+                        onClick = { controller.next() }
+                    )
                 }
             } else {
                 Spacer(Modifier.height(14.dp))
@@ -1773,7 +1927,7 @@ private fun MediaCard(
                     onClick = { CarMediaController.openNotificationAccessSettings(context) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DashColors.Accent,
-                        contentColor = DashColors.Background
+                        contentColor = DashColors.OnAccent
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1781,6 +1935,110 @@ private fun MediaCard(
                 }
             }
         }
+    }
+}
+
+/** Seek bar: recessed track, accent-gradient fill with a glow, bright knob at the playhead. */
+@Composable
+private fun MediaProgress(fraction: Float, modifier: Modifier = Modifier) {
+    val accent = DashColors.Accent
+    val accent2 = DashColors.Accent2
+    val glow = DashColors.Glow
+    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else DashColors.CardHi
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(16.dp)
+    ) {
+        val h = 5.dp.toPx()
+        val y = size.height / 2f
+        val r = h / 2f
+        drawRoundRect(
+            color = track,
+            topLeft = Offset(0f, y - r),
+            size = Size(size.width, h),
+            cornerRadius = CornerRadius(r)
+        )
+        val w = size.width * fraction.coerceIn(0f, 1f)
+        if (w > 0f) {
+            if (glow > 0f) {
+                drawRoundRect(
+                    color = accent.copy(alpha = 0.30f * glow),
+                    topLeft = Offset(0f, y - h),
+                    size = Size(w, h * 2f),
+                    cornerRadius = CornerRadius(h)
+                )
+            }
+            drawRoundRect(
+                brush = Brush.horizontalGradient(listOf(accent, accent2), endX = size.width),
+                topLeft = Offset(0f, y - r),
+                size = Size(w, h),
+                cornerRadius = CornerRadius(r)
+            )
+        }
+        drawCircle(color = accent.copy(alpha = 0.35f), radius = 8.dp.toPx(), center = Offset(w, y))
+        drawCircle(color = Color.White, radius = 5.dp.toPx(), center = Offset(w, y))
+    }
+}
+
+/** Secondary round control: frosted disc with a hairline rim. */
+@Composable
+private fun GlassRoundButton(
+    icon: ImageVector,
+    contentDescription: String,
+    size: Dp,
+    iconSize: Dp,
+    onClick: () -> Unit
+) {
+    val fill: Brush = if (DashColors.Glass) {
+        Brush.linearGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.05f)))
+    } else SolidColor(DashColors.CardHi)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(fill)
+            .border(1.dp, DashColors.Line, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = DashColors.TextPrimary, modifier = Modifier.size(iconSize))
+    }
+}
+
+/** Primary round control: accent-gradient disc with a halo that scales with the theme's glow. */
+@Composable
+private fun GradientRoundButton(
+    icon: ImageVector,
+    contentDescription: String,
+    size: Dp,
+    iconSize: Dp,
+    onClick: () -> Unit
+) {
+    val accent = DashColors.Accent
+    val glow = DashColors.Glow
+    Box(
+        modifier = Modifier
+            .size(size)
+            .drawBehind {
+                if (glow > 0f) {
+                    val r = this.size.minDimension * 0.85f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(accent.copy(alpha = 0.45f * glow), Color.Transparent),
+                            center = center, radius = r
+                        ),
+                        radius = r
+                    )
+                }
+            }
+            .clip(CircleShape)
+            .background(DashColors.AccentBrush)
+            .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = DashColors.OnAccent, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -1794,108 +2052,494 @@ private fun ObdCard(
 ) {
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            // Header: title + live connection status / connect button.
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+            // Short tiles drop the secondary chips; tall tiles stack the RPM bar
+            // and chips under the gauge instead of beside it.
+            val compact = maxHeight < 250.dp
+            val stacked = maxWidth < maxHeight * 1.15f
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header: title + live connection status / connect button.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "TELEMETRY",
+                        color = DashColors.Accent,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    if (connected) {
+                        TextButton(onClick = onPickDevice, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(DashColors.Good)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Live", color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
+                        }
+                    } else {
+                        Button(
+                            onClick = onConnect,
+                            enabled = connection != ObdConnectionState.CONNECTING,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DashColors.Accent,
+                                contentColor = DashColors.OnAccent
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (connection == ObdConnectionState.CONNECTING) "\u2026" else "Connect")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                val gauge: @Composable (Modifier) -> Unit = { m ->
+                    AnalogGauge(
+                        value = if (connected) obdData.speedKmh.toFloat() else 0f,
+                        maxValue = 220f,
+                        valueText = if (connected) obdData.speedKmh.toString() else "--",
+                        label = "SPEED",
+                        unit = "km/h",
+                        accent = DashColors.Speed,
+                        redlineAccent = DashColors.Warning,
+                        redlineFraction = SPEED_WARNING_KMH / 220f,
+                        dimmed = !connected,
+                        majorTicks = 12,
+                        hero = true,
+                        modifier = m
+                    )
+                }
+                val rpm: @Composable (Modifier) -> Unit = { m ->
+                    RpmBar(rpm = obdData.rpm, maxRpm = 7000f, dimmed = !connected, modifier = m)
+                }
+                val chips: @Composable (Modifier) -> Unit = { m ->
+                    MeterChip(
+                        label = "Coolant",
+                        valueText = if (connected) "${obdData.coolantTempC}\u00b0" else "--",
+                        fraction = (obdData.coolantTempC / 120f),
+                        color = coolantColor(obdData.coolantTempC),
+                        dimmed = !connected,
+                        modifier = m
+                    )
+                    MeterChip(
+                        label = "Load",
+                        valueText = if (connected) "${obdData.engineLoadPct}%" else "--",
+                        fraction = obdData.engineLoadPct / 100f,
+                        color = DashColors.Accent,
+                        dimmed = !connected,
+                        modifier = m
+                    )
+                    MeterChip(
+                        label = "Battery",
+                        valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
+                        fraction = ((obdData.voltage - 11.0) / 4.0).toFloat(),
+                        color = if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning,
+                        dimmed = !connected,
+                        modifier = m
+                    )
+                }
+
+                if (stacked) {
+                    gauge(Modifier.weight(1f).fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    rpm(Modifier.fillMaxWidth())
+                    if (!compact) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) { chips(Modifier.weight(1f)) }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        gauge(Modifier.weight(1.25f).fillMaxHeight())
+                        Spacer(Modifier.width(12.dp))
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+                        ) {
+                            rpm(Modifier.fillMaxWidth())
+                            if (!compact) chips(Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Horizontal rev bar: green through the accent into red at the redline, with a
+ * glow underlay on glowing themes and a marker at the redline.
+ */
+@Composable
+private fun RpmBar(
+    rpm: Int,
+    maxRpm: Float,
+    dimmed: Boolean,
+    modifier: Modifier = Modifier,
+    redlineFraction: Float = 0.82f
+) {
+    val frac by animateFloatAsState(
+        targetValue = if (dimmed) 0f else (rpm / maxRpm).coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 400),
+        label = "rpmBar"
+    )
+    val good = DashColors.Good
+    val accent = DashColors.Accent
+    val warning = DashColors.Warning
+    val glow = DashColors.Glow
+    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else DashColors.Background
+    val overRedline = frac >= redlineFraction
+
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("RPM", color = DashColors.TextSecondary, letterSpacing = 1.5.sp, style = MaterialTheme.typography.labelSmall)
+            Text(
+                text = if (dimmed) "--" else rpm.toString(),
+                color = if (dimmed) DashColors.Muted else if (overRedline) warning else DashColors.Rpm,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+        ) {
+            val h = size.height
+            val corner = CornerRadius(h / 2f)
+            drawRoundRect(color = track, size = size, cornerRadius = corner)
+            val w = size.width * frac
+            if (w > 0f) {
+                val fill = Brush.horizontalGradient(listOf(good, accent, warning), endX = size.width)
+                if (glow > 0f) {
+                    drawRoundRect(
+                        brush = fill,
+                        topLeft = Offset(0f, -h * 0.6f),
+                        size = Size(w, h * 2.2f),
+                        cornerRadius = CornerRadius(h),
+                        alpha = 0.30f * glow
+                    )
+                }
+                drawRoundRect(brush = fill, size = Size(w, h), cornerRadius = corner)
+            }
+            // Redline marker.
+            val rx = size.width * redlineFraction
+            drawLine(
+                color = warning.copy(alpha = 0.7f),
+                start = Offset(rx, -2f),
+                end = Offset(rx, h + 2f),
+                strokeWidth = 2f,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+// --- Directions (Google Maps / Waze next turn) --------------------------------
+
+private const val GOOGLE_MAPS_PACKAGE = "com.google.android.apps.maps"
+
+/** Opens the navigation app that is driving [nav] (or Google Maps) beside the dashboard. */
+private fun openNavigationApp(context: Context, nav: NavState) {
+    SplitLauncher.launchSplit(context, nav.packageName.ifEmpty { GOOGLE_MAPS_PACKAGE })
+}
+
+/**
+ * Dashboard tile showing the next manoeuvre from Google Maps / Waze: the turn
+ * glyph on a glowing disc, the distance in hero numerals, the street, and the
+ * ETA line as chips. Tapping it brings the navigation app up beside the
+ * dashboard. Needs the same Notification access grant as the music player.
+ */
+@Composable
+private fun DirectionsCard(
+    hasAccess: Boolean,
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    val nav by NavDirections.state.collectAsState()
+    val glow = DashColors.Glow
+    val accent = DashColors.Accent
+
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable {
+                    if (hasAccess) openNavigationApp(context, nav)
+                    else CarMediaController.openNotificationAccessSettings(context)
+                }
+                .padding(14.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "TELEMETRY",
+                    "DIRECTIONS",
                     color = DashColors.Accent,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
                     style = MaterialTheme.typography.labelMedium
                 )
-                if (connected) {
-                    TextButton(onClick = onPickDevice, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Icon(Icons.Filled.BluetoothConnected, null, tint = DashColors.Good, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Live", color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    Button(
-                        onClick = onConnect,
-                        enabled = connection != ObdConnectionState.CONNECTING,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DashColors.Accent,
-                            contentColor = DashColors.Background
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (connection == ObdConnectionState.CONNECTING) "…" else "Connect")
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (nav.active) DashColors.Good else DashColors.Muted)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = when {
+                            nav.active && nav.packageName == "com.waze" -> "Waze"
+                            nav.active -> "Google Maps"
+                            else -> "No route"
+                        },
+                        color = if (nav.active) DashColors.Good else DashColors.Muted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // The two racing gauges fill most of the card, side by side.
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AnalogGauge(
-                    value = if (connected) obdData.speedKmh.toFloat() else 0f,
-                    maxValue = 220f,
-                    valueText = if (connected) obdData.speedKmh.toString() else "--",
-                    label = "SPEED",
-                    unit = "km/h",
-                    accent = DashColors.Speed,
-                    redlineAccent = DashColors.Warning,
-                    redlineFraction = SPEED_WARNING_KMH / 220f,
-                    dimmed = !connected,
-                    modifier = Modifier.weight(1.15f).fillMaxHeight()
+            when {
+                !hasAccess -> DirectionsEmpty(
+                    icon = Icons.Filled.Directions,
+                    title = "Notification access needed",
+                    hint = "Directions come from Google Maps' navigation notification.",
+                    action = "Grant access",
+                    onAction = { CarMediaController.openNotificationAccessSettings(context) }
                 )
-                AnalogGauge(
-                    value = if (connected) obdData.rpm.toFloat() else 0f,
-                    maxValue = 7000f,
-                    valueText = if (connected) obdData.rpm.toString() else "--",
-                    label = "RPM",
-                    unit = "rpm",
-                    accent = DashColors.Rpm,
-                    redlineAccent = DashColors.Warning,
-                    redlineFraction = 0.82f,
-                    dimmed = !connected,
-                    modifier = Modifier.weight(1f).fillMaxHeight()
+                !nav.active -> DirectionsEmpty(
+                    icon = Icons.Filled.Navigation,
+                    title = "No active route",
+                    hint = "Start navigation in Google Maps or Waze and the next turn shows here.",
+                    action = "Open Google Maps",
+                    onAction = { openNavigationApp(context, nav) }
+                )
+                else -> {
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ManeuverIcon(nav = nav, size = 84.dp)
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            val (value, unit) = nav.distanceParts
+                            if (value.isNotEmpty()) {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text(
+                                        text = value,
+                                        color = if (glow > 0f) Color.Unspecified else DashColors.TextPrimary,
+                                        fontSize = 44.sp,
+                                        lineHeight = 44.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = (-0.05).em,
+                                        maxLines = 1,
+                                        style = TextStyle(
+                                            brush = if (glow > 0f) Brush.verticalGradient(
+                                                listOf(Color.White, lerp(Color.White, accent, 0.45f))
+                                            ) else null,
+                                            shadow = if (glow > 0f) Shadow(accent.copy(alpha = 0.8f * glow), blurRadius = 30f) else null
+                                        )
+                                    )
+                                    if (unit.isNotEmpty()) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            text = unit.uppercase(),
+                                            color = DashColors.TextSecondary,
+                                            fontWeight = FontWeight.SemiBold,
+                                            letterSpacing = 0.2.em,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                text = nav.instruction,
+                                color = DashColors.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                    val chips = nav.etaParts
+                    if (chips.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            chips.take(3).forEach { InfoPill(it) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DirectionsEmpty(
+    icon: ImageVector,
+    title: String,
+    hint: String,
+    action: String,
+    onAction: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(40.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(title, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+        Text(
+            hint,
+            color = DashColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Button(
+            onClick = onAction,
+            colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+        ) { Text(action) }
+    }
+}
+
+/** The manoeuvre glyph from the notification on a glowing accent disc. */
+@Composable
+private fun ManeuverIcon(nav: NavState, size: Dp) {
+    val accent = DashColors.Accent
+    val glow = DashColors.Glow
+    val bitmap = remember(nav.icon) { nav.icon?.asImageBitmap() }
+    Box(
+        modifier = Modifier
+            .size(size)
+            .drawBehind {
+                if (glow > 0f) {
+                    val r = this.size.minDimension * 0.85f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(accent.copy(alpha = 0.45f * glow), Color.Transparent),
+                            center = center, radius = r
+                        ),
+                        radius = r
+                    )
+                }
+            }
+            .clip(CircleShape)
+            .background(DashColors.AccentBrush)
+            .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(size * 0.62f)
+            )
+        } else {
+            Icon(
+                Icons.Filled.Directions,
+                contentDescription = null,
+                tint = DashColors.OnAccent,
+                modifier = Modifier.size(size * 0.55f)
+            )
+        }
+    }
+}
+
+/** Small glass pill for an ETA segment ("12 min", "6.4 km", "09:48"). */
+@Composable
+private fun InfoPill(text: String) {
+    val shape = RoundedCornerShape(999.dp)
+    Text(
+        text = text,
+        color = DashColors.TextPrimary,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier
+            .clip(shape)
+            .background(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi)
+            .border(1.dp, DashColors.Line, shape)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    )
+}
+
+/**
+ * Compact next-turn strip floated over the MapLibre map tile: glyph, distance
+ * and street on one line, ETA underneath. Tap to bring the navigation app up.
+ */
+@Composable
+private fun DirectionsBanner(nav: NavState, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        modifier = modifier
+            .then(if (DashColors.Glass) glassPanel(shape) else Modifier.clip(shape).background(DashColors.Card.copy(alpha = 0.92f)).border(1.dp, DashColors.Line, shape))
+            .clickable { openNavigationApp(context, nav) }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ManeuverIcon(nav = nav, size = 44.dp)
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Row(verticalAlignment = Alignment.Bottom) {
+                if (nav.distance.isNotEmpty()) {
+                    Text(
+                        text = nav.distance,
+                        color = DashColors.TextPrimary,
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(
+                    text = nav.instruction,
+                    color = DashColors.TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 3.dp)
                 )
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Secondary readouts as compact meter chips.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                MeterChip(
-                    label = "Coolant",
-                    valueText = if (connected) "${obdData.coolantTempC}°" else "--",
-                    fraction = (obdData.coolantTempC / 120f),
-                    color = coolantColor(obdData.coolantTempC),
-                    dimmed = !connected,
-                    modifier = Modifier.weight(1f)
-                )
-                MeterChip(
-                    label = "Load",
-                    valueText = if (connected) "${obdData.engineLoadPct}%" else "--",
-                    fraction = obdData.engineLoadPct / 100f,
-                    color = DashColors.Accent,
-                    dimmed = !connected,
-                    modifier = Modifier.weight(1f)
-                )
-                MeterChip(
-                    label = "Battery",
-                    valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
-                    fraction = ((obdData.voltage - 11.0) / 4.0).toFloat(),
-                    color = if (obdData.voltage in 12.0..15.0) DashColors.Good else DashColors.Warning,
-                    dimmed = !connected,
-                    modifier = Modifier.weight(1f)
-                )
+            if (nav.eta.isNotEmpty()) {
+                Text(nav.eta, color = DashColors.TextSecondary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
     }
@@ -1924,7 +2568,10 @@ private fun AnalogGauge(
     redlineAccent: Color = DashColors.Warning,
     redlineFraction: Float = 0.8f,
     dimmed: Boolean = false,
-    majorTicks: Int = 9
+    majorTicks: Int = 9,
+    // Hero style (telemetry speed): tick labels, glowing tip dot instead of a
+    // needle, and large gradient numerals - the mockup's instrument cluster.
+    hero: Boolean = false
 ) {
     val target = (value / maxValue).coerceIn(0f, 1f)
     val frac by animateFloatAsState(
@@ -1936,15 +2583,21 @@ private fun AnalogGauge(
     val sweepTotal = 270f
     val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
     val needleColor = if (dimmed) DashColors.Muted else sweepColor
+    val glass = DashColors.Glass
+    val glow = DashColors.Glow
+    val accent2 = DashColors.Accent2
 
     BoxWithConstraints(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         val gaugePx = min(maxWidth.value, maxHeight.value)
-        val valueSize = (gaugePx * 0.20f).coerceIn(16f, 46f).sp
+        val valueSize = if (hero) (gaugePx * 0.30f).coerceIn(22f, 76f).sp else (gaugePx * 0.20f).coerceIn(16f, 46f).sp
         val unitSize = (gaugePx * 0.075f).coerceIn(8f, 14f).sp
         val labelSize = (gaugePx * 0.085f).coerceIn(9f, 15f).sp
+        val tickLabelSize = (gaugePx * 0.05f).coerceIn(7f, 12f).sp
+        val textMeasurer = rememberTextMeasurer()
+        val tickLabelColor = DashColors.TextSecondary.copy(alpha = 0.55f)
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = size.minDimension * 0.085f
@@ -1955,7 +2608,7 @@ private fun AnalogGauge(
 
             // Base track.
             drawArc(
-                color = DashColors.CardHi,
+                color = if (glass) Color.White.copy(alpha = 0.07f) else DashColors.CardHi,
                 startAngle = startAngle,
                 sweepAngle = sweepTotal,
                 useCenter = false,
@@ -1973,19 +2626,35 @@ private fun AnalogGauge(
                 size = arcSize,
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
-            // Active sweep (glow underlay + solid).
+            // Active sweep: accent->accent2 gradient along the arc, a wide soft
+            // halo underneath (scaled by the theme's glow) and a bright core line.
             if (frac > 0f) {
+                val sweepBrush: Brush = if (frac >= redlineFraction) SolidColor(redlineAccent)
+                    else gaugeSweepBrush(center, accent, accent2)
+                if (glow > 0f) {
+                    drawArc(
+                        brush = sweepBrush,
+                        startAngle = startAngle,
+                        sweepAngle = sweepTotal * frac,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        alpha = 0.14f * glow,
+                        style = Stroke(width = stroke * 3.2f, cap = StrokeCap.Round)
+                    )
+                }
                 drawArc(
-                    color = sweepColor.copy(alpha = 0.25f),
+                    brush = sweepBrush,
                     startAngle = startAngle,
                     sweepAngle = sweepTotal * frac,
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
+                    alpha = 0.25f + 0.15f * glow,
                     style = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
                 )
                 drawArc(
-                    color = sweepColor,
+                    brush = sweepBrush,
                     startAngle = startAngle,
                     sweepAngle = sweepTotal * frac,
                     useCenter = false,
@@ -1993,53 +2662,126 @@ private fun AnalogGauge(
                     size = arcSize,
                     style = Stroke(width = stroke, cap = StrokeCap.Round)
                 )
-            }
-            // Tick marks.
-            val tickOuter = radius - stroke * 0.6f
-            val tickInner = radius - stroke * 1.5f
-            for (i in 0 until majorTicks) {
-                val a = Math.toRadians((startAngle + sweepTotal * i / (majorTicks - 1)).toDouble())
-                val ca = cos(a).toFloat()
-                val sa = sin(a).toFloat()
-                drawLine(
-                    color = DashColors.TextSecondary.copy(alpha = 0.6f),
-                    start = Offset(center.x + ca * tickInner, center.y + sa * tickInner),
-                    end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
-                    strokeWidth = stroke * 0.16f,
-                    cap = StrokeCap.Round
+                drawArc(
+                    color = Color.White.copy(alpha = 0.35f + 0.3f * glow),
+                    startAngle = startAngle,
+                    sweepAngle = sweepTotal * frac,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = stroke * 0.22f, cap = StrokeCap.Round)
                 )
             }
-            // Needle + hub.
-            val needleA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
-            val nx = cos(needleA).toFloat()
-            val ny = sin(needleA).toFloat()
-            val needleLen = radius - stroke * 0.4f
-            drawLine(
-                color = needleColor,
-                start = Offset(center.x - nx * radius * 0.12f, center.y - ny * radius * 0.12f),
-                end = Offset(center.x + nx * needleLen, center.y + ny * needleLen),
-                strokeWidth = stroke * 0.35f,
-                cap = StrokeCap.Round
-            )
-            drawCircle(color = DashColors.Card, radius = stroke * 0.9f, center = center)
-            drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
+            // Tick marks (hero adds minor ticks between the majors, plus labels).
+            val tickOuter = radius - stroke * 0.6f
+            val tickInner = radius - stroke * 1.5f
+            val minorPerMajor = if (hero) 4 else 1
+            val tickCount = (majorTicks - 1) * minorPerMajor
+            for (i in 0..tickCount) {
+                val major = i % minorPerMajor == 0
+                val a = Math.toRadians((startAngle + sweepTotal * i / tickCount).toDouble())
+                val ca = cos(a).toFloat()
+                val sa = sin(a).toFloat()
+                val inner = if (major) tickInner else tickInner + (tickOuter - tickInner) * 0.45f
+                drawLine(
+                    color = DashColors.TextSecondary.copy(alpha = if (major) 0.6f else 0.25f),
+                    start = Offset(center.x + ca * inner, center.y + sa * inner),
+                    end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
+                    strokeWidth = stroke * if (major) 0.16f else 0.09f,
+                    cap = StrokeCap.Round
+                )
+                // Tile-sized gauges label every other major and skip the two end
+                // labels, which would collide with the unit text below the numerals.
+                val majorIndex = i / minorPerMajor
+                val showLabel = hero && major && (
+                    gaugePx >= 300f || (majorIndex % 2 == 0 && i != 0 && i != tickCount)
+                )
+                if (showLabel) {
+                    val labelValue = (maxValue * i / tickCount).roundToInt().toString()
+                    val layout = textMeasurer.measure(
+                        labelValue,
+                        style = TextStyle(fontSize = tickLabelSize, fontWeight = FontWeight.SemiBold, color = tickLabelColor)
+                    )
+                    val lr = tickInner - stroke * 0.55f - maxOf(layout.size.width, layout.size.height) * 0.5f
+                    drawText(
+                        layout,
+                        topLeft = Offset(
+                            center.x + ca * lr - layout.size.width / 2f,
+                            center.y + sa * lr - layout.size.height / 2f
+                        )
+                    )
+                }
+            }
+            if (hero) {
+                // Glowing tip dot at the end of the sweep.
+                if (!dimmed) {
+                    val tipA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
+                    val tip = Offset(center.x + cos(tipA).toFloat() * radius, center.y + sin(tipA).toFloat() * radius)
+                    if (glow > 0f) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(Color.White.copy(alpha = 0.9f * glow), Color.Transparent),
+                                center = tip, radius = stroke * 1.6f
+                            ),
+                            radius = stroke * 1.6f, center = tip
+                        )
+                    }
+                    drawCircle(color = Color.White, radius = stroke * 0.42f, center = tip)
+                }
+            } else {
+                // Needle + hub.
+                val needleA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
+                val nx = cos(needleA).toFloat()
+                val ny = sin(needleA).toFloat()
+                val needleLen = radius - stroke * 0.4f
+                drawLine(
+                    color = needleColor,
+                    start = Offset(center.x - nx * radius * 0.12f, center.y - ny * radius * 0.12f),
+                    end = Offset(center.x + nx * needleLen, center.y + ny * needleLen),
+                    strokeWidth = stroke * 0.35f,
+                    cap = StrokeCap.Round
+                )
+                drawCircle(color = DashColors.Card, radius = stroke * 0.9f, center = center)
+                drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
+            }
         }
 
         // Digital readout in the middle.
+        val lit = glow > 0f && !dimmed
+        // Hero numerals fade from white into the accent, like the mockup.
+        val numeralBrush: Brush? = if (hero && lit) {
+            Brush.verticalGradient(listOf(Color.White, lerp(Color.White, accent, 0.45f)))
+        } else null
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = gaugePx.times(0.10f).dp)
+            modifier = Modifier.padding(top = gaugePx.times(if (hero) 0.02f else 0.10f).dp)
         ) {
             Text(
                 text = valueText,
-                color = if (dimmed) DashColors.Muted else DashColors.TextPrimary,
+                color = if (numeralBrush != null) Color.Unspecified else if (dimmed) DashColors.Muted else DashColors.TextPrimary,
                 fontSize = valueSize,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
+                fontWeight = if (hero) FontWeight.ExtraBold else FontWeight.Bold,
+                letterSpacing = if (hero) (-0.06).em else (-0.04).em,
+                maxLines = 1,
+                // Numerals glow in the accent colour on glowing themes.
+                style = TextStyle(
+                    brush = numeralBrush,
+                    shadow = if (lit) {
+                        Shadow(color = accent.copy(alpha = 0.85f * glow), blurRadius = valueSize.value * 0.8f)
+                    } else null
+                )
             )
-            Text(text = unit, color = DashColors.Muted, fontSize = unitSize)
-            Spacer(Modifier.height(2.dp))
-            Text(text = label, color = accent, fontSize = labelSize, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = if (hero) unit.uppercase() else unit,
+                color = if (hero) DashColors.TextSecondary else DashColors.Muted,
+                fontSize = unitSize,
+                fontWeight = if (hero) FontWeight.SemiBold else FontWeight.Normal,
+                letterSpacing = if (hero) 0.3.em else 0.15.em
+            )
+            if (!hero) {
+                Spacer(Modifier.height(2.dp))
+                Text(text = label, color = accent, fontSize = labelSize, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -2054,10 +2796,13 @@ private fun MeterChip(
     dimmed: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val glass = DashColors.Glass
+    val chipShape = RoundedCornerShape(12.dp)
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(DashColors.CardHi)
+            .clip(chipShape)
+            .background(if (glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi)
+            .border(1.dp, DashColors.Line, chipShape)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(
@@ -2080,14 +2825,14 @@ private fun MeterChip(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(CircleShape)
-                .background(DashColors.Background)
+                .background(if (glass) Color.Black.copy(alpha = 0.35f) else DashColors.Background)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(if (dimmed) 0f else fraction.coerceIn(0f, 1f))
                     .fillMaxHeight()
                     .clip(CircleShape)
-                    .background(color)
+                    .background(Brush.horizontalGradient(listOf(color, lerp(color, Color.White, 0.3f))))
             )
         }
     }
@@ -2710,16 +3455,126 @@ private fun AppDrawer(
 
 // --- Shared building blocks --------------------------------------------------
 
-/** Rounded elevated card, matching the Android Auto content surfaces. */
+/**
+ * Rounded elevated card. Solid themes use a flat surface matching the Android
+ * Auto content cards; glass themes use a translucent gradient panel that lets
+ * the aurora background show through.
+ */
 @Composable
 private fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Surface(
-        modifier = modifier,
-        color = DashColors.Card,
-        shape = RoundedCornerShape(24.dp),
-        content = content
+    val shape = RoundedCornerShape(24.dp)
+    if (DashColors.Glass) {
+        Box(modifier = modifier.then(glassPanel(shape))) { content() }
+    } else {
+        Surface(
+            modifier = modifier,
+            color = DashColors.Card,
+            shape = shape,
+            content = content
+        )
+    }
+}
+
+/**
+ * Glass surface: translucent white->accent gradient fill, hairline border and a
+ * specular highlight along the top edge. The head unit is Android 10, so there
+ * is no RenderEffect backdrop blur; the layered translucency carries the look.
+ */
+@Composable
+private fun glassPanel(shape: RoundedCornerShape): Modifier {
+    val line = DashColors.Line
+    val accent = DashColors.Accent
+    return Modifier
+        .clip(shape)
+        .background(
+            Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.10f),
+                    Color.White.copy(alpha = 0.035f),
+                    accent.copy(alpha = 0.06f)
+                )
+            )
+        )
+        .border(1.dp, line, shape)
+        .drawWithContent {
+            drawContent()
+            val inset = size.width * 0.18f
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent),
+                    startX = inset, endX = size.width - inset
+                ),
+                start = Offset(inset, 1f),
+                end = Offset(size.width - inset, 1f),
+                strokeWidth = 1.5f
+            )
+        }
+}
+
+/**
+ * Page background: the theme's gradient, plus (on glass themes) a cool wash
+ * from the top and a violet wash from the bottom-right corner.
+ */
+@Composable
+private fun dashBackground(): Modifier {
+    val stops = DashColors.BackgroundStops
+    val glass = DashColors.Glass
+    val glow = DashColors.Glow
+    val accent = DashColors.Accent
+    val accent2 = DashColors.Accent2
+    return Modifier.drawBehind {
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = stops,
+                start = Offset.Zero,
+                end = Offset(size.width, size.height)
+            )
+        )
+        if (glass) {
+            val topC = Offset(size.width * 0.5f, -size.height * 0.15f)
+            val topR = size.width * 0.45f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(accent.copy(alpha = 0.22f * glow), Color.Transparent),
+                    center = topC, radius = topR
+                ),
+                radius = topR, center = topC
+            )
+            val cornerC = Offset(size.width * 1.05f, size.height * 1.05f)
+            val cornerR = size.width * 0.40f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(accent2.copy(alpha = 0.24f * glow), Color.Transparent),
+                    center = cornerC, radius = cornerR
+                ),
+                radius = cornerR, center = cornerC
+            )
+        }
+    }
+}
+
+/**
+ * Gradient that follows the gauge arc (135deg -> 405deg). Compose sweep gradients
+ * start at 3 o'clock, so the stops are placed in that frame: the arc start
+ * (135deg = 0.375) is [start], the arc end (45deg = 0.125, wrapped) is [end].
+ */
+private fun gaugeSweepBrush(center: Offset, start: Color, end: Color): Brush {
+    val mid = lerp(start, end, 0.35f)
+    val atZero = lerp(mid, end, 0.65f)
+    return Brush.sweepGradient(
+        0f to atZero,
+        0.125f to end,
+        0.375f to start,
+        0.7875f to mid,
+        1f to atZero,
+        center = center
     )
 }
+
+/** Average colour of a bitmap (used for the album-art colour bleed). */
+private fun Bitmap.averageColor(): Color = runCatching {
+    Color(Bitmap.createScaledBitmap(this, 1, 1, true).getPixel(0, 0))
+}.getOrDefault(Color.Gray)
 
 /** Renders an installed app's launcher [Drawable] as a Compose image. */
 @Composable

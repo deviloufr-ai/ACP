@@ -47,6 +47,7 @@ private fun ThemeOption(mode: DashThemeMode, selected: Boolean, onClick: () -> U
     val shape = RoundedCornerShape(16.dp)
     val preview = when (mode) {
         DashThemeMode.AUTO -> Brush.linearGradient(listOf(Color(0xFF11151D), Color(0xFFF5F7FA)))
+        DashThemeMode.AURORA -> Brush.linearGradient(listOf(Color(0xFF0E1730), Color(0xFF5AD0FF), Color(0xFF9B7BFF)))
         DashThemeMode.NEON_DARK -> Brush.linearGradient(listOf(Color(0xFF071126), Color(0xFF6D3CFF)))
         DashThemeMode.CLEAN_LIGHT -> Brush.linearGradient(listOf(Color.White, Color(0xFFDCE8F7)))
         DashThemeMode.DARK_GLASS -> Brush.linearGradient(listOf(Color(0xFF05070B), Color(0xFF233A5F)))
@@ -54,7 +55,9 @@ private fun ThemeOption(mode: DashThemeMode, selected: Boolean, onClick: () -> U
     }
     Row(
         modifier = Modifier.fillMaxWidth().border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)
-            .background(DashColors.CardHi.copy(alpha = if (selected) 0.65f else 0.35f), shape).clickable(onClick = onClick).padding(12.dp),
+            // Scale (not replace) the alpha: glass themes use a translucent CardHi.
+            .background(DashColors.CardHi.copy(alpha = DashColors.CardHi.alpha * if (selected) 0.65f else 0.35f), shape)
+            .clickable(onClick = onClick).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(width = 54.dp, height = 38.dp).background(preview, RoundedCornerShape(10.dp)))

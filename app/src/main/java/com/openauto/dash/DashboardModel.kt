@@ -10,6 +10,7 @@ import org.json.JSONObject
  */
 enum class BuiltinKind(val label: String) {
     NAVMAP("Map (MapLibre)"),
+    NAVIGATION("Directions (Google Maps / Waze)"),
     MEDIA("Music player"),
     TELEMETRY("OBD telemetry"),
     OBD_DTC("OBD fault codes"),
@@ -104,6 +105,7 @@ object DashboardStore {
         autoPlace(
             listOf(
                 DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP),
+                DashboardItem.BuiltinWidget(BuiltinKind.NAVIGATION, w = 4, h = 3),
                 DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
             )
         ),
