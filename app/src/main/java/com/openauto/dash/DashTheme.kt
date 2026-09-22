@@ -99,8 +99,9 @@ private val SportyPalette = DashPalette(
 
 /** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
 enum class DashLayout(val title: String, val description: String) {
-    GRID("Dashboard only", "Swipeable pages fill the screen"),
-    MAPS_LEFT("Maps left, dashboard right", "Google Maps docked on the left half, pages swipe on the right")
+    GRID("Full", "Swipeable pages fill the screen"),
+    MAPS_LEFT("\u25c0 Map", "Google Maps docked on the left half, pages swipe on the right"),
+    MAPS_RIGHT("Map \u25b6", "Google Maps docked on the right half, pages swipe on the left")
 }
 
 object DashLayoutStore {
