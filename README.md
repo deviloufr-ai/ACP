@@ -4,11 +4,11 @@
 
 OpenAuto Dash is a free-placement, widget-grid car launcher for Android — usable both as a Head Unit's Home launcher and as a standalone smartphone driving app. Built entirely with Jetpack Compose.
 
-The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can hold an app shortcut, a pair of apps launched side-by-side (split-screen), an editable app launch bar, a real Android AppWidget, or one of 21 built-in cards (navigation, OBD/vehicle telemetry, driving instruments, media, info & comms, a 3D car model). Tiles are placed, dragged and resized freely, with collision-aware move/swap/nudge and full undo.
+The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can hold an app shortcut, a pair of apps launched side-by-side (split-screen), an editable app launch bar, a real Android AppWidget, or one of 22 built-in cards (navigation, OBD/vehicle telemetry, driving instruments, media, info & comms, a 3D car model). Tiles are placed, dragged and resized freely, with collision-aware move/swap/nudge and full undo.
 
 ### Key Features
 - **Free-placement widget dashboard**: 3 pages × 12×7 grid, drag-to-move / handle-to-resize tiles, 30-step undo, layout persisted as JSON
-- **21 built-in widgets**: navigation map, Google/Waze directions, full OBD + CANbox telemetry (incl. DTC scan/clear), driving instruments (speed/compass/trip/g-force/parking), weather, calendar, quick-dial, notifications, audio, 3D car model, clock, and more — grouped by category in the widget catalogue
+- **22 built-in widgets**: navigation map, Google/Waze directions, full OBD + CANbox telemetry (incl. DTC scan/clear), driving instruments (speed/compass/trip/g-force/parking), weather, calendar, quick-dial, notifications, audio, 3D car model, clock, and more — grouped by category in the widget catalogue
 - **In-app navigation**: a free MapLibre GL map (CARTO basemap, Nominatim geocoding, Valhalla routing, 3D buildings) that hands off turn-by-turn to Google Maps/Waze; a Directions tile parses the live turn-by-turn notification from either app
 - **OBD-II + CANbox telemetry**: ELM327 Bluetooth adapter for speed/RPM/coolant/intake/throttle/load/fuel/voltage plus DTC read & clear; an optional rooted CANbox (MCU) reader for door state and a learned fuel-level mapping, tuned for a Citroën C4 Picasso
 - **System split-screen**: docks the dashboard and launches another app (or a saved pair) beside it via an Accessibility Service, with a swap button/overlay to flip which app is on which side
@@ -119,10 +119,10 @@ On Windows PowerShell use `.\gradlew.bat assembleDebug`. The output APK is at `a
 
 While the launcher shares the screen with another app (system split-screen), pages automatically switch to a stacked vertical-scroll layout instead of the free grid.
 
-### 2. Widget Catalogue (21 built-in cards)
+### 2. Widget Catalogue (22 built-in cards)
 `WidgetCatalog.kt` groups every built-in widget by category:
 - **Driving**: speed HUD, compass, trip computer, g-force meter, parking-spot finder
-- **Navigation**: in-app MapLibre map, Google/Waze directions tile
+- **Navigation**: in-app MapLibre map, Google/Waze directions tile, Maps window dock (pins the floating Maps PiP onto a tile via the head unit's ADB socket)
 - **Vehicle**: OBD telemetry, OBD DTC scan/clear, all-OBD-values, fuel/range, door state, CAN signal monitor
 - **Info & Comms**: clock, weather, calendar, quick-dial, notifications, audio
 - **Media & Apps**: media player, app launch bar, 3D car model
@@ -187,7 +187,7 @@ graph TB
     B --> C[DashboardGrid: 3 pages, 12x7 grid]
     C --> D[DashboardStore: move/resize/undo]
 
-    B --> E[WidgetCatalog: 21 builtin widgets]
+    B --> E[WidgetCatalog: 22 builtin widgets]
     E --> F[Navigation: MapLibrePanel + DirectionsTile]
     E --> G[Vehicle: OBD + CANbox telemetry]
     E --> H[Driving: speed/compass/trip/g-force/parking]

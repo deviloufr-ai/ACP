@@ -23,7 +23,7 @@ object AdbInstaller {
     private const val HOST = "127.0.0.1"
     private const val TMP = "/data/local/tmp/OpenAutoDash.apk"
 
-    private fun connect(context: Context, port: Int): Dadb {
+    internal fun connect(context: Context, port: Int): Dadb {
         val keyDir = File(context.filesDir, "adb").apply { mkdirs() }
         val priv = File(keyDir, "adbkey")
         val pub = File(keyDir, "adbkey.pub")

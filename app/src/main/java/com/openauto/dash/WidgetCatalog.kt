@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.NAVMAP -> Icons.Filled.Navigation
     BuiltinKind.NAVIGATION -> Icons.Filled.Directions
+    BuiltinKind.PIP_ANCHOR -> Icons.Filled.PictureInPicture
     BuiltinKind.MEDIA -> Icons.Filled.MusicNote
     BuiltinKind.TELEMETRY -> Icons.Filled.Speed
     BuiltinKind.OBD_DTC -> Icons.Filled.Warning

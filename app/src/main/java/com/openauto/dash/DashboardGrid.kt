@@ -500,6 +500,7 @@ internal fun TileContent(
                 modifier = Modifier.fillMaxSize()
             )
             BuiltinKind.COMPASS -> CompassCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.PIP_ANCHOR -> PipAnchorCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.TRIP -> TripCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.GFORCE -> GForceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PARKING -> ParkingCard(modifier = Modifier.fillMaxSize())

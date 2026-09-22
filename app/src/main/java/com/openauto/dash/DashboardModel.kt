@@ -30,6 +30,7 @@ enum class BuiltinKind(
 ) {
     NAVMAP("Map", WidgetCategory.NAVIGATION, "Free 3D map with search and routing"),
     NAVIGATION("Directions", WidgetCategory.NAVIGATION, "Next turn from Google Maps / Waze", 4, 3),
+    PIP_ANCHOR("Maps window", WidgetCategory.NAVIGATION, "Docks the floating Maps window here", 4, 3),
     MEDIA("Music player", WidgetCategory.APPS, "Now playing with controls"),
     TELEMETRY("Telemetry", WidgetCategory.VEHICLE, "Speed gauge, revs, coolant, load, battery"),
     OBD_DTC("Fault codes", WidgetCategory.VEHICLE, "Read and clear OBD trouble codes", 3, 2),
