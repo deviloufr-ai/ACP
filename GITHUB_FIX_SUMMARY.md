@@ -1,4 +1,4 @@
-# OpenAuto Dash — Build Fix Summary
+# Dashwheel — Build Fix Summary
 
 This documents why the project failed to build and what was changed to make it
 compile into a debug APK on GitHub Actions.

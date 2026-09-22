@@ -1,8 +1,8 @@
-# OpenAuto Dash - Android Car Launcher Project
+# Dashwheel - Android Car Launcher Project
 
 ## Project Overview
 
-OpenAuto Dash is a free-placement, widget-grid car launcher for Android — usable both as a Head Unit's Home launcher and as a standalone smartphone driving app. Built entirely with Jetpack Compose.
+Dashwheel is a free-placement, widget-grid car launcher for Android — usable both as a Head Unit's Home launcher and as a standalone smartphone driving app. Built entirely with Jetpack Compose.
 
 The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can hold an app shortcut, a pair of apps launched side-by-side (split-screen), an editable app launch bar, a real Android AppWidget, or one of 22 built-in cards (navigation, OBD/vehicle telemetry, driving instruments, media, info & comms, a 3D car model). Tiles are placed, dragged and resized freely, with collision-aware move/swap/nudge and full undo.
 
@@ -153,7 +153,7 @@ This head unit's ROM ignores AOSP windowing APIs but honors SystemUI's manual re
 - If newer, a banner offers **Update** → it downloads the release APK via `DownloadManager` and launches the system installer (Android always shows its own install confirmation).
 - The current version is shown in the top status bar.
 
-> Android cannot install silently without device-owner privileges, so "auto-update" means auto-check + auto-download + a one-tap, OS-confirmed install. The first time, the user must allow "install unknown apps" for OpenAuto Dash (the app opens that settings screen for them).
+> Android cannot install silently without device-owner privileges, so "auto-update" means auto-check + auto-download + a one-tap, OS-confirmed install. The first time, the user must allow "install unknown apps" for Dashwheel (the app opens that settings screen for them).
 
 **Important — signing:** an update APK can only replace the installed app if both are signed with the **same key**. CI's debug key is regenerated every run, so you must add a persistent release keystore (below) for updates to actually install over each other.
 
@@ -260,11 +260,11 @@ Each build job: checkout → set up JDK 21 → set up Android SDK (explicit pack
 
 ### Media / Directions / Notifications Not Working
 1. Play audio/video from a supported app, or start turn-by-turn in Google Maps/Waze, so there is an active notification to read.
-2. Open the widget's **Grant Media Access** action and enable Notification access for OpenAuto Dash — this one grant powers media, directions, and the notifications feed.
+2. Open the widget's **Grant Media Access** action and enable Notification access for Dashwheel — this one grant powers media, directions, and the notifications feed.
 3. Return to the app — the relevant tile should populate.
 
 ### Split-Screen / Swap Not Working
-1. Enable the accessibility service once under **Settings → Accessibility → OpenAuto Dash**.
+1. Enable the accessibility service once under **Settings → Accessibility → Dashwheel**.
 2. If the service isn't enabled, split launches fall back to a movable freeform window instead of true split-screen.
 3. The swap overlay button needs `SYSTEM_ALERT_WINDOW`; installing as a priv-app auto-grants this on some ROMs.
 

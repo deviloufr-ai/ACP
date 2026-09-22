@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OpenAuto Dash</string>
+    <string name="app_name">Dashwheel</string>
     <string name="obd_status_connected">Connected</string>
     <string name="obd_status_disconnected">Disconnected</string>
     <string name="speed_kmh">km/h</string>
@@ -8,5 +8,5 @@
     <string name="temp_celsius">°C</string>
     <string name="battery_level">Battery</string>
     <string name="coolant_temp">Coolant Temp</string>
-    <string name="split_a11y_description">Lets OpenAuto Dash open apps in split-screen next to the dashboard, using the same system split the recents screen uses. No screen content is read.</string>
+    <string name="split_a11y_description">Lets Dashwheel open apps in split-screen next to the dashboard, using the same system split the recents screen uses. No screen content is read.</string>
 </resources>
