@@ -354,6 +354,29 @@ object PipAnchor {
      * guiding from its notification meanwhile. Picture-in-picture, which the
      * system keeps on screen anyway, is parked small in the bottom-right corner.
      */
+    /**
+     * Another app took the whole screen. This ROM keeps floating windows above
+     * fullscreen apps too, so the window would sit over that app: close it, and
+     * make sure the tile reopens it when the dashboard is back.
+     */
+    fun closeForOtherApp(context: Context, packageName: String = MAPS_PACKAGE) {
+        scope.launch {
+            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+            if (win.mode != "freeform") return@launch
+            setAutoOpen(context, true, packageName)
+            noteFreeform(packageName, false)
+            val out = runCatching { shell(context, "am stack remove ${win.stackId}") }
+                .getOrElse { "failed: ${it.message}" }
+            Log.i(TAG, "closed $packageName while another app is in front: ${out.trim()}")
+            closeConnection()
+        }
+    }
+
+    /** Back on screen: let [track] reopen the app at once instead of waiting out the cooldown. */
+    fun expectReturn(packageName: String) {
+        lastReopenAt.remove(packageName)
+    }
+
     fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             noteFreeform(packageName, false)
@@ -600,12 +623,12 @@ internal fun PipAnchorCard(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> started = true
+                Lifecycle.Event.ON_START -> { started = true; PipAnchor.expectReturn(packageName) }
                 // Another app took the whole screen: its task covers Maps, so there
                 // is nothing to hide; coming back, track() raises Maps again. Just
                 // stop polling meanwhile. (Touching the Maps window only *pauses*
                 // the launcher, which must not hide anything either.)
-                Lifecycle.Event.ON_STOP -> started = false
+                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.closeForOtherApp(context, packageName) }
                 else -> Unit
             }
         }
