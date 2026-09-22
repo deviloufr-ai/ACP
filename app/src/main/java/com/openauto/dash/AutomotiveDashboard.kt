@@ -420,7 +420,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
         TopBar(
-            currentPage = pagerState.currentPage,
             clock = clock,
             versionName = updateManager.currentVersionName,
             obdConnection = obdConnection,
@@ -429,7 +428,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             layout = layout,
             onLayout = switchLayout,
             onApps = { showAllApps = true },
-            onMaps = { SplitLauncher.launchSplit(context, "com.google.android.apps.maps") },
+            onConnectObd = onConnectObd,
             onSplit = {
                 if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
                 else showSplitEnable = true
@@ -757,9 +756,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             title = { Text("Enable split screen", color = DashColors.TextPrimary) },
             text = {
                 Text(
-                    "This ROM blocks the usual split-screen APIs, so OpenAuto Dash " +
+                    "This ROM blocks the usual split-screen APIs, so Dashwheel " +
                         "uses the system's own split — the same one you get from recents. " +
-                        "Turn on \"OpenAuto Dash\" under Settings → Accessibility once to allow it.",
+                        "Turn on \"Dashwheel\" under Settings → Accessibility once to allow it.",
                     color = DashColors.Muted
                 )
             },
@@ -811,7 +810,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Install OpenAuto Dash as a privileged system app so it can embed " +
+                        "Install Dashwheel as a privileged system app so it can embed " +
                             "the real Google Maps app — with navigation — in the Maps tile, " +
                             "like OEM car launchers. With Magisk it installs systemlessly (a " +
                             "Magisk module — works even though /system is full); otherwise it " +

@@ -192,6 +192,7 @@ internal fun glassPanel(shape: RoundedCornerShape): Modifier {
  */
 @Composable
 internal fun dashBackground(): Modifier {
+    if (DashColors.Skin != DashSkin.STANDARD) return skinBackground()
     val stops = DashColors.BackgroundStops
     val glass = DashColors.Glass
     val glow = DashColors.Glow

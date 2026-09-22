@@ -17,8 +17,19 @@ enum class DashThemeMode(val title: String, val description: String) {
     CLEAN_LIGHT("Clean Light", "Bright, minimal and easy to read"),
     DARK_GLASS("Dark Glass", "Premium dark glass aesthetic"),
     SPORTY("Sporty", "Black + red performance cockpit"),
-    FLOATING("Floating", "No tile backgrounds: widgets and icons sit on the backdrop")
+    FLOATING("Floating", "No tile backgrounds: widgets and icons sit on the backdrop"),
+    ORBIT("Orbit", "Everything round: a spinning record, ring gauges, bubbles"),
+    COCKPIT("Cockpit", "Chrome-ringed analog dials and toggle switches on stitched leather"),
+    HORIZON("Horizon", "No widgets, just an evening scene with the road ahead"),
+    TAPE_DECK("Tape Deck", "80s synthwave head unit: cassette, neon grid, LED digits")
 }
+
+/**
+ * Whole-design variants. A skin swaps more than colours: its own page
+ * background, top bar and renderers for the main widgets (see Skins.kt).
+ * [STANDARD] is every colour-only theme.
+ */
+enum class DashSkin { STANDARD, ORBIT, COCKPIT, HORIZON, TAPE_DECK }
 
 /**
  * Colours plus a few style knobs for one dashboard theme.
@@ -28,10 +39,11 @@ enum class DashThemeMode(val title: String, val description: String) {
  * halo drawn behind gauges, readouts and primary controls; light themes keep it
  * at 0 so nothing smears in sunlight. [Accent2] is the far end of the accent
  * gradient used for the gauge sweep and gradient buttons. [Original] swaps the
- * media, telemetry, gauge, meter-chip and top-bar widgets back to their first
- * designs (see OriginalTiles.kt). [Bare] drops the tile cards and the fills
+ * media, telemetry, gauge and meter-chip widgets back to their first designs
+ * (see OriginalTiles.kt). [Bare] drops the tile cards and the fills
  * behind icons, chips and list rows (see itemFill), so content sits straight on
- * the page background; Card / CardHi still colour dialogs and buttons.
+ * the page background; Card / CardHi still colour dialogs and buttons. [Skin]
+ * picks a whole-design variant; skins are bare, their widgets draw their own shapes.
  */
 data class DashPalette(
     val Background: Color, val Bar: Color, val Card: Color, val CardHi: Color,
@@ -43,7 +55,8 @@ data class DashPalette(
     val Glow: Float = 0f,
     val Original: Boolean = false,
     val Bare: Boolean = false,
-    val BackgroundStops: List<Color> = listOf(Background, Background)
+    val BackgroundStops: List<Color> = listOf(Background, Background),
+    val Skin: DashSkin = DashSkin.STANDARD
 )
 
 private val AutoDarkPalette = DashPalette(
@@ -109,12 +122,41 @@ private val FloatingPalette = DashPalette(
     Accent2 = Color(0xFFB38CFF), Glow = 0.5f, Bare = true,
     BackgroundStops = listOf(Color(0xFF0C1424), Color(0xFF06080D), Color(0xFF0E0B1C))
 )
+// Skins: Card / CardHi only colour dialogs, menus and buttons; tiles are bare.
+private val OrbitPalette = DashPalette(
+    Color(0xFF0A0E1C), Color.Transparent, Color(0xFF151B30), Color(0x17FFFFFF),
+    Color(0xFFFF7A59), Color(0xFFFF7A59), Color(0xFF3DDBC3), Color(0xFFFF5D7A),
+    Color(0xFF3DDBC3), Color(0xFF8A92B6), Color(0xFFEEF1FF), Color(0xFFAEB5D3),
+    Accent2 = Color(0xFF8A7BFF), Line = Color.White.copy(alpha = 0.10f), Glow = 0.8f, Bare = true,
+    Skin = DashSkin.ORBIT
+)
+private val CockpitPalette = DashPalette(
+    Color(0xFF17130F), Color.Transparent, Color(0xFF211B16), Color(0xFF2E2620),
+    Color(0xFFFF8A1F), Color(0xFFFF8A1F), Color(0xFFFFB347), Color(0xFFFF4A1C),
+    Color(0xFF39D353), Color(0xFF8C8074), Color(0xFFE9E1D3), Color(0xFFCBBFAE),
+    Accent2 = Color(0xFFFFB347), Line = Color.White.copy(alpha = 0.08f), Glow = 0.5f, Bare = true,
+    Skin = DashSkin.COCKPIT
+)
+private val HorizonPalette = DashPalette(
+    Color(0xFF0A0F2C), Color.Transparent, Color(0xFF1B1537), Color(0x24FFF3E6),
+    Color(0xFFFFD6A0), Color(0xFFFFD6A0), Color(0xFF9CF0C0), Color(0xFFFF8F6B),
+    Color(0xFF9CF0C0), Color(0x99FFF3E6), Color(0xFFFFF3E6), Color(0xC7FFF3E6),
+    Accent2 = Color(0xFFFF8F6B), Line = Color(0x33FFF3E6), Glow = 0.4f, Bare = true,
+    Skin = DashSkin.HORIZON
+)
+private val TapeDeckPalette = DashPalette(
+    Color(0xFF0D0221), Color.Transparent, Color(0xFF1B1230), Color(0xFF2A1F44),
+    Color(0xFF05D9E8), Color(0xFF05D9E8), Color(0xFF3CFF8F), Color(0xFFFF2A6D),
+    Color(0xFF3CFF8F), Color(0xFF8A7FA8), Color(0xFFEDEDF5), Color(0xFFB9B3CF),
+    Accent2 = Color(0xFFFF2A6D), Line = Color(0x59FF2A6D), Glow = 1f, Bare = true,
+    Skin = DashSkin.TAPE_DECK
+)
 
 /** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
 enum class DashLayout(val title: String, val description: String) {
-    GRID("Full", "Swipeable pages fill the screen"),
-    MAPS_LEFT("\u25c0 Map", "Google Maps docked on the left half, pages swipe on the right"),
-    MAPS_RIGHT("Map \u25b6", "Google Maps docked on the right half, pages swipe on the left")
+    GRID("Dashboards only", "Swipeable pages fill the screen"),
+    MAPS_LEFT("Map on the left", "Google Maps docked on the left half, pages swipe on the right"),
+    MAPS_RIGHT("Map on the right", "Google Maps docked on the right half, pages swipe on the left")
 }
 
 object DashLayoutStore {
@@ -179,6 +221,10 @@ object DashColors {
             DashThemeMode.DARK_GLASS -> DarkGlassPalette
             DashThemeMode.SPORTY -> SportyPalette
             DashThemeMode.FLOATING -> FloatingPalette
+            DashThemeMode.ORBIT -> OrbitPalette
+            DashThemeMode.COCKPIT -> CockpitPalette
+            DashThemeMode.HORIZON -> HorizonPalette
+            DashThemeMode.TAPE_DECK -> TapeDeckPalette
         }
         if (current != target) current = target
     }
@@ -202,6 +248,7 @@ object DashColors {
     val Original get() = current.Original
     val Bare get() = current.Bare
     val BackgroundStops get() = current.BackgroundStops
+    val Skin get() = current.Skin
 
     /** Diagonal accent → accent2 gradient for primary controls. */
     val AccentBrush: Brush get() = Brush.linearGradient(listOf(current.Accent, current.Accent2))

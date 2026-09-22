@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OpenAutoDash"
+rootProject.name = "Dashwheel"
 include(":app")

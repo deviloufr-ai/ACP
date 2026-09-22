@@ -2,7 +2,6 @@
 
 package com.openauto.dash
 
-import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,128 +21,76 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.BatteryStd
-import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.VerticalSplit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 
 /*
- * Top bar, status chips, edit toolbar, page dots and the update banner.
+ * Top bar, edit toolbar, page dots and the update banner.
  */
 
-/** Maps / split / system / theme / edit buttons; shared by every bar style. */
-@Composable
-internal fun TopBarActions(
-    editing: Boolean,
-    onMaps: () -> Unit,
-    onSplit: () -> Unit,
-    onSystem: () -> Unit,
-    onTheme: () -> Unit,
-    onToggleEdit: () -> Unit
-) {
-    IconButton(onClick = onMaps) {
-        Icon(
-            imageVector = Icons.Filled.Map,
-            contentDescription = "Google Maps split-screen",
-            tint = DashColors.TextSecondary
-        )
-    }
-
-    IconButton(onClick = onSplit) {
-        Icon(
-            imageVector = Icons.Filled.Splitscreen,
-            contentDescription = "Split screen with an app",
-            tint = DashColors.TextSecondary
-        )
-    }
-
-    IconButton(onClick = onSystem) {
-        Icon(
-            imageVector = Icons.Filled.Build,
-            contentDescription = "System app",
-            tint = DashColors.TextSecondary
-        )
-    }
-
-    IconButton(onClick = onTheme) {
-        Icon(
-            imageVector = Icons.Filled.Palette,
-            contentDescription = "Dashboard theme",
-            tint = DashColors.TextSecondary
-        )
-    }
-
-    IconButton(onClick = onToggleEdit) {
-        Icon(
-            imageVector = if (editing) Icons.Filled.Done else Icons.Filled.Edit,
-            contentDescription = if (editing) "Done editing" else "Edit dashboards",
-            tint = if (editing) DashColors.Accent else DashColors.TextSecondary
-        )
-    }
-}
-
-/** Full dashboard, or Google Maps docked on the left or right half. */
-@Composable
-internal fun LayoutSwitch(layout: DashLayout, onLayout: (DashLayout) -> Unit) {
-    val entries = DashLayout.entries
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.height(36.dp)) {
-        entries.forEachIndexed { i, l ->
-            SegmentedButton(
-                selected = l == layout,
-                onClick = { onLayout(l) },
-                shape = SegmentedButtonDefaults.itemShape(index = i, count = entries.size),
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = DashColors.Accent,
-                    activeContentColor = DashColors.OnAccent,
-                    activeBorderColor = DashColors.Accent,
-                    inactiveContainerColor = DashColors.CardHi,
-                    inactiveContentColor = DashColors.TextSecondary,
-                    inactiveBorderColor = DashColors.Line
-                ),
-                icon = {},
-                label = { Text(l.title, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
-            )
-        }
-    }
-}
+/** Everything a top bar shows and can do; each skin's bar arranges the same model. */
+internal class TopBarModel(
+    val clock: String,
+    val versionName: String,
+    val obdConnection: ObdConnectionState,
+    val obdData: ObdData,
+    val editing: Boolean,
+    val layout: DashLayout,
+    val onLayout: (DashLayout) -> Unit,
+    val onApps: () -> Unit,
+    val onConnectObd: () -> Unit,
+    val onSplit: () -> Unit,
+    val onToggleEdit: () -> Unit,
+    val onTheme: () -> Unit,
+    val onSystem: () -> Unit
+)
 
 @Composable
 internal fun TopBar(
-    currentPage: Int,
     clock: String,
     versionName: String,
     obdConnection: ObdConnectionState,
@@ -153,168 +99,266 @@ internal fun TopBar(
     layout: DashLayout,
     onLayout: (DashLayout) -> Unit,
     onApps: () -> Unit,
-    onMaps: () -> Unit,
+    onConnectObd: () -> Unit,
     onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
     onTheme: () -> Unit,
     onSystem: () -> Unit
 ) {
-    if (DashColors.Original) {
-        OriginalTopBar(
-            currentPage, clock, versionName, obdConnection, editing, layout, onLayout,
-            onApps, onMaps, onSplit, onToggleEdit, onTheme, onSystem
-        )
-        return
-    }
+    val m = TopBarModel(
+        clock, versionName, obdConnection, obdData, editing, layout, onLayout,
+        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onSystem
+    )
+    if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
+}
+
+/**
+ * Minimal bar: Apps and the layout picker on the left, the clock centred, the
+ * OBD link dot and a ⋮ menu on the right. Set-and-forget controls (theme,
+ * system install, edit) live in the menu; battery and coolant only appear, as
+ * warning pills, when a reading is out of range.
+ */
+@Composable
+internal fun StandardTopBar(m: TopBarModel) {
     // Glass themes float the bar as its own panel over the gradient background;
     // solid themes keep the flat full-width strip.
     val glass = DashColors.Glass
     Surface(color = if (glass) Color.Transparent else DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
-        Row(
+        // A Box, not a Row, so the clock sits at the true centre whatever the
+        // two sides hold.
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
                     if (glass) Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp).then(glassPanel(RoundedCornerShape(20.dp)))
                     else Modifier
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Button(
-                onClick = onApps,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DashColors.CardHi,
-                    contentColor = DashColors.TextPrimary
-                ),
-                border = if (glass) BorderStroke(1.dp, DashColors.Line) else null,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Filled.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Apps")
+            Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = m.onApps) {
+                    Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = DashColors.TextPrimary)
+                }
+                LayoutPicker(m) { open ->
+                    IconButton(onClick = open) {
+                        LayoutIcon(m.layout, "Screen layout: ${m.layout.title}", DashColors.TextSecondary)
+                    }
+                }
             }
-
-            // Brand block: wordmark over the page / version line, like the mockup.
-            Column {
-                Text(
-                    text = "OPENAUTO DASH",
-                    color = DashColors.TextPrimary,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.2.em,
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Text(
-                    text = "Dashboard ${currentPage + 1} · v$versionName",
-                    color = DashColors.Muted,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-
-            Spacer(Modifier.weight(1f))
-            LayoutSwitch(layout, onLayout)
-            Spacer(Modifier.weight(1f))
 
             Text(
-                text = clock,
+                text = m.clock,
                 color = DashColors.TextPrimary,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.02).em,
                 style = MaterialTheme.typography.titleLarge
             )
-            Spacer(Modifier.width(4.dp))
 
-            // Live status chips: OBD link, then battery and coolant while connected.
-            val connected = obdConnection == ObdConnectionState.CONNECTED
-            StatusChip(
-                label = "OBD",
-                value = when (obdConnection) {
-                    ObdConnectionState.CONNECTED -> "Connected"
-                    ObdConnectionState.CONNECTING -> "Connecting"
-                    ObdConnectionState.ERROR -> "Error"
-                    ObdConnectionState.DISCONNECTED -> "Off"
-                },
-                dot = when (obdConnection) {
-                    ObdConnectionState.CONNECTED -> DashColors.Good
-                    ObdConnectionState.CONNECTING -> DashColors.Speed
-                    ObdConnectionState.ERROR -> DashColors.Warning
-                    ObdConnectionState.DISCONNECTED -> DashColors.Muted
-                },
-                good = connected
-            )
-            if (connected) {
-                StatusChip(
-                    label = "Battery",
-                    value = "%.1fV".format(obdData.voltage),
-                    icon = Icons.Filled.BatteryStd
-                )
-                StatusChip(
-                    label = "Coolant",
-                    value = "${obdData.coolantTempC}°C",
-                    icon = Icons.Filled.Thermostat
-                )
+            Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                VehicleAlerts(m.obdConnection, m.obdData)
+                ObdDot(m.obdConnection, m.onConnectObd)
+                MorePicker(m) { open ->
+                    IconButton(onClick = open) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DashColors.TextSecondary)
+                    }
+                }
             }
-            Spacer(Modifier.width(4.dp))
-
-            TopBarActions(editing, onMaps, onSplit, onSystem, onTheme, onToggleEdit)
         }
     }
 }
 
-/** Top-bar status pill: a coloured dot or icon, a muted label and a bold value. */
+/**
+ * Layout picker around any [anchor] a skin draws: the anchor gets an `open`
+ * callback, the menu offers all three layouts with the current one checked.
+ */
 @Composable
-internal fun StatusChip(
-    label: String,
-    value: String,
-    dot: Color? = null,
-    icon: ImageVector? = null,
-    good: Boolean = false
+internal fun LayoutPicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        anchor { open = true }
+        DashMenu(open, onDismiss = { open = false }) {
+            DashLayout.entries.forEach { l ->
+                DashMenuItem(
+                    text = l.title,
+                    leading = { LayoutIcon(l, null, if (l == m.layout) DashColors.Accent else DashColors.TextSecondary) },
+                    selected = l == m.layout,
+                    onClick = {
+                        open = false
+                        m.onLayout(l)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** Icon for a layout: a dashboard, or a split whose solid pane (the map) sits on the docked side. */
+@Composable
+internal fun LayoutIcon(layout: DashLayout, contentDescription: String?, tint: Color, modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = if (layout == DashLayout.GRID) Icons.Filled.SpaceDashboard else Icons.Filled.VerticalSplit,
+        contentDescription = contentDescription,
+        tint = tint,
+        // VerticalSplit draws its solid pane (the map) on the right; mirror it for the left dock.
+        modifier = modifier.then(if (layout == DashLayout.MAPS_LEFT) Modifier.scale(scaleX = -1f, scaleY = 1f) else Modifier)
+    )
+}
+
+internal fun obdStatusColor(state: ObdConnectionState): Color = when (state) {
+    ObdConnectionState.CONNECTED -> DashColors.Good
+    ObdConnectionState.CONNECTING -> DashColors.Speed
+    ObdConnectionState.ERROR -> DashColors.Warning
+    ObdConnectionState.DISCONNECTED -> DashColors.Muted
+}
+
+internal fun obdStatusLabel(state: ObdConnectionState): String = when (state) {
+    ObdConnectionState.CONNECTED -> "OBD connected"
+    ObdConnectionState.CONNECTING -> "OBD connecting"
+    ObdConnectionState.ERROR -> "OBD error, tap to reconnect"
+    ObdConnectionState.DISCONNECTED -> "OBD off, tap to connect"
+}
+
+/** OBD link as a coloured dot; tapping it while disconnected connects. */
+@Composable
+internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: Dp = 10.dp) {
+    val color = obdStatusColor(state)
+    val label = obdStatusLabel(state)
+    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    IconButton(
+        onClick = onConnect,
+        enabled = idle,
+        modifier = Modifier.semantics { contentDescription = label }
+    ) {
+        Box(
+            Modifier
+                .size(dotSize)
+                .drawBehind {
+                    if (state == ObdConnectionState.CONNECTED) {
+                        drawCircle(color = color.copy(alpha = 0.45f), radius = size.minDimension)
+                    }
+                }
+                .clip(CircleShape)
+                .background(color)
+        )
+    }
+}
+
+/** Menu around any [anchor] a skin draws: edit, theme, split screen, system install, and the version. */
+@Composable
+internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val pick: (() -> Unit) -> () -> Unit = { action ->
+        {
+            open = false
+            action()
+        }
+    }
+    Box {
+        anchor { open = true }
+        DashMenu(open, onDismiss = { open = false }) {
+            DashMenuItem(
+                text = if (m.editing) "Done editing" else "Edit dashboards",
+                leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
+                onClick = pick(m.onToggleEdit)
+            )
+            DashMenuItem("Theme", leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
+            DashMenuItem("Split screen with an app", leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
+            DashMenuItem("System app (advanced)", leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
+            HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
+            Text(
+                "Dashwheel v${m.versionName}",
+                color = DashColors.Muted,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    DropdownMenu(
+        expanded = open,
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = DashColors.Card.copy(alpha = 1f),
+        border = BorderStroke(1.dp, DashColors.Line)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun DashMenuItem(
+    text: String,
+    leading: @Composable () -> Unit,
+    selected: Boolean = false,
+    onClick: () -> Unit
 ) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text,
+                color = if (selected) DashColors.Accent else DashColors.TextPrimary,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+            )
+        },
+        leadingIcon = leading,
+        trailingIcon = if (selected) {
+            { Icon(Icons.Filled.Check, contentDescription = "Selected", tint = DashColors.Accent) }
+        } else null,
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun MenuIcon(icon: ImageVector) {
+    Icon(icon, contentDescription = null, tint = DashColors.TextSecondary)
+}
+
+/**
+ * Warning pills for out-of-range readings (battery outside 12–15 V, coolant at
+ * 105 °C or more); emits nothing while everything is normal or OBD is off.
+ */
+@Composable
+internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) {
+    if (obdConnection != ObdConnectionState.CONNECTED) return
+    val volts = obdData.voltage
+    // 0.0 is "no reading yet", not a flat battery.
+    if (volts > 0.0 && volts !in 12.0..15.0) {
+        AlertChip(Icons.Filled.BatteryAlert, "Battery %.1fV".format(volts))
+    }
+    if (obdData.coolantTempC >= 105) {
+        AlertChip(Icons.Filled.Thermostat, "Coolant ${obdData.coolantTempC}°C")
+    }
+}
+
+/** Warning pill for an out-of-range reading; the bar shows these only when something needs attention. */
+@Composable
+private fun AlertChip(icon: ImageVector, text: String) {
     val shape = RoundedCornerShape(999.dp)
-    val fill: Brush = if (good) {
-        Brush.horizontalGradient(listOf(DashColors.Good.copy(alpha = 0.20f), DashColors.Accent.copy(alpha = 0.12f)))
-    } else if (DashColors.Glass) {
-        SolidColor(Color.White.copy(alpha = 0.05f))
-    } else SolidColor(DashColors.CardHi)
     Row(
         modifier = Modifier
+            .padding(end = 6.dp)
             .clip(shape)
-            .background(fill)
-            .border(1.dp, if (good) DashColors.Good.copy(alpha = 0.35f) else DashColors.Line, shape)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .background(DashColors.Warning.copy(alpha = 0.14f))
+            .border(1.dp, DashColors.Warning.copy(alpha = 0.45f), shape)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (dot != null) {
-            Box(
-                Modifier
-                    .size(8.dp)
-                    .drawBehind {
-                        if (good) drawCircle(color = dot.copy(alpha = 0.45f), radius = size.minDimension)
-                    }
-                    .clip(CircleShape)
-                    .background(dot)
-            )
-            Spacer(Modifier.width(8.dp))
-        } else if (icon != null) {
-            Icon(icon, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(15.dp))
-            Spacer(Modifier.width(6.dp))
-        }
+        Icon(icon, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
-            label,
-            color = if (good) DashColors.Good else DashColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 1
-        )
-        Spacer(Modifier.width(5.dp))
-        Text(
-            value,
-            color = if (good) DashColors.Good else DashColors.TextPrimary,
+            text,
+            color = DashColors.Warning,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1
         )
     }
 }
+
 
 /**
  * Toolbar shown while arranging: what to do, plus Add / Undo / Reset / Done.

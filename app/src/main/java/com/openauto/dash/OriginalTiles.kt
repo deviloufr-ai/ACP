@@ -23,20 +23,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
@@ -45,7 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -75,7 +67,7 @@ import kotlin.math.sin
 
 /*
  * The "Original" theme: the launcher's first widget designs, before the Aurora
- * rework (flat cards, twin needle gauges, compact media row, plain top bar).
+ * rework (flat cards, twin needle gauges, compact media row).
  * The current widgets delegate here when [DashColors.Original] is set, so every
  * tile keeps one entry point and the rest of the app is unaware of the switch.
  */
@@ -529,80 +521,6 @@ internal fun OriginalMeterChip(
                     .clip(CircleShape)
                     .background(color)
             )
-        }
-    }
-}
-
-@Composable
-internal fun OriginalTopBar(
-    currentPage: Int,
-    clock: String,
-    versionName: String,
-    obdConnection: ObdConnectionState,
-    editing: Boolean,
-    layout: DashLayout,
-    onLayout: (DashLayout) -> Unit,
-    onApps: () -> Unit,
-    onMaps: () -> Unit,
-    onSplit: () -> Unit,
-    onToggleEdit: () -> Unit,
-    onTheme: () -> Unit,
-    onSystem: () -> Unit
-) {
-    Surface(color = DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onApps,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DashColors.CardHi,
-                    contentColor = DashColors.TextPrimary
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Filled.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Apps")
-            }
-
-            Text(
-                text = "Dashboard ${currentPage + 1}",
-                color = DashColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(Modifier.weight(1f))
-            LayoutSwitch(layout, onLayout)
-            Spacer(Modifier.weight(1f))
-
-            val dotColor = when (obdConnection) {
-                ObdConnectionState.CONNECTED -> DashColors.Good
-                ObdConnectionState.CONNECTING -> DashColors.Speed
-                ObdConnectionState.ERROR -> DashColors.Warning
-                ObdConnectionState.DISCONNECTED -> DashColors.Muted
-            }
-            Icon(
-                imageVector = if (obdConnection == ObdConnectionState.CONNECTED) {
-                    Icons.Filled.BluetoothConnected
-                } else {
-                    Icons.Filled.Bluetooth
-                },
-                contentDescription = null,
-                tint = dotColor,
-                modifier = Modifier.size(16.dp)
-            )
-            Column(horizontalAlignment = Alignment.End) {
-                Text(clock, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
-                Text("v$versionName", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-            }
-
-            TopBarActions(editing, onMaps, onSplit, onSystem, onTheme, onToggleEdit)
         }
     }
 }

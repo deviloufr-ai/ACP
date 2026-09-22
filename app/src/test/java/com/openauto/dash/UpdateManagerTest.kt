@@ -10,7 +10,7 @@ class UpdateManagerTest {
     @Test
     fun lastNumberInTheTagIsTheBuild() {
         assertEquals(42L, UpdateManager.parseBuildNumber("v1.0.42"))
-        assertEquals(119L, UpdateManager.parseBuildNumber("OpenAuto Dash v1.0.119"))
+        assertEquals(119L, UpdateManager.parseBuildNumber("Dashwheel v1.0.119"))
         assertEquals(7L, UpdateManager.parseBuildNumber("7"))
     }
 

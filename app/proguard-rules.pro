@@ -1,4 +1,4 @@
-# OpenAuto Dash release keep rules.
+# Dashwheel release keep rules.
 #
 # Most libraries ship their own consumer rules (Compose, MapLibre, Filament,
 # OkHttp, coroutines). The entries below cover the ones that reach into native

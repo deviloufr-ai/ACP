@@ -17,7 +17,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * Entry point for OpenAuto Dash — the launcher/home surface. Runs edge-to-edge
+ * Entry point for Dashwheel — the launcher/home surface. Runs edge-to-edge
  * in immersive fullscreen (status/navigation bars hidden), showing the dashboard.
  */
 class MainActivity : ComponentActivity() {

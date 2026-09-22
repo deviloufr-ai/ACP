@@ -1,4 +1,4 @@
-# OpenAuto Dash - Build Instructions
+# Dashwheel - Build Instructions
 
 ## Quick Start (Android Studio)
 

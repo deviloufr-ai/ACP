@@ -411,6 +411,16 @@ internal fun TileContent(
     onEditLaunchBar: () -> Unit,
     onModelTouch: (Boolean) -> Unit
 ) {
+    if (skinHandles(item)) {
+        SkinTile(
+            item,
+            SkinTileEnv(
+                editing, appsByPackage, mediaState, mediaController, hasMediaAccess, context,
+                obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
+            )
+        )
+        return
+    }
     when (item) {
         is DashboardItem.LaunchBar -> LaunchBarTile(
             item = item,

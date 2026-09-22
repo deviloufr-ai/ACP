@@ -1,4 +1,4 @@
-# OpenAuto Dash - UX & Design Templates
+# Dashwheel - UX & Design Templates
 
 ## Executive Summary
 Five distinct UX/design templates optimized for automotive environments (head units & smartphones). All follow safety-first principles: dark theme, high contrast, large touch targets, glanceable information.

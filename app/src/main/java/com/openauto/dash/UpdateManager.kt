@@ -145,7 +145,7 @@ class UpdateManager(private val context: Context) {
 
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.apkUrl))
-            .setTitle("OpenAuto Dash ${info.versionName}")
+            .setTitle("Dashwheel ${info.versionName}")
             .setDescription("Downloading update")
             .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
