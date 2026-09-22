@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
@@ -152,6 +153,29 @@ object DashboardStore {
 
     private const val PREFS = "dashboard_layout_prefs"
     private const val KEY_PAGES = "pages"
+    /** Previous good layout, kept so a corrupt write never costs the user everything. */
+    private const val KEY_PAGES_BACKUP = "pages_backup"
+    private const val KEY_VERSION = "schema"
+    private const val TAG = "DashboardStore"
+
+    /**
+     * Layout schema version written with every save. Bump it when the JSON
+     * shape changes and add the migration to [load]; readers must keep
+     * accepting every older version, so a downgrade-then-upgrade never wipes
+     * a layout.
+     *
+     *  1: `{"v":1,"pages":[[tile...], ...]}`. Before v1 the value was the bare
+     *     pages array, which is still accepted.
+     */
+    private const val SCHEMA_VERSION = 1
+
+    /**
+     * Tiles this build does not understand (a type or builtin kind added by a
+     * newer version, seen after a downgrade) are carried through untouched, per
+     * page, and written back on the next save instead of being silently
+     * dropped. Held here because the in-memory model has no slot for them.
+     */
+    private val retained = HashMap<Int, MutableList<JSONObject>>()
 
     /** Default layout when nothing is saved yet: map, directions and music on page 1. */
     private fun defaultPages(): List<List<DashboardItem>> = listOf(
@@ -167,16 +191,21 @@ object DashboardStore {
     )
 
     fun load(context: Context): List<List<DashboardItem>> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_PAGES, null) ?: return defaultPages()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(KEY_PAGES, null) ?: return defaultPages()
 
-        val parsed = runCatching {
-            val pages = JSONArray(raw)
-            (0 until pages.length()).map { p ->
-                val page = pages.optJSONArray(p) ?: JSONArray()
-                (0 until page.length()).mapNotNull { i -> page.optJSONObject(i)?.toItem() }
+        // A corrupt primary value falls back to the last good layout rather
+        // than to the defaults; only when both are unreadable does the user
+        // lose their arrangement, and then it is logged.
+        val parsed = parsePages(raw)
+            ?: prefs.getString(KEY_PAGES_BACKUP, null)?.let { backup ->
+                Log.w(TAG, "Saved layout unreadable, restoring the previous one")
+                parsePages(backup)
             }
-        }.getOrNull() ?: return defaultPages()
+            ?: run {
+                Log.e(TAG, "Saved layout and its backup are both unreadable; using defaults")
+                return defaultPages()
+            }
 
         // Always return exactly PAGE_COUNT pages. Tiles that predate grid
         // coordinates (x = -1) are flowed in; any overlap left by an older
@@ -188,15 +217,61 @@ object DashboardStore {
         }
     }
 
+    /**
+     * Parses either schema (bare pages array, or the versioned object) into
+     * pages of tiles; null if the text is not a layout at all. Unknown tiles
+     * are stashed in [retained] for the next [save].
+     */
+    internal fun parsePages(raw: String): List<List<DashboardItem>>? = runCatching {
+        val trimmed = raw.trim()
+        val pages = if (trimmed.startsWith("{")) {
+            val obj = JSONObject(trimmed)
+            val v = obj.optInt(KEY_VERSION, 1)
+            if (v > SCHEMA_VERSION) Log.w(TAG, "Layout schema v$v is newer than this build (v$SCHEMA_VERSION)")
+            obj.optJSONArray(KEY_PAGES) ?: JSONArray()
+        } else {
+            JSONArray(trimmed)
+        }
+        retained.clear()
+        (0 until pages.length()).map { p ->
+            val page = pages.optJSONArray(p) ?: JSONArray()
+            (0 until page.length()).mapNotNull { i ->
+                val o = page.optJSONObject(i) ?: return@mapNotNull null
+                o.toItem() ?: run {
+                    retained.getOrPut(p) { mutableListOf() }.add(o)
+                    null
+                }
+            }
+        }
+    }.onFailure { Log.w(TAG, "Layout parse failed", it) }.getOrNull()
+
     fun save(context: Context, pages: List<List<DashboardItem>>) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val json = JSONArray()
-        pages.take(PAGE_COUNT).forEach { page ->
+        pages.take(PAGE_COUNT).forEachIndexed { p, page ->
             val arr = JSONArray()
             page.forEach { arr.put(it.toJson()) }
+            retained[p]?.forEach { arr.put(it) }
             json.put(arr)
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_PAGES, json.toString()).apply()
+        val doc = JSONObject().put(KEY_VERSION, SCHEMA_VERSION).put(KEY_PAGES, json).toString()
+        val previous = prefs.getString(KEY_PAGES, null)
+        prefs.edit().apply {
+            // Keep what was there as the fallback for the next load, unless it
+            // is the same text (nothing to gain) or unreadable (nothing to keep).
+            if (previous != null && previous != doc && parsePagesQuietly(previous)) {
+                putString(KEY_PAGES_BACKUP, previous)
+            }
+            putString(KEY_PAGES, doc)
+        }.apply()
+    }
+
+    /** True if [raw] parses as a layout, without touching [retained]. */
+    private fun parsePagesQuietly(raw: String): Boolean {
+        val keep = HashMap(retained)
+        val ok = parsePages(raw) != null
+        retained.clear(); retained.putAll(keep)
+        return ok
     }
 
     /** First cell where a [w] x [h] tile fits without overlapping [items]. */
@@ -411,8 +486,10 @@ object DashboardStore {
                 val pkgs = (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
                 place(DashboardItem.LaunchBar(pkgs))
             }
+            // Default span comes from the kind (a clock is 3x2, a map 5x3), so a
+            // legacy tile without coordinates is re-flowed at its proper size.
             "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
-                ?.let { place(DashboardItem.BuiltinWidget(it)) }
+                ?.let { place(DashboardItem.BuiltinWidget(it, w = it.defaultW, h = it.defaultH)) }
             "widget" -> optInt("id", -1).takeIf { it != -1 }
                 ?.let { place(DashboardItem.SystemWidget(it)) }
             else -> null
