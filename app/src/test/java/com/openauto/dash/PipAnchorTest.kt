@@ -22,7 +22,7 @@ class PipAnchorTest {
 
     @Test
     fun findsThePinnedStackAndItsPackage() {
-        val pinned = PipAnchor.parsePinnedStack(android10)
+        val pinned = PipAnchor.parseFloatingWindow(android10)
         assertNotNull(pinned)
         assertEquals(3, pinned!!.stackId)
         assertEquals("com.google.android.apps.maps", pinned.packageName)
@@ -33,9 +33,37 @@ class PipAnchorTest {
     fun noPinnedStackMeansNoPip() {
         val without = android10.lines().filterNot { it.contains("Stack id=3") || it.contains("pinned") || it.contains("taskId=57") }
             .joinToString("\n")
-        assertNull(PipAnchor.parsePinnedStack(without))
-        assertNull(PipAnchor.parsePinnedStack(""))
-        assertNull(PipAnchor.parsePinnedStack("Error: no such command"))
+        assertNull(PipAnchor.parseFloatingWindow(without))
+        assertNull(PipAnchor.parseFloatingWindow(""))
+        assertNull(PipAnchor.parseFloatingWindow("Error: no such command"))
+    }
+
+    @Test
+    fun freeformWindowIsFoundWhenThereIsNoPip() {
+        val freeform = """
+            Stack id=1 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=41: com.openauto.dash/com.openauto.dash.MainActivity bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=7 bounds=[640,80][1240,660] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[640,80][1240,660] userId=0 visible=true
+        """.trimIndent()
+        val win = PipAnchor.parseFloatingWindow(freeform)!!
+        assertEquals("freeform", win.mode)
+        assertEquals(7, win.stackId)
+        assertEquals(63, win.taskId)
+        assertEquals("com.google.android.apps.maps", win.packageName)
+        assertEquals("fullscreen dash \u00b7 freeform maps", PipAnchor.summarizeStacks(freeform))
+    }
+
+    @Test
+    fun numericWindowingModeIsUnderstood() {
+        val numeric = """
+            Stack id=4 bounds=[0,0][600,400] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=5 mActivityType=standard} }
+              taskId=9: com.waze/com.waze.MainActivity bounds=[0,0][600,400] userId=0 visible=true
+        """.trimIndent()
+        assertEquals("freeform", PipAnchor.parseFloatingWindow(numeric)!!.mode)
     }
 
     @Test
@@ -44,6 +72,6 @@ class PipAnchorTest {
             Stack id=3 bounds=[960,420][1264,608] displayId=0 userId=0
              configuration={ winConfig={ mWindowingMode=pinned mActivityType=standard} }
         """.trimIndent()
-        assertNull(PipAnchor.parsePinnedStack(empty))
+        assertNull(PipAnchor.parseFloatingWindow(empty))
     }
 }

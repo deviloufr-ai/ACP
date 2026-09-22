@@ -70,7 +70,11 @@ object PipAnchor {
     data class Status(
         val pipPackage: String? = null,
         val docked: Boolean = false,
-        val error: String? = null
+        val error: String? = null,
+        /** "pinned" or "freeform": how the window is floating. */
+        val mode: String? = null,
+        /** One entry per stack the system reported, for on-tile diagnostics. */
+        val seen: String? = null
     )
 
     private val _status = MutableStateFlow(Status())
@@ -79,8 +83,17 @@ object PipAnchor {
     /** Screen-pixel rectangle; a plain data class so the parser is JVM-testable. */
     data class ScreenRect(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
-    /** A pinned (PiP) stack as reported by `am stack list`. */
-    data class PinnedStack(val stackId: Int, val packageName: String, val bounds: ScreenRect?)
+    /**
+     * A floating window as reported by `am stack list`: either a pinned
+     * (picture-in-picture) stack or, as this ROM prefers, a freeform one.
+     */
+    data class FloatingWindow(
+        val stackId: Int,
+        val taskId: Int?,
+        val packageName: String,
+        val bounds: ScreenRect?,
+        val mode: String
+    )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val io = Mutex()
@@ -94,22 +107,22 @@ object PipAnchor {
         var lastApplied: ScreenRect? = null
         var lastStack: Int? = null
         while (true) {
-            val lookup = runCatching { findPinnedStack(context) }
+            val lookup = runCatching { findFloatingWindow(context) }
             val stack = lookup.getOrNull()
             if (lookup.isFailure) {
                 publishError(lookup.exceptionOrNull()!!)
                 lastApplied = null; lastStack = null
             } else if (stack == null) {
-                _status.value = Status()
+                _status.value = Status(seen = lastSeen)
                 lastApplied = null; lastStack = null
             } else {
-                _status.value = Status(pipPackage = stack.packageName, docked = stack.bounds == rect)
+                _status.value = Status(pipPackage = stack.packageName, docked = stack.bounds == rect, mode = stack.mode, seen = lastSeen)
                 val drifted = stack.bounds != rect || lastApplied != rect || lastStack != stack.stackId
                 if (drifted) {
-                    runCatching { resize(context, stack.stackId, rect) }
+                    runCatching { resize(context, stack, rect) }
                         .onSuccess {
                             lastApplied = rect; lastStack = stack.stackId
-                            _status.value = Status(pipPackage = stack.packageName, docked = true)
+                            _status.value = Status(pipPackage = stack.packageName, docked = true, mode = stack.mode, seen = lastSeen)
                         }
                         .onFailure { publishError(it) }
                 }
@@ -124,30 +137,54 @@ object PipAnchor {
      */
     fun park(context: Context) {
         scope.launch {
-            val stack = runCatching { findPinnedStack(context) }.getOrNull() ?: return@launch
+            val stack = runCatching { findFloatingWindow(context) }.getOrNull() ?: return@launch
             val dm = context.resources.displayMetrics
             val w = dm.widthPixels / 4
             val h = w * 9 / 16
             val margin = (12 * dm.density).roundToInt()
             val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
-            runCatching { resize(context, stack.stackId, rect) }.onFailure { Log.w(TAG, "park failed", it) }
+            runCatching { resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             closeConnection()
         }
     }
 
-    private suspend fun findPinnedStack(context: Context): PinnedStack? =
-        parsePinnedStack(shell(context, "am stack list"))
+    /** Summary of the last stack listing, e.g. "fullscreen dash · freeform maps". */
+    @Volatile private var lastSeen: String? = null
+    private var lastListing: String? = null
 
-    private suspend fun resize(context: Context, stackId: Int, rect: ScreenRect) {
-        val bounds = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
-        // Android 10/11 accept both; the animated form is nicer when present.
-        var out = shell(context, "am stack resize-animated $stackId $bounds")
-        if (looksLikeError(out)) out = shell(context, "am stack resize $stackId $bounds")
-        if (looksLikeError(out)) {
-            Log.w(TAG, "resize failed: ${out.trim()}")
-            error(out.trim().lines().first())
+    private suspend fun findFloatingWindow(context: Context): FloatingWindow? {
+        val listing = shell(context, "am stack list")
+        if (listing != lastListing) {
+            // Full dump once per change: this is what tells us how the ROM
+            // reports its floating windows.
+            Log.i(TAG, "am stack list:\n$listing")
+            lastListing = listing
         }
-        Log.d(TAG, "PiP stack $stackId -> $bounds")
+        lastSeen = summarizeStacks(listing)
+        return parseFloatingWindow(listing, context.packageName)
+    }
+
+    private suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect) {
+        val bounds = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
+        val attempts = if (win.mode == "pinned") {
+            // Android 10/11 accept both; the animated form is nicer when present.
+            listOf("am stack resize-animated ${win.stackId} $bounds", "am stack resize ${win.stackId} $bounds")
+        } else {
+            listOfNotNull(
+                win.taskId?.let { "am task resize $it $bounds" },
+                "am stack resize ${win.stackId} $bounds"
+            )
+        }
+        var last = ""
+        for (cmd in attempts) {
+            last = shell(context, cmd)
+            if (!looksLikeError(last)) {
+                Log.d(TAG, "${win.mode} ${win.packageName} -> $bounds via `$cmd`")
+                return
+            }
+            Log.w(TAG, "`$cmd` failed: ${last.trim()}")
+        }
+        error(last.trim().lines().firstOrNull().orEmpty().ifBlank { "resize refused" })
     }
 
     private fun looksLikeError(out: String): Boolean =
@@ -218,19 +255,52 @@ object PipAnchor {
     }
 
     /**
-     * Picks the pinned stack out of `am stack list` output. Each stack is a block
-     * starting with `Stack id=N`; the pinned one says `mWindowingMode=pinned` in
-     * its configuration and lists its task as `taskId=N: package/activity`.
+     * Picks the floating window out of `am stack list` output. Each stack is a
+     * block starting with `Stack id=N`; its configuration names the windowing
+     * mode (`mWindowingMode=pinned` / `freeform`) and its tasks appear as
+     * `taskId=N: package/activity`. Pinned wins over freeform; our own package
+     * and the Home stack are never candidates.
      */
-    internal fun parsePinnedStack(output: String): PinnedStack? {
-        val blocks = output.split(Regex("(?m)^\\s*Stack id=")).drop(1)
-        for (block in blocks) {
-            if (!block.contains("indowingMode=pinned") && !block.contains("winMode=pinned")) continue
+    internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash"): FloatingWindow? {
+        val found = mutableListOf<FloatingWindow>()
+        for (block in stackBlocks(output)) {
+            val mode = windowingMode(block) ?: continue
+            if (mode != "pinned" && mode != "freeform") continue
+            if (block.contains("ActivityType=home")) continue
             val id = block.takeWhile { it.isDigit() }.toIntOrNull() ?: continue
-            val pkg = Regex("taskId=\\d+: ([\\w.]+)/").find(block)?.groupValues?.get(1) ?: continue
-            val b = Regex("bounds=\\[(-?\\d+),(-?\\d+)\\]\\[(-?\\d+),(-?\\d+)\\]").find(block)?.groupValues
+            val task = TASK.find(block) ?: continue
+            val pkg = task.groupValues[2]
+            if (pkg == selfPackage) continue
+            val b = BOUNDS.find(block)?.groupValues
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
-            return PinnedStack(id, pkg, bounds)
+            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode)
+        }
+        return found.firstOrNull { it.mode == "pinned" } ?: found.firstOrNull()
+    }
+
+    /** "mode package" per stack, for the tile's diagnostic line. */
+    internal fun summarizeStacks(output: String): String? {
+        val parts = stackBlocks(output).mapNotNull { block ->
+            val mode = windowingMode(block) ?: return@mapNotNull null
+            val pkg = TASK.find(block)?.groupValues?.get(2) ?: "(empty)"
+            mode + " " + pkg.substringAfterLast('.')
+        }
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u00b7 ")
+    }
+
+    private val TASK = Regex("taskId=(\\d+): ([\\w.]+)/")
+    private val BOUNDS = Regex("bounds=\\[(-?\\d+),(-?\\d+)\\]\\[(-?\\d+),(-?\\d+)\\]")
+    private val MODE_NAME = Regex("(?:indowingMode|winMode)=([a-z-]+)")
+    private val MODE_NUMBER = Regex("indowingMode=(\\d)")
+
+    private fun stackBlocks(output: String): List<String> =
+        output.split(Regex("(?m)^\\s*Stack id=")).drop(1)
+
+    private fun windowingMode(block: String): String? {
+        MODE_NAME.find(block)?.let { return it.groupValues[1] }
+        // Some builds print the numeric mode: 1 fullscreen, 2 pinned, 5 freeform.
+        MODE_NUMBER.find(block)?.let {
+            return when (it.groupValues[1]) { "1" -> "fullscreen"; "2" -> "pinned"; "5" -> "freeform"; else -> "other" }
         }
         return null
     }
@@ -296,7 +366,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
             val err = status.error
             Text(
                 text = when {
-                    pkg != null && status.docked -> "Docked: ${pkg.substringAfterLast('.')}"
+                    pkg != null && status.docked -> "Docked: ${pkg.substringAfterLast('.')} (${status.mode})"
                     pkg != null -> "Moving the window here…"
                     err != null -> err
                     else -> "The floating Maps window docks here.\nStart guidance in Google Maps, then press Home."
@@ -309,6 +379,10 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium
             )
+            status.seen?.let { seen ->
+                Spacer(Modifier.height(6.dp))
+                Text("Windows: $seen", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+            }
             if (pkg == null) {
                 Spacer(Modifier.height(12.dp))
                 Button(
