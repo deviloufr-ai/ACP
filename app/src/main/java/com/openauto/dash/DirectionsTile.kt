@@ -295,8 +295,7 @@ internal fun InfoPill(text: String) {
         style = MaterialTheme.typography.labelMedium,
         modifier = Modifier
             .clip(shape)
-            .background(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi)
-            .border(1.dp, DashColors.Line, shape)
+            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi, shape)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     )
 }

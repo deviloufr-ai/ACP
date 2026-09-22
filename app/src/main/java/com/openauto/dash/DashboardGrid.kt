@@ -61,6 +61,7 @@ import androidx.compose.runtime.key
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -296,7 +297,15 @@ internal fun GridTile(
                 if (active) { scaleX = 1.03f; scaleY = 1.03f; shadowElevation = 20f }
             }
     ) {
-        Box(modifier = Modifier.fillMaxSize()) { content() }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // Bare themes draw no card, so outline each tile while arranging.
+                .then(
+                    if (editing && DashColors.Bare) Modifier.border(1.dp, DashColors.TextSecondary.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                    else Modifier
+                )
+        ) { content() }
 
         if (editing) {
             // Transparent scrim over the content captures the long-press drag so
@@ -412,6 +421,13 @@ internal fun TileContent(
             modifier = Modifier.fillMaxSize()
         )
 
+        is DashboardItem.AppWindow -> {
+            val label = appsByPackage[item.packageName]?.label ?: item.packageName.substringAfterLast('.')
+            // While arranging, the window would cover its own tile's handles.
+            if (editing) EditPlaceholder(icon = Icons.Filled.OpenInNew, label = "$label window")
+            else PipAnchorCard(modifier = Modifier.fillMaxSize(), packageName = item.packageName, appLabel = label)
+        }
+
         is DashboardItem.AppShortcut -> Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -503,7 +519,9 @@ internal fun TileContent(
                 modifier = Modifier.fillMaxSize()
             )
             BuiltinKind.COMPASS -> CompassCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.PIP_ANCHOR -> PipAnchorCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.PIP_ANCHOR -> if (editing) {
+                EditPlaceholder(icon = Icons.Filled.Map, label = BuiltinKind.PIP_ANCHOR.label)
+            } else PipAnchorCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.TRIP -> TripCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.GFORCE -> GForceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PARKING -> ParkingCard(modifier = Modifier.fillMaxSize())
@@ -560,7 +578,7 @@ internal fun AddTile(onClick: () -> Unit) {
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(DashColors.Card),
+                .itemFill(DashColors.Card, CircleShape, rim = null),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add", tint = DashColors.Accent, modifier = Modifier.size(34.dp))
@@ -577,6 +595,7 @@ private fun DashboardItem.describe(): String = when (this) {
     is DashboardItem.SplitPair -> "split pair"
     is DashboardItem.LaunchBar -> "launch bar"
     is DashboardItem.SystemWidget -> "widget"
+    is DashboardItem.AppWindow -> packageName.substringAfterLast('.') + " window"
 }
 
 /**
@@ -590,6 +609,7 @@ internal fun tileKeys(items: List<DashboardItem>): List<String> {
         is DashboardItem.LaunchBar -> "bar"
         is DashboardItem.BuiltinWidget -> "builtin:${item.kind.name}"
         is DashboardItem.SystemWidget -> "widget:${item.appWidgetId}"
+        is DashboardItem.AppWindow -> "appwin:${item.packageName}"
     }
     val seen = HashMap<String, Int>()
     return items.map { item ->

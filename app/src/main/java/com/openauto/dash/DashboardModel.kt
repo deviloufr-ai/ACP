@@ -61,7 +61,8 @@ enum class BuiltinKind(
  *  - [SplitPair]     launches two apps side-by-side in split-screen,
  *  - [LaunchBar]     an editable row of app icons (a dock),
  *  - [BuiltinWidget] one of our own cards (map / media / OBD / directions),
- *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder].
+ *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder],
+ *  - [AppWindow]     any installed app running in a window the size of the tile.
  */
 sealed interface DashboardItem {
     val x: Int
@@ -96,6 +97,13 @@ sealed interface DashboardItem {
 
     data class SystemWidget(
         val appWidgetId: Int,
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 5, override val h: Int = 3
+    ) : DashboardItem
+
+    /** An app (YouTube Music, Waze, ...) docked as a floating window over this tile, like the Maps window. */
+    data class AppWindow(
+        val packageName: String,
         override val x: Int = 0, override val y: Int = 0,
         override val w: Int = 5, override val h: Int = 3
     ) : DashboardItem
@@ -134,6 +142,7 @@ fun DashboardItem.withCell(x: Int, y: Int, w: Int, h: Int): DashboardItem {
         is DashboardItem.LaunchBar -> copy(x = cx, y = cy, w = cw, h = ch)
         is DashboardItem.BuiltinWidget -> copy(x = cx, y = cy, w = cw, h = ch)
         is DashboardItem.SystemWidget -> copy(x = cx, y = cy, w = cw, h = ch)
+        is DashboardItem.AppWindow -> copy(x = cx, y = cy, w = cw, h = ch)
     }
 }
 
@@ -466,6 +475,7 @@ object DashboardStore {
                 JSONObject().put("t", "bar").put("pkgs", JSONArray(packages))
             is DashboardItem.BuiltinWidget -> JSONObject().put("t", "builtin").put("k", kind.name)
             is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
+            is DashboardItem.AppWindow -> JSONObject().put("t", "appwin").put("pkg", packageName)
         }
         return o.put("gx", x).put("gy", y).put("gw", w).put("gh", h)
     }
@@ -477,6 +487,7 @@ object DashboardStore {
         is DashboardItem.LaunchBar -> copy(x = -1)
         is DashboardItem.BuiltinWidget -> copy(x = -1)
         is DashboardItem.SystemWidget -> copy(x = -1)
+        is DashboardItem.AppWindow -> copy(x = -1)
     }
 
     private fun JSONObject.toItem(): DashboardItem? {
@@ -506,6 +517,8 @@ object DashboardStore {
                 ?.let { place(DashboardItem.BuiltinWidget(it, w = it.defaultW, h = it.defaultH)) }
             "widget" -> optInt("id", -1).takeIf { it != -1 }
                 ?.let { place(DashboardItem.SystemWidget(it)) }
+            "appwin" -> optString("pkg").takeIf { it.isNotBlank() }
+                ?.let { place(DashboardItem.AppWindow(it)) }
             else -> null
         }
     }

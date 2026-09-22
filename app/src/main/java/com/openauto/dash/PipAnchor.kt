@@ -85,8 +85,20 @@ object PipAnchor {
         val gaveUp: Boolean = false
     )
 
-    private val _status = MutableStateFlow(Status())
-    val status: StateFlow<Status> = _status
+    // One status per docked app: several tiles (Maps, YouTube Music, ...) can
+    // each own a window at the same time.
+    private val statuses = java.util.concurrent.ConcurrentHashMap<String, MutableStateFlow<Status>>()
+    private fun statusFlow(packageName: String) = statuses.getOrPut(packageName) { MutableStateFlow(Status()) }
+    fun statusOf(packageName: String): StateFlow<Status> = statusFlow(packageName)
+
+    /** Packages currently docked as freeform windows (drives the status-bar inset). */
+    val dockedPackages = MutableStateFlow<Set<String>>(emptySet())
+    private val freeformNow = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private fun noteFreeform(packageName: String, present: Boolean) {
+        if (present) freeformNow.add(packageName) else freeformNow.remove(packageName)
+        dockedPackages.value = freeformNow.toSet()
+    }
 
     /** True while the "Maps left" layout's permanent dock is on screen. */
     val dockActive = MutableStateFlow(false)
@@ -116,26 +128,28 @@ object PipAnchor {
      * Keeps the PiP window on [rect] (screen pixels) until cancelled: finds the
      * pinned stack every few seconds and resizes it whenever it drifted.
      */
-    suspend fun track(context: Context, rect: ScreenRect) {
+    suspend fun track(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
         var attempts = 0
         var lastStack: Int? = null
         var lastResult: String? = null
+        val status = statusFlow(packageName)
         while (true) {
-            val lookup = runCatching { findFloatingWindow(context) }
+            val lookup = runCatching { findFloatingWindow(context, packageName) }
             val win = lookup.getOrNull()
             if (lookup.isFailure) {
-                publishError(lookup.exceptionOrNull()!!)
+                publishError(packageName, lookup.exceptionOrNull()!!)
                 attempts = 0; lastStack = null
             } else if (win == null) {
-                _status.value = Status(seen = lastSeen)
+                status.value = Status(seen = lastSeen)
                 attempts = 0; lastStack = null
-                setDashboardFocusable(context, true)
+                noteFreeform(packageName, false)
+                if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
                 val now = System.currentTimeMillis()
-                if (autoOpen(context) && now - lastReopenAt > REOPEN_COOLDOWN_MS) {
-                    lastReopenAt = now
+                if (autoOpen(context, packageName) && now - (lastReopenAt[packageName] ?: 0L) > REOPEN_COOLDOWN_MS) {
+                    lastReopenAt[packageName] = now
                     val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
-                    Log.i(TAG, "opening Maps at $rect")
-                    SplitLauncher.launchFreeform(context, MAPS_PACKAGE, bounds)
+                    Log.i(TAG, "opening $packageName at $rect")
+                    SplitLauncher.launchFreeform(context, packageName, bounds)
                 }
             } else {
                 if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
@@ -145,14 +159,17 @@ object PipAnchor {
                     // Behind the dashboard (we came back to this page, or the user
                     // touched the dashboard before focus was declined): raise it.
                     if (!win.visible) {
-                        Log.i(TAG, "raising Maps above the dashboard")
+                        Log.i(TAG, "raising $packageName above the dashboard")
                         if (!bringToFront(context, win.taskId)) {
-                            lastResult = "failed: could not raise Maps (task ${win.taskId})"
+                            lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
                         }
                     }
+                    noteFreeform(packageName, true)
                     setDashboardFocusable(context, false)
+                } else {
+                    noteFreeform(packageName, false)
                 }
-                _status.value = Status(
+                status.value = Status(
                     pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
                     gaveUp = attempts >= MAX_ATTEMPTS
@@ -168,9 +185,9 @@ object PipAnchor {
                         if (useSwipe) swipeTo(context, win.bounds!!, rect) else resize(context, win, rect)
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
-                    result.onFailure { publishError(it) }
+                    result.onFailure { publishError(packageName, it) }
                     if (result.isSuccess) undoStatusBarPolicy(context)
-                    _status.value = _status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else _status.value.error)
+                    status.value = status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else status.value.error)
                 }
             }
             delay(POLL_MS)
@@ -273,9 +290,12 @@ object PipAnchor {
      * rectangle in the bottom-right corner of the display.
      */
     private const val PREFS = "pip_anchor"
-    private const val KEY_AUTO_OPEN = "auto_open_maps"
     private const val REOPEN_COOLDOWN_MS = 15_000L
-    private var lastReopenAt = 0L
+    private val lastReopenAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Maps keeps its historical key; other apps get one each. */
+    private fun autoOpenKey(packageName: String) =
+        if (packageName == MAPS_PACKAGE) "auto_open_maps" else "auto_open_$packageName"
 
     /**
      * Once the user has opened Maps from the tile, the tile's job is "Maps lives
@@ -283,11 +303,22 @@ object PipAnchor {
      * it (a page change, another app, a reboot), it opens one. Removing the
      * tile ends that. Persisted so the Maps page survives a restart.
      */
-    fun autoOpen(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_OPEN, false)
+    fun autoOpen(context: Context, packageName: String = MAPS_PACKAGE): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(autoOpenKey(packageName), false)
 
-    fun setAutoOpen(context: Context, on: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO_OPEN, on).apply()
+    fun setAutoOpen(context: Context, on: Boolean, packageName: String = MAPS_PACKAGE) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(autoOpenKey(packageName), on).apply()
+    }
+
+    /** Stops keeping windows open for every app that no longer has a tile. */
+    fun releaseAutoOpenExcept(context: Context, keep: Set<String>) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        prefs.all.keys.filter { it.startsWith("auto_open_") }.forEach { key ->
+            val pkg = if (key == "auto_open_maps") MAPS_PACKAGE else key.removePrefix("auto_open_")
+            if (pkg !in keep) editor.remove(key)
+        }
+        editor.apply()
     }
 
     /**
@@ -298,24 +329,26 @@ object PipAnchor {
      * guiding from its notification meanwhile. Picture-in-picture, which the
      * system keeps on screen anyway, is parked small in the bottom-right corner.
      */
-    fun hide(context: Context) {
+    fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
-            val stack = runCatching { findFloatingWindow(context) }.getOrNull() ?: return@launch
+            noteFreeform(packageName, false)
+            val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
             if (stack.mode == "freeform") {
                 // Put the dashboard above the window instead of closing it: instant,
-                // and Maps keeps its state. Works when the dashboard runs as an
+                // and the app keeps its state. Works when the dashboard runs as an
                 // ordinary task; as the Home task it stays at the bottom of the
-                // z-order, so if Maps is still visible afterwards, close it.
+                // z-order, so if the window is still visible afterwards, close it.
+                // (Other docked windows get raised again by their own tiles.)
                 setDashboardFocusable(context, true)
                 bringToFront(context, dashboardTaskId(context))
                 delay(400)
-                val after = runCatching { findFloatingWindow(context) }.getOrNull()
+                val after = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
                 if (after != null && after.visible) {
                     val out = runCatching { shell(context, "am stack remove ${after.stackId}") }
                         .getOrElse { "failed: ${it.message}" }
-                    Log.i(TAG, "dashboard could not cover Maps; closed it: ${out.trim()}")
+                    Log.i(TAG, "dashboard could not cover $packageName; closed it: ${out.trim()}")
                 } else {
-                    Log.i(TAG, "Maps window now behind the dashboard")
+                    Log.i(TAG, "$packageName window now behind the dashboard")
                 }
             } else {
                 val dm = context.resources.displayMetrics
@@ -334,7 +367,7 @@ object PipAnchor {
     @Volatile private var lastSeen: String? = null
     private var lastListing: String? = null
 
-    private suspend fun findFloatingWindow(context: Context): FloatingWindow? {
+    private suspend fun findFloatingWindow(context: Context, packageName: String? = null): FloatingWindow? {
         val listing = shell(context, "am stack list")
         if (listing != lastListing) {
             // Full dump once per change: this is what tells us how the ROM
@@ -343,7 +376,7 @@ object PipAnchor {
             lastListing = listing
         }
         lastSeen = summarizeStacks(listing)
-        return parseFloatingWindow(listing, context.packageName)
+        return parseFloatingWindow(listing, context.packageName, packageName)
     }
 
     private suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String {
@@ -429,14 +462,14 @@ object PipAnchor {
         dadb = null
     }
 
-    private fun publishError(e: Throwable) {
+    private fun publishError(packageName: String, e: Throwable) {
         Log.w(TAG, "PiP anchor error", e)
         val msg = when {
             e is java.net.ConnectException || e.message?.contains("Connection refused") == true ->
                 "No root (Magisk) and the ADB socket on port ${adbPort()} isn't listening"
             else -> e.message ?: e.javaClass.simpleName
         }
-        _status.value = _status.value.copy(error = msg)
+        statusFlow(packageName).let { it.value = it.value.copy(error = msg) }
     }
 
     /**
@@ -446,7 +479,7 @@ object PipAnchor {
      * `taskId=N: package/activity`. Freeform wins over pinned; our own package
      * and the Home stack are never candidates.
      */
-    internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash"): FloatingWindow? {
+    internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash", packageName: String? = null): FloatingWindow? {
         val found = mutableListOf<FloatingWindow>()
         for (block in stackBlocks(output)) {
             val mode = windowingMode(block) ?: continue
@@ -456,6 +489,7 @@ object PipAnchor {
             val task = TASK.find(block) ?: continue
             val pkg = task.groupValues[2]
             if (pkg == selfPackage) continue
+            if (packageName != null && pkg != packageName) continue
             // The stack's own bounds line comes first and, for freeform, spans
             // the whole display; the window's bounds are on the task line.
             val taskLine = block.substring(task.range.first).lineSequence().first()
@@ -501,17 +535,23 @@ object PipAnchor {
  * exactly over it; swiping to another page parks the window in a corner.
  */
 @Composable
-internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = false) {
+internal fun PipAnchorCard(
+    modifier: Modifier = Modifier,
+    isDock: Boolean = false,
+    packageName: String = PipAnchor.MAPS_PACKAGE,
+    appLabel: String = "Maps"
+) {
     val context = LocalContext.current
-    // With a permanent dock on screen, a "Maps window" tile on a page must not
-    // compete for the same window: it just points at the dock.
+    // With a permanent Maps dock on screen, a "Maps window" tile on a page must
+    // not compete for the same window: it just points at the dock.
     val dockActive by PipAnchor.dockActive.collectAsState()
+    val isMaps = packageName == PipAnchor.MAPS_PACKAGE
     if (isDock) {
         DisposableEffect(Unit) {
             PipAnchor.dockActive.value = true
             onDispose { PipAnchor.dockActive.value = false }
         }
-    } else if (dockActive) {
+    } else if (dockActive && isMaps) {
         Card(modifier = modifier) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -520,14 +560,14 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
             ) {
                 Text("MAPS WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(8.dp))
-                Text("Maps is docked on the left of the dashboard.", color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text("Maps is docked beside the dashboard.", color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
             }
         }
         return
     }
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val status by PipAnchor.status.collectAsState()
+    val status by PipAnchor.statusOf(packageName).collectAsState()
 
     var target by remember { mutableStateOf<PipAnchor.ScreenRect?>(null) }
     var started by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
@@ -547,7 +587,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            PipAnchor.hide(context)
+            PipAnchor.hide(context, packageName)
         }
     }
 
@@ -557,7 +597,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
         val rect = target ?: return@LaunchedEffect
         if (!started) return@LaunchedEffect
         delay(350)
-        PipAnchor.track(context, rect)
+        PipAnchor.track(context, rect, packageName)
     }
 
     Card(
@@ -576,7 +616,7 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("MAPS WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text("${appLabel.uppercase()} WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
             val pkg = status.pipPackage
             val err = status.error
@@ -586,8 +626,9 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
                     pkg != null && status.docked -> "Docked: $name (${status.mode})"
                     pkg != null && status.gaveUp -> "The system keeps $name where it is"
                     pkg != null -> "Moving $name here…"
-                    PipAnchor.autoOpen(context) -> "Opening Google Maps here\u2026"
-                    else -> "Google Maps docks here.\nOpen it below, or start guidance and press Home."
+                    PipAnchor.autoOpen(context, packageName) -> "Opening $appLabel here\u2026"
+                    isMaps -> "Google Maps docks here.\nOpen it below, or start guidance and press Home."
+                    else -> "$appLabel runs here, in a window the size of this tile."
                 },
                 color = when {
                     pkg != null && status.docked -> DashColors.Good
@@ -625,18 +666,16 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = fals
                     onClick = {
                         val rect = target
                         val bounds = rect?.let { android.graphics.Rect(it.left, it.top, it.right, it.bottom) }
-                        PipAnchor.setAutoOpen(context, true)
-                        if (!SplitLauncher.launchFreeform(context, PipAnchor.MAPS_PACKAGE, bounds)) {
-                            val launch = context.packageManager.getLaunchIntentForPackage(PipAnchor.MAPS_PACKAGE)
-                                ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0"))
-                            context.launchSafely(launch)
+                        PipAnchor.setAutoOpen(context, true, packageName)
+                        if (!SplitLauncher.launchFreeform(context, packageName, bounds)) {
+                            context.packageManager.getLaunchIntentForPackage(packageName)?.let { context.launchSafely(it) }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
                     shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     modifier = Modifier.fillMaxWidth(0.8f)
-                ) { Text(if (pkg == null) "Open Maps here" else "Open full Maps here") }
+                ) { Text(if (pkg == null) "Open $appLabel here" else "Open full $appLabel here") }
             }
         }
     }

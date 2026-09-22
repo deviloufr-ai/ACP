@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -25,6 +28,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -102,12 +106,15 @@ internal fun GradientRoundButton(
 /**
  * Rounded elevated card. Solid themes use a flat surface matching the Android
  * Auto content cards; glass themes use a translucent gradient panel that lets
- * the aurora background show through.
+ * the aurora background show through; bare themes draw no panel at all.
  */
 @Composable
 internal fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(24.dp)
-    if (DashColors.Glass) {
+    if (DashColors.Bare) {
+        // Unclipped: with no panel edge to hide it, a clip would cut glows off in a hard line.
+        Box(modifier = modifier) { content() }
+    } else if (DashColors.Glass) {
         Box(modifier = modifier.then(glassPanel(shape))) { content() }
     } else {
         Surface(
@@ -134,6 +141,14 @@ internal fun SolidCard(modifier: Modifier = Modifier, content: @Composable () ->
         content = content
     )
 }
+
+/**
+ * Fill and hairline rim behind an item on a tile: an icon disc, a chip, a list
+ * row. Bare themes drop both so the item sits straight on the page background.
+ */
+internal fun Modifier.itemFill(fill: Color, shape: Shape, rim: Color? = DashColors.Line): Modifier =
+    if (DashColors.Bare) this
+    else background(fill, shape).then(if (rim != null) Modifier.border(1.dp, rim, shape) else Modifier)
 
 /**
  * Glass surface: translucent white->accent gradient fill, hairline border and a
@@ -239,6 +254,37 @@ internal val isEmulator: Boolean by lazy {
         model.contains("emulator") || model.contains("android sdk built for") ||
         product.contains("sdk") || product.startsWith("emu") ||
         hw.contains("goldfish") || hw.contains("ranchu") || hw.contains("cutf")
+}
+
+/**
+ * Vertical grab bar between the Maps dock and the dashboard pages. Horizontal
+ * drags report pixel deltas; the caller converts them into a width share.
+ */
+@Composable
+internal fun DockDivider(onDrag: (Float) -> Unit, onDragEnd: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(18.dp)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { onDragEnd() },
+                    onDragCancel = { onDragEnd() }
+                ) { change, dx ->
+                    change.consume()
+                    onDrag(dx)
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(5.dp)
+                .height(56.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(DashColors.TextSecondary.copy(alpha = 0.55f))
+        )
+    }
 }
 
 internal fun currentClock(): String =

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -58,6 +59,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -94,6 +97,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
+    var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     val variant = variantOf(layout)
@@ -149,6 +153,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var addTargetPage by remember { mutableIntStateOf(-1) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
+    var showAppWindowPicker by remember { mutableStateOf(false) }
     var showWidgetMenu by remember { mutableStateOf(false) }
     var layoutNotice by remember { mutableStateOf<String?>(null) }
     // Two-step picker for creating a saved split-pair tile.
@@ -205,10 +210,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     /** Add only when the tile fits; a full page must never create a hidden overlap. */
     fun addItem(page: Int, item: DashboardItem): Boolean = addItemAt(page, item) >= 0
 
-    /** Removing the last "Maps window" tile ends the tile's keep-Maps-open duty. */
+    /** Removing an app's last window tile ends the tile's keep-it-open duty. */
     fun releaseMapsAnchorIfGone() {
-        val anyLeft = pages.flatten().any { it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR }
-        if (!anyLeft) PipAnchor.setAutoOpen(context, false)
+        val keep = pages.flatten().mapNotNull {
+            when {
+                it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
+                it is DashboardItem.AppWindow -> it.packageName
+                else -> null
+            }
+        }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+        PipAnchor.releaseAutoOpenExcept(context, keep)
     }
 
     fun removeAt(page: Int, index: Int) {
@@ -399,8 +410,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // then. Not via WindowInsets.statusBars: on Android 10 that stays at the
     // bar's height even while the bar is hidden, which pushed the whole
     // dashboard down permanently.
-    val pipStatus by PipAnchor.status.collectAsState()
-    val barForced = pipStatus.pipPackage != null && pipStatus.mode == "freeform"
+    val dockedApps by PipAnchor.dockedPackages.collectAsState()
+    val barForced = dockedApps.isNotEmpty()
     val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
     Column(
         modifier = Modifier
@@ -458,7 +469,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             val mapsDock: @Composable RowScope.() -> Unit = {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(dockFraction)
                         .fillMaxHeight()
                         .padding(
                             start = if (dockSide == Alignment.Start) 8.dp else 0.dp,
@@ -469,12 +480,26 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true)
                 }
             }
-            Row(modifier = Modifier.fillMaxSize()) {
-            if (dockSide == Alignment.Start) mapsDock()
+            // Drag the divider to trade width between the dock and the pages; the
+            // dock re-measures itself, so the Maps window follows once released.
+            var rowWidthPx by remember { mutableIntStateOf(1) }
+            val divider: @Composable RowScope.() -> Unit = {
+                DockDivider(
+                    onDrag = { dx ->
+                        val delta = dx / rowWidthPx.coerceAtLeast(1)
+                        val signed = if (dockSide == Alignment.Start) delta else -delta
+                        dockFraction = (dockFraction + signed)
+                            .coerceIn(DashLayoutStore.MIN_DOCK_FRACTION, DashLayoutStore.MAX_DOCK_FRACTION)
+                    },
+                    onDragEnd = { DashLayoutStore.saveDockFraction(context, dockFraction) }
+                )
+            }
+            Row(modifier = Modifier.fillMaxSize().onSizeChanged { rowWidthPx = it.width }) {
+            if (dockSide == Alignment.Start) { mapsDock(); divider() }
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = !blockPagerSwipe,
-                modifier = Modifier.weight(1f).fillMaxHeight()
+                modifier = Modifier.weight(if (dockSide == null) 1f else 1f - dockFraction).fillMaxHeight()
             ) { page ->
                 DashboardPage(
                     pageItems = pages[page],
@@ -504,7 +529,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onAdd = { onAdd(page) }
                 )
             }
-            if (dockSide == Alignment.End) mapsDock()
+            if (dockSide == Alignment.End) { divider(); mapsDock() }
             }
 
             // Floating swap button (bottom-centre), shown whenever the launcher
@@ -635,6 +660,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         showAddMenu = false
                         showAppPicker = true
                     }
+                    AddChoiceRow(Icons.Filled.OpenInNew, "Add app window (runs in the tile)") {
+                        showAddMenu = false
+                        showAppWindowPicker = true
+                    }
                     AddChoiceRow(Icons.Filled.Splitscreen, "Add app pair (split)") {
                         showAddMenu = false
                         pairPrimaryPackage = null
@@ -663,6 +692,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
             },
             onDismiss = { showAppPicker = false }
+        )
+    }
+
+    if (showAppWindowPicker) {
+        AppPickerDialog(
+            apps = apps,
+            onPick = { app ->
+                showAppWindowPicker = false
+                if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppWindow(app.packageName))
+            },
+            onDismiss = { showAppWindowPicker = false }
         )
     }
 

@@ -16,7 +16,8 @@ enum class DashThemeMode(val title: String, val description: String) {
     NEON_DARK("Neon Dark", "Blue + violet futuristic cockpit"),
     CLEAN_LIGHT("Clean Light", "Bright, minimal and easy to read"),
     DARK_GLASS("Dark Glass", "Premium dark glass aesthetic"),
-    SPORTY("Sporty", "Black + red performance cockpit")
+    SPORTY("Sporty", "Black + red performance cockpit"),
+    FLOATING("Floating", "No tile backgrounds: widgets and icons sit on the backdrop")
 }
 
 /**
@@ -28,7 +29,9 @@ enum class DashThemeMode(val title: String, val description: String) {
  * at 0 so nothing smears in sunlight. [Accent2] is the far end of the accent
  * gradient used for the gauge sweep and gradient buttons. [Original] swaps the
  * media, telemetry, gauge, meter-chip and top-bar widgets back to their first
- * designs (see OriginalTiles.kt).
+ * designs (see OriginalTiles.kt). [Bare] drops the tile cards and the fills
+ * behind icons, chips and list rows (see itemFill), so content sits straight on
+ * the page background; Card / CardHi still colour dialogs and buttons.
  */
 data class DashPalette(
     val Background: Color, val Bar: Color, val Card: Color, val CardHi: Color,
@@ -39,6 +42,7 @@ data class DashPalette(
     val Glass: Boolean = false,
     val Glow: Float = 0f,
     val Original: Boolean = false,
+    val Bare: Boolean = false,
     val BackgroundStops: List<Color> = listOf(Background, Background)
 )
 
@@ -96,6 +100,15 @@ private val SportyPalette = DashPalette(
     Accent2 = Color(0xFFFF8A3D), Glow = 0.6f,
     BackgroundStops = listOf(Color(0xFF0D0F12), Color(0xFF07080A))
 )
+// Floating: no cards, so the bar is transparent too and the backdrop is a calm
+// gradient that text and gauges read on directly.
+private val FloatingPalette = DashPalette(
+    Color(0xFF06080D), Color.Transparent, Color(0xFF141A24), Color(0xFF1F2733),
+    Color(0xFF7CC4FF), Color(0xFF7CC4FF), Color(0xFFFFB86B), Color(0xFFFF6B6B),
+    Color(0xFF5EE3A1), Color(0xFF8A94A6), Color(0xFFF5F7FA), Color(0xFFB4BCC8),
+    Accent2 = Color(0xFFB38CFF), Glow = 0.5f, Bare = true,
+    BackgroundStops = listOf(Color(0xFF0C1424), Color(0xFF06080D), Color(0xFF0E0B1C))
+)
 
 /** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
 enum class DashLayout(val title: String, val description: String) {
@@ -118,6 +131,20 @@ object DashLayoutStore {
     fun save(context: Context, layout: DashLayout) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY, layout.name).apply()
+    }
+
+    /** Share of the width the Maps dock takes in the docked layouts (the divider is draggable). */
+    const val MIN_DOCK_FRACTION = 0.25f
+    const val MAX_DOCK_FRACTION = 0.75f
+    private const val KEY_DOCK_FRACTION = "dock_fraction"
+
+    fun loadDockFraction(context: Context): Float =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getFloat(KEY_DOCK_FRACTION, 0.5f).coerceIn(MIN_DOCK_FRACTION, MAX_DOCK_FRACTION)
+
+    fun saveDockFraction(context: Context, fraction: Float) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putFloat(KEY_DOCK_FRACTION, fraction.coerceIn(MIN_DOCK_FRACTION, MAX_DOCK_FRACTION)).apply()
     }
 }
 
@@ -151,6 +178,7 @@ object DashColors {
             DashThemeMode.CLEAN_LIGHT -> CleanLightPalette
             DashThemeMode.DARK_GLASS -> DarkGlassPalette
             DashThemeMode.SPORTY -> SportyPalette
+            DashThemeMode.FLOATING -> FloatingPalette
         }
         if (current != target) current = target
     }
@@ -172,6 +200,7 @@ object DashColors {
     val Glass get() = current.Glass
     val Glow get() = current.Glow
     val Original get() = current.Original
+    val Bare get() = current.Bare
     val BackgroundStops get() = current.BackgroundStops
 
     /** Diagonal accent → accent2 gradient for primary controls. */

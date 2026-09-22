@@ -118,11 +118,11 @@ internal fun LaunchBarTile(
                                     modifier = Modifier
                                         .size(iconSize + 14.dp)
                                         .clip(CircleShape)
-                                        .background(DashColors.CardHi)
-                                        .border(1.dp, DashColors.Line, CircleShape),
+                                        .itemFill(DashColors.CardHi, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (app != null) AppIcon(icon = app.icon, size = iconSize)
+                                    // No disc on bare themes, so the icon takes its room.
+                                    if (app != null) AppIcon(icon = app.icon, size = if (DashColors.Bare) iconSize + 10.dp else iconSize)
                                     else Icon(Icons.Filled.Apps, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(iconSize * 0.7f))
                                 }
                                 if (showLabels) {
@@ -268,12 +268,11 @@ internal fun AppShortcutTile(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(DashColors.CardHi)
-                .border(1.dp, DashColors.Line, CircleShape),
+                .itemFill(DashColors.CardHi, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (app != null) {
-                AppIcon(icon = app.icon, size = 44.dp)
+                AppIcon(icon = app.icon, size = if (DashColors.Bare) 56.dp else 44.dp)
             } else {
                 Icon(Icons.Filled.Apps, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
             }
@@ -311,7 +310,7 @@ internal fun SplitPairTile(
             modifier = Modifier
                 .height(64.dp)
                 .clip(RoundedCornerShape(18.dp))
-                .background(DashColors.CardHi)
+                .itemFill(DashColors.CardHi, RoundedCornerShape(18.dp), rim = null)
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -348,7 +347,7 @@ internal fun PairIcon(app: AppEntry?) {
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(DashColors.Card),
+            .itemFill(DashColors.Card, CircleShape, rim = null),
         contentAlignment = Alignment.Center
     ) {
         if (app != null) {
