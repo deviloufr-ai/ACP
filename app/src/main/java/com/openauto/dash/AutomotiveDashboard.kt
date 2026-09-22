@@ -420,7 +420,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
         TopBar(
-            currentPage = pagerState.currentPage,
             clock = clock,
             versionName = updateManager.currentVersionName,
             obdConnection = obdConnection,
@@ -429,7 +428,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             layout = layout,
             onLayout = switchLayout,
             onApps = { showAllApps = true },
-            onMaps = { SplitLauncher.launchSplit(context, "com.google.android.apps.maps") },
+            onConnectObd = onConnectObd,
             onSplit = {
                 if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
                 else showSplitEnable = true

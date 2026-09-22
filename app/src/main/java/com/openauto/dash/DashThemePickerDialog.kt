@@ -60,6 +60,10 @@ private fun ThemeOption(mode: DashThemeMode, selected: Boolean, onClick: () -> U
         DashThemeMode.DARK_GLASS -> Brush.linearGradient(listOf(Color(0xFF05070B), Color(0xFF233A5F)))
         DashThemeMode.SPORTY -> Brush.linearGradient(listOf(Color(0xFF08090B), Color(0xFFFF334A)))
         DashThemeMode.FLOATING -> Brush.linearGradient(listOf(Color(0xFF0C1424), Color(0xFF06080D), Color(0xFF7CC4FF)))
+        DashThemeMode.ORBIT -> Brush.radialGradient(listOf(Color(0xFFFF7A59), Color(0xFF8A7BFF), Color(0xFF0A0E1C)))
+        DashThemeMode.COCKPIT -> Brush.linearGradient(listOf(Color(0xFF231C16), Color(0xFFD8D5CF), Color(0xFFFF8A1F)))
+        DashThemeMode.HORIZON -> Brush.verticalGradient(listOf(Color(0xFF0A0F2C), Color(0xFF8A3F72), Color(0xFFF9B274), Color(0xFF1A1030)))
+        DashThemeMode.TAPE_DECK -> Brush.verticalGradient(listOf(Color(0xFF0D0221), Color(0xFFFF2A6D), Color(0xFF05D9E8)))
     }
     Row(
         modifier = Modifier.fillMaxWidth().border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)

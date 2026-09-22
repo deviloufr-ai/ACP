@@ -13,7 +13,7 @@ The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can h
 - **OBD-II + CANbox telemetry**: ELM327 Bluetooth adapter for speed/RPM/coolant/intake/throttle/load/fuel/voltage plus DTC read & clear; an optional rooted CANbox (MCU) reader for door state and a learned fuel-level mapping, tuned for a Citroën C4 Picasso
 - **System split-screen**: docks the dashboard and launches another app (or a saved pair) beside it via an Accessibility Service, with a swap button/overlay to flip which app is on which side
 - **System AppWidget hosting**: embed real Android widgets (including ones like Google Maps' that Android normally hides from non-launcher pickers) inside dashboard tiles
-- **7 visual themes**: Auto, Original, Aurora Glass, Neon Dark, Clean Light, Dark Glass, Sporty — switchable live from the theme picker
+- **12 visual themes**: Auto, Original, Aurora Glass, Neon Dark, Clean Light, Dark Glass, Sporty, Floating, plus four whole-design skins (Orbit, Cockpit, Horizon, Tape Deck) with their own backgrounds, top bars and widgets — switchable live from the theme picker
 - **Media Integration**: reads the active system media session (title, artist, artwork, playback) and exposes transport controls
 - **In-App Auto-Update**: checks GitHub Releases on launch, tracks the installed version, and downloads/installs newer APKs
 - **Optional priv-app install**: self-installs to `/system/priv-app` (via `su`/Magisk or the head unit's internal root ADB) to pick up `BIND_APPWIDGET` privileges and the split-swap overlay — opt-in only, not required
@@ -41,8 +41,11 @@ D:/android car launcher/
 │       │   ├── DashboardGrid.kt                   # Grid rendering, drag-move / drag-resize gestures
 │       │   ├── WidgetCatalog.kt                   # "+" add-widget picker, grouped by category
 │       │   ├── AppLauncher.kt / AppTiles.kt       # App enumeration + full-screen app drawer
-│       │   ├── TopBar.kt                          # Status bar: clock, OBD state, Maps/Apps/Build/Theme buttons
-│       │   ├── DashTheme.kt / DashThemePickerDialog.kt  # 7 palettes (incl. Aurora Glass) + picker UI
+│       │   ├── TopBar.kt                          # Minimal bar: Apps, layout menu, clock, OBD dot, ⋮ menu
+│       │   ├── DashTheme.kt / DashThemePickerDialog.kt  # 12 palettes (incl. Aurora Glass) + picker UI
+│       │   ├── Skins.kt / SkinKit.kt              # Skin dispatch (background, top bar, widgets, Maps frame) + shared live values
+│       │   ├── OrbitSkin.kt / CockpitSkin.kt / HorizonSkin.kt / TapeDeckSkin.kt  # The four whole-design skins
+│       │   ├── WindowFrameOverlay.kt              # Skin frame drawn in an overlay window over the docked Google Maps window
 │       │   ├── OriginalTiles.kt                   # Legacy widget renderers used by the "Original" theme
 │       │   ├── MapLibrePanel.kt                   # In-app MapLibre GL navigator (free, no API key)
 │       │   ├── DirectionsTile.kt / NavDirections.kt # Google Maps/Waze turn-by-turn via notification parsing
@@ -144,7 +147,7 @@ While the launcher shares the screen with another app (system split-screen), pag
 This head unit's ROM ignores AOSP windowing APIs but honors SystemUI's manual recents-drag split path, so `SplitLauncher.kt` drives it via an `AccessibilityService` (`SplitAccessibilityService.kt`, enabled once under Settings → Accessibility): it triggers the same global action a manual split gesture would, then launches the target app (or a saved pair) adjacent to the dashboard. A floating overlay button (or a FAB in the dashboard) lets you swap which app occupies which side, since this ROM has no working divider double-tap swap gesture.
 
 ### 7. Optional Priv-App Install
-`SystemInstaller.kt`/`AdbInstaller.kt` can self-install the APK into `/system/priv-app`, either via `su`/Magisk (preferring a systemless Magisk module) or by talking to the head unit's internal root ADB socket. This is opt-in only (from the Build/wrench icon), mainly useful for the `BIND_APPWIDGET` priv-app permission and the split-swap overlay window — it does **not** enable embedding Google Maps.
+`SystemInstaller.kt`/`AdbInstaller.kt` can self-install the APK into `/system/priv-app`, either via `su`/Magisk (preferring a systemless Magisk module) or by talking to the head unit's internal root ADB socket. This is opt-in only (from ⋮ → System app in the top bar), mainly useful for the `BIND_APPWIDGET` priv-app permission and the split-swap overlay window — it does **not** enable embedding Google Maps.
 
 ### 8. In-App Auto-Update
 `UpdateManager` keeps the app current from GitHub Releases:
@@ -177,7 +180,9 @@ This head unit's ROM ignores AOSP windowing APIs but honors SystemUI's manual re
 When these secrets are present, CI signs every release APK with that key; when they are absent, it falls back to the debug key (installs fine, but cross-version updates won't).
 
 ### 9. Theming
-`DashTheme.kt` provides 7 selectable palettes, switchable live from the theme picker (`DashThemePickerDialog.kt`): **Auto** (follows system day/night), **Original** (the first launcher look — flat cards, twin-needle gauges, rendered by `OriginalTiles.kt`), **Aurora Glass** (glass panels, glowing gauges, cyan/violet gradient), **Neon Dark**, **Clean Light**, **Dark Glass**, and **Sporty** (black + red).
+`DashTheme.kt` provides 12 selectable themes, switchable live from the theme picker (`DashThemePickerDialog.kt`): **Auto** (follows system day/night), **Original** (the first launcher look — flat cards, twin-needle gauges, rendered by `OriginalTiles.kt`), **Aurora Glass** (glass panels, glowing gauges, cyan/violet gradient), **Neon Dark**, **Clean Light**, **Dark Glass**, **Sporty** (black + red) and **Floating** (no tile backgrounds).
+
+Four more are whole-design **skins** (`DashSkin`): **Orbit** (everything round: a spinning record, ring gauges, bubbles), **Cockpit** (chrome-ringed analog dials and toggle switches on stitched leather), **Horizon** (no widgets, just an evening scene with the road ahead and typography on it) and **Tape Deck** (80s synthwave head unit: cassette, neon grid, seven-segment digits). A skin draws its own page background, top bar and the main widgets (speed, telemetry, music, directions, clock, weather, fuel, app shortcuts, launch bar); `Skins.kt` routes those tiles to the skin's file and every other tile keeps its standard renderer on the skin's palette. When Google Maps is docked, the skin also shapes and decorates it (a round porthole, a chrome bezel, a CRT bezel, a soft fade) from an overlay window above it (`WindowFrameOverlay.kt`); touches pass straight through to Maps.
 
 ## Architecture
 
@@ -230,7 +235,7 @@ graph TB
 | POST_NOTIFICATIONS | Notifications on Android 13+ |
 | REQUEST_INSTALL_PACKAGES | Install downloaded update APKs |
 | BIND_APPWIDGET | Hosting real Android AppWidgets in dashboard tiles |
-| SYSTEM_ALERT_WINDOW | Floating split-screen swap button |
+| SYSTEM_ALERT_WINDOW | Floating split-screen swap button; the skins' frame over the docked Maps window (granted through the dock's shell when missing) |
 | Notification access (granted in Settings) | Read media sessions, parse Maps/Waze directions, general notifications feed |
 | Accessibility service (granted in Settings, optional) | Drive system split-screen + pane swap |
 

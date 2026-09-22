@@ -194,6 +194,31 @@ object PipAnchor {
         }
     }
 
+    @Volatile private var overlayGrantTried = false
+
+    /**
+     * Grants "display over other apps" (for the skin's frame over the docked
+     * window) through the dock's shell, since a head unit rarely exposes the
+     * settings screen. Tried once per process; true when the permission is held.
+     */
+    suspend fun grantOverlayPermission(context: Context): Boolean {
+        if (android.provider.Settings.canDrawOverlays(context)) return true
+        if (overlayGrantTried) return false
+        overlayGrantTried = true
+        val out = runCatching { shell(context, "appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow") }
+            .getOrElse { "failed: ${it.message}" }
+        // The app-op change can take a moment to reach this process.
+        repeat(10) {
+            if (android.provider.Settings.canDrawOverlays(context)) {
+                Log.i(TAG, "overlay permission granted")
+                return true
+            }
+            delay(200)
+        }
+        Log.w(TAG, "overlay permission not granted: ${out.trim()}")
+        return false
+    }
+
     private var statusBarPolicyChecked = false
 
     /**
@@ -599,6 +624,12 @@ internal fun PipAnchorCard(
         delay(350)
         PipAnchor.track(context, rect, packageName)
     }
+
+    // The skin's frame (a round porthole, a chrome bezel...) over the docked Maps
+    // window, only while it actually sits here and the dashboard is on screen.
+    WindowFrameOverlay(
+        bounds = status.windowBounds.takeIf { isMaps && started && status.docked && status.pipPackage != null }
+    )
 
     Card(
         modifier = modifier.onGloballyPositioned { coords ->
