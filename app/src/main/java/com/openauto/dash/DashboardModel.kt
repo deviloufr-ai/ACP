@@ -3,6 +3,7 @@ package com.openauto.dash
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.abs
 
 /**
  * The kinds of built-in (app-provided) widgets a dashboard tile can show. These
@@ -26,9 +27,10 @@ enum class BuiltinKind(val label: String) {
  * grid. [x],[y] are the top-left cell (0-based) and [w],[h] are the span in
  * cells. Tiles may be moved and resized to any cell rectangle that fits.
  *
- *  - [AppShortcut]  a small icon that launches an installed app,
- *  - [SplitPair]    launches two apps side-by-side in split-screen,
- *  - [BuiltinWidget] one of our own cards (Maps / media / OBD),
+ *  - [AppShortcut]   a small icon that launches an installed app,
+ *  - [SplitPair]     launches two apps side-by-side in split-screen,
+ *  - [LaunchBar]     an editable row of app icons (a dock),
+ *  - [BuiltinWidget] one of our own cards (map / media / OBD / directions),
  *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder].
  */
 sealed interface DashboardItem {
@@ -48,6 +50,12 @@ sealed interface DashboardItem {
         val secondaryPackage: String,
         override val x: Int = 0, override val y: Int = 0,
         override val w: Int = 2, override val h: Int = 2
+    ) : DashboardItem
+
+    data class LaunchBar(
+        val packages: List<String> = emptyList(),
+        override val x: Int = 0, override val y: Int = 0,
+        override val w: Int = 8, override val h: Int = 1
     ) : DashboardItem
 
     data class BuiltinWidget(
@@ -72,8 +80,17 @@ fun DashboardItem.isCompactTile(): Boolean =
     this is DashboardItem.AppShortcut || this is DashboardItem.SplitPair
 
 /** Smallest span this tile may be resized to (icons stay small, widgets bigger). */
-fun DashboardItem.minW(): Int = if (isCompactTile()) 1 else 3
-fun DashboardItem.minH(): Int = if (isCompactTile()) 1 else 2
+fun DashboardItem.minW(): Int = when {
+    isCompactTile() -> 1
+    this is DashboardItem.LaunchBar -> 3
+    else -> 3
+}
+
+fun DashboardItem.minH(): Int = when {
+    isCompactTile() -> 1
+    this is DashboardItem.LaunchBar -> 1
+    else -> 2
+}
 
 /** Returns a copy placed at cell [x],[y] spanning [w] x [h], clamped to the grid. */
 fun DashboardItem.withCell(x: Int, y: Int, w: Int, h: Int): DashboardItem {
@@ -84,14 +101,22 @@ fun DashboardItem.withCell(x: Int, y: Int, w: Int, h: Int): DashboardItem {
     return when (this) {
         is DashboardItem.AppShortcut -> copy(x = cx, y = cy, w = cw, h = ch)
         is DashboardItem.SplitPair -> copy(x = cx, y = cy, w = cw, h = ch)
+        is DashboardItem.LaunchBar -> copy(x = cx, y = cy, w = cw, h = ch)
         is DashboardItem.BuiltinWidget -> copy(x = cx, y = cy, w = cw, h = ch)
         is DashboardItem.SystemWidget -> copy(x = cx, y = cy, w = cw, h = ch)
     }
 }
 
+/** True when the two tiles' cell rectangles share at least one cell. */
+fun DashboardItem.overlaps(other: DashboardItem): Boolean =
+    DashboardStore.rectanglesOverlap(x, y, w, h, other.x, other.y, other.w, other.h)
+
 /**
  * Persists the 3 swipeable dashboards (each an ordered list of [DashboardItem])
  * to SharedPreferences as JSON. The layout is the user's, so it survives restarts.
+ *
+ * All grid rules live here so add, drag, resize, load-time repair and the
+ * edit-mode ghost preview share one definition of "fits".
  */
 object DashboardStore {
 
@@ -100,7 +125,7 @@ object DashboardStore {
     private const val PREFS = "dashboard_layout_prefs"
     private const val KEY_PAGES = "pages"
 
-    /** Default layout when nothing is saved yet: Maps + music on page 1. */
+    /** Default layout when nothing is saved yet: map, directions and music on page 1. */
     private fun defaultPages(): List<List<DashboardItem>> = listOf(
         autoPlace(
             listOf(
@@ -125,11 +150,13 @@ object DashboardStore {
             }
         }.getOrNull() ?: return defaultPages()
 
-        // Always return exactly PAGE_COUNT pages; auto-place any page whose tiles
-        // predate grid coordinates (migrated from the old column layout).
+        // Always return exactly PAGE_COUNT pages. Tiles that predate grid
+        // coordinates (x = -1) are flowed in; any overlap left by an older
+        // grid size, a clamp, or a hand-edited file is repaired so two tiles
+        // never share a cell.
         return List(PAGE_COUNT) { p ->
             val page = parsed.getOrElse(p) { emptyList() }
-            if (page.any { it.x < 0 }) autoPlace(page) else page
+            repairOverlaps(if (page.any { it.x < 0 }) autoPlace(page) else page)
         }
     }
 
@@ -144,7 +171,7 @@ object DashboardStore {
             .edit().putString(KEY_PAGES, json.toString()).apply()
     }
 
-    /** First cell where a [w] x [h] tile fits without overlapping [occupied]. */
+    /** First cell where a [w] x [h] tile fits without overlapping [items]. */
     fun firstFreeCell(items: List<DashboardItem>, w: Int, h: Int): Pair<Int, Int>? {
         val occ = occupancy(items)
         return firstFree(occ, w.coerceIn(1, GRID_COLS), h.coerceIn(1, GRID_ROWS))
@@ -153,8 +180,6 @@ object DashboardStore {
     /**
      * True when a proposed tile rectangle is fully in bounds and does not touch
      * another tile. [ignoredIndex] is the tile currently being moved or resized.
-     * Keeping this rule in the model makes add, drag, and resize use identical
-     * collision behaviour.
      */
     fun canPlace(
         items: List<DashboardItem>,
@@ -164,13 +189,111 @@ object DashboardStore {
         w: Int,
         h: Int
     ): Boolean {
-        if (x < 0 || y < 0 || w < 1 || h < 1 || x + w > GRID_COLS || y + h > GRID_ROWS) {
-            return false
-        }
+        if (!inBounds(x, y, w, h)) return false
         return items.withIndex().none { (index, item) ->
             index != ignoredIndex && rectanglesOverlap(x, y, w, h, item.x, item.y, item.w, item.h)
         }
     }
+
+    /**
+     * Moves tile [index] so its top-left is at ([x],[y]), resolving collisions
+     * instead of refusing them:
+     *
+     *  1. free target → plain move;
+     *  2. exactly one tile in the way that fits in the vacated rectangle → swap;
+     *  3. otherwise every tile in the way is nudged to its nearest free cell.
+     *
+     * Returns the new page, or null when the tiles in the way have nowhere to go
+     * (the caller then keeps the layout and tells the user).
+     */
+    fun moveResolving(items: List<DashboardItem>, index: Int, x: Int, y: Int): List<DashboardItem>? {
+        val mover = items.getOrNull(index) ?: return null
+        if (!inBounds(x, y, mover.w, mover.h)) return null
+        val moved = mover.withCell(x, y, mover.w, mover.h)
+        if (canPlace(items, index, x, y, mover.w, mover.h)) {
+            return items.mapIndexed { i, it -> if (i == index) moved else it }
+        }
+
+        val blocking = items.withIndex().filter { (i, it) -> i != index && it.overlaps(moved) }
+
+        // Swap: one tile in the way, and it fits where the mover came from
+        // without touching anything else.
+        if (blocking.size == 1) {
+            val (bi, b) = blocking.single()
+            val swapped = b.withCell(mover.x, mover.y, b.w, b.h)
+            val others = items.filterIndexed { i, _ -> i != index && i != bi }
+            val clear = swapped.x == mover.x && swapped.y == mover.y &&
+                !swapped.overlaps(moved) && others.none { it.overlaps(swapped) }
+            if (clear) {
+                return items.mapIndexed { i, it ->
+                    when (i) {
+                        index -> moved
+                        bi -> swapped
+                        else -> it
+                    }
+                }
+            }
+        }
+
+        // Nudge: place the mover, then relocate each blocked tile (largest
+        // first, so small ones fill the gaps) to the nearest free cell.
+        val result = items.toMutableList()
+        result[index] = moved
+        val fixed = items.indices.filter { i -> i != index && blocking.none { it.index == i } }
+            .map { result[it] }.toMutableList()
+        fixed += moved
+        for ((bi, b) in blocking.sortedByDescending { it.value.w * it.value.h }) {
+            val cell = nearestFreeCell(fixed, b.w, b.h, b.x, b.y) ?: return null
+            val placed = b.withCell(cell.first, cell.second, b.w, b.h)
+            result[bi] = placed
+            fixed += placed
+        }
+        return result
+    }
+
+    /**
+     * Free cell for a [w] x [h] tile closest to ([nearX],[nearY]) given the
+     * already-placed [items]; null when the page is full.
+     */
+    fun nearestFreeCell(items: List<DashboardItem>, w: Int, h: Int, nearX: Int, nearY: Int): Pair<Int, Int>? {
+        val occ = occupancy(items)
+        var best: Pair<Int, Int>? = null
+        var bestDist = Int.MAX_VALUE
+        for (y in 0..GRID_ROWS - h) for (x in 0..GRID_COLS - w) {
+            if (!fits(occ, x, y, w, h)) continue
+            val d = abs(x - nearX) + abs(y - nearY)
+            if (d < bestDist) { bestDist = d; best = x to y }
+        }
+        return best
+    }
+
+    /**
+     * Keeps the first of any overlapping tiles where it is and relocates the
+     * later ones to the nearest free cell. A tile with no room left is dropped
+     * rather than drawn on top of another one.
+     */
+    fun repairOverlaps(items: List<DashboardItem>): List<DashboardItem> {
+        val placed = mutableListOf<DashboardItem>()
+        for (item in items) {
+            val fixed = item.withCell(item.x, item.y, item.w, item.h)
+            if (placed.none { it.overlaps(fixed) }) {
+                placed += fixed
+                continue
+            }
+            val full = nearestFreeCell(placed, fixed.w, fixed.h, fixed.x, fixed.y)
+            if (full != null) {
+                placed += fixed.withCell(full.first, full.second, fixed.w, fixed.h)
+                continue
+            }
+            // No room at its size: shrink to the minimum span before giving up.
+            val small = nearestFreeCell(placed, fixed.minW(), fixed.minH(), fixed.x, fixed.y) ?: continue
+            placed += fixed.withCell(small.first, small.second, fixed.minW(), fixed.minH())
+        }
+        return placed
+    }
+
+    private fun inBounds(x: Int, y: Int, w: Int, h: Int): Boolean =
+        x >= 0 && y >= 0 && w >= 1 && h >= 1 && x + w <= GRID_COLS && y + h <= GRID_ROWS
 
     private fun occupancy(items: List<DashboardItem>): Array<BooleanArray> {
         val occ = Array(GRID_ROWS) { BooleanArray(GRID_COLS) }
@@ -200,7 +323,7 @@ object DashboardStore {
         }
     }
 
-    private fun rectanglesOverlap(
+    internal fun rectanglesOverlap(
         ax: Int, ay: Int, aw: Int, ah: Int,
         bx: Int, by: Int, bw: Int, bh: Int
     ): Boolean = ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
@@ -222,6 +345,8 @@ object DashboardStore {
             is DashboardItem.AppShortcut -> JSONObject().put("t", "app").put("pkg", packageName)
             is DashboardItem.SplitPair ->
                 JSONObject().put("t", "split").put("a", primaryPackage).put("b", secondaryPackage)
+            is DashboardItem.LaunchBar ->
+                JSONObject().put("t", "bar").put("pkgs", JSONArray(packages))
             is DashboardItem.BuiltinWidget -> JSONObject().put("t", "builtin").put("k", kind.name)
             is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
         }
@@ -232,6 +357,7 @@ object DashboardStore {
     private fun DashboardItem.markUnplaced(): DashboardItem = when (this) {
         is DashboardItem.AppShortcut -> copy(x = -1)
         is DashboardItem.SplitPair -> copy(x = -1)
+        is DashboardItem.LaunchBar -> copy(x = -1)
         is DashboardItem.BuiltinWidget -> copy(x = -1)
         is DashboardItem.SystemWidget -> copy(x = -1)
     }
@@ -251,6 +377,11 @@ object DashboardStore {
             "split" -> {
                 val a = optString("a"); val b = optString("b")
                 if (a.isNotBlank() && b.isNotBlank()) place(DashboardItem.SplitPair(a, b)) else null
+            }
+            "bar" -> {
+                val arr = optJSONArray("pkgs") ?: JSONArray()
+                val pkgs = (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+                place(DashboardItem.LaunchBar(pkgs))
             }
             "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
                 ?.let { place(DashboardItem.BuiltinWidget(it)) }
