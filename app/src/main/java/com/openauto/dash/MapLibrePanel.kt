@@ -54,6 +54,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,6 +68,8 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.LocationComponent
+import org.maplibre.android.location.OnCameraTrackingChangedListener
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -330,40 +333,59 @@ private fun enableLocation(
     scope: kotlinx.coroutines.CoroutineScope
 ) {
     if (!hasLocationPerm(context)) return
+    val lc = map.locationComponent
     runCatching {
-        val lc = map.locationComponent
-        lc.activateLocationComponent(
-            LocationComponentActivationOptions.builder(context, style).build()
-        )
+        if (!lc.isLocationComponentActivated) {
+            lc.activateLocationComponent(
+                LocationComponentActivationOptions.builder(context, style).build()
+            )
+            // Any gesture or programmatic camera move (route preview, search hit)
+            // drops the component out of tracking mode. In a car the map has to
+            // come back to the vehicle by itself, so tracking resumes a few
+            // seconds after the last interruption.
+            var resume: Job? = null
+            lc.addOnCameraTrackingChangedListener(object : OnCameraTrackingChangedListener {
+                override fun onCameraTrackingDismissed() {
+                    resume?.cancel()
+                    resume = scope.launch {
+                        delay(TRACKING_RESUME_MS)
+                        followVehicle(lc)
+                    }
+                }
+
+                override fun onCameraTrackingChanged(currentMode: Int) {
+                    if (currentMode != CameraMode.NONE) resume?.cancel()
+                }
+            })
+        }
         lc.isLocationComponentEnabled = true
-        // Follow position AND heading (map rotates with the car), with a directional
-        // puck — the driving-nav look. Pitch + close zoom give the 3D perspective.
-        lc.cameraMode = CameraMode.TRACKING_GPS
+        // Directional puck; the camera follows position AND heading (map rotates
+        // with the car) at a close zoom with pitch for the driving-nav look.
         lc.renderMode = RenderMode.COMPASS
-        lc.zoomWhileTracking(16.5)
-        lc.tiltWhileTracking(45.0)
+        followVehicle(lc)
     }
-    // TRACKING_GPS only re-centres on a FRESH fix; with only a last-known location
-    // the camera stays at the default world view. So explicitly zoom to the user as
-    // soon as any fix is available (retry briefly while GPS warms up).
+    // TRACKING_GPS only re-centres on a FRESH fix; with only a last-known
+    // location the camera stays at the default world view. Once any fix exists,
+    // fly to it *through* the component: a plain animateCamera here would
+    // count as a developer move and cancel tracking straight away.
     scope.launch {
         repeat(15) {
-            val loc = runCatching { map.locationComponent.lastKnownLocation }.getOrNull()
+            val loc = runCatching { lc.lastKnownLocation }.getOrNull()
             if (loc != null) {
-                map.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder()
-                            .target(LatLng(loc.latitude, loc.longitude))
-                            .zoom(16.5)
-                            .tilt(45.0)
-                            .build()
-                    )
-                )
+                followVehicle(lc)
                 return@launch
             }
             delay(800)
         }
     }
+}
+
+/** Seconds of free panning before the camera snaps back to the vehicle. */
+private const val TRACKING_RESUME_MS = 10_000L
+
+/** Follow position and heading with the driving-nav zoom and pitch, keeping tracking on. */
+private fun followVehicle(lc: LocationComponent) {
+    runCatching { lc.setCameraMode(CameraMode.TRACKING_GPS, 1000L, 16.5, null, 45.0, null) }
 }
 
 /**
