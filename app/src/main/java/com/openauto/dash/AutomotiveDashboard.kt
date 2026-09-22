@@ -434,22 +434,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
 
-        UpdateBanner(
-            status = updateStatus,
-            onUpdate = onUpdate,
-            onDismiss = { updateManager.dismiss() }
-        )
 
-        if (editing && !inSplitMode) {
-            EditBar(
-                page = pagerState.currentPage,
-                canUndo = history.isNotEmpty(),
-                onAdd = { onAdd(pagerState.currentPage) },
-                onUndo = { undo() },
-                onReset = { resetPage(pagerState.currentPage) },
-                onDone = { editing = false }
-            )
-        }
 
         val rootView = LocalView.current
         Box(
@@ -586,6 +571,25 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 }
             }
         }
+
+        // Edit bar and update banner sit just above the launcher bar for the same
+        // reason: the OS status bar can cover the top strip and swallow its taps.
+        if (editing && !inSplitMode) {
+            EditBar(
+                page = pagerState.currentPage,
+                canUndo = history.isNotEmpty(),
+                onAdd = { onAdd(pagerState.currentPage) },
+                onUndo = { undo() },
+                onReset = { resetPage(pagerState.currentPage) },
+                onDone = { editing = false }
+            )
+        }
+
+        UpdateBanner(
+            status = updateStatus,
+            onUpdate = onUpdate,
+            onDismiss = { updateManager.dismiss() }
+        )
 
         // The bar lives at the bottom: the OS status bar owns the top edge on
         // this head unit whenever a floating window is on screen, and it used to
