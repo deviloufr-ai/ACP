@@ -42,6 +42,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -114,6 +117,31 @@ internal fun TopBarActions(
     }
 }
 
+/** Full dashboard, or Google Maps docked on the left or right half. */
+@Composable
+internal fun LayoutSwitch(layout: DashLayout, onLayout: (DashLayout) -> Unit) {
+    val entries = DashLayout.entries
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.height(36.dp)) {
+        entries.forEachIndexed { i, l ->
+            SegmentedButton(
+                selected = l == layout,
+                onClick = { onLayout(l) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = entries.size),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = DashColors.Accent,
+                    activeContentColor = DashColors.OnAccent,
+                    activeBorderColor = DashColors.Accent,
+                    inactiveContainerColor = DashColors.CardHi,
+                    inactiveContentColor = DashColors.TextSecondary,
+                    inactiveBorderColor = DashColors.Line
+                ),
+                icon = {},
+                label = { Text(l.title, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+            )
+        }
+    }
+}
+
 @Composable
 internal fun TopBar(
     currentPage: Int,
@@ -122,6 +150,8 @@ internal fun TopBar(
     obdConnection: ObdConnectionState,
     obdData: ObdData,
     editing: Boolean,
+    layout: DashLayout,
+    onLayout: (DashLayout) -> Unit,
     onApps: () -> Unit,
     onMaps: () -> Unit,
     onSplit: () -> Unit,
@@ -131,7 +161,7 @@ internal fun TopBar(
 ) {
     if (DashColors.Original) {
         OriginalTopBar(
-            currentPage, clock, versionName, obdConnection, editing,
+            currentPage, clock, versionName, obdConnection, editing, layout, onLayout,
             onApps, onMaps, onSplit, onToggleEdit, onTheme, onSystem
         )
         return
@@ -181,6 +211,8 @@ internal fun TopBar(
                 )
             }
 
+            Spacer(Modifier.weight(1f))
+            LayoutSwitch(layout, onLayout)
             Spacer(Modifier.weight(1f))
 
             Text(

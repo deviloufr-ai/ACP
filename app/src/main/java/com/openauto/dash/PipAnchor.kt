@@ -88,6 +88,9 @@ object PipAnchor {
     private val _status = MutableStateFlow(Status())
     val status: StateFlow<Status> = _status
 
+    /** True while the "Maps left" layout's permanent dock is on screen. */
+    val dockActive = MutableStateFlow(false)
+
     /** Screen-pixel rectangle; a plain data class so the parser is JVM-testable. */
     data class ScreenRect(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
@@ -498,8 +501,30 @@ object PipAnchor {
  * exactly over it; swiping to another page parks the window in a corner.
  */
 @Composable
-internal fun PipAnchorCard(modifier: Modifier = Modifier) {
+internal fun PipAnchorCard(modifier: Modifier = Modifier, isDock: Boolean = false) {
     val context = LocalContext.current
+    // With a permanent dock on screen, a "Maps window" tile on a page must not
+    // compete for the same window: it just points at the dock.
+    val dockActive by PipAnchor.dockActive.collectAsState()
+    if (isDock) {
+        DisposableEffect(Unit) {
+            PipAnchor.dockActive.value = true
+            onDispose { PipAnchor.dockActive.value = false }
+        }
+    } else if (dockActive) {
+        Card(modifier = modifier) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("MAPS WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(8.dp))
+                Text("Maps is docked on the left of the dashboard.", color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        return
+    }
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val status by PipAnchor.status.collectAsState()

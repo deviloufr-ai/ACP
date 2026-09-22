@@ -540,6 +540,8 @@ internal fun OriginalTopBar(
     versionName: String,
     obdConnection: ObdConnectionState,
     editing: Boolean,
+    layout: DashLayout,
+    onLayout: (DashLayout) -> Unit,
     onApps: () -> Unit,
     onMaps: () -> Unit,
     onSplit: () -> Unit,
@@ -575,6 +577,8 @@ internal fun OriginalTopBar(
                 style = MaterialTheme.typography.titleMedium
             )
 
+            Spacer(Modifier.weight(1f))
+            LayoutSwitch(layout, onLayout)
             Spacer(Modifier.weight(1f))
 
             val dotColor = when (obdConnection) {

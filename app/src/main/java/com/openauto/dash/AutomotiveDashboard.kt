@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -90,6 +93,10 @@ internal const val MAX_UNDO = 30
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
+    var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
+    // The half-width dashboard beside a Maps dock keeps its own arrangement.
+    fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
+    val variant = variantOf(layout)
     var showThemePicker by remember { mutableStateOf(false) }
     DashColors.Sync(themeMode)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -110,9 +117,21 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
     val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
 
-    var pages by remember { mutableStateOf(DashboardStore.load(context)) }
+    var pages by remember { mutableStateOf(DashboardStore.load(context, variant)) }
     // Layout snapshots for Undo while arranging (newest last, capped).
     var history by remember { mutableStateOf<List<List<List<DashboardItem>>>>(emptyList()) }
+
+    /** Switches layout, loading that layout's own arrangement (seeded from the current one the first time). */
+    val switchLayout: (DashLayout) -> Unit = { next ->
+        if (next != layout) {
+            val nextVariant = variantOf(next)
+            if (!DashboardStore.exists(context, nextVariant)) DashboardStore.save(context, pages, nextVariant)
+            layout = next
+            DashLayoutStore.save(context, next)
+            pages = DashboardStore.load(context, nextVariant)
+            history = emptyList()
+        }
+    }
     // (page, index) of the launch bar whose apps are being edited.
     var launchBarEditor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val pagerState = rememberPagerState(pageCount = { DashboardStore.PAGE_COUNT })
@@ -164,7 +183,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         if (after == before) return
         history = (history + listOf(before)).takeLast(MAX_UNDO)
         pages = after
-        DashboardStore.save(context, pages)
+        DashboardStore.save(context, pages, variant)
     }
 
     /** Adds at the first free cell; returns the new tile's index, or -1 when the page is full. */
@@ -238,7 +257,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val previous = history.lastOrNull() ?: return
         history = history.dropLast(1)
         pages = previous
-        DashboardStore.save(context, pages)
+        DashboardStore.save(context, pages, variant)
     }
 
     /** Clears one page (releasing any hosted app-widgets); Undo brings it back. */
@@ -396,6 +415,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             obdConnection = obdConnection,
             obdData = obdData,
             editing = editing,
+            layout = layout,
+            onLayout = switchLayout,
             onApps = { showAllApps = true },
             onMaps = { SplitLauncher.launchSplit(context, "com.google.android.apps.maps") },
             onSplit = {
@@ -425,10 +446,35 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
 
         Box(modifier = Modifier.weight(1f)) {
+            // "Maps left" layout: a permanent Google Maps dock takes the left half
+            // and never leaves composition, so the window is placed once and
+            // swiping pages never touches it. Not while the OS itself has us in
+            // split-screen: half of a half is too small for either.
+            val dockSide = if (inSplitMode) null else when (layout) {
+                DashLayout.MAPS_LEFT -> Alignment.Start
+                DashLayout.MAPS_RIGHT -> Alignment.End
+                DashLayout.GRID -> null
+            }
+            val mapsDock: @Composable RowScope.() -> Unit = {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(
+                            start = if (dockSide == Alignment.Start) 8.dp else 0.dp,
+                            end = if (dockSide == Alignment.End) 8.dp else 0.dp,
+                            top = 8.dp, bottom = 8.dp
+                        )
+                ) {
+                    PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true)
+                }
+            }
+            Row(modifier = Modifier.fillMaxSize()) {
+            if (dockSide == Alignment.Start) mapsDock()
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = !blockPagerSwipe,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.weight(1f).fillMaxHeight()
             ) { page ->
                 DashboardPage(
                     pageItems = pages[page],
@@ -457,6 +503,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     },
                     onAdd = { onAdd(page) }
                 )
+            }
+            if (dockSide == Alignment.End) mapsDock()
             }
 
             // Floating swap button (bottom-centre), shown whenever the launcher
