@@ -94,8 +94,8 @@ dependencies {
     // Activity theme (Compose UI itself uses androidx.compose.material3).
     implementation("com.google.android.material:material:1.12.0")
 
-    // Jetpack Compose BOM (Compose 1.7.x fallback compatible block)
-    val composeBom = "2024.04.00"
+    // Jetpack Compose BOM (Compose 1.7.x; older BOMs ship lint checks that crash on Kotlin 2.1 metadata)
+    val composeBom = "2024.12.01"
     implementation(platform("androidx.compose:compose-bom:$composeBom"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

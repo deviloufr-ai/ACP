@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
@@ -32,7 +34,11 @@ fun DashThemePickerDialog(selected: DashThemeMode, onSelect: (DashThemeMode) -> 
         containerColor = DashColors.Card,
         title = { Text("Dashboard theme", color = DashColors.TextPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Seven options can outgrow a 720p head unit; let the list scroll.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 DashThemeMode.entries.forEach { mode ->
                     ThemeOption(mode, mode == selected) { onSelect(mode) }
                 }
@@ -47,6 +53,7 @@ private fun ThemeOption(mode: DashThemeMode, selected: Boolean, onClick: () -> U
     val shape = RoundedCornerShape(16.dp)
     val preview = when (mode) {
         DashThemeMode.AUTO -> Brush.linearGradient(listOf(Color(0xFF11151D), Color(0xFFF5F7FA)))
+        DashThemeMode.ORIGINAL -> Brush.linearGradient(listOf(Color(0xFF0B0C0F), Color(0xFF1E2024), Color(0xFF8AB4F8)))
         DashThemeMode.AURORA -> Brush.linearGradient(listOf(Color(0xFF0E1730), Color(0xFF5AD0FF), Color(0xFF9B7BFF)))
         DashThemeMode.NEON_DARK -> Brush.linearGradient(listOf(Color(0xFF071126), Color(0xFF6D3CFF)))
         DashThemeMode.CLEAN_LIGHT -> Brush.linearGradient(listOf(Color.White, Color(0xFFDCE8F7)))

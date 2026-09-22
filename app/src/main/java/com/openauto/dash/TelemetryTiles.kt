@@ -99,6 +99,10 @@ internal fun ObdCard(
     onPickDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (DashColors.Original) {
+        OriginalObdCard(obdData, connection, onConnect, onPickDevice, modifier)
+        return
+    }
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(14.dp)) {
@@ -333,6 +337,13 @@ internal fun AnalogGauge(
     // needle, and large gradient numerals - the mockup's instrument cluster.
     hero: Boolean = false
 ) {
+    if (DashColors.Original) {
+        OriginalAnalogGauge(
+            value, maxValue, valueText, label, unit, accent, modifier,
+            redlineAccent, redlineFraction, dimmed, majorTicks
+        )
+        return
+    }
     val target = (value / maxValue).coerceIn(0f, 1f)
     val frac by animateFloatAsState(
         targetValue = if (dimmed) 0f else target,
@@ -556,6 +567,10 @@ internal fun MeterChip(
     dimmed: Boolean,
     modifier: Modifier = Modifier
 ) {
+    if (DashColors.Original) {
+        OriginalMeterChip(label, valueText, fraction, color, dimmed, modifier)
+        return
+    }
     val glass = DashColors.Glass
     val chipShape = RoundedCornerShape(12.dp)
     Column(

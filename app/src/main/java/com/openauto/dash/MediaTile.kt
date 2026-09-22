@@ -66,6 +66,10 @@ internal fun MediaCard(
     context: Context,
     modifier: Modifier = Modifier
 ) {
+    if (DashColors.Original) {
+        OriginalMediaCard(mediaState, controller, hasAccess, context, modifier)
+        return
+    }
     var positionMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(mediaState.isPlaying, mediaState.title, mediaState.durationMs) {
         while (true) {

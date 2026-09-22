@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 
 enum class DashThemeMode(val title: String, val description: String) {
     AUTO("Auto", "Follow the car's day/night mode"),
+    ORIGINAL("Original", "The first launcher look: flat cards, twin needle gauges"),
     AURORA("Aurora Glass", "Glass panels, glowing gauges, gradient controls"),
     NEON_DARK("Neon Dark", "Blue + violet futuristic cockpit"),
     CLEAN_LIGHT("Clean Light", "Bright, minimal and easy to read"),
@@ -25,7 +26,9 @@ enum class DashThemeMode(val title: String, val description: String) {
  * and a specular top edge over a gradient background. [Glow] (0..1) scales the
  * halo drawn behind gauges, readouts and primary controls; light themes keep it
  * at 0 so nothing smears in sunlight. [Accent2] is the far end of the accent
- * gradient used for the gauge sweep and gradient buttons.
+ * gradient used for the gauge sweep and gradient buttons. [Original] swaps the
+ * media, telemetry, gauge, meter-chip and top-bar widgets back to their first
+ * designs (see OriginalTiles.kt).
  */
 data class DashPalette(
     val Background: Color, val Bar: Color, val Card: Color, val CardHi: Color,
@@ -35,6 +38,7 @@ data class DashPalette(
     val Line: Color = Color.White.copy(alpha = 0.10f),
     val Glass: Boolean = false,
     val Glow: Float = 0f,
+    val Original: Boolean = false,
     val BackgroundStops: List<Color> = listOf(Background, Background)
 )
 
@@ -49,6 +53,14 @@ private val AutoLightPalette = DashPalette(
     Color(0xFF1A73E8), Color(0xFF1A73E8), Color(0xFFE8710A), Color(0xFFD93025),
     Color(0xFF188038), Color(0xFF5F6368), Color(0xFF202124), Color(0xFF5F6368),
     Accent2 = Color(0xFF7B4DFF), Line = Color.Black.copy(alpha = 0.08f)
+)
+// Original: the pre-Aurora day/night palettes with no glow, no accent gradient
+// and no rim lines, so shared components render exactly as they first did.
+private val OriginalDarkPalette = AutoDarkPalette.copy(
+    Accent2 = AutoDarkPalette.Accent, Line = Color.Transparent, Glow = 0f, Original = true
+)
+private val OriginalLightPalette = AutoLightPalette.copy(
+    Accent2 = AutoLightPalette.Accent, Line = Color.Transparent, Glow = 0f, Original = true
 )
 private val AuroraPalette = DashPalette(
     Background = Color(0xFF080D1C), Bar = Color(0xCC0B1226), Card = Color(0xE60E1730), CardHi = Color(0x24FFFFFF),
@@ -109,6 +121,7 @@ object DashColors {
     fun Sync(mode: DashThemeMode) {
         val target = when (mode) {
             DashThemeMode.AUTO -> if (isSystemInDarkTheme()) AutoDarkPalette else AutoLightPalette
+            DashThemeMode.ORIGINAL -> if (isSystemInDarkTheme()) OriginalDarkPalette else OriginalLightPalette
             DashThemeMode.AURORA -> AuroraPalette
             DashThemeMode.NEON_DARK -> NeonDarkPalette
             DashThemeMode.CLEAN_LIGHT -> CleanLightPalette
@@ -134,6 +147,7 @@ object DashColors {
     val Line get() = current.Line
     val Glass get() = current.Glass
     val Glow get() = current.Glow
+    val Original get() = current.Original
     val BackgroundStops get() = current.BackgroundStops
 
     /** Diagonal accent → accent2 gradient for primary controls. */

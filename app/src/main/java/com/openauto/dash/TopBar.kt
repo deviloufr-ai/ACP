@@ -78,6 +78,13 @@ internal fun TopBar(
     onTheme: () -> Unit,
     onSystem: () -> Unit
 ) {
+    if (DashColors.Original) {
+        OriginalTopBar(
+            currentPage, clock, versionName, obdConnection, editing,
+            onApps, onMaps, onSplit, onToggleEdit, onTheme, onSystem
+        )
+        return
+    }
     // Glass themes float the bar as its own panel over the gradient background;
     // solid themes keep the flat full-width strip.
     val glass = DashColors.Glass
