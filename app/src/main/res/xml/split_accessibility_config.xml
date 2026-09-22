@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Config for SplitAccessibilityService. It drives the system split path via
-  performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) and swaps panes with a
-  dispatched gesture. It also watches window changes (flagRetrieveInteractiveWindows
-  + canRetrieveWindowContent) purely to tell whether the screen is currently in
-  split mode, so the floating swap button is shown only then. No window *content*
-  is read — only the window list's types/count.
+  performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN). It watches window changes
+  (flagRetrieveInteractiveWindows + canRetrieveWindowContent) to detect split mode
+  from the two app windows' bounds, and — when the user taps the floating swap
+  button — to read only those two windows' package names so it can recreate the
+  split with the apps reversed (this ROM has no working swap gesture). It reads
+  window types, bounds and owning package names only; never any window content.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
-    android:canPerformGestures="true"
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="0"
     android:description="@string/split_a11y_description" />

@@ -148,6 +148,28 @@ object DashboardStore {
         return firstFree(occ, w.coerceIn(1, GRID_COLS), h.coerceIn(1, GRID_ROWS))
     }
 
+    /**
+     * True when a proposed tile rectangle is fully in bounds and does not touch
+     * another tile. [ignoredIndex] is the tile currently being moved or resized.
+     * Keeping this rule in the model makes add, drag, and resize use identical
+     * collision behaviour.
+     */
+    fun canPlace(
+        items: List<DashboardItem>,
+        ignoredIndex: Int?,
+        x: Int,
+        y: Int,
+        w: Int,
+        h: Int
+    ): Boolean {
+        if (x < 0 || y < 0 || w < 1 || h < 1 || x + w > GRID_COLS || y + h > GRID_ROWS) {
+            return false
+        }
+        return items.withIndex().none { (index, item) ->
+            index != ignoredIndex && rectanglesOverlap(x, y, w, h, item.x, item.y, item.w, item.h)
+        }
+    }
+
     private fun occupancy(items: List<DashboardItem>): Array<BooleanArray> {
         val occ = Array(GRID_ROWS) { BooleanArray(GRID_COLS) }
         items.forEach { mark(occ, it.x, it.y, it.w, it.h, true) }
@@ -175,6 +197,11 @@ object DashboardStore {
             if (yy in 0 until GRID_ROWS && xx in 0 until GRID_COLS) occ[yy][xx] = v
         }
     }
+
+    private fun rectanglesOverlap(
+        ax: Int, ay: Int, aw: Int, ah: Int,
+        bx: Int, by: Int, bw: Int, bh: Int
+    ): Boolean = ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 
     /** Flow tiles onto the grid in order, first free cell for each (migration). */
     private fun autoPlace(items: List<DashboardItem>): List<DashboardItem> {

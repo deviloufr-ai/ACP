@@ -190,6 +190,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var showAddMenu by remember { mutableStateOf(false) }
     var showAppPicker by remember { mutableStateOf(false) }
     var showWidgetMenu by remember { mutableStateOf(false) }
+    var layoutNotice by remember { mutableStateOf<String?>(null) }
     // Two-step picker for creating a saved split-pair tile.
     var showPairPrimaryPicker by remember { mutableStateOf(false) }
     var showPairSecondaryPicker by remember { mutableStateOf(false) }
@@ -236,11 +237,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         DashboardStore.save(context, pages)
     }
 
-    // Add a tile at the first free grid cell that fits its default span (falls
-    // back to the top-left, allowing overlap, when the page is full).
-    fun addItem(page: Int, item: DashboardItem) = mutatePage(page) { list ->
-        val cell = DashboardStore.firstFreeCell(list, item.w, item.h) ?: (0 to 0)
-        list + item.withCell(cell.first, cell.second, item.w, item.h)
+    /** Add only when the tile fits; a full page must never create a hidden overlap. */
+    fun addItem(page: Int, item: DashboardItem): Boolean {
+        val list = pages.getOrNull(page) ?: return false
+        val cell = DashboardStore.firstFreeCell(list, item.w, item.h)
+        if (cell == null) {
+            layoutNotice = "This dashboard has no space for that tile. Remove, resize, or use another page."
+            return false
+        }
+        mutatePage(page) { it + item.withCell(cell.first, cell.second, item.w, item.h) }
+        return true
     }
 
     fun removeAt(page: Int, index: Int) {
@@ -252,8 +258,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // Move a tile's top-left to grid cell (x, y), keeping its span (drag-to-place).
     fun moveCell(page: Int, index: Int, x: Int, y: Int) {
         mutatePage(page) { list ->
-            if (index !in list.indices) list
-            else list.mapIndexed { i, it -> if (i == index) it.withCell(x, y, it.w, it.h) else it }
+            val item = list.getOrNull(index) ?: return@mutatePage list
+            if (!DashboardStore.canPlace(list, index, x, y, item.w, item.h)) {
+                layoutNotice = "That area is already occupied. Choose a highlighted free space."
+                list
+            } else {
+                list.mapIndexed { i, it -> if (i == index) it.withCell(x, y, it.w, it.h) else it }
+            }
         }
     }
 
@@ -268,7 +279,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 else {
                     val cw = w.coerceIn(it.minW(), GRID_COLS - it.x)
                     val ch = h.coerceIn(it.minH(), GRID_ROWS - it.y)
-                    it.withCell(it.x, it.y, cw, ch)
+                    if (!DashboardStore.canPlace(list, index, it.x, it.y, cw, ch)) {
+                        layoutNotice = "That size overlaps another tile. Make room before resizing."
+                        it
+                    } else it.withCell(it.x, it.y, cw, ch)
                 }
             }
         }
@@ -277,7 +291,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // System app-widget picker; adds the bound widget to the page that requested it.
     val addSystemWidget = rememberSystemWidgetAdder { id ->
         if (addTargetPage in 0 until DashboardStore.PAGE_COUNT) {
-            addItem(addTargetPage, DashboardItem.SystemWidget(id))
+            if (!addItem(addTargetPage, DashboardItem.SystemWidget(id))) {
+                // The picker already allocated a host ID. Release it if the
+                // layout cannot accept the widget, otherwise it leaks unused IDs.
+                WidgetHostHolder.delete(context, id)
+            }
         }
     }
 
@@ -439,6 +457,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onRemove = { index -> removeAt(page, index) },
                     onMoveCell = { index, x, y -> moveCell(page, index, x, y) },
                     onResizeCell = { index, w, h -> resizeCell(page, index, w, h) },
+                    canPlace = { index, x, y, w, h ->
+                        DashboardStore.canPlace(pages[page], index, x, y, w, h)
+                    },
                     onAdd = { onAdd(page) }
                 )
             }
@@ -484,6 +505,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             count = DashboardStore.PAGE_COUNT,
             current = pagerState.currentPage,
             onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
+        )
+    }
+
+    layoutNotice?.let { notice ->
+        AlertDialog(
+            onDismissRequest = { layoutNotice = null },
+            containerColor = DashColors.Card,
+            title = { Text("Layout needs room", color = DashColors.TextPrimary) },
+            text = { Text(notice, color = DashColors.TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { layoutNotice = null }) {
+                    Text("Got it", color = DashColors.Accent)
+                }
+            }
         )
     }
 
@@ -912,6 +947,14 @@ private fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
 /** Natural height of a full widget tile stacked in the scrollable split-screen column. */
 private val SPLIT_WIDGET_HEIGHT = 300.dp
 
+private data class GridPreview(
+    val x: Int,
+    val y: Int,
+    val w: Int,
+    val h: Int,
+    val isValid: Boolean
+)
+
 @Composable
 private fun DashboardPage(
     pageItems: List<DashboardItem>,
@@ -931,6 +974,7 @@ private fun DashboardPage(
     onRemove: (Int) -> Unit,
     onMoveCell: (Int, Int, Int) -> Unit,
     onResizeCell: (Int, Int, Int) -> Unit,
+    canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     onAdd: () -> Unit
 ) {
     val context = LocalContext.current
@@ -990,7 +1034,7 @@ private fun DashboardPage(
 
         // While a tile is dragged / resized, [preview] holds the cell rectangle
         // (x, y, w, h) it will snap to, drawn as a highlighted ghost.
-        var preview by remember { mutableStateOf<IntArray?>(null) }
+        var preview by remember { mutableStateOf<GridPreview?>(null) }
         // Safety net: never leave the ghost stranded once a move/resize commits
         // (pageItems changes) or edit mode is toggled.
         LaunchedEffect(pageItems, editing) { preview = null }
@@ -1011,15 +1055,16 @@ private fun DashboardPage(
 
             // Snap-target ghost, above the resting tiles but below the dragged one.
             preview?.let { p ->
+                val previewColor = if (p.isValid) DashColors.Accent else DashColors.Warning
                 Box(
                     modifier = Modifier
                         .zIndex(0.5f)
-                        .offset(cellW * p[0], cellH * p[1])
-                        .size(cellW * p[2], cellH * p[3])
+                        .offset(cellW * p.x, cellH * p.y)
+                        .size(cellW * p.w, cellH * p.h)
                         .padding(3.dp)
                         .clip(RoundedCornerShape(18.dp))
-                        .background(DashColors.Accent.copy(alpha = 0.22f))
-                        .border(2.dp, DashColors.Accent, RoundedCornerShape(18.dp))
+                        .background(previewColor.copy(alpha = 0.22f))
+                        .border(2.dp, previewColor, RoundedCornerShape(18.dp))
                 )
             }
         }
@@ -1036,8 +1081,9 @@ private fun DashboardPage(
                 onModelTouch = onModelTouch,
                 onMoveCell = onMoveCell,
                 onResizeCell = onResizeCell,
+                canPlace = canPlace,
                 onRemove = onRemove,
-                onPreview = { x, y, w, h -> preview = intArrayOf(x, y, w, h) },
+                onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
                 onPreviewClear = { preview = null },
                 content = { tileContent(item) }
             )
@@ -1067,8 +1113,9 @@ private fun GridTile(
     onModelTouch: (Boolean) -> Unit,
     onMoveCell: (Int, Int, Int) -> Unit,
     onResizeCell: (Int, Int, Int) -> Unit,
+    canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     onRemove: (Int) -> Unit,
-    onPreview: (Int, Int, Int, Int) -> Unit,
+    onPreview: (Int, Int, Int, Int, Boolean) -> Unit,
     onPreviewClear: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -1116,11 +1163,12 @@ private fun GridTile(
                     .pointerInput(index) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
-                                active = true; onModelTouch(true); onPreview(snapX(), snapY(), item.w, item.h)
+                                active = true; onModelTouch(true)
+                                onPreview(snapX(), snapY(), item.w, item.h, canPlace(index, snapX(), snapY(), item.w, item.h))
                             },
                             onDrag = { change, delta ->
                                 change.consume(); dragOffset += delta
-                                onPreview(snapX(), snapY(), item.w, item.h)
+                                onPreview(snapX(), snapY(), item.w, item.h, canPlace(index, snapX(), snapY(), item.w, item.h))
                             },
                             onDragEnd = {
                                 onMoveCell(index, snapX(), snapY())
@@ -1154,11 +1202,12 @@ private fun GridTile(
                     .pointerInput(index) {
                         detectDragGestures(
                             onDragStart = {
-                                active = true; onModelTouch(true); onPreview(item.x, item.y, snapW(), snapH())
+                                active = true; onModelTouch(true)
+                                onPreview(item.x, item.y, snapW(), snapH(), canPlace(index, item.x, item.y, snapW(), snapH()))
                             },
                             onDrag = { change, delta ->
                                 change.consume(); resizeExtra += delta
-                                onPreview(item.x, item.y, snapW(), snapH())
+                                onPreview(item.x, item.y, snapW(), snapH(), canPlace(index, item.x, item.y, snapW(), snapH()))
                             },
                             onDragEnd = {
                                 onResizeCell(index, snapW(), snapH())

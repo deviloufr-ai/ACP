@@ -1,14 +1,11 @@
 package com.openauto.dash
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Path
 import android.graphics.PixelFormat
-import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -72,14 +69,41 @@ class SplitAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     /**
-     * True when the display is currently showing two apps side by side. Detected
-     * by counting visible application windows: a single full-screen app (or the
-     * launcher home) has one, a split has two. Only window types/count are read,
-     * never any window content.
+     * The on-screen bounds of the two split panes, ordered left-to-right, or null
+     * when the display isn't showing two real app windows. Panes are the
+     * application windows with non-empty bounds; windows with zero-size bounds are
+     * bare handles, not visible panes, and are ignored. Only window types/bounds
+     * are read here, never any window content.
+     *
+     * [isInSplitMode] resolves the two panes through this helper; [splitPanePackages]
+     * applies the same ordering so the two never disagree about which pane is which.
      */
-    private fun isInSplitMode(): Boolean = runCatching {
-        windows?.count { it.type == AccessibilityWindowInfo.TYPE_APPLICATION } ?: 0
-    }.getOrDefault(0) >= 2
+    private fun splitPaneBounds(): Pair<Rect, Rect>? = runCatching {
+        val rects = (windows ?: emptyList())
+            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            .map { Rect().also { r -> it.getBoundsInScreen(r) } }
+            .filter { it.width() > 0 && it.height() > 0 }
+            .sortedBy { it.left }
+        if (rects.size < 2) null else rects.first() to rects.last()
+    }.getOrNull()
+
+    /**
+     * True when the display is currently showing two apps side by side. Detected
+     * from the two split panes' bounds ([splitPaneBounds]): a genuine split has its
+     * panes separated on at least one axis, so if both pane centres coincide within
+     * a lenient 3% tolerance one pane is covering the other (a transient state while
+     * switching apps) and it is not treated as split.
+     */
+    private fun isInSplitMode(): Boolean {
+        val (a, b) = splitPaneBounds() ?: return false
+        val centerAx = a.left + a.width() / 2f
+        val centerAy = a.top + a.height() / 2f
+        val centerBx = b.left + b.width() / 2f
+        val centerBy = b.top + b.height() / 2f
+        val tolerancePx = resources.displayMetrics.widthPixels * 0.03f
+        return kotlin.math.abs(centerAx - centerBx) >= tolerancePx ||
+            kotlin.math.abs(centerAy - centerBy) >= tolerancePx
+    }
 
     /** Show the floating swap button while split, hide it otherwise. */
     private fun updateOverlayForSplit() {
@@ -92,58 +116,46 @@ class SplitAccessibilityService : AccessibilityService() {
             .getOrDefault(false)
 
     /**
-     * Swap the two split-screen panes with a **double-tap on the split divider** —
-     * the AOSP gesture SystemUI maps to "swap". We locate the divider from the two
-     * app windows' bounds (the boundary between them) rather than assuming a 50/50
-     * centre split, since this head unit uses off-centre split ratios. Falls back
-     * to the display centre if the windows can't be read.
+     * The two split panes' package names, ordered left-to-right / top-to-bottom to
+     * match [splitPaneBounds]. Only each window's owning package is read — never
+     * its content — which is all that's needed to relaunch the same two apps in the
+     * opposite order. Null when two *distinct* app packages can't be resolved.
      */
-    private fun swapPanes(): Boolean {
-        val p = splitDividerPoint() ?: PointF(
-            resources.displayMetrics.widthPixels / 2f,
-            resources.displayMetrics.heightPixels / 2f
-        )
-        val path = Path().apply { moveTo(p.x, p.y) }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0L, TAP_MS))
-            .addStroke(GestureDescription.StrokeDescription(path, TAP_MS + GAP_MS, TAP_MS))
-            .build()
-        return runCatching { dispatchGesture(gesture, null, null) }
-            .onFailure { Log.e(TAG, "swap gesture failed", it) }
-            .getOrDefault(false)
-    }
+    private fun splitPanePackages(): Pair<String, String>? = runCatching {
+        val panes = (windows ?: emptyList())
+            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            .mapNotNull { w ->
+                val r = Rect().also { w.getBoundsInScreen(it) }
+                val pkg = w.root?.packageName?.toString()
+                if (r.width() > 0 && r.height() > 0 && !pkg.isNullOrBlank()) r to pkg else null
+            }
+            .sortedWith(compareBy({ it.first.left }, { it.first.top }))
+        if (panes.size < 2 || panes.first().second == panes.last().second) null
+        else panes.first().second to panes.last().second
+    }.getOrNull()
 
     /**
-     * The midpoint of the divider between the two split panes, in screen pixels.
-     * Detects a left/right split (vertical divider) vs. top/bottom (horizontal)
-     * from the app windows' bounds. Null when there aren't two app windows.
+     * Swap the two panes. This ROM's SystemUI has **no working swap gesture**
+     * (double-tapping the divider does nothing on the head unit), so instead we
+     * recreate the split with the apps reversed, reusing the same
+     * dock-then-launch-adjacent path [SplitLauncher] already uses to *create* a
+     * split here. We read only the two panes' package names and relaunch them in
+     * the opposite order.
+     *
+     * The current split is collapsed first: this ROM's [GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN]
+     * *exits* split when already split, and [SplitLauncher.launchSplitPair] expects
+     * to start from full screen, so recreating without collapsing would just drop
+     * out of split. We toggle back to full screen, then rebuild the pair reversed.
      */
-    private fun splitDividerPoint(): PointF? = runCatching {
-        val rects = windows
-            ?.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
-            ?.map { Rect().also { r -> it.getBoundsInScreen(r) } }
-            ?.filter { it.width() > 0 && it.height() > 0 }
-            ?: return null
-        if (rects.size < 2) return null
-
-        val byX = rects.sortedBy { it.left }
-        val a = byX.first()
-        val b = byX.last()
-        if (b.left >= a.right - 8) {
-            // Side by side: vertical divider on the boundary between a and b.
-            val x = (a.right + b.left) / 2f
-            val y = (maxOf(a.top, b.top) + minOf(a.bottom, b.bottom)) / 2f
-            PointF(x, y)
-        } else {
-            // Stacked: horizontal divider between the top and bottom windows.
-            val byY = rects.sortedBy { it.top }
-            val c = byY.first()
-            val d = byY.last()
-            val y = (c.bottom + d.top) / 2f
-            val x = (maxOf(c.left, d.left) + minOf(c.right, d.right)) / 2f
-            PointF(x, y)
-        }
-    }.getOrNull()
+    private fun swapPanes(): Boolean {
+        val (first, second) = splitPanePackages() ?: return false
+        toggleSplitScreen()
+        Handler(Looper.getMainLooper()).postDelayed(
+            { SplitLauncher.launchSplitPair(this, second, first) },
+            SPLIT_COLLAPSE_MS
+        )
+        return true
+    }
 
     // --- Global floating swap button ----------------------------------------
     //
@@ -288,8 +300,9 @@ class SplitAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "SplitA11yService"
-        private const val TAP_MS = 40L
-        private const val GAP_MS = 80L
+
+        /** Time for the ROM to leave split mode before we rebuild the pair reversed. */
+        private const val SPLIT_COLLAPSE_MS = 500L
 
         private const val OVERLAY_PREFS = "split_overlay_prefs"
         private const val KEY_X = "swap_x"
