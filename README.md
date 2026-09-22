@@ -47,7 +47,7 @@ D:/android car launcher/
 │       │   ├── MapLibrePanel.kt                   # In-app MapLibre GL navigator (free, no API key)
 │       │   ├── DirectionsTile.kt / NavDirections.kt # Google Maps/Waze turn-by-turn via notification parsing
 │       │   ├── Car3DPanel.kt                      # Filament-rendered 3D car model (assets/car.glb)
-│       │   ├── ObdBluetoothManager.kt / ObdCodes.kt # ELM327 telemetry + DTC lookup table
+│       │   ├── ObdBluetoothManager.kt / ObdParser.kt / ObdCodes.kt # ELM327 link, pure reply decoding, DTC table
 │       │   ├── McuReader.kt                       # Rooted CANbox reader: doors, learned fuel mapping
 │       │   ├── TelemetryTiles.kt / VehicleTiles.kt / DriveTiles.kt # OBD/CANbox/driving-instrument cards
 │       │   ├── CarMediaController.kt / MediaTile.kt # MediaSessionManager bridge + media card
@@ -63,6 +63,7 @@ D:/android car launcher/
 │           ├── mipmap-anydpi-v26/ic_launcher.xml  # Adaptive launcher icon (+ ic_launcher_round)
 │           ├── values/                            # colors.xml, themes.xml, strings.xml
 │           └── xml/                               # file_paths.xml, split_accessibility_config.xml
+│   └── src/test/java/com/openauto/dash/       # JVM unit tests: grid, OBD decoding, directions, layout JSON
 └── .github/workflows/                            # GitHub Actions CI/CD
     ├── build.yml                                 # Builds + releases the APK on push to main
     └── lint.yml                                  # Android Lint + unit tests

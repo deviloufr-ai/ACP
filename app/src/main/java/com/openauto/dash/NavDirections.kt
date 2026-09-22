@@ -56,6 +56,9 @@ object NavDirections {
     /** Navigation apps whose turn-by-turn notification we read. */
     val PACKAGES = setOf("com.google.android.apps.maps", "com.waze")
 
+    /** "In", "Dans", "En", "A", "À" (+ optional comma) at the start of an instruction. */
+    private val LEADING_PREPOSITION = Regex("^(in|dans|en|a|à)\\s*,?\\s*", RegexOption.IGNORE_CASE)
+
     private val _state = MutableStateFlow(NavState())
     val state: StateFlow<NavState> = _state
 
@@ -117,6 +120,17 @@ object NavDirections {
             }
         }
         if (lines.isEmpty()) return null
+        return fromLines(lines, icon, sbn.packageName)
+    }
+
+    /**
+     * Builds a [NavState] from the text lines of a navigation notification
+     * (title, text, sub text, big text or the custom layout's text views, in
+     * that order, de-duplicated). Null when the lines don't describe a turn.
+     * Pure so the Maps / Waze formats can be unit tested.
+     */
+    internal fun fromLines(lines: List<String>, icon: Bitmap?, packageName: String): NavState? {
+        if (lines.isEmpty()) return null
 
         val eta = lines.firstOrNull { it.contains('·') || it.contains('•') } ?: lines.firstOrNull {
             ETA_LINE.containsMatchIn(it) && NavState.DISTANCE.find(it)?.value != it
@@ -131,6 +145,8 @@ object NavDirections {
             NavState.DISTANCE.find(instruction)?.let { m ->
                 distance = m.value
                 instruction = instruction.replace(m.value, "").trim().trimStart(',', '-', '–', ':', ' ')
+                    // "In 300 m, turn right" leaves "In , turn right"; drop the preposition.
+                    .replace(LEADING_PREPOSITION, "")
                     .replaceFirstChar { it.uppercase() }
             }
         }
@@ -144,7 +160,7 @@ object NavDirections {
             distance = distance,
             eta = eta.orEmpty(),
             icon = icon,
-            packageName = sbn.packageName
+            packageName = packageName
         )
     }
 

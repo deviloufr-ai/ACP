@@ -90,6 +90,12 @@ android {
         checkReleaseBuilds = false
     }
 
+    testOptions {
+        // Pure-logic tests touch android.util.Log and org.json through the SDK
+        // stubs; let those return defaults instead of throwing.
+        unitTests.isReturnDefaultValues = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2,LOCF}"
@@ -141,4 +147,10 @@ dependencies {
     implementation("com.google.android.filament:filament-utils-android:1.71.5")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // JVM unit tests (app/src/test): grid placement, OBD decoding, directions
+    // parsing, layout JSON. org.json is a real implementation on the JVM since
+    // the SDK stub only returns defaults.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

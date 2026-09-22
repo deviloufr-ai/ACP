@@ -245,8 +245,8 @@ object DashboardStore {
         }
     }.onFailure { Log.w(TAG, "Layout parse failed", it) }.getOrNull()
 
-    fun save(context: Context, pages: List<List<DashboardItem>>) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    /** The versioned JSON document [save] writes, including any [retained] tiles. */
+    internal fun serializePages(pages: List<List<DashboardItem>>): String {
         val json = JSONArray()
         pages.take(PAGE_COUNT).forEachIndexed { p, page ->
             val arr = JSONArray()
@@ -254,7 +254,12 @@ object DashboardStore {
             retained[p]?.forEach { arr.put(it) }
             json.put(arr)
         }
-        val doc = JSONObject().put(KEY_VERSION, SCHEMA_VERSION).put(KEY_PAGES, json).toString()
+        return JSONObject().put(KEY_VERSION, SCHEMA_VERSION).put(KEY_PAGES, json).toString()
+    }
+
+    fun save(context: Context, pages: List<List<DashboardItem>>) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val doc = serializePages(pages)
         val previous = prefs.getString(KEY_PAGES, null)
         prefs.edit().apply {
             // Keep what was there as the fallback for the next load, unless it

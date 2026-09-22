@@ -118,9 +118,6 @@ class UpdateManager(private val context: Context) {
     }
 
     /** Extracts the trailing integer from a tag, e.g. "v1.0.42" → 42. */
-    private fun parseBuildNumber(text: String): Long? =
-        Regex("(\\d+)").findAll(text).lastOrNull()?.value?.toLongOrNull()
-
     /** True if the app may install APKs (Android 8+ requires a per-app grant). */
     fun canInstallPackages(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -204,6 +201,10 @@ class UpdateManager(private val context: Context) {
     }
 
     companion object {
+        /** Build number from a release tag or name: "v1.0.42" -> 42 (the last number wins). */
+        internal fun parseBuildNumber(text: String): Long? =
+            Regex("(\\d+)").findAll(text).lastOrNull()?.value?.toLongOrNull()
+
         private const val APK_NAME = "openauto-dash-update.apk"
         private val ALLOWED_DOWNLOAD_HOSTS = setOf("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
     }
