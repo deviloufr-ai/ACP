@@ -92,6 +92,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
+    // The half-width dashboard beside a Maps dock keeps its own arrangement.
+    fun variantOf(l: DashLayout) = if (l == DashLayout.MAPS_LEFT) "_mapsleft" else ""
+    val variant = variantOf(layout)
     var showThemePicker by remember { mutableStateOf(false) }
     DashColors.Sync(themeMode)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -112,7 +115,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
     val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
 
-    var pages by remember { mutableStateOf(DashboardStore.load(context)) }
+    var pages by remember { mutableStateOf(DashboardStore.load(context, variant)) }
     // Layout snapshots for Undo while arranging (newest last, capped).
     var history by remember { mutableStateOf<List<List<List<DashboardItem>>>>(emptyList()) }
     // (page, index) of the launch bar whose apps are being edited.
@@ -166,7 +169,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         if (after == before) return
         history = (history + listOf(before)).takeLast(MAX_UNDO)
         pages = after
-        DashboardStore.save(context, pages)
+        DashboardStore.save(context, pages, variant)
     }
 
     /** Adds at the first free cell; returns the new tile's index, or -1 when the page is full. */
@@ -240,7 +243,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val previous = history.lastOrNull() ?: return
         history = history.dropLast(1)
         pages = previous
-        DashboardStore.save(context, pages)
+        DashboardStore.save(context, pages, variant)
     }
 
     /** Clears one page (releasing any hosted app-widgets); Undo brings it back. */
@@ -568,8 +571,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             },
             layout = layout,
             onLayout = {
-                layout = it
-                DashLayoutStore.save(context, it)
+                    if (it != layout) {
+                    val next = variantOf(it)
+                    // First time in this layout: start from the current pages so
+                    // nothing looks lost, then the two arrangements diverge.
+                    if (!DashboardStore.exists(context, next)) DashboardStore.save(context, pages, next)
+                    layout = it
+                    DashLayoutStore.save(context, it)
+                    pages = DashboardStore.load(context, next)
+                    history = emptyList()
+                }
             },
             onDismiss = { showThemePicker = false }
         )
