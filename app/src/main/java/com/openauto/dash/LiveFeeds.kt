@@ -70,9 +70,12 @@ object LocationFeed {
 
     @SuppressLint("MissingPermission")
     fun acquire(context: Context) {
-        if (refs++ > 0) return
+        // Only count the ref once we really register; if permission is missing
+        // the next acquire (after the grant) must be allowed to try again.
         if (!hasLocationPermission(context)) return
-        val lm = context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val lm = context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            ?: return
+        if (refs++ > 0) return
         manager = lm
         runCatching {
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, Looper.getMainLooper())
@@ -142,9 +145,10 @@ object GForceFeed : SensorEventListener {
     private var lon = 0f
 
     fun acquire(context: Context) {
-        if (refs++ > 0) return
-        val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            ?: return
         val sensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        if (refs++ > 0) return
         manager = sm
         sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
     }

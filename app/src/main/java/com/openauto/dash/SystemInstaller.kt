@@ -2,6 +2,7 @@ package com.openauto.dash
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import java.util.concurrent.TimeUnit
 
 /**
  * Self-installs the app into `/system/priv-app` on a **rooted** device, so it
@@ -32,11 +33,22 @@ object SystemInstaller {
         return flagged || path
     }
 
-    /** True if a root shell (`su`) is available and granted. */
+    /**
+     * True if a root shell (`su`) is available and granted. Bounded: if the
+     * Magisk prompt is left unanswered the probe gives up instead of pinning an
+     * IO thread forever.
+     */
     fun isRootAvailable(): Boolean = runCatching {
         val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-        process.waitFor() == 0
+        process.outputStream.close()
+        if (!process.waitFor(ROOT_PROBE_TIMEOUT_S, TimeUnit.SECONDS)) {
+            process.destroy()
+            return@runCatching false
+        }
+        process.exitValue() == 0
     }.getOrDefault(false)
+
+    private const val ROOT_PROBE_TIMEOUT_S = 8L
 
     /**
      * Installs the app as a privileged system app using `su`.

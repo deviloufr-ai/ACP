@@ -34,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -111,7 +112,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result -> hasLocation = result.values.any { it } }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         if (!hasLocation) {
             permissionLauncher.launch(
                 arrayOf(
@@ -213,26 +214,39 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) { mv ->
-            mv.getMapAsync { map ->
-                mapRef = map
-                // No MapLibre wordmark on the dashboard. The attribution (i)
-                // stays: the CARTO / OpenStreetMap tile terms require it.
-                map.uiSettings.isLogoEnabled = false
-                map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
-                    add3dBuildings(style)
-                    if (hasLocation) enableLocation(map, style, context, scope)
-                    if (navRoute == null) navRoute = NavigationMapRoute(mv, map)
-                    map.addOnMapClickListener { latLng ->
-                        clearRoute()
-                        mapRef?.addMarker(MarkerOptions().position(latLng))
-                        routeTo(Point.fromLngLat(latLng.longitude, latLng.latitude))
-                        true
-                    }
+    // Map setup runs exactly once. It used to live in AndroidView's update
+    // block, which re-runs on every recomposition (each search keystroke), so
+    // the style reloaded and a new click listener stacked up every time.
+    var styleReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        mapView.getMapAsync { map ->
+            mapRef = map
+            // No MapLibre wordmark on the dashboard. The attribution (i)
+            // stays: the CARTO / OpenStreetMap tile terms require it.
+            map.uiSettings.isLogoEnabled = false
+            map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
+                add3dBuildings(style)
+                if (navRoute == null) navRoute = NavigationMapRoute(mapView, map)
+                map.addOnMapClickListener { latLng ->
+                    clearRoute()
+                    mapRef?.addMarker(MarkerOptions().position(latLng))
+                    routeTo(Point.fromLngLat(latLng.longitude, latLng.latitude))
+                    true
                 }
+                styleReady = true
             }
         }
+    }
+    // Location puck: enabled once the style is up, and again if the permission
+    // is granted later from the runtime prompt.
+    LaunchedEffect(hasLocation, styleReady) {
+        if (!hasLocation || !styleReady) return@LaunchedEffect
+        val map = mapRef ?: return@LaunchedEffect
+        map.getStyle { style -> enableLocation(map, style, context, scope) }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
         // Destination search bar.
         Surface(
