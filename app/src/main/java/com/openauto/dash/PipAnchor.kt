@@ -74,7 +74,14 @@ object PipAnchor {
         /** "pinned" or "freeform": how the window is floating. */
         val mode: String? = null,
         /** One entry per stack the system reported, for on-tile diagnostics. */
-        val seen: String? = null
+        val seen: String? = null,
+        /** Where the system says the window is, and where the tile wants it. */
+        val windowBounds: ScreenRect? = null,
+        val target: ScreenRect? = null,
+        /** Outcome of the last placement command, e.g. "am stack resize 3: ok". */
+        val lastResult: String? = null,
+        /** Set once the tile has stopped fighting a system that keeps moving the window back. */
+        val gaveUp: Boolean = false
     )
 
     private val _status = MutableStateFlow(Status())
@@ -104,31 +111,71 @@ object PipAnchor {
      * pinned stack every few seconds and resizes it whenever it drifted.
      */
     suspend fun track(context: Context, rect: ScreenRect) {
-        var lastApplied: ScreenRect? = null
+        var attempts = 0
         var lastStack: Int? = null
+        var lastResult: String? = null
         while (true) {
             val lookup = runCatching { findFloatingWindow(context) }
-            val stack = lookup.getOrNull()
+            val win = lookup.getOrNull()
             if (lookup.isFailure) {
                 publishError(lookup.exceptionOrNull()!!)
-                lastApplied = null; lastStack = null
-            } else if (stack == null) {
+                attempts = 0; lastStack = null
+            } else if (win == null) {
                 _status.value = Status(seen = lastSeen)
-                lastApplied = null; lastStack = null
+                attempts = 0; lastStack = null
             } else {
-                _status.value = Status(pipPackage = stack.packageName, docked = stack.bounds == rect, mode = stack.mode, seen = lastSeen)
-                val drifted = stack.bounds != rect || lastApplied != rect || lastStack != stack.stackId
-                if (drifted) {
-                    runCatching { resize(context, stack, rect) }
-                        .onSuccess {
-                            lastApplied = rect; lastStack = stack.stackId
-                            _status.value = Status(pipPackage = stack.packageName, docked = true, mode = stack.mode, seen = lastSeen)
-                        }
-                        .onFailure { publishError(it) }
+                if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
+                val docked = win.bounds?.let { isClose(it, rect) } == true
+                if (docked) attempts = 0
+                _status.value = Status(
+                    pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
+                    windowBounds = win.bounds, target = rect, lastResult = lastResult,
+                    gaveUp = attempts >= MAX_ATTEMPTS
+                )
+                if (!docked && attempts < MAX_ATTEMPTS) {
+                    attempts++
+                    // Stack commands first; if the system keeps ignoring them,
+                    // drag the window the way a finger would.
+                    val useSwipe = attempts >= 3 && win.bounds != null
+                    val result = runCatching {
+                        if (useSwipe) swipeTo(context, win.bounds!!, rect) else resize(context, win, rect)
+                    }
+                    lastResult = result.fold({ it }, { "failed: ${it.message}" })
+                    result.onFailure { publishError(it) }
+                    _status.value = _status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else _status.value.error)
                 }
             }
             delay(POLL_MS)
         }
+    }
+
+    /** Give up after this many placement attempts per window, so we never fight SystemUI forever. */
+    private const val MAX_ATTEMPTS = 6
+
+    /**
+     * "Close enough": the window's centre is inside the target and its width is
+     * within the band SystemUI's aspect-ratio rules can produce. Exact equality
+     * never happens once the system has had its say.
+     */
+    internal fun isClose(actual: ScreenRect, target: ScreenRect): Boolean {
+        val cx = (actual.left + actual.right) / 2
+        val cy = (actual.top + actual.bottom) / 2
+        val insideX = cx in target.left..target.right
+        val insideY = cy in target.top..target.bottom
+        val w = (actual.right - actual.left).toFloat()
+        val tw = (target.right - target.left).toFloat().coerceAtLeast(1f)
+        return insideX && insideY && w / tw in 0.6f..1.4f
+    }
+
+    /** Drags the window by its centre onto the target centre (SystemUI handles PiP drags itself). */
+    private suspend fun swipeTo(context: Context, from: ScreenRect, to: ScreenRect): String {
+        val x1 = (from.left + from.right) / 2; val y1 = (from.top + from.bottom) / 2
+        val x2 = (to.left + to.right) / 2; val y2 = (to.top + to.bottom) / 2
+        val cmd = "input swipe $x1 $y1 $x2 $y2 600"
+        val out = shell(context, cmd)
+        if (looksLikeError(out)) error(out.trim().lines().first())
+        Log.d(TAG, "swiped window: $cmd")
+        return "swipe ($x1,$y1)->($x2,$y2): ok"
     }
 
     /**
@@ -164,7 +211,7 @@ object PipAnchor {
         return parseFloatingWindow(listing, context.packageName)
     }
 
-    private suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect) {
+    private suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String {
         val bounds = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
         val attempts = if (win.mode == "pinned") {
             // Android 10/11 accept both; the animated form is nicer when present.
@@ -180,7 +227,7 @@ object PipAnchor {
             last = shell(context, cmd)
             if (!looksLikeError(last)) {
                 Log.d(TAG, "${win.mode} ${win.packageName} -> $bounds via `$cmd`")
-                return
+                return "${cmd.substringBefore(" $bounds")}: ok"
             }
             Log.w(TAG, "`$cmd` failed: ${last.trim()}")
         }
@@ -364,21 +411,37 @@ internal fun PipAnchorCard(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(8.dp))
             val pkg = status.pipPackage
             val err = status.error
+            val name = pkg?.substringAfterLast('.')
             Text(
                 text = when {
-                    pkg != null && status.docked -> "Docked: ${pkg.substringAfterLast('.')} (${status.mode})"
-                    pkg != null -> "Moving the window here…"
-                    err != null -> err
+                    pkg != null && status.docked -> "Docked: $name (${status.mode})"
+                    pkg != null && status.gaveUp -> "The system keeps $name where it is"
+                    pkg != null -> "Moving $name here…"
                     else -> "The floating Maps window docks here.\nStart guidance in Google Maps, then press Home."
                 },
                 color = when {
-                    err != null && pkg == null -> DashColors.Warning
-                    pkg != null -> DashColors.Good
+                    pkg != null && status.docked -> DashColors.Good
+                    pkg != null && status.gaveUp -> DashColors.Warning
                     else -> DashColors.TextSecondary
                 },
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (err != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(err, color = DashColors.Warning, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+            }
+            // Diagnostics while not docked: where the window is vs. where it should be,
+            // and what the last command said. Readable without adb.
+            if (pkg != null && !status.docked) {
+                Spacer(Modifier.height(4.dp))
+                val at = status.windowBounds?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
+                val to = status.target?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
+                Text("Window $at \u2192 target $to", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+                status.lastResult?.let {
+                    Text("Last: $it", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+                }
+            }
             status.seen?.let { seen ->
                 Spacer(Modifier.height(6.dp))
                 Text("Windows: $seen", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)

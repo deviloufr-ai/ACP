@@ -74,4 +74,16 @@ class PipAnchorTest {
         """.trimIndent()
         assertNull(PipAnchor.parseFloatingWindow(empty))
     }
+
+    @Test
+    fun closeEnoughAllowsSystemAspectAdjustments() {
+        val target = PipAnchor.ScreenRect(400, 100, 900, 400)
+        assertEquals(true, PipAnchor.isClose(PipAnchor.ScreenRect(400, 100, 900, 400), target))
+        // Same centre, width shrunk by the aspect-ratio rule: still docked.
+        assertEquals(true, PipAnchor.isClose(PipAnchor.ScreenRect(450, 120, 850, 380), target))
+        // Parked in a corner: not docked.
+        assertEquals(false, PipAnchor.isClose(PipAnchor.ScreenRect(960, 420, 1264, 608), target))
+        // Centre inside but a quarter of the size: not docked.
+        assertEquals(false, PipAnchor.isClose(PipAnchor.ScreenRect(600, 200, 700, 300), target))
+    }
 }
