@@ -224,7 +224,7 @@ internal fun obdStatusLabel(state: ObdConnectionState): String = when (state) {
 internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: Dp = 10.dp) {
     val color = obdStatusColor(state)
     val label = obdStatusLabel(state)
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     IconButton(
         onClick = onConnect,
         enabled = idle,

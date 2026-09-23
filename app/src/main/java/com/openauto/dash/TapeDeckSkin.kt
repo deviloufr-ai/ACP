@@ -40,7 +40,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -463,19 +462,6 @@ private fun chromeText(color: Color, size: TextUnit, glow: Boolean = false) = Te
 )
 
 /** True for half of every [halfPeriodMs] x 2, aligned to the wall clock (so colons tick with the seconds). */
-@Composable
-private fun rememberBlink(halfPeriodMs: Long = 500L): State<Boolean> {
-    val on = remember { mutableStateOf(true) }
-    LaunchedEffect(halfPeriodMs) {
-        while (true) {
-            val now = System.currentTimeMillis()
-            on.value = (now / halfPeriodMs) % 2L == 0L
-            delay(halfPeriodMs - now % halfPeriodMs)
-        }
-    }
-    return on
-}
-
 /** Tube / CRT flicker: alpha 1 most of the time, with a short stutter every few seconds. */
 @Composable
 private fun rememberFlicker(): State<Float> {
@@ -830,7 +816,7 @@ private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
     val cyan = DashColors.Accent
     val color = obdStatusColor(state)
     val label = obdStatusLabel(state)
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     val blink = if (state == ObdConnectionState.CONNECTING) rememberBlink(350L) else null
     Row(
         modifier = Modifier
@@ -940,7 +926,7 @@ private fun TapeTelemetry(env: SkinTileEnv) {
     val magenta = DashColors.Accent2
     val state = env.obdConnection
     val live = state == ObdConnectionState.CONNECTED
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     val d = env.obdData
     val speedColor = if (live && d.speedKmh >= SPEED_WARNING_KMH) DashColors.Warning else cyan
     val volts = live && d.voltage > 0.0

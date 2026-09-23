@@ -51,12 +51,9 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.LongState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -267,19 +264,6 @@ private fun lcd(size: TextUnit, color: Color): TextStyle = TextStyle(
 )
 
 // --- Clocks & motion ----------------------------------------------------------------
-
-/** Wall-clock millis refreshed every [stepMs]; read it in draw or layer lambdas so ticks only move layers. */
-@Composable
-private fun rememberWallClock(stepMs: Long): LongState {
-    val now = remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(stepMs) {
-        while (true) {
-            delay(stepMs - System.currentTimeMillis() % stepMs)
-            now.longValue = System.currentTimeMillis()
-        }
-    }
-    return now
-}
 
 /** The small idle tremble of a live needle, in degrees. */
 @Composable
@@ -558,7 +542,7 @@ private fun OutsideTempLcd() {
 /** OBD tell-tale: a glossy lamp, green when linked, dim when off; tapping it while idle connects. */
 @Composable
 private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     val color = when (state) {
         ObdConnectionState.CONNECTED -> DashColors.Good
         ObdConnectionState.CONNECTING -> DashColors.Rpm
@@ -1073,7 +1057,7 @@ private fun SpeedLcd(speed: Int?, caption: String, modifier: Modifier) {
 private fun CockpitTelemetry(env: SkinTileEnv) {
     val state = env.obdConnection
     val connected = state == ObdConnectionState.CONNECTED
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     val d = env.obdData
     val fuel = rememberFuel(d, state)
     val speed = if (connected) d.speedKmh else null

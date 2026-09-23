@@ -747,7 +747,7 @@ internal fun HorizonTopBar(m: TopBarModel) {
 private fun HorizonObdDot(state: ObdConnectionState, onConnect: () -> Unit) {
     val color = obdStatusColor(state)
     val label = obdStatusLabel(state)
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     IconButton(onClick = onConnect, enabled = idle, modifier = Modifier.semantics { contentDescription = label }) {
         Box(
             Modifier
@@ -838,7 +838,7 @@ private fun telemetryLines(d: ObdData): List<String> {
 private fun HorizonTelemetry(env: SkinTileEnv, side: Side) {
     val state = env.obdConnection
     val connected = state == ObdConnectionState.CONNECTED
-    val idle = state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR
+    val idle = state.isIdle
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -870,7 +870,7 @@ private fun HorizonTelemetry(env: SkinTileEnv, side: Side) {
 private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
     val obd = env.obdConnection == ObdConnectionState.CONNECTED
-    val idle = env.obdConnection == ObdConnectionState.DISCONNECTED || env.obdConnection == ObdConnectionState.ERROR
+    val idle = env.obdConnection.isIdle
     val canConnect = speed == null && idle && !env.editing
     BoxWithConstraints(
         modifier = Modifier

@@ -13,6 +13,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LongState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,17 +37,36 @@ import kotlin.math.roundToInt
 internal val CondensedFamily: FontFamily =
     FontFamily(android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL))
 
-/** The current time, re-read on each [periodMs] boundary. */
+/**
+ * Wall-clock milliseconds, updated on each [stepMs] boundary (so a 1 s step
+ * ticks exactly on the second). The one ticker every clock, blink and sweep
+ * in the skins is built on.
+ */
 @Composable
-internal fun rememberNow(periodMs: Long = 1_000L): Date {
-    var now by remember { mutableStateOf(Date()) }
-    LaunchedEffect(periodMs) {
+internal fun rememberWallClock(stepMs: Long): LongState {
+    val now = remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(stepMs) {
         while (true) {
-            now = Date()
-            delay(periodMs - System.currentTimeMillis() % periodMs)
+            delay(stepMs - System.currentTimeMillis() % stepMs)
+            now.longValue = System.currentTimeMillis()
         }
     }
     return now
+}
+
+/** The current time, re-read on each [periodMs] boundary. */
+@Composable
+internal fun rememberNow(periodMs: Long = 1_000L): Date {
+    val clock = rememberWallClock(periodMs)
+    val ms = clock.longValue
+    return remember(ms) { Date(ms) }
+}
+
+/** On for one [halfPeriodMs], off for the next, aligned to the wall clock so several blinkers agree. */
+@Composable
+internal fun rememberBlink(halfPeriodMs: Long = 500L): State<Boolean> {
+    val clock = rememberWallClock(halfPeriodMs)
+    return remember(clock) { derivedStateOf { (clock.longValue / halfPeriodMs) % 2L == 0L } }
 }
 
 /**

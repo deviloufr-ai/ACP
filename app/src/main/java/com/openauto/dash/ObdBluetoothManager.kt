@@ -32,6 +32,9 @@ data class ObdData(
 /** Connection lifecycle for the ELM327 adapter. */
 enum class ObdConnectionState { DISCONNECTED, CONNECTING, CONNECTED, ERROR }
 
+/** No link and nothing in progress: the state in which "Connect" makes sense. */
+val ObdConnectionState.isIdle: Boolean get() = this == ObdConnectionState.DISCONNECTED || this == ObdConnectionState.ERROR
+
 /**
  * Singleton manager for OBD-II telemetry over a Bluetooth ELM327 adapter.
  *

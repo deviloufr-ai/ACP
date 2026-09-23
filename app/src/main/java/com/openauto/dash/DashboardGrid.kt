@@ -427,43 +427,24 @@ internal fun TileContent(
     /** Grid only: grow this tile to at least the given pixel size (a docked window's minimum). */
     onFitToWindow: ((Int, Int) -> Unit)? = null
 ) {
+    val env = SkinTileEnv(
+        editing, appsByPackage, mediaState, mediaController, hasMediaAccess, context,
+        obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
+    )
     if (skinHandles(item)) {
-        SkinTile(
-            item,
-            SkinTileEnv(
-                editing, appsByPackage, mediaState, mediaController, hasMediaAccess, context,
-                obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
-            )
-        )
+        SkinTile(item, env)
         return
     }
     when (item) {
-        is DashboardItem.LaunchBar -> LaunchBarTile(
-            item = item,
-            appsByPackage = appsByPackage,
-            editing = editing,
-            onLaunch = onLaunchApp,
-            onEdit = onEditLaunchBar,
-            modifier = Modifier.fillMaxSize()
-        )
+        // The tiles a skin can redraw have one standard renderer, shared with the
+        // skins' own fallback, so the two never drift apart.
+        is DashboardItem.LaunchBar, is DashboardItem.AppShortcut -> StandardSkinnedTile(item, env)
 
         is DashboardItem.AppWindow -> {
             val label = appsByPackage[item.packageName]?.label ?: item.packageName.substringAfterLast('.')
             // While arranging, the window would cover its own tile's handles.
             if (editing) EditPlaceholder(icon = Icons.Filled.OpenInNew, label = "$label window")
             else PipAnchorCard(modifier = Modifier.fillMaxSize(), packageName = item.packageName, appLabel = label, onWindowBiggerThanTile = onFitToWindow)
-        }
-
-        is DashboardItem.AppShortcut -> Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            AppShortcutTile(
-                app = appsByPackage[item.packageName],
-                packageName = item.packageName,
-                editing = editing,
-                onClick = { onLaunchApp(item.packageName) }
-            )
         }
 
         is DashboardItem.SplitPair -> Box(
@@ -501,25 +482,9 @@ internal fun TileContent(
                     )
                 }
             }
-            BuiltinKind.NAVIGATION -> DirectionsCard(
-                hasAccess = hasMediaAccess,
-                context = context,
-                modifier = Modifier.fillMaxSize()
-            )
-            BuiltinKind.MEDIA -> MediaCard(
-                mediaState = mediaState,
-                controller = mediaController,
-                hasAccess = hasMediaAccess,
-                context = context,
-                modifier = Modifier.fillMaxSize()
-            )
-            BuiltinKind.TELEMETRY -> ObdCard(
-                obdData = obdData,
-                connection = obdConnection,
-                onConnect = onConnectObd,
-                onPickDevice = onPickDevice,
-                modifier = Modifier.fillMaxSize()
-            )
+            BuiltinKind.NAVIGATION, BuiltinKind.MEDIA, BuiltinKind.TELEMETRY,
+            BuiltinKind.RANGE, BuiltinKind.SPEED_HUD, BuiltinKind.CLOCK, BuiltinKind.WEATHER ->
+                StandardSkinnedTile(item, env)
             BuiltinKind.OBD_DTC -> ObdDtcCard(
                 connection = obdConnection,
                 onConnect = onConnectObd,
@@ -531,19 +496,8 @@ internal fun TileContent(
                 onConnect = onConnectObd,
                 modifier = Modifier.fillMaxSize()
             )
-            BuiltinKind.RANGE -> RangeCard(
-                obdData = obdData,
-                connection = obdConnection,
-                onConnect = onConnectObd,
-                modifier = Modifier.fillMaxSize()
-            )
             BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.SPEED_HUD -> SpeedHudCard(
-                obdData = obdData,
-                obdConnected = obdConnection == ObdConnectionState.CONNECTED,
-                modifier = Modifier.fillMaxSize()
-            )
             BuiltinKind.COMPASS -> CompassCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PIP_ANCHOR -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.Map, label = BuiltinKind.PIP_ANCHOR.label)
@@ -551,8 +505,6 @@ internal fun TileContent(
             BuiltinKind.TRIP -> TripCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.GFORCE -> GForceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.PARKING -> ParkingCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.CLOCK -> ClockCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.WEATHER -> WeatherCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CALENDAR -> CalendarCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.QUICK_DIAL -> QuickDialCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.NOTIFICATIONS -> NotificationsCard(hasAccess = hasMediaAccess, modifier = Modifier.fillMaxSize())

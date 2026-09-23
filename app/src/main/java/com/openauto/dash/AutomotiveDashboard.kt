@@ -342,7 +342,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // not already connected. Called on first launch and on every resume.
     val autoConnectObd: () -> Unit = {
         val state = ObdBluetoothManager.connectionState.value
-        if (state == ObdConnectionState.DISCONNECTED || state == ObdConnectionState.ERROR) {
+        if (state.isIdle) {
             val saved = ObdBluetoothManager.savedDeviceAddress()
             val missingPerms = requiredBluetoothPermissions().any {
                 ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED

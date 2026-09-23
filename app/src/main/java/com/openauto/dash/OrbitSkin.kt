@@ -416,7 +416,7 @@ private class Satellite(val fraction: Float, val color: Color, val value: String
 @Composable
 private fun OrbitTelemetry(env: SkinTileEnv) {
     val connected = env.obdConnection == ObdConnectionState.CONNECTED
-    val idle = env.obdConnection == ObdConnectionState.DISCONNECTED || env.obdConnection == ObdConnectionState.ERROR
+    val idle = env.obdConnection.isIdle
     val data = env.obdData
     val warn = connected && data.speedKmh >= SPEED_WARNING_KMH
     val teal = DashColors.Rpm
@@ -682,7 +682,7 @@ private fun OrbitGaugeBubble(
 private fun OrbitSpeedHud(env: SkinTileEnv) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
     val obd = env.obdConnection == ObdConnectionState.CONNECTED
-    val idle = env.obdConnection == ObdConnectionState.DISCONNECTED || env.obdConnection == ObdConnectionState.ERROR
+    val idle = env.obdConnection.isIdle
     val warn = (speed ?: 0) >= SPEED_WARNING_KMH
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val d = min(maxWidth.value, maxHeight.value) - 8f
