@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Conso moy.</string>
     <string name="vehicle_learn_fuel">Apprendre le carburant via CANbox</string>
     <string name="vehicle_recalibrate_fuel">Recalibrer le carburant</string>
+    <string name="vehicle_find_range_signal">Lire l\'autonomie via CANbox</string>
+    <string name="vehicle_learn_range">Autonomie via CANbox</string>
+    <string name="vehicle_change_range">Changer le signal d\'autonomie</string>
+    <string name="vehicle_range_from_car">ordinateur de bord</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Réglez le niveau indiqué par la jauge, touchez Capture A — puis fermez et utilisez la voiture normalement. Quelques jours plus tard, quand la jauge a un peu baissé, rouvrez, réglez la nouvelle valeur et touchez Capture B. Capture A est conservée après un redémarrage. Seuls les octets qui ont suivi le carburant sont proposés.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">trame %1$s · octet %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · plein≈%3$d</string>
     <string name="vehicle_forget_current">Oublier l\'actuel</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Ouvrez l\'ordinateur de bord de l\'autoradio et saisissez l\'autonomie (km restants) affichée, puis touchez Rechercher. Choisissez le signal dont la valeur en direct suit l\'ordinateur de bord.</string>
+    <string name="vehicle_range_car_shows">L\'ordinateur de bord affiche</string>
+    <string name="vehicle_range_search">Rechercher</string>
+    <string name="vehicle_range_none">Aucun signal ne contient cette valeur. Vérifiez le nombre, laissez l\'ordinateur de bord ouvert quelques secondes et relancez la recherche.</string>
+    <string name="vehicle_range_candidates">Signaux contenant cette valeur — choisissez celui qui suit l\'ordinateur de bord</string>
+    <string name="vehicle_range_frame">trame %1$s · octets %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Choisir l\'adaptateur OBD</string>

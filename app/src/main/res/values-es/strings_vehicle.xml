@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Consumo medio</string>
     <string name="vehicle_learn_fuel">Aprender combustible de la CANbox</string>
     <string name="vehicle_recalibrate_fuel">Recalibrar combustible</string>
+    <string name="vehicle_find_range_signal">Leer autonomía del CANbox</string>
+    <string name="vehicle_learn_range">Autonomía del CANbox</string>
+    <string name="vehicle_change_range">Cambiar señal de autonomía</string>
+    <string name="vehicle_range_from_car">ordenador de a bordo</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Ajusta el nivel que marca el indicador y toca Captura A — luego cierra y usa el coche con normalidad. Días después, cuando el indicador haya bajado un poco, vuelve a abrir, ajusta el nuevo valor y toca Captura B. La Captura A se guarda aunque se reinicie. Solo se ofrecen los bytes que variaron con el combustible.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">trama %1$s · byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · lleno≈%3$d</string>
     <string name="vehicle_forget_current">Olvidar el actual</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Abre el ordenador de a bordo de la radio, escribe la autonomía (km restantes) que muestra y pulsa Buscar. Elige la señal cuyo valor en vivo sigue al ordenador de a bordo.</string>
+    <string name="vehicle_range_car_shows">El ordenador de a bordo muestra</string>
+    <string name="vehicle_range_search">Buscar</string>
+    <string name="vehicle_range_none">Ninguna señal tiene ese valor. Revisa el número, deja abierto el ordenador de a bordo unos segundos y vuelve a buscar.</string>
+    <string name="vehicle_range_candidates">Señales con ese valor — elige la que sigue al ordenador de a bordo</string>
+    <string name="vehicle_range_frame">trama %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Seleccionar adaptador OBD</string>

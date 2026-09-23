@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Śr. zużycie</string>
     <string name="vehicle_learn_fuel">Odczytaj paliwo z CANbox</string>
     <string name="vehicle_recalibrate_fuel">Ponownie skalibruj paliwo</string>
+    <string name="vehicle_find_range_signal">Odczytaj zasięg z CANbox</string>
+    <string name="vehicle_learn_range">Zasięg z CANbox</string>
+    <string name="vehicle_change_range">Zmień sygnał zasięgu</string>
+    <string name="vehicle_range_from_car">komputer pokładowy</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Ustaw poziom wskazywany na desce rozdzielczej i dotknij Zapis A — potem zamknij i używaj auta normalnie. Po kilku dniach, gdy wskazanie nieco spadnie, otwórz ponownie, ustaw nową wartość i dotknij Zapis B. Zapis A jest zachowywany po restarcie. Proponowane są tylko bajty, które zmieniały się razem z paliwem.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">ramka %1$s · bajt %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · pełny≈%3$d</string>
     <string name="vehicle_forget_current">Zapomnij bieżący</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Otwórz komputer pokładowy radia, wpisz pokazany zasięg (km do pustego baku) i dotknij Szukaj. Wybierz sygnał, którego wartość na żywo podąża za komputerem pokładowym.</string>
+    <string name="vehicle_range_car_shows">Komputer pokładowy pokazuje</string>
+    <string name="vehicle_range_search">Szukaj</string>
+    <string name="vehicle_range_none">Żaden sygnał nie zawiera tej wartości. Sprawdź liczbę, zostaw komputer pokładowy otwarty na kilka sekund i szukaj ponownie.</string>
+    <string name="vehicle_range_candidates">Sygnały z tą wartością — wybierz ten, który podąża za komputerem pokładowym</string>
+    <string name="vehicle_range_frame">ramka %1$s · bajty %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Wybierz adapter OBD</string>

@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Consumo medio</string>
     <string name="vehicle_learn_fuel">Rileva carburante dalla CANbox</string>
     <string name="vehicle_recalibrate_fuel">Ricalibra carburante</string>
+    <string name="vehicle_find_range_signal">Leggi autonomia dal CANbox</string>
+    <string name="vehicle_learn_range">Autonomia dal CANbox</string>
+    <string name="vehicle_change_range">Cambia segnale autonomia</string>
+    <string name="vehicle_range_from_car">computer di bordo</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Imposta il livello indicato dal cruscotto, tocca Cattura A — poi chiudi e usa l\'auto normalmente. Qualche giorno dopo, quando l\'indicatore è sceso un po\', riapri, imposta il nuovo valore e tocca Cattura B. La Cattura A resta salvata dopo i riavvii. Vengono proposti solo i byte che si sono mossi con il carburante.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · pieno≈%3$d</string>
     <string name="vehicle_forget_current">Dimentica l\'attuale</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Apri il computer di bordo dell\'autoradio, inserisci l\'autonomia (km residui) mostrata e tocca Cerca. Scegli il segnale il cui valore in tempo reale segue il computer di bordo.</string>
+    <string name="vehicle_range_car_shows">Il computer di bordo mostra</string>
+    <string name="vehicle_range_search">Cerca</string>
+    <string name="vehicle_range_none">Nessun segnale contiene quel valore. Controlla il numero, lascia aperto il computer di bordo qualche secondo e cerca di nuovo.</string>
+    <string name="vehicle_range_candidates">Segnali con quel valore — scegli quello che segue il computer di bordo</string>
+    <string name="vehicle_range_frame">frame %1$s · byte %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Seleziona adattatore OBD</string>

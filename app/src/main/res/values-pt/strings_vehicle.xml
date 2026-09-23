@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Consumo médio</string>
     <string name="vehicle_learn_fuel">Aprender combustível da CANbox</string>
     <string name="vehicle_recalibrate_fuel">Recalibrar combustível</string>
+    <string name="vehicle_find_range_signal">Ler autonomia do CANbox</string>
+    <string name="vehicle_learn_range">Autonomia do CANbox</string>
+    <string name="vehicle_change_range">Mudar sinal de autonomia</string>
+    <string name="vehicle_range_from_car">computador de bordo</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Defina o nível indicado no painel e toque em Captura A — depois feche e use o carro normalmente. Dias depois, quando o indicador tiver descido um pouco, reabra, defina o novo valor e toque em Captura B. A Captura A fica guardada após reinícios. Só são propostos os bytes que variaram com o combustível.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">trama %1$s · byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · cheio≈%3$d</string>
     <string name="vehicle_forget_current">Esquecer o atual</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Abra o computador de bordo do rádio, escreva a autonomia (km restantes) que mostra e toque em Procurar. Escolha o sinal cujo valor ao vivo acompanha o computador de bordo.</string>
+    <string name="vehicle_range_car_shows">O computador de bordo mostra</string>
+    <string name="vehicle_range_search">Procurar</string>
+    <string name="vehicle_range_none">Nenhum sinal contém esse valor. Verifique o número, deixe o computador de bordo aberto alguns segundos e procure de novo.</string>
+    <string name="vehicle_range_candidates">Sinais com esse valor — escolha o que acompanha o computador de bordo</string>
+    <string name="vehicle_range_frame">trama %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Selecionar adaptador OBD</string>
