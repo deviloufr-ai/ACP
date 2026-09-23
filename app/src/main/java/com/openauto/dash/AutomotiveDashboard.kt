@@ -469,7 +469,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 .onGloballyPositioned { coords ->
                     val b = coords.boundsInRoot()
                     val origin = IntArray(2).also { rootView.getLocationOnScreen(it) }
-                    PipAnchor.allowedArea.value = PipAnchor.ScreenRect(
+                    PipAnchor.allowedArea.value = ScreenRect(
                         (b.left + origin[0]).roundToInt(), (b.top + origin[1]).roundToInt(),
                         (b.right + origin[0]).roundToInt(), (b.bottom + origin[1]).roundToInt()
                     )

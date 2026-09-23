@@ -1,0 +1,133 @@
+package com.openauto.dash
+
+/*
+ * Reading floating windows out of `am stack list`, and the geometry rules the
+ * tracker applies to them. Pure Kotlin: no Android types, fully unit-testable.
+ */
+
+/** Screen-pixel rectangle; a plain data class so the parser is JVM-testable. */
+data class ScreenRect(val left: Int, val top: Int, val right: Int, val bottom: Int)
+
+/**
+ * A floating window as reported by `am stack list`: either a pinned
+ * (picture-in-picture) stack or, as this ROM prefers, a freeform one.
+ */
+
+data class FloatingWindow(
+    val stackId: Int,
+    val taskId: Int?,
+    val packageName: String,
+    val bounds: ScreenRect?,
+    val mode: String,
+    /** False when another stack (e.g. the dashboard's) covers it. */
+    val visible: Boolean = true,
+    /** True when the dashboard's own stack is listed in front of this one (partly covering it). */
+    val behindDashboard: Boolean = false
+)
+
+object WindowListing {
+
+    /** Managed freeform windows whose tile is not on screen: they should not exist. */
+    internal fun strayWindows(listing: String, managed: Set<String>, active: Set<String>): List<FloatingWindow> =
+        allFloatingWindows(listing).filter { it.mode == "freeform" && it.packageName in managed && it.packageName !in active }
+
+    /** True when [b] lies inside [limit] (a few pixels of slack for rounding). */
+    internal fun withinArea(b: ScreenRect, limit: ScreenRect?, slack: Int = 4): Boolean =
+        limit == null || (b.top >= limit.top - slack && b.bottom <= limit.bottom + slack &&
+            b.left >= limit.left - slack && b.right <= limit.right + slack)
+
+    /**
+     * Moves [b] so it fits in [limit] without changing its size. If it is too
+     * tall, the bottom edge wins (the bar must stay clear) and the top overflows.
+     */
+
+    internal fun keepInside(b: ScreenRect, limit: ScreenRect): ScreenRect {
+        var dx = 0
+        var dy = 0
+        if (b.right > limit.right) dx = limit.right - b.right
+        if (b.left + dx < limit.left) dx = limit.left - b.left
+        if (b.bottom > limit.bottom) dy = limit.bottom - b.bottom
+        if (b.top + dy < limit.top && b.bottom - b.top <= limit.bottom - limit.top) dy = limit.top - b.top
+        return ScreenRect(b.left + dx, b.top + dy, b.right + dx, b.bottom + dy)
+    }
+
+    /**
+     * True while a dialog or the app drawer is open. Docked windows are drawn
+     * above everything on this head unit, so they would cover the dialog; the
+     * tiles slide their windows off the right edge meanwhile and dock them
+     * again afterwards.
+     */
+
+    internal fun isClose(actual: ScreenRect, target: ScreenRect): Boolean {
+        val cx = (actual.left + actual.right) / 2
+        val cy = (actual.top + actual.bottom) / 2
+        val insideX = cx in target.left..target.right
+        val insideY = cy in target.top..target.bottom
+        val w = (actual.right - actual.left).toFloat()
+        val tw = (target.right - target.left).toFloat().coerceAtLeast(1f)
+        return insideX && insideY && w / tw in 0.6f..1.4f
+    }
+
+    internal fun parseFloatingWindow(output: String, selfPackage: String = "com.openauto.dash", packageName: String? = null): FloatingWindow? {
+        val found = allFloatingWindows(output, selfPackage).filter { packageName == null || it.packageName == packageName }
+        // A freeform window carries the full app UI; prefer it over a PiP.
+        return found.firstOrNull { it.mode == "freeform" } ?: found.firstOrNull()
+    }
+
+    /** Every pinned or freeform window in the listing, front to back, ours excluded. */
+    internal fun allFloatingWindows(output: String, selfPackage: String = "com.openauto.dash"): List<FloatingWindow> {
+        val found = mutableListOf<FloatingWindow>()
+        // `am stack list` is ordered front to back: the dashboard's own stack
+        // appearing before the window's means the dashboard is drawn over it.
+        val blocks = stackBlocks(output)
+        val selfIndex = blocks.indexOfFirst { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+        for ((index, block) in blocks.withIndex()) {
+            val mode = windowingMode(block) ?: continue
+            if (mode != "pinned" && mode != "freeform") continue
+            if (block.contains("ActivityType=home")) continue
+            val id = block.takeWhile { it.isDigit() }.toIntOrNull() ?: continue
+            val task = TASK.find(block) ?: continue
+            val pkg = task.groupValues[2]
+            if (pkg == selfPackage) continue
+            // The stack's own bounds line comes first and, for freeform, spans
+            // the whole display; the window's bounds are on the task line.
+            val taskLine = block.substring(task.range.first).lineSequence().first()
+            val b = (BOUNDS.find(taskLine) ?: BOUNDS.find(block))?.groupValues
+            val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
+            val visible = !taskLine.contains("visible=false")
+            val behind = selfIndex in 0 until index
+            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible, behind)
+        }
+        return found
+    }
+
+    /** "mode package" per stack, for the tile's diagnostic line. */
+    internal fun summarizeStacks(output: String): String? {
+        val parts = stackBlocks(output).mapNotNull { block ->
+            val mode = windowingMode(block) ?: return@mapNotNull null
+            val pkg = TASK.find(block)?.groupValues?.get(2) ?: "(empty)"
+            mode + " " + pkg.substringAfterLast('.')
+        }
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u00b7 ")
+    }
+
+    private val TASK = Regex("taskId=(\\d+): ([\\w.]+)/")
+
+    private val BOUNDS = Regex("bounds=\\[(-?\\d+),(-?\\d+)\\]\\[(-?\\d+),(-?\\d+)\\]")
+
+    private val MODE_NAME = Regex("(?:indowingMode|winMode)=([a-z-]+)")
+
+    private val MODE_NUMBER = Regex("indowingMode=(\\d)")
+
+    private fun stackBlocks(output: String): List<String> =
+        output.split(Regex("(?m)^\\s*Stack id=")).drop(1)
+
+    private fun windowingMode(block: String): String? {
+        MODE_NAME.find(block)?.let { return it.groupValues[1] }
+        // Some builds print the numeric mode: 1 fullscreen, 2 pinned, 5 freeform.
+        MODE_NUMBER.find(block)?.let {
+            return when (it.groupValues[1]) { "1" -> "fullscreen"; "2" -> "pinned"; "5" -> "freeform"; else -> "other" }
+        }
+        return null
+    }
+}

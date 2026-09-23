@@ -22,20 +22,20 @@ class PipAnchorTest {
 
     @Test
     fun findsThePinnedStackAndItsPackage() {
-        val pinned = PipAnchor.parseFloatingWindow(android10)
+        val pinned = WindowListing.parseFloatingWindow(android10)
         assertNotNull(pinned)
         assertEquals(3, pinned!!.stackId)
         assertEquals("com.google.android.apps.maps", pinned.packageName)
-        assertEquals(PipAnchor.ScreenRect(960, 420, 1264, 608), pinned.bounds)
+        assertEquals(ScreenRect(960, 420, 1264, 608), pinned.bounds)
     }
 
     @Test
     fun noPinnedStackMeansNoPip() {
         val without = android10.lines().filterNot { it.contains("Stack id=3") || it.contains("pinned") || it.contains("taskId=57") }
             .joinToString("\n")
-        assertNull(PipAnchor.parseFloatingWindow(without))
-        assertNull(PipAnchor.parseFloatingWindow(""))
-        assertNull(PipAnchor.parseFloatingWindow("Error: no such command"))
+        assertNull(WindowListing.parseFloatingWindow(without))
+        assertNull(WindowListing.parseFloatingWindow(""))
+        assertNull(WindowListing.parseFloatingWindow("Error: no such command"))
     }
 
     @Test
@@ -48,12 +48,12 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[640,80][1240,660] userId=0 visible=true
         """.trimIndent()
-        val win = PipAnchor.parseFloatingWindow(freeform)!!
+        val win = WindowListing.parseFloatingWindow(freeform)!!
         assertEquals("freeform", win.mode)
         assertEquals(7, win.stackId)
         assertEquals(63, win.taskId)
         assertEquals("com.google.android.apps.maps", win.packageName)
-        assertEquals("fullscreen dash \u00b7 freeform maps", PipAnchor.summarizeStacks(freeform))
+        assertEquals("fullscreen dash \u00b7 freeform maps", WindowListing.summarizeStacks(freeform))
     }
 
     @Test
@@ -63,7 +63,7 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=5 mActivityType=standard} }
               taskId=9: com.waze/com.waze.MainActivity bounds=[0,0][600,400] userId=0 visible=true
         """.trimIndent()
-        assertEquals("freeform", PipAnchor.parseFloatingWindow(numeric)!!.mode)
+        assertEquals("freeform", WindowListing.parseFloatingWindow(numeric)!!.mode)
     }
 
     @Test
@@ -72,19 +72,19 @@ class PipAnchorTest {
             Stack id=3 bounds=[960,420][1264,608] displayId=0 userId=0
              configuration={ winConfig={ mWindowingMode=pinned mActivityType=standard} }
         """.trimIndent()
-        assertNull(PipAnchor.parseFloatingWindow(empty))
+        assertNull(WindowListing.parseFloatingWindow(empty))
     }
 
     @Test
     fun closeEnoughAllowsSystemAspectAdjustments() {
-        val target = PipAnchor.ScreenRect(400, 100, 900, 400)
-        assertEquals(true, PipAnchor.isClose(PipAnchor.ScreenRect(400, 100, 900, 400), target))
+        val target = ScreenRect(400, 100, 900, 400)
+        assertEquals(true, WindowListing.isClose(ScreenRect(400, 100, 900, 400), target))
         // Same centre, width shrunk by the aspect-ratio rule: still docked.
-        assertEquals(true, PipAnchor.isClose(PipAnchor.ScreenRect(450, 120, 850, 380), target))
+        assertEquals(true, WindowListing.isClose(ScreenRect(450, 120, 850, 380), target))
         // Parked in a corner: not docked.
-        assertEquals(false, PipAnchor.isClose(PipAnchor.ScreenRect(960, 420, 1264, 608), target))
+        assertEquals(false, WindowListing.isClose(ScreenRect(960, 420, 1264, 608), target))
         // Centre inside but a quarter of the size: not docked.
-        assertEquals(false, PipAnchor.isClose(PipAnchor.ScreenRect(600, 200, 700, 300), target))
+        assertEquals(false, WindowListing.isClose(ScreenRect(600, 200, 700, 300), target))
     }
 
     @Test
@@ -94,8 +94,8 @@ class PipAnchorTest {
              configuration={ winConfig={ mBounds=Rect(0, 0 - 1280, 720) mWindowingMode=freeform mActivityType=standard} }
               taskId=513: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[432,73][954,683] userId=0 visible=true
         """.trimIndent()
-        val win = PipAnchor.parseFloatingWindow(listing)!!
-        assertEquals(PipAnchor.ScreenRect(432, 73, 954, 683), win.bounds)
+        val win = WindowListing.parseFloatingWindow(listing)!!
+        assertEquals(ScreenRect(432, 73, 954, 683), win.bounds)
         assertEquals(513, win.taskId)
     }
 
@@ -106,7 +106,7 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=513: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[432,73][954,683] userId=0 visible=false
         """.trimIndent()
-        assertEquals(false, PipAnchor.parseFloatingWindow(listing)!!.visible)
+        assertEquals(false, WindowListing.parseFloatingWindow(listing)!!.visible)
     }
 
     @Test
@@ -119,25 +119,25 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=64: com.google.android.apps.youtube.music/.activities.MusicActivity bounds=[640,80][1280,660] userId=0 visible=true
         """.trimIndent()
-        assertEquals(64, PipAnchor.parseFloatingWindow(listing, packageName = "com.google.android.apps.youtube.music")!!.taskId)
-        assertEquals(63, PipAnchor.parseFloatingWindow(listing, packageName = "com.google.android.apps.maps")!!.taskId)
-        assertNull(PipAnchor.parseFloatingWindow(listing, packageName = "com.waze"))
+        assertEquals(64, WindowListing.parseFloatingWindow(listing, packageName = "com.google.android.apps.youtube.music")!!.taskId)
+        assertEquals(63, WindowListing.parseFloatingWindow(listing, packageName = "com.google.android.apps.maps")!!.taskId)
+        assertNull(WindowListing.parseFloatingWindow(listing, packageName = "com.waze"))
     }
 
     @Test
     fun windowTallerThanItsTileIsMovedUpAboveTheBar() {
-        val area = PipAnchor.ScreenRect(0, 80, 1280, 640)
+        val area = ScreenRect(0, 80, 1280, 640)
         // Grown past the bottom of the content area: shifted up, size kept.
-        val grown = PipAnchor.ScreenRect(200, 300, 800, 700)
-        assertEquals(false, PipAnchor.withinArea(grown, area))
-        assertEquals(PipAnchor.ScreenRect(200, 240, 800, 640), PipAnchor.keepInside(grown, area))
+        val grown = ScreenRect(200, 300, 800, 700)
+        assertEquals(false, WindowListing.withinArea(grown, area))
+        assertEquals(ScreenRect(200, 240, 800, 640), WindowListing.keepInside(grown, area))
         // Already inside: untouched.
-        val ok = PipAnchor.ScreenRect(200, 100, 800, 600)
-        assertEquals(true, PipAnchor.withinArea(ok, area))
-        assertEquals(ok, PipAnchor.keepInside(ok, area))
+        val ok = ScreenRect(200, 100, 800, 600)
+        assertEquals(true, WindowListing.withinArea(ok, area))
+        assertEquals(ok, WindowListing.keepInside(ok, area))
         // Taller than the whole area: the bottom edge wins, the top overflows.
-        val huge = PipAnchor.ScreenRect(0, 0, 640, 900)
-        assertEquals(640, PipAnchor.keepInside(huge, area).bottom)
+        val huge = ScreenRect(0, 0, 640, 900)
+        assertEquals(640, WindowListing.keepInside(huge, area).bottom)
     }
 
     @Test
@@ -152,8 +152,8 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
         """.trimIndent()
-        assertEquals(true, PipAnchor.parseFloatingWindow(dash + "\n" + maps)!!.behindDashboard)
-        assertEquals(false, PipAnchor.parseFloatingWindow(maps + "\n" + dash)!!.behindDashboard)
+        assertEquals(true, WindowListing.parseFloatingWindow(dash + "\n" + maps)!!.behindDashboard)
+        assertEquals(false, WindowListing.parseFloatingWindow(maps + "\n" + dash)!!.behindDashboard)
     }
 
     @Test
@@ -166,7 +166,7 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=64: com.google.android.apps.youtube.music/.MusicActivity bounds=[1276,80][1916,660] userId=0 visible=true
         """.trimIndent()
-        val strays = PipAnchor.strayWindows(listing, managed = setOf("com.google.android.apps.maps", "com.google.android.apps.youtube.music"), active = setOf("com.google.android.apps.maps"))
+        val strays = WindowListing.strayWindows(listing, managed = setOf("com.google.android.apps.maps", "com.google.android.apps.youtube.music"), active = setOf("com.google.android.apps.maps"))
         assertEquals(listOf(8), strays.map { it.stackId })
     }
 
@@ -180,15 +180,15 @@ class PipAnchorTest {
              configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
               taskId=64: com.waze/com.waze.MainActivity bounds=[0,80][640,660] userId=0 visible=true
         """.trimIndent()
-        val strays = PipAnchor.strayWindows(listing, managed = setOf("com.google.android.apps.maps"), active = emptySet())
+        val strays = WindowListing.strayWindows(listing, managed = setOf("com.google.android.apps.maps"), active = emptySet())
         assertEquals(emptyList<Int>(), strays.map { it.stackId })
     }
 
     @Test
     fun keepInsideAlsoPullsBackHorizontally() {
-        val area = PipAnchor.ScreenRect(0, 80, 1280, 640)
-        assertEquals(PipAnchor.ScreenRect(880, 100, 1280, 400), PipAnchor.keepInside(PipAnchor.ScreenRect(1000, 100, 1400, 400), area))
-        assertEquals(PipAnchor.ScreenRect(0, 100, 400, 400), PipAnchor.keepInside(PipAnchor.ScreenRect(-50, 100, 350, 400), area))
-        assertEquals(true, PipAnchor.withinArea(PipAnchor.ScreenRect(-50, 100, 350, 400), null))
+        val area = ScreenRect(0, 80, 1280, 640)
+        assertEquals(ScreenRect(880, 100, 1280, 400), WindowListing.keepInside(ScreenRect(1000, 100, 1400, 400), area))
+        assertEquals(ScreenRect(0, 100, 400, 400), WindowListing.keepInside(ScreenRect(-50, 100, 350, 400), area))
+        assertEquals(true, WindowListing.withinArea(ScreenRect(-50, 100, 350, 400), null))
     }
 }

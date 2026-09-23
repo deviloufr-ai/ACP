@@ -40,7 +40,7 @@ private const val TAG = "WindowFrame"
  * is missing it is granted through the same shell the dock already uses.
  */
 @Composable
-internal fun WindowFrameOverlay(bounds: PipAnchor.ScreenRect?) {
+internal fun WindowFrameOverlay(bounds: ScreenRect?) {
     val context = LocalContext.current
     val skinned = DashColors.Skin != DashSkin.STANDARD
     val wanted = if (skinned) bounds else null
@@ -65,7 +65,7 @@ private class FrameWindow(private val context: Context) {
     private var view: ComposeView? = null
     private var params: WindowManager.LayoutParams? = null
 
-    fun show(r: PipAnchor.ScreenRect) {
+    fun show(r: ScreenRect) {
         val lp = params ?: WindowManager.LayoutParams(
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
