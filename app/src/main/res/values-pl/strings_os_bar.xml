@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Merged OS status bar (OsBarStrip.kt) -->
-    <string name="os_bar_connect_obd">Połącz OBD</string>
-</resources>

@@ -430,21 +430,18 @@ internal fun CockpitTopBar(m: TopBarModel) {
             }
         }
 
-        // With the OS bar up, its strip shows the time and the readouts: the
-        // dash keeps only its buttons.
-        if (!m.merged) ClockPod(m.clock)
+        // The head unit's status bar shows the time while it is up.
+        if (m.merged) BarPageDots(m) else ClockPod(m.clock)
 
         Row(
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!m.merged) {
-                VehicleAlerts(m.obdConnection, m.obdData)
-                OutsideTempLcd()
-                Spacer(Modifier.width(8.dp))
-                ObdLamp(m.obdConnection, m.onConnectObd)
-                Spacer(Modifier.width(6.dp))
-            }
+            VehicleAlerts(m.obdConnection, m.obdData)
+            OutsideTempLcd()
+            Spacer(Modifier.width(8.dp))
+            ObdLamp(m.obdConnection, m.onConnectObd)
+            Spacer(Modifier.width(6.dp))
             MorePicker(m) { open ->
                 ChromePill(onClick = open, description = stringResource(R.string.cockpit_more), modifier = Modifier.width(52.dp)) {
                     Icon(Icons.Filled.MoreVert, contentDescription = null, tint = EngraveInk, modifier = Modifier.size(22.dp))

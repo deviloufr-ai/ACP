@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BatteryAlert
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
@@ -95,10 +94,14 @@ internal class TopBarModel(
     val onSystem: () -> Unit,
     val onLanguage: () -> Unit,
     /**
-     * The head unit's status bar is up: it shows the time, and [OsBarStrip] under it
-     * the OBD link, outside temperature, alerts and page dots, so the bar keeps only its buttons.
+     * The head unit's status bar is up and already shows the time: the bar puts
+     * the page dots ([BarPageDots]) where its clock was, so no row of dots is
+     * needed under it.
      */
-    val merged: Boolean = false
+    val merged: Boolean = false,
+    val page: Int = 0,
+    val pageCount: Int = 0,
+    val onPage: (Int) -> Unit = {}
 )
 
 @Composable
@@ -118,12 +121,15 @@ internal fun TopBar(
     onAi: () -> Unit,
     onSystem: () -> Unit,
     onLanguage: () -> Unit,
-    merged: Boolean = false
+    merged: Boolean = false,
+    page: Int = 0,
+    pageCount: Int = 0,
+    onPage: (Int) -> Unit = {}
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
         onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
-        onLanguage, merged
+        onLanguage, merged, page, pageCount, onPage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -163,7 +169,9 @@ internal fun StandardTopBar(m: TopBarModel) {
                 }
             }
 
-            if (!m.merged) {
+            if (m.merged) {
+                BarPageDots(m)
+            } else {
                 Text(
                     text = m.clock,
                     color = DashColors.TextPrimary,
@@ -174,10 +182,8 @@ internal fun StandardTopBar(m: TopBarModel) {
             }
 
             Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-                if (!m.merged) {
-                    VehicleAlerts(m.obdConnection, m.obdData)
-                    ObdDot(m.obdConnection, m.onConnectObd)
-                }
+                VehicleAlerts(m.obdConnection, m.obdData)
+                ObdDot(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
                     IconButton(onClick = open) {
                         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.dash_more), tint = DashColors.TextSecondary)
@@ -282,11 +288,6 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
     Box {
         anchor { open = true }
         DashMenu(open, onDismiss = { open = false }) {
-            // With the OS bar up the OBD dot moves into its strip, where taps
-            // don't reach us, so connecting by hand happens from here.
-            if (m.merged && m.obdConnection.isIdle) {
-                DashMenuItem(stringResource(R.string.os_bar_connect_obd), leading = { MenuIcon(Icons.Filled.Bluetooth) }, onClick = pick(m.onConnectObd))
-            }
             DashMenuItem(
                 text = stringResource(if (m.editing) R.string.dash_menu_done_editing else R.string.dash_menu_edit_dashboards),
                 leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
@@ -354,22 +355,17 @@ private fun MenuIcon(icon: ImageVector) {
 /**
  * Warning pills for out-of-range readings (battery outside 12–15 V, coolant at
  * 105 °C or more); emits nothing while everything is normal or OBD is off.
- * [chip] draws each pill (the OS-bar strip passes a compact one).
  */
 @Composable
-internal fun VehicleAlerts(
-    obdConnection: ObdConnectionState,
-    obdData: ObdData,
-    chip: @Composable (icon: ImageVector, text: String) -> Unit = { icon, text -> AlertChip(icon, text) }
-) {
+internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) {
     if (obdConnection != ObdConnectionState.CONNECTED) return
     val volts = obdData.voltage
     // 0.0 is "no reading yet", not a flat battery.
     if (volts > 0.0 && volts !in 12.0..15.0) {
-        chip(Icons.Filled.BatteryAlert, stringResource(R.string.dash_alert_battery, volts))
+        AlertChip(Icons.Filled.BatteryAlert, stringResource(R.string.dash_alert_battery, volts))
     }
     if (obdData.coolantTempC >= 105) {
-        chip(Icons.Filled.Thermostat, stringResource(R.string.dash_alert_coolant, obdData.coolantTempC))
+        AlertChip(Icons.Filled.Thermostat, stringResource(R.string.dash_alert_coolant, obdData.coolantTempC))
     }
 }
 
@@ -475,10 +471,19 @@ internal fun EditBar(
 
 @Composable
 internal fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
+    PageDotRow(count, current, onSelect, Modifier.fillMaxWidth().padding(vertical = 10.dp))
+}
+
+/** The page dots inside a bar, in the clock's place while the head unit's status bar shows the time. */
+@Composable
+internal fun BarPageDots(m: TopBarModel) {
+    PageDotRow(m.pageCount, m.page, m.onPage, Modifier)
+}
+
+@Composable
+private fun PageDotRow(count: Int, current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 10.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {

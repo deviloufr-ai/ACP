@@ -454,13 +454,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         showAddMenu = true
     }
 
-    // Android forces a transparent status bar whenever a floating (freeform)
-    // window is on screen, i.e. while a Maps window is docked, and that bar
-    // takes every tap on its strip. The dashboard merges with it then: the
-    // strip carries our read-only info and the launcher bar keeps only its
-    // buttons. Not via WindowInsets.statusBars: on Android 10 that stays at the
-    // bar's height even while the bar is hidden, which pushed the whole
-    // dashboard down permanently.
+    // Android forces the status bar on whenever a floating (freeform) window is
+    // on screen, i.e. while a Maps window is docked. The head unit's bar paints
+    // over its strip and takes every tap there, so the dashboard lays out below
+    // it; the bar already shows the time, so the launcher bar swaps its clock
+    // for the page dots. Not via WindowInsets.statusBars: on Android 10 that
+    // stays at the bar's height even while the bar is hidden, which pushed the
+    // whole dashboard down permanently.
     val dockedApps by PipAnchor.dockedPackages.collectAsState()
     val barForced = dockedApps.isNotEmpty()
     val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
@@ -468,16 +468,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         modifier = Modifier
             .fillMaxSize()
             .then(dashBackground())
+            .padding(top = if (barForced) statusBarHeight else 0.dp)
     ) {
-        if (barForced) {
-            OsBarStrip(
-                height = statusBarHeight.coerceAtLeast(24.dp),
-                page = pagerState.currentPage,
-                pageCount = DashboardStore.PAGE_COUNT,
-                obdConnection = obdConnection,
-                obdData = obdData
-            )
-        }
 
         val rootView = LocalView.current
         Box(
@@ -686,10 +678,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onAi = { showAiSettings = true },
             onSystem = { showSystemDialog = true },
             onLanguage = { showLanguagePicker = true },
-            merged = barForced
+            merged = barForced,
+            page = pagerState.currentPage,
+            pageCount = DashboardStore.PAGE_COUNT,
+            onPage = { scope.launch { pagerState.animateScrollToPage(it) } }
         )
 
-        // With the OS bar up the page dots move into its strip (OsBarStrip).
+        // With the status bar up the dots sit in the launcher bar instead.
         if (!barForced) {
             PageDots(
                 count = DashboardStore.PAGE_COUNT,

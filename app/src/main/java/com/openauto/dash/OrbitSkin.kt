@@ -307,13 +307,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
             .height(56.dp)
             .ownLayer()
     ) {
-        // With the OS bar up, its strip shows the time and status: the island
-        // shrinks to its three buttons.
-        val pillWidth = when {
-            m.merged -> 168.dp
-            maxWidth > 424.dp -> 400.dp
-            else -> maxWidth - 24.dp
-        }
+        val pillWidth = if (maxWidth > 424.dp) 400.dp else maxWidth - 24.dp
         Row(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -342,7 +336,10 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!m.merged) {
+                // The head unit's status bar shows the time while it is up.
+                if (m.merged) {
+                    BarPageDots(m)
+                } else {
                     Text(
                         text = m.clock,
                         modifier = Modifier.alignByBaseline(),
@@ -365,7 +362,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                     )
                 }
             }
-            if (!m.merged) ObdDot(m.obdConnection, m.onConnectObd)
+            ObdDot(m.obdConnection, m.onConnectObd)
             MorePicker(m) { open ->
                 OrbitBarButton(onClick = open) {
                     Icon(Icons.Filled.MoreVert, stringResource(R.string.orbit_more), tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
@@ -378,7 +375,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 .padding(start = (maxWidth + pillWidth) / 2 + 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!m.merged) VehicleAlerts(m.obdConnection, m.obdData)
+            VehicleAlerts(m.obdConnection, m.obdData)
         }
     }
 }
