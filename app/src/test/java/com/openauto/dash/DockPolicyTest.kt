@@ -179,31 +179,19 @@ class DockPolicyTest {
     }
 
     @Test
-    fun aWindowArrivingOnItsTileIsRaisedEvenWhenListedInFront() {
-        // After a page change or an app restart the dashboard can be drawn over
-        // the window while the listing still puts the window in front.
+    fun aWindowListedInFrontIsNeverRaised() {
+        // Raising a freeform task on this head unit can turn it fullscreen, so
+        // it is only done when the listing says the dashboard covers the window:
+        // not when it first appears, nor when it comes back from the edge.
         val (first, _) = DockPolicy.onPresent(DockPolicy.Memory(), window(tile), tile, area, lastRaiseAt = 0, now = 100_000)
-        assertTrue((first as DockPolicy.Step.Keep).raise)
-        // Back from being parked aside at the right edge: raised as it is placed.
+        assertFalse((first as DockPolicy.Step.Keep).raise)
         val seen = DockPolicy.Memory(hadWindow = true, lastStack = 7)
         val (back, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 0, now = 100_000)
-        assertTrue((back as DockPolicy.Step.Keep).raise)
+        assertFalse((back as DockPolicy.Step.Keep).raise)
         assertEquals(tile, back.place)
-        // But not again and again while the placement settles.
-        val (again, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 100_000, now = 102_500)
-        assertFalse((again as DockPolicy.Step.Keep).raise)
-    }
-
-    @Test
-    fun aWindowThatHasJustSettledOnItsTileIsRaisedOnceMore() {
-        // Placed by the previous poll, on the tile now: raised again whatever the
-        // cooldown, in case the raise made while it was parked was lost; then
-        // left alone while it stays docked.
         val placed = DockPolicy.Memory(hadWindow = true, lastStack = 7, attempts = 1, askedFor = tile)
-        val (settled, mem) = DockPolicy.onPresent(placed, window(tile), tile, area, lastRaiseAt = 100_000, now = 102_500)
+        val (settled, _) = DockPolicy.onPresent(placed, window(tile), tile, area, lastRaiseAt = 0, now = 102_500)
         assertTrue((settled as DockPolicy.Step.Keep).docked)
-        assertTrue(settled.raise)
-        val (later, _) = DockPolicy.onPresent(mem, window(tile), tile, area, lastRaiseAt = 102_500, now = 105_000)
-        assertFalse((later as DockPolicy.Step.Keep).raise)
+        assertFalse(settled.raise)
     }
 }

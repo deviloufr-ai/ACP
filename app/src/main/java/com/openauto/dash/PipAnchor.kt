@@ -359,9 +359,8 @@ object PipAnchor {
                     if (result.isSuccess) undoStatusBarPolicy(context)
                 }
                 if (keep.raise) {
-                    // Arriving on its tile (this page came back, the window was
-                    // parked aside), just settled there, or behind the dashboard:
-                    // raise it. After placing it, so the window raised is one on
+                    // Listed behind the dashboard (it restarted over the window):
+                    // raise it, after placing it so the window raised is one on
                     // the tile, not a sliver at the edge of the screen.
                     lastRaiseAt[packageName] = now
                     Log.i(TAG, "raising $packageName above the dashboard")
@@ -398,18 +397,28 @@ object PipAnchor {
     private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     /**
-     * The user tapped a tile its window should be covering: the window is
-     * behind the dashboard, whatever the listing says. Raise it right away.
+     * The user tapped a tile its window should be covering: whatever the
+     * listing says, the window is not showing there. It is slid off the right
+     * edge and straight back onto [rect], the trip a page change makes it take,
+     * which does bring it up on this head unit. Raising the task instead can
+     * turn it fullscreen, so that is never done here.
      */
-    fun raiseNow(context: Context, packageName: String = MAPS_PACKAGE) {
+    fun nudge(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
             if (win.mode != "freeform") return@launch
-            lastRaiseAt[packageName] = System.currentTimeMillis()
-            Log.i(TAG, "raising $packageName above the dashboard (tapped its tile)")
-            if (bringToFront(context, win.taskId)) DockShell.forgetListing()
+            val b = win.bounds ?: return@launch
+            Log.i(TAG, "nudging $packageName (its tile was tapped)")
+            val left = context.resources.displayMetrics.widthPixels - ASIDE_SLIVER_PX
+            runGuarded { DockShell.resize(context, win, ScreenRect(left, b.top, left + (b.right - b.left), b.bottom)) }
+                .onFailure { Log.w(TAG, "nudge aside failed", it) }
+            delay(NUDGE_PAUSE_MS)
+            runGuarded { DockShell.resize(context, win, rect) }.onFailure { Log.w(TAG, "nudge back failed", it) }
         }
     }
+
+    /** How long a nudged window stays at the edge before coming back. */
+    private const val NUDGE_PAUSE_MS = 250L
 
     @Volatile private var overlayGrantTried = false
 

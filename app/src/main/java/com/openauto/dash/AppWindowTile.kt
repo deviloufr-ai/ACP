@@ -190,12 +190,12 @@ internal fun PipAnchorCard(
         val checkedAgoS = ((rememberNow(1_000L).time - status.checkedAt) / 1000L).coerceAtLeast(0L)
         val docked = status.docked && checkedAgoS * 1000L <= STALE_STATUS_MS
         // A docked window covers its tile, so a tap that reaches the tile means
-        // the window is behind the dashboard, whatever the system says: raise it.
+        // the window is not showing, whatever the system says: nudge it back.
         val hiddenBehind = pkg != null && docked && status.mode == "freeform"
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(enabled = hiddenBehind) { PipAnchor.raiseNow(context, packageName) }
+                .clickable(enabled = hiddenBehind) { target?.let { PipAnchor.nudge(context, it, packageName) } }
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
