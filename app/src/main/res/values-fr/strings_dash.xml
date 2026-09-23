@@ -36,6 +36,9 @@
     <string name="dash_update_available">Mise à jour disponible — %1$s</string>
     <string name="dash_update_downloading">Téléchargement de la mise à jour… %1$d %%</string>
     <string name="dash_update_installing">Lancement de l\'installation…</string>
+    <string name="dash_menu_check_updates">Rechercher des mises à jour</string>
+    <string name="dash_update_checking">Recherche de mises à jour…</string>
+    <string name="dash_update_up_to_date">Dashwheel est à jour (v%1$s)</string>
     <string name="dash_update">Mettre à jour</string>
 
     <!-- Tiles while arranging -->

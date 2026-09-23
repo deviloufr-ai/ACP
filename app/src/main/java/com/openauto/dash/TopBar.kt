@@ -93,6 +93,7 @@ internal class TopBarModel(
     val onAi: () -> Unit,
     val onSystem: () -> Unit,
     val onLanguage: () -> Unit,
+    val onCheckUpdates: () -> Unit,
     /**
      * The head unit's status bar is up and already shows the time: the bar puts
      * the page dots ([BarPageDots]) where its clock was, so no row of dots is
@@ -121,6 +122,7 @@ internal fun TopBar(
     onAi: () -> Unit,
     onSystem: () -> Unit,
     onLanguage: () -> Unit,
+    onCheckUpdates: () -> Unit,
     merged: Boolean = false,
     page: Int = 0,
     pageCount: Int = 0,
@@ -129,7 +131,7 @@ internal fun TopBar(
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
         onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
-        onLanguage, merged, page, pageCount, onPage
+        onLanguage, onCheckUpdates, merged, page, pageCount, onPage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -298,6 +300,7 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
             DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
+            DashMenuItem(stringResource(R.string.dash_menu_check_updates), leading = { MenuIcon(Icons.Filled.SystemUpdate) }, onClick = pick(m.onCheckUpdates))
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
             Text(
                 "Dashwheel v${m.versionName}",
@@ -500,19 +503,28 @@ private fun PageDotRow(count: Int, current: Int, onSelect: (Int) -> Unit, modifi
     }
 }
 
+/**
+ * The update strip above the bottom bar. By itself it only appears for an
+ * update (available, downloading, installing); after a check asked for from
+ * the menu ([showCheck]) it also says checking, up to date, or that it failed.
+ */
 @Composable
 internal fun UpdateBanner(
     status: UpdateStatus,
+    currentVersion: String,
+    showCheck: Boolean,
     onUpdate: (UpdateInfo) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val checkOutcome = status is UpdateStatus.Checking || status is UpdateStatus.UpToDate || status is UpdateStatus.Error
     val visible = status is UpdateStatus.Available ||
         status is UpdateStatus.Downloading ||
-        status is UpdateStatus.Installing
+        status is UpdateStatus.Installing ||
+        (showCheck && checkOutcome)
     if (!visible) return
 
     Surface(
-        color = DashColors.Accent,
+        color = if (status is UpdateStatus.Error) DashColors.Warning else DashColors.Accent,
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -541,6 +553,9 @@ internal fun UpdateBanner(
                         is UpdateStatus.Available -> stringResource(R.string.dash_update_available, status.info.versionName)
                         is UpdateStatus.Downloading -> stringResource(R.string.dash_update_downloading, status.percent)
                         is UpdateStatus.Installing -> stringResource(R.string.dash_update_installing)
+                        is UpdateStatus.Checking -> stringResource(R.string.dash_update_checking)
+                        is UpdateStatus.UpToDate -> stringResource(R.string.dash_update_up_to_date, currentVersion)
+                        is UpdateStatus.Error -> stringResource(status.messageRes)
                         else -> ""
                     },
                     color = DashColors.Background,
@@ -570,11 +585,19 @@ internal fun UpdateBanner(
                     }
                 }
 
-                is UpdateStatus.Downloading -> CircularProgressIndicator(
+                is UpdateStatus.Downloading, is UpdateStatus.Checking -> CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
                     color = DashColors.Background,
                     strokeWidth = 2.dp
                 )
+
+                is UpdateStatus.UpToDate, is UpdateStatus.Error -> IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.dash_dismiss),
+                        tint = DashColors.Background
+                    )
+                }
 
                 else -> {}
             }

@@ -411,6 +411,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     LaunchedEffect(Unit) { updateManager.checkForUpdate() }
 
+    // A check asked for from the menu says how it went, "up to date" included;
+    // that one clears itself after a few seconds.
+    var manualUpdateCheck by remember { mutableStateOf(false) }
+    LaunchedEffect(manualUpdateCheck, updateStatus) {
+        if (manualUpdateCheck && updateStatus is UpdateStatus.UpToDate) {
+            delay(5_000)
+            manualUpdateCheck = false
+        }
+    }
+    val checkForUpdates: () -> Unit = {
+        manualUpdateCheck = true
+        // A download already under way shows its own progress; don't restart it.
+        if (updateStatus !is UpdateStatus.Downloading && updateStatus !is UpdateStatus.Installing) {
+            scope.launch { updateManager.checkForUpdate() }
+        }
+    }
+
     val onUpdate: (UpdateInfo) -> Unit = { info ->
         if (updateManager.canInstallPackages()) {
             scope.launch { updateManager.downloadAndInstall(info) }
@@ -631,8 +648,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
         UpdateBanner(
             status = updateStatus,
+            currentVersion = updateManager.currentVersionName,
+            showCheck = manualUpdateCheck,
             onUpdate = onUpdate,
-            onDismiss = { updateManager.dismiss() }
+            onDismiss = {
+                manualUpdateCheck = false
+                updateManager.dismiss()
+            }
         )
 
         // The bar lives at the bottom: the OS status bar owns the top edge on
@@ -683,6 +705,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onAi = { showAiSettings = true },
             onSystem = { showSystemDialog = true },
             onLanguage = { showLanguagePicker = true },
+            onCheckUpdates = checkForUpdates,
             merged = barForced,
             page = pagerState.currentPage,
             pageCount = DashboardStore.PAGE_COUNT,
