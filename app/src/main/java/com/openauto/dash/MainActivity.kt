@@ -10,8 +10,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -116,6 +118,16 @@ fun OpenAutoDashTheme(content: @Composable () -> Unit) {
             onBackground = Color(0xFF202124),
             onSurface = Color(0xFF202124)
         )
+    }
+    // The status bar is see-through (themes.xml), so the dashboard's background
+    // shows behind it: its icons go dark on a day theme, white on a night one.
+    val view = LocalView.current
+    val light = DashColors.Light
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            WindowInsetsControllerCompat(window, view).isAppearanceLightStatusBars = light
+        }
     }
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
