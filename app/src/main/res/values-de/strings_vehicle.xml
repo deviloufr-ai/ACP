@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Keine Antwort vom Adapter</string>
     <string name="vehicle_lamp_on">Motorkontrollleuchte an</string>
     <string name="vehicle_lamp_off">Motorkontrollleuchte aus</string>
+    <string name="vehicle_engine_off_hint">Motor aus: Bei eingeschalteter Zündung leuchtet die Motorkontrollleuchte zum Selbsttest und erlischt, sobald der Motor läuft. Die Abfrage wird bei laufendem Motor automatisch wiederholt.</string>
     <string name="vehicle_obd_scope">Standard-OBD sieht nur Motor- und Abgasfehler; ABS, Airbag und Karosserie brauchen das Citroën-Diagnosegerät.</string>
     <string name="vehicle_clear_rejected">Adapter antwortete „%1$s“. Zündung EIN (Motor aus) und erneut versuchen.</string>
 

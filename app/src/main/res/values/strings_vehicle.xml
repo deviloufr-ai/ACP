@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">No response from adapter</string>
     <string name="vehicle_lamp_on">Engine lamp on</string>
     <string name="vehicle_lamp_off">Engine lamp off</string>
+    <string name="vehicle_engine_off_hint">Engine off: with the ignition on, the engine lamp lights up as a self-test and goes out once the engine runs. The scan repeats by itself once the engine is running.</string>
     <string name="vehicle_obd_scope">Standard OBD only sees engine and emissions faults; ABS, airbag and body warnings need Citroën\'s diagnostic tool.</string>
     <string name="vehicle_clear_rejected">Adapter replied \"%1$s\". Turn ignition ON (engine off) and retry.</string>
 

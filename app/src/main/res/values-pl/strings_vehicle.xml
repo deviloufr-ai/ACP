@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Brak odpowiedzi z adaptera</string>
     <string name="vehicle_lamp_on">Kontrolka silnika włączona</string>
     <string name="vehicle_lamp_off">Kontrolka silnika wyłączona</string>
+    <string name="vehicle_engine_off_hint">Silnik wyłączony: przy włączonym zapłonie kontrolka silnika zapala się w ramach testu i gaśnie po uruchomieniu. Odczyt powtórzy się sam, gdy silnik będzie pracował.</string>
     <string name="vehicle_obd_scope">Standardowe OBD widzi tylko usterki silnika i emisji; ABS, poduszki powietrzne i nadwozie wymagają narzędzia diagnostycznego Citroëna.</string>
     <string name="vehicle_clear_rejected">Adapter odpowiedział „%1$s”. Włącz zapłon (silnik wyłączony) i spróbuj ponownie.</string>
 

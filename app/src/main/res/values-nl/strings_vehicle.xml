@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Geen antwoord van adapter</string>
     <string name="vehicle_lamp_on">Motorstoringslampje aan</string>
     <string name="vehicle_lamp_off">Motorstoringslampje uit</string>
+    <string name="vehicle_engine_off_hint">Motor uit: met het contact aan brandt het motorstoringslampje als zelftest en gaat uit zodra de motor draait. De uitlezing wordt vanzelf herhaald als de motor draait.</string>
     <string name="vehicle_obd_scope">Standaard-OBD ziet alleen motor- en emissiestoringen; ABS, airbag en carrosserie vragen het diagnoseapparaat van Citroën.</string>
     <string name="vehicle_clear_rejected">Adapter antwoordde \"%1$s\". Zet het contact AAN (motor uit) en probeer opnieuw.</string>
 

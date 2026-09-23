@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Sem resposta do adaptador</string>
     <string name="vehicle_lamp_on">Luz do motor acesa</string>
     <string name="vehicle_lamp_off">Luz do motor apagada</string>
+    <string name="vehicle_engine_off_hint">Motor desligado: com a ignição ligada, a luz do motor acende para se testar e apaga quando o motor arranca. A leitura repete-se sozinha com o motor a trabalhar.</string>
     <string name="vehicle_obd_scope">O OBD normal só vê avarias do motor e de emissões; ABS, airbag e carroçaria precisam da ferramenta de diagnóstico da Citroën.</string>
     <string name="vehicle_clear_rejected">O adaptador respondeu «%1$s». Ligue a ignição (motor desligado) e tente novamente.</string>
 

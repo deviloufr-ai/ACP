@@ -90,6 +90,7 @@ internal fun ObdDtcCard(
     val codes = ai.codes
     val diagnosis = ai.diagnosis
     val lamp by ObdBluetoothManager.lamp.collectAsState()
+    val obdData by ObdBluetoothManager.data.collectAsState()
     // The AI's advice is written in the mechanic's language; its labels follow it.
     val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
     var busy by remember { mutableStateOf(false) }
@@ -152,6 +153,16 @@ internal fun ObdDtcCard(
                 message?.let {
                     Spacer(Modifier.height(8.dp))
                     Text(it.text, color = if (it.failed) DashColors.Warning else DashColors.Good, style = MaterialTheme.typography.bodyMedium)
+                }
+                // Ignition on, engine off: every dashboard lamp is lit for its self-test,
+                // which the "lamp off" badge would otherwise seem to contradict.
+                if (obdData.rpm == 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Row {
+                        Icon(Icons.Filled.Info, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.vehicle_engine_off_hint), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
 

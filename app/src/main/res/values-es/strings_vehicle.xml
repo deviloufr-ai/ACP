@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Sin respuesta del adaptador</string>
     <string name="vehicle_lamp_on">Testigo de motor encendido</string>
     <string name="vehicle_lamp_off">Testigo de motor apagado</string>
+    <string name="vehicle_engine_off_hint">Motor apagado: con el contacto puesto, el testigo del motor se enciende para comprobarse y se apaga al arrancar. La lectura se repetirá sola con el motor en marcha.</string>
     <string name="vehicle_obd_scope">El OBD estándar solo ve averías del motor y de emisiones; ABS, airbag y carrocería necesitan la herramienta de diagnóstico de Citroën.</string>
     <string name="vehicle_clear_rejected">El adaptador respondió «%1$s». Pon el contacto (motor apagado) y vuelve a intentarlo.</string>
 

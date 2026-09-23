@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Nessuna risposta dall\'adattatore</string>
     <string name="vehicle_lamp_on">Spia motore accesa</string>
     <string name="vehicle_lamp_off">Spia motore spenta</string>
+    <string name="vehicle_engine_off_hint">Motore spento: con il quadro acceso la spia motore si accende per un autotest e si spegne all\'avviamento. La lettura verrà ripetuta da sola a motore acceso.</string>
     <string name="vehicle_obd_scope">L\'OBD standard vede solo i guasti di motore ed emissioni; ABS, airbag e carrozzeria richiedono lo strumento di diagnosi Citroën.</string>
     <string name="vehicle_clear_rejected">L\'adattatore ha risposto «%1$s». Inserisci il quadro (motore spento) e riprova.</string>
 

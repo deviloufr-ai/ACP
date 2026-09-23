@@ -82,6 +82,7 @@
     <string name="vehicle_no_response">Pas de réponse de l\'adaptateur</string>
     <string name="vehicle_lamp_on">Voyant moteur allumé</string>
     <string name="vehicle_lamp_off">Voyant moteur éteint</string>
+    <string name="vehicle_engine_off_hint">Moteur à l\'arrêt : contact mis, le voyant moteur s\'allume pour se tester et s\'éteint une fois le moteur démarré. La lecture sera refaite d\'elle-même moteur tournant.</string>
     <string name="vehicle_obd_scope">L\'OBD standard ne voit que les défauts moteur et antipollution ; ABS, airbag et carrosserie demandent l\'outil de diagnostic Citroën.</string>
     <string name="vehicle_clear_rejected">L\'adaptateur a répondu « %1$s ». Mettez le contact (moteur arrêté) et réessayez.</string>
 

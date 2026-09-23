@@ -334,6 +334,40 @@ internal data class SpokenLine(val res: Int, val args: List<Any>, val quantity: 
     }
 }
 
+/**
+ * Scans again once the engine has been running a while, when the last scan
+ * was made with it stopped. The adapter usually connects at ignition-on,
+ * before the engine starts: the dashboard lamps are then only self-testing,
+ * and some faults are only judged with the engine running.
+ */
+internal class RescanAfterStart {
+    private var pending = false
+    private var runningSince: Long? = null
+
+    /** A scan just finished at [rpm]. */
+    fun scanned(rpm: Int) {
+        pending = rpm == 0
+        runningSince = null
+    }
+
+    /** True once, when the engine has run [RUNNING_MS] since a scan made with it stopped. */
+    fun due(rpm: Int, now: Long): Boolean {
+        if (!pending) return false
+        if (rpm <= LiveWatch.RUNNING_RPM) {
+            runningSince = null
+            return false
+        }
+        val since = runningSince ?: now.also { runningSince = it }
+        if (now - since < RUNNING_MS) return false
+        pending = false
+        return true
+    }
+
+    companion object {
+        const val RUNNING_MS = 20_000L
+    }
+}
+
 /** Sentences the car says without the AI (offline, no key, or live-reading warnings). */
 internal object MechanicLines {
 
@@ -396,6 +430,7 @@ object AiMechanic {
     // Scan results can come from the auto-scan and the Scan button at once.
     private val mutex = Mutex()
     private val liveWatch = LiveWatch()
+    private val rescan = RescanAfterStart()
     private var appContext: Context? = null
 
     fun setContext(context: Context) {
@@ -421,6 +456,7 @@ object AiMechanic {
                 val known = prefs.getString(KEY_KNOWN, "").orEmpty().split(',').filter { it.isNotEmpty() }.toSet()
                 // Remember exactly the current codes: one that is repaired and comes back is news again.
                 prefs.edit().putString(KEY_KNOWN, list.joinToString(",")).apply()
+                rescan.scanned(ObdBluetoothManager.data.value.rpm)
                 _state.value = State(codes = list)
                 if (list.isNotEmpty()) explain(context, list, fresh = if (announce) list.filter { it !in known } else emptyList())
             }
@@ -445,8 +481,9 @@ object AiMechanic {
         }
     }
 
-    /** Checks one set of live readings against the warning rules. */
+    /** Checks one set of live readings against the warning rules, and rescans once the engine runs. */
     fun watch(data: ObdData) {
+        if (rescan.due(data.rpm, System.currentTimeMillis())) scope.launch { autoScan() }
         val alert = liveWatch.check(data, System.currentTimeMillis()) ?: return
         val context = appContext ?: return
         val config = AiSettings.load(context)
