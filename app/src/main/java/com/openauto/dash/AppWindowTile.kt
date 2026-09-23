@@ -133,10 +133,13 @@ internal fun PipAnchorCard(
     }
 
     // The window steps aside only for a pop-up over this tile (or when every
-    // window must); a menu or dialog elsewhere on screen leaves it open.
+    // window must); a menu or dialog elsewhere on screen leaves it open. A page
+    // swipe takes the pages' windows aside with them, but not the dock's: it
+    // sits beside the pages and does not move.
     val steppedAside by PipAnchor.steppedAside.collectAsState()
+    val pageSwiping by PipAnchor.pageSwiping.collectAsState()
     val covered by PipAnchor.coveredAreas.collectAsState()
-    val blocked = steppedAside || target?.let { t ->
+    val blocked = steppedAside || (pageSwiping && !isDock) || target?.let { t ->
         covered.values.any { WindowListing.overlaps(it, t, margin = POPUP_MARGIN_PX) }
     } == true
     // Parked once per pop-up or swipe, not once per frame: a page swipe moves

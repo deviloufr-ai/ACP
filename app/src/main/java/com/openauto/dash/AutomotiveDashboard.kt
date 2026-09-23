@@ -178,10 +178,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // Docked app windows sit above dialogs and menus on this head unit. Those
     // report where they are (keepClearOfWindows), so only a window they overlap
-    // steps aside. The app drawer covers every page, and a page swipe must take
-    // the windows along at once, so those send every window aside.
-    val stepAside = showAllApps || pagerState.isScrollInProgress
-    LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
+    // steps aside. The app drawer covers everything, so it sends every window
+    // aside. A page swipe must take the pages' windows along at once, but the
+    // Maps dock beside the pages does not move with them and stays put.
+    LaunchedEffect(showAllApps) { PipAnchor.steppedAside.value = showAllApps }
+    LaunchedEffect(pagerState.isScrollInProgress) { PipAnchor.pageSwiping.value = pagerState.isScrollInProgress }
 
     /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
     fun windowApps(items: List<DashboardItem>): Set<String> = items.mapNotNull {

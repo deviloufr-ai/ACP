@@ -249,8 +249,11 @@ object PipAnchor {
 
     val allowedArea = MutableStateFlow<ScreenRect?>(null)
 
-    /** Every docked window steps aside (the app drawer is open, or a page swipe is under way). */
+    /** Every docked window steps aside (the app drawer is open). */
     val steppedAside = MutableStateFlow(false)
+
+    /** The pages are being swiped: windows on a page step aside with it; a dock beside the pages stays. */
+    val pageSwiping = MutableStateFlow(false)
 
     /** Park requests in flight, one per app: a tile asking again meanwhile has nothing to add. */
     private val parking = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
