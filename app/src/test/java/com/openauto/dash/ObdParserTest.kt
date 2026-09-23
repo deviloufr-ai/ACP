@@ -54,6 +54,34 @@ class ObdParserTest {
     }
 
     @Test
+    fun olderProtocolsSendOneLinePerThreeCodes() {
+        assertEquals(
+            listOf("P0133", "P0134", "P0135", "P0136"),
+            ObdParser.parseDtcs("43 01 33 01 34 01 35\r43 01 36 00 00 00 00")
+        )
+    }
+
+    @Test
+    fun canRepliesCarryACodeCountThatIsNotACode() {
+        assertEquals(listOf("P0133"), ObdParser.parseDtcs("43 01 01 33"))
+        assertEquals(listOf("P0133", "P2002"), ObdParser.parseDtcs("SEARCHING...\r43 02 01 33 20 02"))
+        assertEquals(emptyList<String>(), ObdParser.parseDtcs("43 00"))
+    }
+
+    @Test
+    fun canMultiFrameRepliesAreJoined() {
+        assertEquals(
+            listOf("P0133", "P0134", "P0135", "P0136"),
+            ObdParser.parseDtcs("00A\r0: 43 04 01 33 01 34\r1: 01 35 01 36 00 00 00")
+        )
+    }
+
+    @Test
+    fun everyAnsweringEcuIsRead() {
+        assertEquals(listOf("P0133", "P0700"), ObdParser.parseDtcs("43 01 01 33\r43 01 07 00"))
+    }
+
+    @Test
     fun dtcLettersFollowTheTopTwoBits() {
         assertEquals("P0133", ObdParser.decodeDtc(0x01, 0x33))
         assertEquals("C0300", ObdParser.decodeDtc(0x43, 0x00))

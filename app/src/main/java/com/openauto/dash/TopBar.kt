@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -86,6 +87,7 @@ internal class TopBarModel(
     val onSplit: () -> Unit,
     val onToggleEdit: () -> Unit,
     val onTheme: () -> Unit,
+    val onAi: () -> Unit,
     val onSystem: () -> Unit
 )
 
@@ -103,11 +105,12 @@ internal fun TopBar(
     onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
     onTheme: () -> Unit,
+    onAi: () -> Unit,
     onSystem: () -> Unit
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
-        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onSystem
+        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -244,7 +247,7 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
     }
 }
 
-/** Menu around any [anchor] a skin draws: edit, theme, split screen, system install, and the version. */
+/** Menu around any [anchor] a skin draws: edit, theme, AI mechanic, split screen, system install, and the version. */
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
@@ -263,6 +266,7 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
                 onClick = pick(m.onToggleEdit)
             )
             DashMenuItem("Theme", leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
+            DashMenuItem("AI mechanic", leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
             DashMenuItem("Split screen with an app", leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
             DashMenuItem("System app (advanced)", leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))

@@ -59,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -629,16 +630,24 @@ internal fun MeterChip(
     }
 }
 
-/** Reads and clears OBD Diagnostic Trouble Codes (fault codes). */
+/**
+ * Fault codes (OBD Diagnostic Trouble Codes). Scans run by themselves when the
+ * adapter connects (see [AiMechanic]); Scan / Clear are here for doing it by
+ * hand. With a Gemini key each code gets the AI mechanic's plain-language
+ * advice, otherwise the built-in table's.
+ */
 @Composable
 internal fun ObdDtcCard(
     connection: ObdConnectionState,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val connected = connection == ObdConnectionState.CONNECTED
-    var codes by remember { mutableStateOf<List<String>?>(null) }
+    val ai by AiMechanic.state.collectAsState()
+    val codes = ai.codes
+    val french = remember(ai) { AiSettings.load(context).language == AiLanguage.FRENCH }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -658,7 +667,7 @@ internal fun ObdDtcCard(
                             scope.launch {
                                 val r = ObdBluetoothManager.readTroubleCodes()
                                 busy = false
-                                r.onSuccess { codes = it; message = if (it.isEmpty()) "No fault codes ✓" else null }
+                                r.onSuccess { AiMechanic.report(it, announce = false) }
                                     .onFailure { message = it.message ?: "Scan failed" }
                             }
                         },
@@ -671,7 +680,7 @@ internal fun ObdDtcCard(
                             scope.launch {
                                 val res = ObdBluetoothManager.clearTroubleCodes()
                                 busy = false
-                                res.onSuccess { message = "Cleared ✓"; codes = emptyList() }
+                                res.onSuccess { message = "Cleared ✓"; AiMechanic.cleared() }
                                     .onFailure { message = it.message ?: "Clear failed" }
                             }
                         },
@@ -680,32 +689,96 @@ internal fun ObdDtcCard(
                 }
                 Spacer(Modifier.height(10.dp))
                 if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DashColors.Accent)
-                message?.let {
+                (message ?: if (codes?.isEmpty() == true) "No fault codes ✓" else null)?.let {
                     Text(it, color = if (it.contains("fail", true)) DashColors.Warning else DashColors.Good)
                     Spacer(Modifier.height(6.dp))
                 }
-                val list = codes
-                if (list != null && list.isNotEmpty()) {
+                if (codes != null && codes.isNotEmpty()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        list.forEach { code ->
-                            val dtc = ObdCodes.describe(code)
-                            Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                                Text(
-                                    "${dtc.code} — ${dtc.title}",
-                                    color = DashColors.Warning,
-                                    fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    dtc.fix,
-                                    color = DashColors.TextSecondary,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                        ai.diagnosis?.let { MechanicVerdict(it, french) }
+                        if (ai.thinking) {
+                            Text("Asking the AI mechanic…", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                        }
+                        ai.note?.let { note ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(note, color = DashColors.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                if (ai.canRetry) {
+                                    TextButton(onClick = AiMechanic::refresh) { Text("Retry", color = DashColors.Accent) }
+                                }
+                            }
+                        }
+                        codes.forEach { code ->
+                            val advice = ai.diagnosis?.codes?.firstOrNull { it.code == code }
+                            if (advice != null) {
+                                CodeAdviceRow(advice, french)
+                            } else {
+                                val dtc = ObdCodes.describe(code)
+                                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                    Text(
+                                        "${dtc.code} — ${dtc.title}",
+                                        color = DashColors.Warning,
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        dtc.fix,
+                                        color = DashColors.TextSecondary,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// The palette has no amber; "get it checked soon" needs one between Good and Warning.
+private val SoonAmber = Color(0xFFF5A623)
+
+/** The AI's overall call: a coloured dot, what to do, and the sentence it spoke. */
+@Composable
+private fun MechanicVerdict(d: Diagnosis, french: Boolean) {
+    val (color, label) = when (d.severity) {
+        Severity.OK -> DashColors.Good to if (french) "Vous pouvez rouler" else "OK to drive"
+        Severity.SOON -> SoonAmber to if (french) "À faire vérifier bientôt" else "Get it checked soon"
+        Severity.STOP -> DashColors.Warning to if (french) "Arrêtez-vous" else "Stop driving"
+    }
+    Column(modifier = Modifier.padding(bottom = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(12.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.width(8.dp))
+            Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+        }
+        Text(d.summary, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** One code as the AI mechanic explained it. */
+@Composable
+private fun CodeAdviceRow(advice: CodeAdvice, french: Boolean) {
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        Text(
+            "${advice.code} — ${advice.meaning}",
+            color = DashColors.Warning,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleSmall
+        )
+        if (advice.causes.isNotEmpty()) {
+            Text(
+                (if (french) "Causes probables : " else "Likely: ") + advice.causes.joinToString(" · "),
+                color = DashColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        if (advice.checkFirst.isNotEmpty()) {
+            Text(
+                (if (french) "À vérifier d'abord : " else "Check first: ") + advice.checkFirst,
+                color = DashColors.TextPrimary,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }

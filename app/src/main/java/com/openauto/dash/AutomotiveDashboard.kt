@@ -110,6 +110,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     val variant = variantOf(layout)
     var showThemePicker by remember { mutableStateOf(false) }
+    var showAiSettings by remember { mutableStateOf(false) }
     DashColors.Sync(themeMode, appearance)
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -175,7 +176,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // Docked app windows sit above dialogs on this head unit; have them step
     // aside while anything modal, or the app drawer, is open, and the moment a
     // page swipe starts, so they vanish with the swipe instead of after it.
-    val modalOpen = showThemePicker || showAllApps || showSplitPicker || showSplitEnable ||
+    val modalOpen = showThemePicker || showAiSettings || showAllApps || showSplitPicker || showSplitEnable ||
         showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
         layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
         launchBarEditor != null
@@ -358,6 +359,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
+        AiMechanic.setContext(context)
         mediaController.start()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -389,8 +391,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
 
     LaunchedEffect(obdConnection) {
-        while (obdConnection == ObdConnectionState.CONNECTED) {
+        if (obdConnection != ObdConnectionState.CONNECTED) return@LaunchedEffect
+        // The AI mechanic checks for fault codes by itself once the first
+        // readings are in (it only speaks about codes it hasn't heard before).
+        launch {
+            delay(3000)
+            AiMechanic.autoScan()
+        }
+        while (true) {
             ObdBluetoothManager.poll()
+            AiMechanic.watch(ObdBluetoothManager.data.value)
             delay(500)
         }
     }
@@ -666,6 +676,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             },
             onToggleEdit = { editing = !editing },
             onTheme = { showThemePicker = true },
+            onAi = { showAiSettings = true },
             onSystem = { showSystemDialog = true }
         )
 
@@ -707,6 +718,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 }
             }
         )
+    }
+
+    if (showAiSettings) {
+        AiSettingsDialog(onDismiss = { showAiSettings = false })
     }
 
     if (showThemePicker) {
