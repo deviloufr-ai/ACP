@@ -331,14 +331,6 @@ object PipAnchor {
                 )
                 mem = next
                 val keep = step as DockPolicy.Step.Keep
-                if (keep.raise) {
-                    // Arriving on its tile (this page came back, the window was
-                    // parked aside), or behind the dashboard: raise it.
-                    lastRaiseAt[packageName] = now
-                    Log.i(TAG, "raising $packageName above the dashboard")
-                    if (bringToFront(context, win.taskId)) DockShell.forgetListing()
-                    else lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
-                }
                 if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
                     setDashboardFocusable(context, false)
@@ -361,6 +353,24 @@ object PipAnchor {
                     result.onFailure { publishError(context, packageName, it) }
                     if (result.isSuccess) undoStatusBarPolicy(context)
                     status.value = status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else status.value.error)
+                }
+                if (keep.raise) {
+                    // Arriving on its tile (this page came back, the window was
+                    // parked aside), or behind the dashboard: bring it in front,
+                    // once it is in place. Starting its task again is what shows
+                    // it on this head unit; moving the task to the front alone
+                    // could leave it invisible there.
+                    lastRaiseAt[packageName] = now
+                    Log.i(TAG, "raising $packageName above the dashboard")
+                    val relaunched = runGuarded { DockShell.relaunch(context, win) }
+                        .onFailure { Log.w(TAG, "relaunching $packageName failed", it) }
+                    if (relaunched.isSuccess || bringToFront(context, win.taskId)) {
+                        DockShell.forgetListing()
+                        relaunched.getOrNull()?.let { lastResult = it }
+                    } else {
+                        lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
+                    }
+                    status.value = status.value.copy(lastResult = lastResult)
                 }
             }
             delay(POLL_MS)
