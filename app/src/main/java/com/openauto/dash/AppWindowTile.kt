@@ -177,10 +177,14 @@ internal fun PipAnchorCard(
             val pkg = status.pipPackage
             val err = status.error
             val name = pkg?.substringAfterLast('.')
+            // A status no poll has refreshed lately (the window is parked aside for
+            // a pop-up, or tracking is paused) must not keep claiming "docked".
+            val checkedAgoS = ((rememberNow(1_000L).time - status.checkedAt) / 1000L).coerceAtLeast(0L)
+            val docked = status.docked && checkedAgoS * 1000L <= STALE_STATUS_MS
             Text(
                 text = when {
                     // The mode ("freeform" / "pinned") is the system's own term, shown as is.
-                    pkg != null && status.docked -> stringResource(R.string.apps_window_docked, name.orEmpty(), status.mode.orEmpty())
+                    pkg != null && docked -> stringResource(R.string.apps_window_docked, name.orEmpty(), status.mode.orEmpty())
                     pkg != null && status.gaveUp -> stringResource(R.string.apps_window_gave_up, name.orEmpty())
                     pkg != null -> stringResource(R.string.apps_window_moving, name.orEmpty())
                     PipAnchor.autoOpen(context, packageName) -> stringResource(R.string.apps_window_opening, appLabel)
@@ -188,7 +192,7 @@ internal fun PipAnchorCard(
                     else -> stringResource(R.string.apps_window_app_hint, appLabel)
                 },
                 color = when {
-                    pkg != null && status.docked -> DashColors.Good
+                    pkg != null && docked -> DashColors.Good
                     pkg != null && status.gaveUp -> DashColors.Warning
                     else -> DashColors.TextSecondary
                 },
@@ -199,11 +203,17 @@ internal fun PipAnchorCard(
                 Spacer(Modifier.height(4.dp))
                 Text(err, color = DashColors.Warning, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
             }
-            // Diagnostics while not docked: where the window is vs. where it should be,
-            // and what the last command said. Readable without adb.
-            if (pkg != null && !status.docked) {
+            // Diagnostics, docked or not (the tile is only readable when its window is
+            // missing): where the window is vs. where it should be, what the system
+            // says of it, how long ago that was, and what the last command said.
+            if (pkg != null) {
                 Spacer(Modifier.height(4.dp))
-                val at = status.windowBounds?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
+                val flags = listOfNotNull(
+                    status.visible?.let { if (it) "visible" else "hidden" },
+                    status.behindDashboard?.let { if (it) "behind" else "front" },
+                    "${checkedAgoS}s"
+                ).joinToString(" ")
+                val at = (status.windowBounds?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?") + " $flags"
                 val to = status.target?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
                 Text(stringResource(R.string.apps_window_diag_position, at, to), color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
                 status.lastResult?.let {
@@ -237,6 +247,9 @@ internal fun PipAnchorCard(
         }
     }
 }
+
+/** A tile status older than three polls is stale: the window is not being tracked right now. */
+private const val STALE_STATUS_MS = 7_500L
 
 /** How close (px) a pop-up may come to a window's tile before the window steps aside; covers its shadow. */
 private const val POPUP_MARGIN_PX = 12

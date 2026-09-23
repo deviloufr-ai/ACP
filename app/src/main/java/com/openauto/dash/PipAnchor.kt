@@ -86,7 +86,12 @@ object PipAnchor {
         /** Set once the tile has stopped fighting a system that keeps moving the window back. */
         val gaveUp: Boolean = false,
         /** The window's size (w, h px) when the system made it clearly larger than the tile (its minimum size). */
-        val oversizePx: Pair<Int, Int>? = null
+        val oversizePx: Pair<Int, Int>? = null,
+        /** When a poll last looked (ms): a status not refreshed for a while is stale, e.g. while parked aside. */
+        val checkedAt: Long = 0L,
+        /** The listing's visibility flag, and whether it puts the dashboard in front of the window. */
+        val visible: Boolean? = null,
+        val behindDashboard: Boolean? = null
     )
 
     // One status per docked app: several tiles (Maps, YouTube Music, ...) can
@@ -276,7 +281,7 @@ object PipAnchor {
                 publishError(context, packageName, lookup.exceptionOrNull()!!)
                 mem = mem.copy(attempts = 0, lastStack = null)
             } else if (win == null) {
-                status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null)
+                status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null, checkedAt = now, visible = null, behindDashboard = null)
                 parked.remove(packageName)
                 noteFreeform(packageName, false)
                 if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
@@ -335,7 +340,8 @@ object PipAnchor {
                 status.value = Status(
                     pipPackage = win.packageName, docked = keep.docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
-                    gaveUp = keep.gaveUp, oversizePx = keep.oversizePx
+                    gaveUp = keep.gaveUp, oversizePx = keep.oversizePx,
+                    checkedAt = now, visible = win.visible, behindDashboard = win.behindDashboard
                 )
                 val place = keep.place
                 if (place != null) {
