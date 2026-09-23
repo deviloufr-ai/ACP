@@ -101,16 +101,58 @@ object ObdParser {
         return if (answered) codes.distinct() else null
     }
 
-    /** Splits a reply into per-message byte lists, joining CAN multi-frame parts and dropping status lines. */
+    /**
+     * Splits a reply into per-message byte lists, dropping status lines. Knows
+     * the adapter's layouts:
+     *  - plain, one message per line: `43 01 13 52`;
+     *  - CAN multi-frame without headers: `00A` / `0: 43 04 ..` / `1: ..`;
+     *  - headers on (some adapters start that way): each line opens with the
+     *    sender's address and the CAN frame's length byte, padding after:
+     *    `7E8 04 43 01 13 52 FF FF FF` (11-bit), `18DAF110 04 43 ..` (29-bit).
+     *    Multi-frame parts (`7E8 10 0A ..` / `7E8 21 ..`) are joined per sender.
+     * Spaces are optional everywhere.
+     */
     private fun dtcMessages(response: String): List<List<Int>> {
         val messages = mutableListOf<MutableList<Int>>()
-        // Bytes still expected by the multi-frame message being assembled.
+        // Headerless multi-frame: bytes still expected by the message being assembled.
         var remaining = 0
+        // With headers: each sender's message being assembled, and the bytes it still expects.
+        val assembling = mutableMapOf<String, Pair<MutableList<Int>, Int>>()
         response.uppercase().split('\r', '\n').map { it.trim() }.filter { it.isNotEmpty() }.forEach { line ->
             val frame = Regex("^([0-9A-F]):\\s*(.*)$").find(line)
             val body = (frame?.groupValues?.get(2) ?: line).replace(" ", "")
             // "SEARCHING...", "NO DATA" and the like carry no bytes.
             if (body.isEmpty() || !body.all { it in '0'..'9' || it in 'A'..'F' }) return@forEach
+            // A message is whole bytes, so an odd length means a 3-digit sender address in front.
+            val header = when {
+                frame != null -> 0
+                body.length >= 5 && body.length % 2 == 1 -> 3
+                body.length >= 10 && (body.startsWith("18DA") || body.startsWith("18DB")) -> 8
+                else -> 0
+            }
+            if (header > 0) {
+                val sender = body.take(header)
+                val bytes = body.drop(header).chunked(2).mapNotNull { it.toIntOrNull(16) }
+                val pci = bytes.firstOrNull() ?: return@forEach
+                when (pci shr 4) {
+                    // Single frame: the low nibble is the length; the rest is padding.
+                    0 -> messages.add(bytes.drop(1).take(pci and 0x0F).toMutableList())
+                    // First frame of a long message: 12-bit length, then its first bytes.
+                    1 -> if (bytes.size >= 2) {
+                        val total = ((pci and 0x0F) shl 8) or bytes[1]
+                        val first = bytes.drop(2).take(total).toMutableList()
+                        messages.add(first)
+                        assembling[sender] = first to (total - first.size)
+                    }
+                    // Consecutive frame: more of that sender's message.
+                    2 -> assembling[sender]?.let { (message, left) ->
+                        val more = bytes.drop(1).take(left)
+                        message.addAll(more)
+                        assembling[sender] = message to (left - more.size)
+                    }
+                }
+                return@forEach
+            }
             when {
                 frame == null && body.length == 3 -> {
                     remaining = body.toInt(16)

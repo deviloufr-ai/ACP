@@ -115,6 +115,30 @@ class ObdParserTest {
         assertFalse(ObdParser.isCan11Bit("?"))
     }
 
+    // Replies captured from the C4 Picasso (2011, 1.6 HDi) on 2026-09-23: the adapter
+    // puts the sender's address and the frame length in front, without spaces.
+    @Test
+    fun theC4PicassosRepliesWithHeadersAreRead() {
+        assertEquals(listOf("P1352"), ObdParser.parseDtcReply("7E90243000000000000000\r7E80443011352FFFFFF"))
+        assertEquals(listOf("P1352"), ObdParser.parseDtcReply("7E90247000000000000000\r7E80447011352FFFFFF", mode = 0x47))
+        assertEquals(EngineLamp(on = true, storedCodes = 1), ObdParser.parseEngineLamp("7E8064101810EE000FF\r7E90641010004000000"))
+    }
+
+    @Test
+    fun headersWithSpacesAnd29BitAddressesToo() {
+        assertEquals(listOf("P1352"), ObdParser.parseDtcReply("7E8 04 43 01 13 52 FF FF FF"))
+        assertEquals(listOf("P1352"), ObdParser.parseDtcReply("18DAF110 04 43 01 13 52 AA AA AA"))
+        assertEquals(emptyList<String>(), ObdParser.parseDtcReply("7E9 02 43 00 00 00 00 00 00"))
+    }
+
+    @Test
+    fun multiFrameRepliesWithHeadersAreJoinedPerSender() {
+        assertEquals(
+            listOf("P0133", "P0134", "P0135", "P0136"),
+            ObdParser.parseDtcReply("7E8 10 0A 43 04 01 33 01 34\r7E9 02 43 00 00 00 00 00 00\r7E8 21 01 35 01 36 00 00 00")
+        )
+    }
+
     @Test
     fun everyAnsweringEcuIsRead() {
         assertEquals(listOf("P0133", "P0700"), ObdParser.parseDtcs("43 01 01 33\r43 01 07 00"))
