@@ -186,18 +186,31 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val stepAside = modalOpen || barMenuOpen || pagerState.isScrollInProgress
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
 
-    // As soon as the current page changes (mid-swipe), close the windows whose
+    /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
+    fun windowApps(items: List<DashboardItem>): Set<String> = items.mapNotNull {
+        when {
+            it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
+            it is DashboardItem.AppWindow -> it.packageName
+            else -> null
+        }
+    }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+
+    /** Window apps of every page, in both arrangements (a tile in the other layout still owns its window). */
+    fun windowAppsEverywhere(): Set<String> {
+        val other = if (variant == "") "_half" else ""
+        return windowApps(
+            pages.flatten() +
+                (if (DashboardStore.exists(context, other)) DashboardStore.load(context, other).flatten() else emptyList())
+        )
+    }
+
+    // As soon as the current page changes (mid-swipe), clear the windows whose
     // tile is not on the new page; waiting for the old page to be disposed left
-    // a strip of the window visible for a few seconds after the swipe.
+    // a strip of the window visible for a few seconds after the swipe. They are
+    // parked aside, still running, so a navigation or a song goes on.
     LaunchedEffect(pagerState.currentPage, pages, layout) {
-        val onPage = pages.getOrNull(pagerState.currentPage).orEmpty().mapNotNull {
-            when {
-                it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
-                it is DashboardItem.AppWindow -> it.packageName
-                else -> null
-            }
-        }.toSet() + (if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet())
-        PipAnchor.closeAllExcept(context, onPage)
+        PipAnchor.placedPackages.value = windowAppsEverywhere()
+        PipAnchor.stashAllExcept(context, windowApps(pages.getOrNull(pagerState.currentPage).orEmpty()))
     }
     var rootChecked by remember { mutableStateOf(false) }
     var rootAvailable by remember { mutableStateOf(false) }
@@ -250,16 +263,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     fun releaseMapsAnchorIfGone() {
         // Both arrangements count: a window tile that exists only in the other
         // layout must keep its app's keep-open intent.
-        val other = if (variant == "") "_half" else ""
-        val everywhere = pages.flatten() +
-            (if (DashboardStore.exists(context, other)) DashboardStore.load(context, other).flatten() else emptyList())
-        val keep = everywhere.mapNotNull {
-            when {
-                it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
-                it is DashboardItem.AppWindow -> it.packageName
-                else -> null
-            }
-        }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+        val keep = windowAppsEverywhere()
+        PipAnchor.placedPackages.value = keep
         PipAnchor.releaseAutoOpenExcept(context, keep)
     }
     // A layout switch adds or removes the Maps dock; redo the keep-open bookkeeping.

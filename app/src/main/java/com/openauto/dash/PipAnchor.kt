@@ -58,8 +58,8 @@ import kotlin.math.roundToInt
  * pinned stack should be, through the internal ADB socket (`am stack resize`,
  * a shell-uid command, no root needed). The [PipAnchorCard] measures its own
  * screen rectangle and, while it is on screen, keeps the PiP window sized and
- * positioned to match; when the tile scrolls away the window is parked in a
- * corner, since PiP cannot be hidden without leaving it.
+ * positioned to match; when the tile scrolls away the window is parked
+ * aside, still running, so a navigation or a song carries on meanwhile.
  */
 object PipAnchor {
 
@@ -122,6 +122,7 @@ object PipAnchor {
         tileCounts.merge(packageName, 1, Int::plus)
         managed.add(packageName)
         lastReopenAt.remove(packageName) // back on screen: reopen at once if needed
+        lastRaiseAt.remove(packageName) // and raise a window parked behind the dashboard at once
     }
 
     fun tileHidden(packageName: String) {
@@ -132,9 +133,40 @@ object PipAnchor {
 
     private fun managedPackages(context: Context): Set<String> = managed + autoOpenPackages(context)
 
-    private suspend fun closeStrays(context: Context, listing: String) {
+    /**
+     * Apps with a window tile anywhere in the dashboard, on any page (set by the
+     * dashboard; null until it has). Their windows outlive a page change: they
+     * are parked aside, still running, instead of being closed, so a Maps
+     * navigation or a YouTube Music song carries on on the other pages.
+     */
+    val placedPackages = MutableStateFlow<Set<String>?>(null)
+
+    /** Unknown yet counts as placed: closing a window by mistake loses the app's state. */
+    private fun isPlaced(packageName: String): Boolean = placedPackages.value?.contains(packageName) ?: true
+
+    /** Windows parked aside (off-page, or out of a dialog's way): alive, but not on the dashboard. */
+    private val parked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /** Freeform windows actually showing on the dashboard (not parked aside). */
+    private fun onScreenWindows(): Set<String> = freeformNow - parked
+
+    /**
+     * Safety net for windows whose tile is not on screen: parked aside while
+     * their app still has a tile on another page, closed once it has none.
+     */
+    private suspend fun handleStrays(context: Context, listing: String) {
         for (stray in WindowListing.strayWindows(listing, managedPackages(context), activePackages())) {
-            closeWindow(context, stray, "no tile on screen")
+            if (isPlaced(stray.packageName)) park(context, stray, "no tile on screen")
+            else closeWindow(context, stray, "no tile left")
+        }
+    }
+
+    /** Forgets windows that are gone from [listing] (e.g. a parked one the system closed). */
+    private fun syncFreeform(listing: String) {
+        val present = WindowListing.allFloatingWindows(listing).filter { it.mode == "freeform" }.map { it.packageName }.toSet()
+        for (pkg in freeformNow.toList()) if (pkg !in present) {
+            parked.remove(pkg)
+            noteFreeform(pkg, false)
         }
     }
 
@@ -149,11 +181,32 @@ object PipAnchor {
 
     private suspend fun closeWindow(context: Context, win: FloatingWindow, reason: String) {
         expectedGone.add(win.packageName)
+        parked.remove(win.packageName)
         noteFreeform(win.packageName, false)
         statusFlow(win.packageName).value = Status(seen = lastSeen)
         val out = runCatching { DockShell.shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "closed ${win.packageName} ($reason): ${out.trim()}")
-        if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+        if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
+    }
+
+    /**
+     * The way a window leaves the dashboard without being closed: slid off the
+     * right edge at its current size (a thin strip stays visible, the system
+     * will not hide a freeform window completely). The app keeps running; the
+     * tile brings the window back when it is on screen again.
+     */
+
+    private suspend fun park(context: Context, win: FloatingWindow, reason: String) {
+        if (win.mode == "freeform") noteFreeform(win.packageName, true)
+        parked.add(win.packageName)
+        if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
+        val b = win.bounds ?: return
+        val dm = context.resources.displayMetrics
+        if (b.left >= dm.widthPixels - ASIDE_SLIVER_PX) return // already aside
+        val left = dm.widthPixels - ASIDE_SLIVER_PX
+        runGuarded { DockShell.resize(context, win, ScreenRect(left, b.top, left + (b.right - b.left), b.bottom)) }
+            .onFailure { Log.w(TAG, "park aside failed", it) }
+        Log.i(TAG, "${win.packageName} parked aside ($reason)")
     }
 
     @Synchronized
@@ -193,15 +246,7 @@ object PipAnchor {
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            val b = win.bounds ?: return@launch
-            val dm = context.resources.displayMetrics
-            if (b.left >= dm.widthPixels - ASIDE_SLIVER_PX) return@launch // already aside
-            val w = b.right - b.left
-            val h = b.bottom - b.top
-            val left = dm.widthPixels - ASIDE_SLIVER_PX
-            runCatching { DockShell.resize(context, win, ScreenRect(left, b.top, left + w, b.top + h)) }
-                .onFailure { Log.w(TAG, "park aside failed", it) }
-            Log.i(TAG, "$packageName stepped aside for a dialog")
+            park(context, win, "stepped aside for a dialog")
             DockShell.release()
         }
     }
@@ -218,8 +263,8 @@ object PipAnchor {
         while (true) {
             val lookup = runGuarded { findFloatingWindow(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
-            // hide() left behind (e.g. parked aside for a swipe) is closed here.
-            lastListing?.let { runGuarded { closeStrays(context, it) } }
+            // hide() left in place is parked here (closed if its tile is gone).
+            lastListing?.let { runGuarded { handleStrays(context, it) } }
             val win = lookup.getOrNull()
             val now = System.currentTimeMillis()
             if (lookup.isFailure) {
@@ -227,8 +272,9 @@ object PipAnchor {
                 mem = mem.copy(attempts = 0, lastStack = null)
             } else if (win == null) {
                 status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null)
+                parked.remove(packageName)
                 noteFreeform(packageName, false)
-                if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+                if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
                 val (step, next) = DockPolicy.onMissing(
                     mem, expectedGone = expectedGone.remove(packageName),
                     autoOpen = autoOpen(context, packageName),
@@ -258,6 +304,8 @@ object PipAnchor {
                 }
             } else {
                 expectedGone.remove(packageName)
+                // Back from being parked (another page, a dialog): placed below.
+                parked.remove(packageName)
                 val (step, next) = DockPolicy.onPresent(
                     mem, win, rect, allowedArea.value,
                     lastRaiseAt = lastRaiseAt[packageName] ?: 0L, now = now
@@ -440,40 +488,37 @@ object PipAnchor {
     }
 
     /**
-     * The tile left the screen. A freeform window cannot be hidden: the window
-     * manager keeps part of it on screen, and while any freeform window is
-     * visible Android forces the (transparent) status bar over the dashboard.
-     * So the window is closed and reopened when the tile is back; Maps keeps
-     * guiding from its notification meanwhile. Picture-in-picture, which the
-     * system keeps on screen anyway, is parked small in the bottom-right corner.
-     */
-    /**
      * Another app took the whole screen. This ROM keeps floating windows above
-     * fullscreen apps too, so the window would sit over that app: close it, and
-     * make sure the tile reopens it when the dashboard is back.
+     * fullscreen apps too, so the window would sit over that app: park it
+     * aside, still running (closing it stopped the music and reset Maps'
+     * guidance); the tile docks it again when the dashboard is back.
      */
 
-    fun closeForOtherApp(context: Context, packageName: String = MAPS_PACKAGE) {
+    fun parkForOtherApp(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            if (win.mode == "freeform") closeWindow(context, win, "another app is in front")
+            if (win.mode == "freeform") park(context, win, "another app is in front")
             DockShell.release()
         }
     }
 
     /**
-     * Closes every managed window whose app is not in [keep]. Called the moment
-     * the pager's current page changes, so a window leaves with the swipe
-     * instead of a few seconds later when the old page is finally disposed.
+     * Clears the dashboard of every managed window whose app is not in [onPage].
+     * Called the moment the pager's current page changes, so a window leaves
+     * with the swipe instead of a few seconds later when the old page is
+     * finally disposed. Windows whose app still has a tile on another page are
+     * parked aside, still running; only those whose tile is gone are closed.
      */
 
-    fun closeAllExcept(context: Context, keep: Set<String>) {
+    fun stashAllExcept(context: Context, onPage: Set<String>) {
         scope.launch {
             val listing = runCatching { DockShell.shell(context, "am stack list") }.getOrNull() ?: return@launch
+            syncFreeform(listing)
             val mine = managedPackages(context)
             for (win in WindowListing.allFloatingWindows(listing, context.packageName)) {
-                if (win.mode != "freeform" || win.packageName !in mine || win.packageName in keep) continue
-                closeWindow(context, win, "page change")
+                if (win.mode != "freeform" || win.packageName !in mine || win.packageName in onPage) continue
+                if (isPlaced(win.packageName)) park(context, win, "page change")
+                else closeWindow(context, win, "tile removed")
             }
             DockShell.release()
         }
@@ -484,22 +529,30 @@ object PipAnchor {
         lastReopenAt.remove(packageName)
     }
 
+    /**
+     * The tile left the screen (another page, edit mode). A freeform window
+     * cannot be hidden: the window manager keeps part of it on screen. Raising
+     * the dashboard above it does not help either, this ROM keeps floating
+     * windows drawn on top. So it is parked aside, still running (closing it
+     * reset Maps' guidance and stopped the music), and the tile docks it again
+     * when it is back; it is closed only once its app has no tile left.
+     * Picture-in-picture, which the system keeps on screen anyway, is parked
+     * small in the bottom-right corner.
+     */
     fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
-            noteFreeform(packageName, false)
             val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
             if (stack == null) {
-                // Already gone (a page change closed it first): still hand focus back.
-                if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
+                // Already gone: still hand focus back.
+                parked.remove(packageName)
+                noteFreeform(packageName, false)
+                if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
                 DockShell.release()
                 return@launch
             }
             if (stack.mode == "freeform") {
-                // Close it. Raising the dashboard above the window looked cheaper,
-                // but this ROM keeps floating windows drawn on top while reporting
-                // them as covered, so the window stayed over the edit handles and
-                // over other pages. The tile reopens it when it is back on screen.
-                closeWindow(context, stack, "tile off screen")
+                if (isPlaced(packageName)) park(context, stack, "tile off screen")
+                else closeWindow(context, stack, "tile removed")
             } else {
                 val dm = context.resources.displayMetrics
                 val w = dm.widthPixels / 4

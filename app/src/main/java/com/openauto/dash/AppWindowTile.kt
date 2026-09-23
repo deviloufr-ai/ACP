@@ -110,11 +110,11 @@ internal fun PipAnchorCard(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> { started = true; PipAnchor.expectReturn(packageName) }
-                // Another app took the whole screen: its task covers Maps, so there
-                // is nothing to hide; coming back, track() raises Maps again. Just
-                // stop polling meanwhile. (Touching the Maps window only *pauses*
-                // the launcher, which must not hide anything either.)
-                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.closeForOtherApp(context, packageName) }
+                // Another app took the whole screen: stop polling and park the
+                // window aside, still running; coming back, track() docks it
+                // again. (Touching the Maps window only *pauses* the launcher,
+                // which must not hide anything.)
+                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.parkForOtherApp(context, packageName) }
                 else -> Unit
             }
         }
