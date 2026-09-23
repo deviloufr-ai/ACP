@@ -38,7 +38,7 @@ object AdbInstaller {
         runCatching { connect(context, port).use { it.shell("id -u").output.trim() } }.getOrNull()
 
     /** Restart adbd as root (like `adb root`), then wait for it to come back. */
-    private fun ensureRoot(context: Context, port: Int): Boolean {
+    internal fun ensureRoot(context: Context, port: Int): Boolean {
         if (currentUid(context, port) == "0") return true
         runCatching {
             connect(context, port).use { dadb ->

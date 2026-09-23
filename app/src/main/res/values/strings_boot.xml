@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Boot logo</string>
+    <string name="boot_title">Boot logo</string>
+    <string name="boot_search">Search %1$d car brands</string>
+    <string name="boot_no_match">No brand matches.</string>
+    <string name="boot_downloading">Downloading the logo…</string>
+    <string name="boot_bg_black">Black</string>
+    <string name="boot_bg_white">White</string>
+    <string name="boot_show_name">Show the brand name</string>
+    <string name="boot_show_name_detail">Written under the logo</string>
+    <string name="boot_install">Install now</string>
+    <string name="boot_play">Play it now</string>
+    <string name="boot_restore">Restore original</string>
+    <string name="boot_close">Close</string>
+    <string name="boot_building">Building the animation…</string>
+    <string name="boot_installing">Installing…</string>
+    <string name="boot_restoring">Restoring…</string>
+    <string name="boot_playing">Playing on the screen…</string>
+    <string name="boot_installed">Installed in %1$s. You will see it at the next start.</string>
+    <string name="boot_install_failed">Couldn\'t install: %1$s</string>
+    <string name="boot_restored">The original boot animation is back.</string>
+    <string name="boot_nothing_to_restore">Nothing to restore: the boot animation was never changed.</string>
+    <string name="boot_restore_failed">Couldn\'t restore: %1$s</string>
+    <string name="boot_play_failed">Couldn\'t play it: %1$s</string>
+    <string name="boot_current">Boot logo now: %1$s</string>
+    <string name="boot_hint">Changes what the unit shows while it starts, with this brand\'s logo: the Android animation, and the still logo if switched on. Uses the head unit\'s internal root ADB and never touches /system. Originals are backed up (also to Dashwheel/boot_backup on the internal storage) and Restore puts them back. Logos come from the open car-logos-dataset.</string>
+    <string name="boot_usb">Save to USB</string>
+    <string name="boot_saving_usb">Writing to the USB stick…</string>
+    <string name="boot_saved_usb">Saved on %1$s. Unplug the stick and plug it back in: the unit imports the animation. For the still logo: Settings → Factory settings (8888) → Logo set → pick %2$s → Update logo.</string>
+    <string name="boot_no_usb">No USB stick found. Plug one in and try again.</string>
+    <string name="boot_still">Change the still logo too</string>
+    <string name="boot_still_detail">The first picture, before Android. Off by default: it is written to the logo partition, backed up first and checked after.</string>
+    <string name="boot_still_done">Still logo updated too.</string>
+    <string name="boot_still_failed">Still logo not changed: %1$s</string>
+    <string name="boot_still_unsupported">this unit has no still-logo tool</string>
+    <string name="boot_not_qf">Install now only works on the QF001 / K706 firmware it was made for. Use Save to USB instead.</string>
+</resources>

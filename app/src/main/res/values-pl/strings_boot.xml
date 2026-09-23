@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Logo startowe</string>
+    <string name="boot_title">Logo startowe</string>
+    <string name="boot_search">Szukaj wśród %1$d marek</string>
+    <string name="boot_no_match">Brak pasującej marki.</string>
+    <string name="boot_downloading">Pobieranie logo…</string>
+    <string name="boot_bg_black">Czarne</string>
+    <string name="boot_bg_white">Białe</string>
+    <string name="boot_show_name">Pokaż nazwę marki</string>
+    <string name="boot_show_name_detail">Pod logo</string>
+    <string name="boot_install">Zainstaluj teraz</string>
+    <string name="boot_play">Odtwórz teraz</string>
+    <string name="boot_restore">Przywróć oryginał</string>
+    <string name="boot_close">Zamknij</string>
+    <string name="boot_building">Tworzenie animacji…</string>
+    <string name="boot_installing">Instalowanie…</string>
+    <string name="boot_restoring">Przywracanie…</string>
+    <string name="boot_playing">Odtwarzanie na ekranie…</string>
+    <string name="boot_installed">Zainstalowano w %1$s. Widoczne przy następnym uruchomieniu.</string>
+    <string name="boot_install_failed">Nie udało się zainstalować: %1$s</string>
+    <string name="boot_restored">Przywrócono oryginalną animację startową.</string>
+    <string name="boot_nothing_to_restore">Nie ma czego przywracać: animacja startowa nie była zmieniana.</string>
+    <string name="boot_restore_failed">Nie udało się przywrócić: %1$s</string>
+    <string name="boot_play_failed">Nie udało się odtworzyć: %1$s</string>
+    <string name="boot_current">Obecne logo startowe: %1$s</string>
+    <string name="boot_hint">Zmienia to, co radio pokazuje przy starcie, z logo tej marki: animację Androida oraz, jeśli włączone, nieruchome logo. Korzysta z wewnętrznego root ADB radia i nigdy nie rusza /system. Oryginały są zapisywane (także w Dashwheel/boot_backup w pamięci wewnętrznej), a Przywróć je przywraca. Loga z otwartego zbioru car-logos-dataset.</string>
+    <string name="boot_usb">Zapisz na USB</string>
+    <string name="boot_saving_usb">Zapisywanie na pendrive…</string>
+    <string name="boot_saved_usb">Zapisano na %1$s. Odłącz i podłącz pendrive ponownie: radio zaimportuje animację. Dla nieruchomego logo: Ustawienia → Ustawienia fabryczne (8888) → Logo set → wybierz %2$s → Update logo.</string>
+    <string name="boot_no_usb">Nie znaleziono pendrive. Podłącz go i spróbuj ponownie.</string>
+    <string name="boot_still">Zmień też nieruchome logo</string>
+    <string name="boot_still_detail">Pierwszy obraz, przed Androidem. Domyślnie wyłączone: zapisywane do partycji logo, z kopią przed i sprawdzeniem po.</string>
+    <string name="boot_still_done">Nieruchome logo też zaktualizowane.</string>
+    <string name="boot_still_failed">Nieruchome logo bez zmian: %1$s</string>
+    <string name="boot_still_unsupported">to radio nie ma narzędzia do nieruchomego logo</string>
+    <string name="boot_not_qf">Instalacja działa tylko na przewidzianym firmware QF001 / K706. Użyj Zapisz na USB.</string>
+</resources>

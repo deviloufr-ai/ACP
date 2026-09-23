@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -281,6 +282,7 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    var bootLogo by remember { mutableStateOf(false) }
     val pick: (() -> Unit) -> () -> Unit = { action ->
         {
             open = false
@@ -298,6 +300,10 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
             DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
             DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
+            // Only on the QF001 / K706 firmware the feature was built for.
+            if (BootLogoSupport.available) {
+                DashMenuItem(stringResource(R.string.boot_menu), leading = { MenuIcon(Icons.Filled.PowerSettingsNew) }, onClick = pick { bootLogo = true })
+            }
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
             DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
             DashMenuItem(stringResource(R.string.dash_menu_check_updates), leading = { MenuIcon(Icons.Filled.SystemUpdate) }, onClick = pick(m.onCheckUpdates))
@@ -310,6 +316,7 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             )
         }
     }
+    if (bootLogo) BootLogoDialog(onDismiss = { bootLogo = false })
 }
 
 @Composable

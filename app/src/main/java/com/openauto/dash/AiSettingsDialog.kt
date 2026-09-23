@@ -235,7 +235,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
 
 // Explicit disabled colours: the Material defaults vanish on the light theme cards.
 @Composable
-private fun buttonColors() = ButtonDefaults.buttonColors(
+internal fun buttonColors() = ButtonDefaults.buttonColors(
     containerColor = DashColors.Accent,
     contentColor = DashColors.OnAccent,
     disabledContainerColor = DashColors.CardHi,
@@ -243,7 +243,7 @@ private fun buttonColors() = ButtonDefaults.buttonColors(
 )
 
 @Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
+internal fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = DashColors.TextPrimary,
     unfocusedTextColor = DashColors.TextPrimary,
     focusedBorderColor = DashColors.Accent,
@@ -258,7 +258,7 @@ private fun Label(text: String) {
 
 /** An on/off setting: title and explanation on the left, the switch on the right. */
 @Composable
-private fun SwitchRow(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = DashColors.TextPrimary)
@@ -280,7 +280,7 @@ private fun SwitchRow(title: String, detail: String, checked: Boolean, onChange:
  * Long lists wrap onto rows of [perRow] segments.
  */
 @Composable
-private fun <T> ChoiceRow(
+internal fun <T> ChoiceRow(
     options: List<T>,
     selected: T,
     label: (T) -> String,
