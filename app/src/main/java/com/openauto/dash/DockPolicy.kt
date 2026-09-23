@@ -93,14 +93,19 @@ object DockPolicy {
         // its own size after that is at the app's minimum, and is accepted.
         val sizeSettled = b == null || sameSize(b, rect) || (mem.askedFor == rect && !mem.lastPlacementFailed)
         val docked = close && inside && sizeSettled
+        // Placed by the previous poll, on its tile now.
+        val justSettled = docked && attempts > 0
         if (docked) attempts = 0
 
         // A window arriving on its tile (first seen by this tile, or being brought
         // back from where it was parked aside) can sit behind the dashboard while
-        // the listing still puts it in front, so it is raised then as well.
+        // the listing still puts it in front, so it is raised then as well, and
+        // once more as soon as it has settled on the tile: a raise made while
+        // the dashboard was still being touched, or before the window had left
+        // the edge of the screen, can be lost, and the listing would never say.
         val arriving = !mem.hadWindow || !docked
-        val raise = win.mode == "freeform" && (arriving || !win.visible || win.behindDashboard) &&
-            now - lastRaiseAt > RAISE_COOLDOWN_MS
+        val raise = win.mode == "freeform" && (justSettled ||
+            (arriving || !win.visible || win.behindDashboard) && now - lastRaiseAt > RAISE_COOLDOWN_MS)
 
         val oversize = b?.takeIf {
             sizeSettled && ((it.right - it.left) > (rect.right - rect.left) * OVERSIZE_RATIO ||

@@ -193,4 +193,17 @@ class DockPolicyTest {
         val (again, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 100_000, now = 102_500)
         assertFalse((again as DockPolicy.Step.Keep).raise)
     }
+
+    @Test
+    fun aWindowThatHasJustSettledOnItsTileIsRaisedOnceMore() {
+        // Placed by the previous poll, on the tile now: raised again whatever the
+        // cooldown, in case the raise made while it was parked was lost; then
+        // left alone while it stays docked.
+        val placed = DockPolicy.Memory(hadWindow = true, lastStack = 7, attempts = 1, askedFor = tile)
+        val (settled, mem) = DockPolicy.onPresent(placed, window(tile), tile, area, lastRaiseAt = 100_000, now = 102_500)
+        assertTrue((settled as DockPolicy.Step.Keep).docked)
+        assertTrue(settled.raise)
+        val (later, _) = DockPolicy.onPresent(mem, window(tile), tile, area, lastRaiseAt = 102_500, now = 105_000)
+        assertFalse((later as DockPolicy.Step.Keep).raise)
+    }
 }

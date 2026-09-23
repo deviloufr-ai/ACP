@@ -88,6 +88,7 @@
     <string name="apps_window_title">FINESTRA %1$s</string>
     <string name="apps_window_maps_docked_beside">Maps è agganciato accanto al cruscotto.</string>
     <string name="apps_window_docked">Agganciato: %1$s (%2$s)</string>
+    <string name="apps_window_tap_to_raise">Finestra nascosta? Tocca qui per riportarla in primo piano.</string>
     <string name="apps_window_gave_up">Il sistema tiene %1$s dov\'è</string>
     <string name="apps_window_moving">Spostamento di %1$s qui…</string>
     <string name="apps_window_opening">Apertura di %1$s qui…</string>

@@ -87,6 +87,7 @@
     <string name="apps_window_title">%1$s WINDOW</string>
     <string name="apps_window_maps_docked_beside">Maps is docked beside the dashboard.</string>
     <string name="apps_window_docked">Docked: %1$s (%2$s)</string>
+    <string name="apps_window_tap_to_raise">Window hidden? Tap here to bring it back in front.</string>
     <string name="apps_window_gave_up">The system keeps %1$s where it is</string>
     <string name="apps_window_moving">Moving %1$s here…</string>
     <string name="apps_window_opening">Opening %1$s here…</string>

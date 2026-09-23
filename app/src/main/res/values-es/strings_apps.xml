@@ -88,6 +88,7 @@
     <string name="apps_window_title">VENTANA %1$s</string>
     <string name="apps_window_maps_docked_beside">Maps está anclado junto al panel.</string>
     <string name="apps_window_docked">Anclado: %1$s (%2$s)</string>
+    <string name="apps_window_tap_to_raise">¿Ventana oculta? Toca aquí para traerla al frente.</string>
     <string name="apps_window_gave_up">El sistema mantiene %1$s donde está</string>
     <string name="apps_window_moving">Moviendo %1$s aquí…</string>
     <string name="apps_window_opening">Abriendo %1$s aquí…</string>

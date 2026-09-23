@@ -87,6 +87,7 @@
     <string name="apps_window_title">%1$s-VENSTER</string>
     <string name="apps_window_maps_docked_beside">Maps staat vast naast het dashboard.</string>
     <string name="apps_window_docked">Vastgezet: %1$s (%2$s)</string>
+    <string name="apps_window_tap_to_raise">Venster verborgen? Tik hier om het weer naar voren te halen.</string>
     <string name="apps_window_gave_up">Het systeem houdt %1$s op zijn plek</string>
     <string name="apps_window_moving">%1$s wordt hierheen verplaatst…</string>
     <string name="apps_window_opening">%1$s wordt hier geopend…</string>

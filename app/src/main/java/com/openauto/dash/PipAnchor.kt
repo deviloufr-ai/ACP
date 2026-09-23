@@ -344,15 +344,29 @@ object PipAnchor {
                     checkedAt = now, visible = win.visible, behindDashboard = win.behindDashboard
                 )
                 val place = keep.place
+                var placementFailed = false
                 if (place != null) {
                     val result = runGuarded {
                         if (keep.swipe) DockShell.swipeTo(context, win.bounds!!, place) else DockShell.resize(context, win, place)
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
+                    placementFailed = result.isFailure
                     mem = mem.copy(lastPlacementFailed = result.isFailure)
                     result.onFailure { publishError(context, packageName, it) }
                     if (result.isSuccess) undoStatusBarPolicy(context)
-                    status.value = status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else status.value.error)
+                }
+                if (keep.raise) {
+                    // Arriving on its tile (this page came back, the window was
+                    // parked aside), just settled there, or behind the dashboard:
+                    // raise it. After placing it, so the window raised is one on
+                    // the tile, not a sliver at the edge of the screen.
+                    lastRaiseAt[packageName] = now
+                    Log.i(TAG, "raising $packageName above the dashboard")
+                    if (bringToFront(context, win.taskId)) DockShell.forgetListing()
+                    else lastResult = listOfNotNull(lastResult.takeIf { place != null }, "failed: could not raise ${win.packageName} (task ${win.taskId})").joinToString(" \u00b7 ")
+                }
+                if (place != null || keep.raise) {
+                    status.value = status.value.copy(lastResult = lastResult, error = if (placementFailed) status.value.error else null)
                 }
                 if (keep.raise) {
                     // Arriving on its tile (this page came back, the window was
@@ -379,6 +393,20 @@ object PipAnchor {
 
 
     private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /**
+     * The user tapped a tile its window should be covering: the window is
+     * behind the dashboard, whatever the listing says. Raise it right away.
+     */
+    fun raiseNow(context: Context, packageName: String = MAPS_PACKAGE) {
+        scope.launch {
+            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+            if (win.mode != "freeform") return@launch
+            lastRaiseAt[packageName] = System.currentTimeMillis()
+            Log.i(TAG, "raising $packageName above the dashboard (tapped its tile)")
+            if (bringToFront(context, win.taskId)) DockShell.forgetListing()
+        }
+    }
 
     @Volatile private var overlayGrantTried = false
 

@@ -87,6 +87,7 @@
     <string name="apps_window_title">%1$s-FENSTER</string>
     <string name="apps_window_maps_docked_beside">Maps ist neben dem Dashboard angedockt.</string>
     <string name="apps_window_docked">Angedockt: %1$s (%2$s)</string>
+    <string name="apps_window_tap_to_raise">Fenster verdeckt? Hier tippen, um es wieder nach vorn zu holen.</string>
     <string name="apps_window_gave_up">Das System lässt %1$s, wo es ist</string>
     <string name="apps_window_moving">%1$s wird hierher verschoben…</string>
     <string name="apps_window_opening">%1$s wird hier geöffnet…</string>

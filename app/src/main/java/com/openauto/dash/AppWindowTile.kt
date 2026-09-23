@@ -3,6 +3,7 @@ package com.openauto.dash
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -178,20 +179,26 @@ internal fun PipAnchorCard(
             if (r != target) target = r
         }
     ) {
+        val pkg = status.pipPackage
+        val err = status.error
+        val name = pkg?.substringAfterLast('.')
+        // A status no poll has refreshed lately (the window is parked aside for
+        // a pop-up, or tracking is paused) must not keep claiming "docked".
+        val checkedAgoS = ((rememberNow(1_000L).time - status.checkedAt) / 1000L).coerceAtLeast(0L)
+        val docked = status.docked && checkedAgoS * 1000L <= STALE_STATUS_MS
+        // A docked window covers its tile, so a tap that reaches the tile means
+        // the window is behind the dashboard, whatever the system says: raise it.
+        val hiddenBehind = pkg != null && docked && status.mode == "freeform"
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(enabled = hiddenBehind) { PipAnchor.raiseNow(context, packageName) }
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(stringResource(R.string.apps_window_title, appLabel.uppercase()), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
-            val pkg = status.pipPackage
-            val err = status.error
-            val name = pkg?.substringAfterLast('.')
-            // A status no poll has refreshed lately (the window is parked aside for
-            // a pop-up, or tracking is paused) must not keep claiming "docked".
-            val checkedAgoS = ((rememberNow(1_000L).time - status.checkedAt) / 1000L).coerceAtLeast(0L)
-            val docked = status.docked && checkedAgoS * 1000L <= STALE_STATUS_MS
             Text(
                 text = when {
                     // The mode ("freeform" / "pinned") is the system's own term, shown as is.
@@ -210,6 +217,10 @@ internal fun PipAnchorCard(
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (hiddenBehind) {
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(R.string.apps_window_tap_to_raise), color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+            }
             if (err != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(err, color = DashColors.Warning, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
