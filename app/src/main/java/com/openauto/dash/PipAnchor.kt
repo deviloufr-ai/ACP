@@ -163,8 +163,12 @@ object PipAnchor {
         dockedPackages.value = freeformNow.toSet()
     }
 
-    /** True while one of the bar's drop-down menus is open (they must not open under a docked window). */
-    val menuOpen = MutableStateFlow(false)
+    /**
+     * Screen areas of our own pop-ups (menus, dialogs) on screen right now, by
+     * owner. Docked windows are drawn above them, so a window whose tile
+     * overlaps one steps aside meanwhile; windows elsewhere stay open.
+     */
+    val coveredAreas = MutableStateFlow<Map<Any, ScreenRect>>(emptyMap())
 
     /** runCatching that never swallows coroutine cancellation. */
     private inline fun <T> runGuarded(block: () -> T): Result<T> = try {
@@ -187,6 +191,7 @@ object PipAnchor {
 
     val allowedArea = MutableStateFlow<ScreenRect?>(null)
 
+    /** Every docked window steps aside (the app drawer is open, or a page swipe is under way). */
     val steppedAside = MutableStateFlow(false)
 
     /** Slides [packageName]'s window off the right edge at its current size (a thin strip stays visible). */

@@ -46,6 +46,7 @@ fun DashThemePickerDialog(
     // Previews show the version on screen now, so Auto previews follow the car too.
     val light = appearance.isLight()
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.dash_theme_picker_title), color = DashColors.TextPrimary) },

@@ -262,6 +262,7 @@ private fun SystemWidgetPickerDialog(
 ) {
     val context = LocalContext.current
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dash_choose_widget)) },
         text = {

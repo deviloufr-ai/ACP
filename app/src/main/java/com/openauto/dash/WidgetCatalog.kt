@@ -102,6 +102,7 @@ internal fun WidgetPickerDialog(
     onDismiss: () -> Unit
 ) {
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card.copy(alpha = 1f),
         title = { Text(stringResource(R.string.apps_add_widget), color = DashColors.TextPrimary) },

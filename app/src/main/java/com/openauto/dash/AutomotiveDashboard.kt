@@ -175,15 +175,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // System-app install (root) — unlocks embedding the real Google Maps app.
     var showSystemDialog by remember { mutableStateOf(false) }
 
-    // Docked app windows sit above dialogs on this head unit; have them step
-    // aside while anything modal, or the app drawer, is open, and the moment a
-    // page swipe starts, so they vanish with the swipe instead of after it.
-    val modalOpen = showThemePicker || showAiSettings || showAllApps || showSplitPicker || showSplitEnable ||
-        showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
-        layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
-        launchBarEditor != null || showLanguagePicker
-    val barMenuOpen by PipAnchor.menuOpen.collectAsState()
-    val stepAside = modalOpen || barMenuOpen || pagerState.isScrollInProgress
+    // Docked app windows sit above dialogs and menus on this head unit. Those
+    // report where they are (keepClearOfWindows), so only a window they overlap
+    // steps aside. The app drawer covers every page, and a page swipe must take
+    // the windows along at once, so those send every window aside.
+    val stepAside = showAllApps || pagerState.isScrollInProgress
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
 
     // As soon as the current page changes (mid-swipe), close the windows whose
@@ -724,6 +720,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     layoutNotice?.let { notice ->
         AlertDialog(
+            modifier = Modifier.keepClearOfWindows(),
             onDismissRequest = { layoutNotice = null },
             containerColor = DashColors.Card,
             title = { Text(stringResource(R.string.dash_notice_title), color = DashColors.TextPrimary) },
@@ -782,6 +779,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     if (showAddMenu) {
         AlertDialog(
+            modifier = Modifier.keepClearOfWindows(),
             onDismissRequest = { showAddMenu = false },
             containerColor = DashColors.Card,
             title = { Text(stringResource(R.string.dash_add_to_dashboard), color = DashColors.TextPrimary) },
@@ -883,6 +881,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     if (showSplitEnable) {
         AlertDialog(
+            modifier = Modifier.keepClearOfWindows(),
             onDismissRequest = { showSplitEnable = false },
             containerColor = DashColors.Card,
             title = { Text(stringResource(R.string.dash_enable_split_title), color = DashColors.TextPrimary) },
@@ -934,6 +933,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     if (showSystemDialog) {
         AlertDialog(
+            modifier = Modifier.keepClearOfWindows(),
             onDismissRequest = { if (!systemBusy) showSystemDialog = false },
             containerColor = DashColors.Card,
             title = { Text(stringResource(R.string.dash_system_app_title), color = DashColors.TextPrimary) },

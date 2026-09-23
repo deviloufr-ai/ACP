@@ -35,6 +35,7 @@ fun LanguagePickerDialog(onDismiss: () -> Unit) {
     val selected = remember { AppLanguage.current(context) }
     val system = remember { AppLanguage.systemLocale() }
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.language_title), color = DashColors.TextPrimary) },

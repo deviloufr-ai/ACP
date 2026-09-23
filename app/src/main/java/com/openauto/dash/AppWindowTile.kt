@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +45,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -130,11 +132,17 @@ internal fun PipAnchorCard(
 
     // Re-target after the tile settles: a page swipe or a drag in edit mode
     // moves it many times per second, and each ADB round trip costs real time.
+    // The window steps aside only for a pop-up over this tile (or when every
+    // window must); a menu or dialog elsewhere on screen leaves it open.
     val steppedAside by PipAnchor.steppedAside.collectAsState()
-    LaunchedEffect(target, started, steppedAside) {
+    val covered by PipAnchor.coveredAreas.collectAsState()
+    val blocked = steppedAside || target?.let { t ->
+        covered.values.any { WindowListing.overlaps(it, t, margin = POPUP_MARGIN_PX) }
+    } == true
+    LaunchedEffect(target, started, blocked) {
         val rect = target ?: return@LaunchedEffect
         if (!started) return@LaunchedEffect
-        if (steppedAside) {
+        if (blocked) {
             PipAnchor.parkAside(context, packageName)
             return@LaunchedEffect
         }
@@ -145,7 +153,7 @@ internal fun PipAnchorCard(
     // The skin's frame (a round porthole, a chrome bezel...) over the docked Maps
     // window, only while it actually sits here and the dashboard is on screen.
     WindowFrameOverlay(
-        bounds = status.windowBounds.takeIf { isMaps && started && !steppedAside && status.docked && status.pipPackage != null }
+        bounds = status.windowBounds.takeIf { isMaps && started && !blocked && status.docked && status.pipPackage != null }
     )
 
     Card(
@@ -227,5 +235,31 @@ internal fun PipAnchorCard(
                 ) { Text(if (pkg == null) stringResource(R.string.apps_window_open, appLabel) else stringResource(R.string.apps_window_open_full, appLabel)) }
             }
         }
+    }
+}
+
+/** How close (px) a pop-up may come to a window's tile before the window steps aside; covers its shadow. */
+private const val POPUP_MARGIN_PX = 12
+
+/**
+ * Marks a pop-up (menu, dialog) that docked app windows must not cover: they
+ * are drawn above everything on this head unit. While it is on screen, a
+ * window whose tile it overlaps steps aside; windows elsewhere stay open.
+ * `composed`, so the view it measures against is the pop-up's own window.
+ */
+internal fun Modifier.keepClearOfWindows(): Modifier = composed {
+    val view = LocalView.current
+    val owner = remember { Any() }
+    DisposableEffect(owner) {
+        onDispose { PipAnchor.coveredAreas.update { it - owner } }
+    }
+    onGloballyPositioned { coords ->
+        val b = coords.boundsInRoot()
+        val origin = IntArray(2).also { view.getLocationOnScreen(it) }
+        val r = ScreenRect(
+            (b.left + origin[0]).roundToInt(), (b.top + origin[1]).roundToInt(),
+            (b.right + origin[0]).roundToInt(), (b.bottom + origin[1]).roundToInt()
+        )
+        PipAnchor.coveredAreas.update { if (it[owner] == r) it else it + (owner to r) }
     }
 }

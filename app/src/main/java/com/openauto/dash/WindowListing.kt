@@ -36,6 +36,11 @@ object WindowListing {
         limit == null || (b.top >= limit.top - slack && b.bottom <= limit.bottom + slack &&
             b.left >= limit.left - slack && b.right <= limit.right + slack)
 
+    /** True when [a] and [b] overlap; within [margin] px of each other counts too (a pop-up's shadow). */
+    internal fun overlaps(a: ScreenRect, b: ScreenRect, margin: Int = 0): Boolean =
+        a.left - margin < b.right && b.left - margin < a.right &&
+            a.top - margin < b.bottom && b.top - margin < a.bottom
+
     /**
      * Moves [b] so it fits in [limit] without changing its size. If it is too
      * tall, the bottom edge wins (the bar must stay clear) and the top overflows.

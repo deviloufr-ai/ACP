@@ -1031,6 +1031,7 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
     }
 
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.TextPrimary) },
@@ -1164,6 +1165,7 @@ internal fun DevicePickerDialog(
     onOpenSettings: () -> Unit
 ) {
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.vehicle_select_adapter), color = DashColors.TextPrimary) },

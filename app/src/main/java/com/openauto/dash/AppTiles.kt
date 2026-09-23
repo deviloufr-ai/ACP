@@ -167,6 +167,7 @@ internal fun LaunchBarEditorDialog(
     var showPicker by remember { mutableStateOf(false) }
 
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.apps_launch_bar_editor_title), color = DashColors.TextPrimary) },
@@ -391,6 +392,7 @@ internal fun AppPickerDialog(
     title: String = stringResource(R.string.apps_choose_app)
 ) {
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(title, color = DashColors.TextPrimary) },

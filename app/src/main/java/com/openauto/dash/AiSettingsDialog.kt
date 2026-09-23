@@ -134,6 +134,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
     }
 
     AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = ::close,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.ai_title), color = DashColors.TextPrimary) },

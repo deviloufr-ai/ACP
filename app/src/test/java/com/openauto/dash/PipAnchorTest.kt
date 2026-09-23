@@ -191,4 +191,16 @@ class PipAnchorTest {
         assertEquals(ScreenRect(0, 100, 400, 400), WindowListing.keepInside(ScreenRect(-50, 100, 350, 400), area))
         assertEquals(true, WindowListing.withinArea(ScreenRect(-50, 100, 350, 400), null))
     }
+
+    @Test
+    fun popUpsOverlapATileOnlyWhenTheyTouchIt() {
+        val tile = ScreenRect(8, 80, 540, 630)
+        // The ⋮ menu at the bottom right is far from a Maps tile on the left.
+        assertEquals(false, WindowListing.overlaps(ScreenRect(900, 300, 1270, 660), tile, margin = 12))
+        // A centred dialog reaches into it.
+        assertEquals(true, WindowListing.overlaps(ScreenRect(360, 150, 920, 570), tile, margin = 12))
+        // Just clear of the tile, but within the shadow margin.
+        assertEquals(true, WindowListing.overlaps(ScreenRect(548, 300, 800, 400), tile, margin = 12))
+        assertEquals(false, WindowListing.overlaps(ScreenRect(548, 300, 800, 400), tile))
+    }
 }
