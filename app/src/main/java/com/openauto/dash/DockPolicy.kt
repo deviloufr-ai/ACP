@@ -26,13 +26,18 @@ object DockPolicy {
     /** A window this much larger than its tile is reported as oversize so the tile can grow. */
     const val OVERSIZE_RATIO = 1.08f
 
+    /** Window and tile sizes this close, in pixels, count as the same size. */
+    const val SIZE_SLACK_PX = 8
+
     /** What the loop remembers between polls for one app. */
     data class Memory(
         val hadWindow: Boolean = false,
         val openAttempts: Int = 0,
         val attempts: Int = 0,
         val lastStack: Int? = null,
-        val lastPlacementFailed: Boolean = false
+        val lastPlacementFailed: Boolean = false,
+        /** The tile rectangle the window was last asked to take (tells a stale size from the app's minimum). */
+        val askedFor: ScreenRect? = null
     )
 
     sealed class Step {
@@ -82,14 +87,19 @@ object DockPolicy {
         val b = win.bounds
         val close = b != null && WindowListing.isClose(b, rect)
         val inside = b == null || WindowListing.withinArea(b, limit)
-        val docked = close && inside
+        // A window of another size may just still have an older tile's size (the
+        // tile moved when the status bar came up, or was resized while arranging),
+        // so it is first asked to take the tile's size. Only a window that keeps
+        // its own size after that is at the app's minimum, and is accepted.
+        val sizeSettled = b == null || sameSize(b, rect) || (mem.askedFor == rect && !mem.lastPlacementFailed)
+        val docked = close && inside && sizeSettled
         if (docked) attempts = 0
 
         val raise = win.mode == "freeform" && (!win.visible || win.behindDashboard) && now - lastRaiseAt > RAISE_COOLDOWN_MS
 
         val oversize = b?.takeIf {
-            (it.right - it.left) > (rect.right - rect.left) * OVERSIZE_RATIO ||
-                (it.bottom - it.top) > (rect.bottom - rect.top) * OVERSIZE_RATIO
+            sizeSettled && ((it.right - it.left) > (rect.right - rect.left) * OVERSIZE_RATIO ||
+                (it.bottom - it.top) > (rect.bottom - rect.top) * OVERSIZE_RATIO)
         }?.let { (it.right - it.left) to (it.bottom - it.top) }
 
         var place: ScreenRect? = null
@@ -99,11 +109,18 @@ object DockPolicy {
             // A drag cannot resize and its first touch expands a PiP, so it is
             // only worth trying once the resize commands were refused.
             swipe = attempts >= SWIPE_AFTER_ATTEMPTS && b != null && mem.lastPlacementFailed
-            // The system gave the window its minimum size, larger than the tile:
+            // The system kept the window at its minimum size, larger than the tile:
             // keep that size but move it back inside the dashboard area.
-            place = if (close && !inside && b != null && limit != null) WindowListing.keepInside(b, limit) else rect
+            place = if (close && !inside && sizeSettled && b != null && limit != null) WindowListing.keepInside(b, limit) else rect
         }
         val step = Step.Keep(docked, raise, place, swipe, gaveUp = attempts >= MAX_ATTEMPTS, oversizePx = oversize)
-        return step to mem.copy(hadWindow = true, openAttempts = 0, attempts = attempts, lastStack = win.stackId)
+        return step to mem.copy(
+            hadWindow = true, openAttempts = 0, attempts = attempts, lastStack = win.stackId,
+            askedFor = if (place == rect) rect else mem.askedFor
+        )
     }
+
+    private fun sameSize(a: ScreenRect, b: ScreenRect): Boolean =
+        kotlin.math.abs((a.right - a.left) - (b.right - b.left)) <= SIZE_SLACK_PX &&
+            kotlin.math.abs((a.bottom - a.top) - (b.bottom - b.top)) <= SIZE_SLACK_PX
 }

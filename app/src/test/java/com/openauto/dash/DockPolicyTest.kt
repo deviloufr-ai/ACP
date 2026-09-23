@@ -96,13 +96,72 @@ class DockPolicyTest {
 
     @Test
     fun oversizedWindowIsKeptInsideTheAreaAtItsOwnSize() {
-        // Centred on the tile but taller than it, poking above the area: move down, keep the size, report oversize.
+        // Centred on the tile but taller than it, poking above the area. First it
+        // is asked to take the tile's size; still that big afterwards, it is at the
+        // app's minimum: move it down, keep the size, report oversize.
         val big = window(ScreenRect(400, 50, 900, 450))
-        val (step, _) = DockPolicy.onPresent(DockPolicy.Memory(), big, tile, area, 0, 100_000)
+        val (first, mem) = DockPolicy.onPresent(DockPolicy.Memory(), big, tile, area, 0, 100_000)
+        assertEquals(tile, (first as DockPolicy.Step.Keep).place)
+        assertNull(first.oversizePx)
+        val (step, _) = DockPolicy.onPresent(mem, big, tile, area, 0, 102_500)
         val keep = step as DockPolicy.Step.Keep
         assertEquals(ScreenRect(400, 80, 900, 480), keep.place)
         assertEquals(500 to 400, keep.oversizePx)
         assertFalse(keep.docked)
+    }
+
+    @Test
+    fun windowLeftAtAnOlderTallerTileSizeIsShrunkToTheTile() {
+        // The tile moved down and got shorter when the status bar came up, but the
+        // window kept the old tile's size and now runs past the area's bottom (over
+        // the launcher bar). It must take the tile's size, not be taken for the
+        // app's minimum: no oversize report, or the tile would grow to match.
+        val stale = window(ScreenRect(400, 60, 900, 700))
+        val (step, mem) = DockPolicy.onPresent(DockPolicy.Memory(), stale, tile, area, 0, 100_000)
+        val keep = step as DockPolicy.Step.Keep
+        assertFalse(keep.docked)
+        assertEquals(tile, keep.place)
+        assertNull(keep.oversizePx)
+        assertEquals(tile, mem.askedFor)
+    }
+
+    @Test
+    fun windowOfAnotherSizeInsideTheAreaIsResizedNotAcceptedAsDocked() {
+        // Still within the dashboard area, but taller than the tile (an older size)
+        // or shorter (the tile was enlarged): both are resized to the tile.
+        for (bounds in listOf(ScreenRect(400, 100, 900, 460), ScreenRect(400, 120, 900, 360))) {
+            val (step, _) = DockPolicy.onPresent(DockPolicy.Memory(), window(bounds), tile, area, 0, 100_000)
+            val keep = step as DockPolicy.Step.Keep
+            assertFalse(keep.docked)
+            assertEquals(tile, keep.place)
+            assertNull(keep.oversizePx)
+        }
+    }
+
+    @Test
+    fun theAppsMinimumSizeIsAcceptedOnceTheTileSizeWasAskedFor() {
+        // Asked for the tile's size, the system kept the window taller: that is the
+        // app's minimum. It fits the area, so it counts as docked and the tile grows.
+        val min = window(ScreenRect(400, 100, 900, 460))
+        val asked = DockPolicy.Memory(hadWindow = true, attempts = 1, lastStack = 7, askedFor = tile)
+        val (step, _) = DockPolicy.onPresent(asked, min, tile, area, 0, 100_000)
+        val keep = step as DockPolicy.Step.Keep
+        assertTrue(keep.docked)
+        assertNull(keep.place)
+        assertEquals(500 to 360, keep.oversizePx)
+        // A refused resize proves nothing about the minimum: ask again.
+        val (retry, _) = DockPolicy.onPresent(asked.copy(lastPlacementFailed = true), min, tile, area, 0, 100_000)
+        assertEquals(tile, (retry as DockPolicy.Step.Keep).place)
+    }
+
+    @Test
+    fun aTileThatMovedIsAskedForAgain() {
+        // The size accepted for one tile rectangle says nothing about a new one.
+        val min = window(ScreenRect(400, 100, 900, 460))
+        val asked = DockPolicy.Memory(hadWindow = true, lastStack = 7, askedFor = tile)
+        val moved = ScreenRect(400, 140, 900, 420)
+        val (step, _) = DockPolicy.onPresent(asked, min, moved, area, 0, 100_000)
+        assertEquals(moved, (step as DockPolicy.Step.Keep).place)
     }
 
     @Test
