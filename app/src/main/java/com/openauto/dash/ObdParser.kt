@@ -54,6 +54,15 @@ object ObdParser {
     }
 
     /**
+     * Monitor status (PID 0101): the top bit of A is the engine warning lamp,
+     * the other seven bits the number of stored emission-related codes.
+     */
+    internal fun parseEngineLamp(response: String): EngineLamp? {
+        val a = dataBytes(response, "4101")?.firstOrNull() ?: return null
+        return EngineLamp(on = a and 0x80 != 0, storedCodes = a and 0x7F)
+    }
+
+    /**
      * Decodes a mode-03 reply into DTC strings like "P0133".
      *
      * Each ECU answers with its own message, and the layout depends on the bus:

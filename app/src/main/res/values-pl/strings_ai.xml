@@ -22,6 +22,7 @@
     <string name="ai_test_activated_ok">Aktywowano ✓ Gemini działa ✓ (%1$s).</string>
     <string name="ai_test_failed">Nie udało się: %1$s</string>
     <string name="ai_test_activated_unreachable">Aktywowano ✓ Gemini jeszcze niedostępne: %1$s</string>
+    <string name="ai_test_waiting">Łączenie z Google… %1$d s</string>
     <string name="ai_wrong_code">Nieprawidłowy kod aktywacyjny</string>
     <string name="ai_no_voice">Brak głosu (%1$s) na tym urządzeniu: dodaj go w Ustawieniach Androida → Zamiana tekstu na mowę.</string>
 
@@ -61,5 +62,11 @@
     <string name="ai_error_empty">Gemini zwróciło pustą odpowiedź</string>
     <string name="ai_error_unreadable">odpowiedź Gemini była nieczytelna</string>
     <string name="ai_error_offline">brak połączenia z internetem</string>
+    <string name="ai_error_no_dns">brak internetu: nie znaleziono Google (sprawdź Wi-Fi lub hotspot radia)</string>
+    <string name="ai_error_no_access">Wi-Fi połączone, ale bez internetu (może wymagać logowania lub telefon nie ma danych)</string>
+    <string name="ai_error_timeout">Google nie odpowiedział na czas: połączenie jest zbyt wolne lub bez internetu</string>
+    <string name="ai_error_gemini_busy">AI Google jest teraz przeciążona; spróbuj ponownie za kilka minut</string>
+    <string name="ai_error_tls">odrzucono bezpieczne połączenie: sprawdź datę i godzinę radia</string>
+    <string name="ai_error_connect">nie można połączyć się z Google</string>
     <string name="ai_error_unknown">nieznany błąd</string>
 </resources>

@@ -22,6 +22,7 @@
     <string name="ai_test_activated_ok">Geactiveerd ✓ Gemini werkt ✓ (%1$s).</string>
     <string name="ai_test_failed">Mislukt: %1$s</string>
     <string name="ai_test_activated_unreachable">Geactiveerd ✓ Gemini nog niet bereikbaar: %1$s</string>
+    <string name="ai_test_waiting">Verbinding met Google… %1$d s</string>
     <string name="ai_wrong_code">Onjuiste activeringscode</string>
     <string name="ai_no_voice">Geen stem voor %1$s op dit apparaat: voeg er een toe via Android-instellingen → Tekst-naar-spraak.</string>
 
@@ -59,5 +60,11 @@
     <string name="ai_error_empty">Gemini gaf een leeg antwoord</string>
     <string name="ai_error_unreadable">het antwoord van Gemini was onleesbaar</string>
     <string name="ai_error_offline">geen internetverbinding</string>
+    <string name="ai_error_no_dns">geen internet: Google niet gevonden (controleer de wifi of hotspot van de radio)</string>
+    <string name="ai_error_no_access">wifi verbonden maar zonder internet (inloggen nodig of telefoon zonder data)</string>
+    <string name="ai_error_timeout">Google antwoordde niet op tijd: de verbinding is te traag of heeft geen internet</string>
+    <string name="ai_error_gemini_busy">de AI van Google is nu overbelast; probeer het over een paar minuten opnieuw</string>
+    <string name="ai_error_tls">beveiligde verbinding geweigerd: controleer de datum en tijd van de radio</string>
+    <string name="ai_error_connect">kan geen verbinding maken met Google</string>
     <string name="ai_error_unknown">onbekende fout</string>
 </resources>

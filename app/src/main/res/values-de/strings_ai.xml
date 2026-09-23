@@ -22,6 +22,7 @@
     <string name="ai_test_activated_ok">Aktiviert ✓ Gemini funktioniert ✓ (%1$s).</string>
     <string name="ai_test_failed">Fehlgeschlagen: %1$s</string>
     <string name="ai_test_activated_unreachable">Aktiviert ✓ Gemini noch nicht erreichbar: %1$s</string>
+    <string name="ai_test_waiting">Verbindung zu Google… %1$d s</string>
     <string name="ai_wrong_code">Falscher Aktivierungscode</string>
     <string name="ai_no_voice">Keine Stimme für %1$s auf diesem Gerät: in den Android-Einstellungen → Text-in-Sprache hinzufügen.</string>
 
@@ -59,5 +60,11 @@
     <string name="ai_error_empty">Gemini hat leer geantwortet</string>
     <string name="ai_error_unreadable">Antwort von Gemini war unlesbar</string>
     <string name="ai_error_offline">keine Internetverbindung</string>
+    <string name="ai_error_no_dns">kein Internet: Google nicht gefunden (WLAN oder Hotspot des Radios prüfen)</string>
+    <string name="ai_error_no_access">WLAN verbunden, aber ohne Internet (Anmeldung nötig oder Telefon ohne Daten)</string>
+    <string name="ai_error_timeout">Google hat nicht rechtzeitig geantwortet: Verbindung zu langsam oder ohne Internet</string>
+    <string name="ai_error_gemini_busy">Googles KI ist gerade überlastet; in ein paar Minuten erneut versuchen</string>
+    <string name="ai_error_tls">sichere Verbindung abgelehnt: Datum und Uhrzeit des Radios prüfen</string>
+    <string name="ai_error_connect">Google nicht erreichbar</string>
     <string name="ai_error_unknown">unbekannter Fehler</string>
 </resources>

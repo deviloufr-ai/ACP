@@ -77,6 +77,13 @@ class ObdParserTest {
     }
 
     @Test
+    fun engineLampAndStoredCountComeFromMonitorStatus() {
+        assertEquals(EngineLamp(on = true, storedCodes = 3), ObdParser.parseEngineLamp("41 01 83 07 E5 00"))
+        assertEquals(EngineLamp(on = false, storedCodes = 0), ObdParser.parseEngineLamp("SEARCHING...\r41 01 00 07 E5 00"))
+        assertEquals(null, ObdParser.parseEngineLamp("NO DATA"))
+    }
+
+    @Test
     fun everyAnsweringEcuIsRead() {
         assertEquals(listOf("P0133", "P0700"), ObdParser.parseDtcs("43 01 01 33\r43 01 07 00"))
     }

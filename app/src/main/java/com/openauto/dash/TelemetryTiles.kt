@@ -79,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -649,6 +650,7 @@ internal fun ObdDtcCard(
     val connected = connection == ObdConnectionState.CONNECTED
     val ai by AiMechanic.state.collectAsState()
     val codes = ai.codes
+    val lamp by ObdBluetoothManager.lamp.collectAsState()
     // The AI's advice is written in the mechanic's language; its labels follow it.
     val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
     var busy by remember { mutableStateOf(false) }
@@ -698,6 +700,24 @@ internal fun ObdDtcCard(
                 if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DashColors.Accent)
                 (message ?: if (codes?.isEmpty() == true) DtcMessage(noCodes, failed = false) else null)?.let {
                     Text(it.text, color = if (it.failed) DashColors.Warning else DashColors.Good)
+                    Spacer(Modifier.height(6.dp))
+                }
+                // The engine computer's own count, to check a failed or empty read against.
+                lamp?.let {
+                    Text(
+                        pluralStringResource(
+                            if (it.on) R.plurals.vehicle_engine_lamp_on else R.plurals.vehicle_engine_lamp_off,
+                            it.storedCodes,
+                            it.storedCodes
+                        ),
+                        color = if (it.on) DashColors.Warning else DashColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        stringResource(R.string.vehicle_obd_scope),
+                        color = DashColors.Muted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     Spacer(Modifier.height(6.dp))
                 }
                 if (codes != null && codes.isNotEmpty()) {

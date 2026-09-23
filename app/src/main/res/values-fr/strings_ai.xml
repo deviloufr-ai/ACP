@@ -22,6 +22,7 @@
     <string name="ai_test_activated_ok">Activé ✓ Gemini fonctionne ✓ (%1$s).</string>
     <string name="ai_test_failed">Échec : %1$s</string>
     <string name="ai_test_activated_unreachable">Activé ✓ Gemini pas encore joignable : %1$s</string>
+    <string name="ai_test_waiting">Connexion à Google… %1$d s</string>
     <string name="ai_wrong_code">Code d\'activation incorrect</string>
     <string name="ai_no_voice">Aucune voix en %1$s sur cet appareil : ajoutez-en une dans Paramètres Android → Synthèse vocale.</string>
 
@@ -60,5 +61,11 @@
     <string name="ai_error_empty">Gemini a donné une réponse vide</string>
     <string name="ai_error_unreadable">réponse de Gemini illisible</string>
     <string name="ai_error_offline">pas de connexion Internet</string>
+    <string name="ai_error_no_dns">pas d\'internet : Google est introuvable (vérifiez le Wi-Fi ou le partage de connexion de l\'autoradio)</string>
+    <string name="ai_error_no_access">le Wi-Fi est connecté mais sans internet (connexion à valider, ou téléphone sans données)</string>
+    <string name="ai_error_timeout">Google n\'a pas répondu à temps : connexion trop lente ou sans internet</string>
+    <string name="ai_error_gemini_busy">l\'IA de Google est surchargée en ce moment ; réessayez dans quelques minutes</string>
+    <string name="ai_error_tls">connexion sécurisée refusée : vérifiez la date et l\'heure de l\'autoradio</string>
+    <string name="ai_error_connect">impossible de joindre Google</string>
     <string name="ai_error_unknown">erreur inconnue</string>
 </resources>

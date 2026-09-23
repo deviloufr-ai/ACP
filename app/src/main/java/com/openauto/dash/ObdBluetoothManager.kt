@@ -30,6 +30,9 @@ data class ObdData(
     val voltage: Double = 0.0
 )
 
+/** The engine warning lamp as the engine computer reports it (PID 0101). */
+data class EngineLamp(val on: Boolean, val storedCodes: Int)
+
 /** Connection lifecycle for the ELM327 adapter. */
 enum class ObdConnectionState { DISCONNECTED, CONNECTING, CONNECTED, ERROR }
 
@@ -54,6 +57,9 @@ object ObdBluetoothManager {
     /** Upper bound for a single command's reply read, in milliseconds. */
     private const val READ_TIMEOUT_MS = 2000L
 
+    /** Fault-code requests are slower: several computers may answer, and clones take their time. */
+    private const val DTC_TIMEOUT_MS = 6000L
+
     private const val PREFS = "obd_prefs"
     private const val KEY_MAC = "obd_device_mac"
 
@@ -71,6 +77,10 @@ object ObdBluetoothManager {
 
     private val _connectionState = MutableStateFlow(ObdConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ObdConnectionState> = _connectionState.asStateFlow()
+
+    /** The engine lamp from the last fault-code scan; null until one ran or if the car didn't say. */
+    private val _lamp = MutableStateFlow<EngineLamp?>(null)
+    val lamp: StateFlow<EngineLamp?> = _lamp.asStateFlow()
 
     fun setContext(context: Context) {
         appContext = context.applicationContext
@@ -221,7 +231,11 @@ object ObdBluetoothManager {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
-            val response = sendCommand("03")
+            // What the engine computer itself says: lamp on or off, and how many
+            // codes it holds, so an empty or failed read can be checked against it.
+            _lamp.value = sendCommand("0101")?.let { ObdParser.parseEngineLamp(it) }
+            // A busy adapter can miss the first request; ask twice before giving up.
+            val response = sendCommand("03", DTC_TIMEOUT_MS) ?: sendCommand("03", DTC_TIMEOUT_MS)
                 ?: return@withLock failure(R.string.vehicle_no_response)
             Result.success(ObdParser.parseDtcs(response))
         }
@@ -233,7 +247,7 @@ object ObdBluetoothManager {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
-            val raw = sendCommand("04")
+            val raw = sendCommand("04", DTC_TIMEOUT_MS)
                 ?: return@withLock failure(R.string.vehicle_no_response)
             val r = raw.uppercase().trim()
             if (r.contains("44") || r.contains("OK")) {
@@ -259,19 +273,22 @@ object ObdBluetoothManager {
     /**
      * Writes a command and reads the reply up to the ELM327 '>' prompt.
      *
-     * Reads are bounded by [READ_TIMEOUT_MS]: a silent or misbehaving adapter
+     * Reads are bounded by [timeoutMs]: a silent or misbehaving adapter
      * would otherwise block this IO coroutine indefinitely on [InputStream.read].
      */
-    private fun sendCommand(command: String): String? {
+    private fun sendCommand(command: String, timeoutMs: Long = READ_TIMEOUT_MS): String? {
         val out = outputStream ?: return null
         val input = inputStream ?: return null
         return try {
+            val buffer = ByteArray(1024)
+            // A reply that came in after its command gave up would otherwise be
+            // read as the answer to this one.
+            while (input.available() > 0) input.read(buffer)
             out.write((command + "\r").toByteArray())
             out.flush()
 
             val response = StringBuilder()
-            val buffer = ByteArray(1024)
-            val deadline = System.currentTimeMillis() + READ_TIMEOUT_MS
+            val deadline = System.currentTimeMillis() + timeoutMs
             while (System.currentTimeMillis() < deadline) {
                 if (input.available() > 0) {
                     val read = input.read(buffer)

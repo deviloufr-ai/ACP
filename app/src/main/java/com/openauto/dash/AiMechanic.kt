@@ -15,7 +15,12 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.UnknownHostException
 import java.util.Locale
+import javax.net.ssl.SSLException
 
 /** The engines the 2011 C4 Picasso shipped with; answers are tailored to the one fitted. */
 enum class CarEngine(val label: String, val detail: String) {
@@ -444,13 +449,26 @@ object AiMechanic {
     internal fun describe(context: Context, error: Throwable): String = when (error) {
         is GeminiException -> when (error.status) {
             429 -> context.getString(R.string.ai_error_quota)
+            // Every model refused with "high demand": Google's free tier is overloaded.
+            503 -> context.getString(R.string.ai_error_gemini_busy)
             400, 401, 403 -> error.message ?: context.getString(R.string.ai_error_key_refused)
             // A 2xx that still failed: the answer had no text.
             in 200..299 -> context.getString(R.string.ai_error_empty)
             else -> error.message ?: context.getString(R.string.ai_error_gemini, error.status)
         }
         is UnreadableAnswerException -> context.getString(R.string.ai_error_unreadable)
-        is IOException -> context.getString(R.string.ai_error_offline)
+        is IOException -> context.getString(networkErrorRes(error))
         else -> error.message ?: context.getString(R.string.ai_error_unknown)
+    }
+
+    /** What went wrong on the way to Google, as specific as the exception allows. */
+    internal fun networkErrorRes(error: IOException): Int = when (error) {
+        is NoInternetAccessException -> R.string.ai_error_no_access
+        is UnknownHostException -> R.string.ai_error_no_dns
+        is SSLException -> R.string.ai_error_tls
+        // Covers SocketTimeoutException and a spent time budget alike.
+        is InterruptedIOException -> R.string.ai_error_timeout
+        is ConnectException, is NoRouteToHostException -> R.string.ai_error_connect
+        else -> R.string.ai_error_offline
     }
 }

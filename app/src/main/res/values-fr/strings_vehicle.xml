@@ -68,6 +68,17 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Appareil inconnu</string>
     <string name="vehicle_no_response">Pas de réponse de l\'adaptateur</string>
+    <plurals name="vehicle_engine_lamp_on">
+        <item quantity="one">Voyant moteur ALLUMÉ · le calculateur moteur signale %1$d code</item>
+        <item quantity="many">Voyant moteur ALLUMÉ · le calculateur moteur signale %1$d codes</item>
+        <item quantity="other">Voyant moteur ALLUMÉ · le calculateur moteur signale %1$d codes</item>
+    </plurals>
+    <plurals name="vehicle_engine_lamp_off">
+        <item quantity="one">Voyant moteur éteint · le calculateur moteur signale %1$d code</item>
+        <item quantity="many">Voyant moteur éteint · le calculateur moteur signale %1$d codes</item>
+        <item quantity="other">Voyant moteur éteint · le calculateur moteur signale %1$d codes</item>
+    </plurals>
+    <string name="vehicle_obd_scope">L\'OBD standard ne voit que les défauts moteur et antipollution ; ABS, airbag et carrosserie demandent l\'outil de diagnostic Citroën.</string>
     <string name="vehicle_clear_rejected">L\'adaptateur a répondu « %1$s ». Mettez le contact (moteur arrêté) et réessayez.</string>
 
     <!-- Doors tile -->

@@ -68,6 +68,19 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Nieznane urządzenie</string>
     <string name="vehicle_no_response">Brak odpowiedzi z adaptera</string>
+    <plurals name="vehicle_engine_lamp_on">
+        <item quantity="one">Kontrolka silnika WŁĄCZONA · sterownik silnika zgłasza %1$d kod</item>
+        <item quantity="few">Kontrolka silnika WŁĄCZONA · sterownik silnika zgłasza %1$d kody</item>
+        <item quantity="many">Kontrolka silnika WŁĄCZONA · sterownik silnika zgłasza %1$d kodów</item>
+        <item quantity="other">Kontrolka silnika WŁĄCZONA · sterownik silnika zgłasza %1$d kodu</item>
+    </plurals>
+    <plurals name="vehicle_engine_lamp_off">
+        <item quantity="one">Kontrolka silnika wyłączona · sterownik silnika zgłasza %1$d kod</item>
+        <item quantity="few">Kontrolka silnika wyłączona · sterownik silnika zgłasza %1$d kody</item>
+        <item quantity="many">Kontrolka silnika wyłączona · sterownik silnika zgłasza %1$d kodów</item>
+        <item quantity="other">Kontrolka silnika wyłączona · sterownik silnika zgłasza %1$d kodu</item>
+    </plurals>
+    <string name="vehicle_obd_scope">Standardowe OBD widzi tylko usterki silnika i emisji; ABS, poduszki powietrzne i nadwozie wymagają narzędzia diagnostycznego Citroëna.</string>
     <string name="vehicle_clear_rejected">Adapter odpowiedział „%1$s”. Włącz zapłon (silnik wyłączony) i spróbuj ponownie.</string>
 
     <!-- Doors tile -->

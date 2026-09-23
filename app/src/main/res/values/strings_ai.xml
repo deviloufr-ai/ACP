@@ -22,6 +22,7 @@
     <string name="ai_test_activated_ok">Activated ✓ Gemini works ✓ (%1$s).</string>
     <string name="ai_test_failed">Didn\'t work: %1$s</string>
     <string name="ai_test_activated_unreachable">Activated ✓ Gemini not reachable yet: %1$s</string>
+    <string name="ai_test_waiting">Contacting Google… %1$d s</string>
     <string name="ai_wrong_code">Wrong activation code</string>
     <string name="ai_no_voice">No %1$s voice on this unit: add one in Android Settings → Text-to-speech.</string>
 
@@ -59,5 +60,11 @@
     <string name="ai_error_empty">Gemini gave an empty answer</string>
     <string name="ai_error_unreadable">Gemini\'s answer was unreadable</string>
     <string name="ai_error_offline">no internet connection</string>
+    <string name="ai_error_no_dns">no internet: Google can\'t be found (check the head unit\'s Wi-Fi or hotspot)</string>
+    <string name="ai_error_no_access">the Wi-Fi is connected but has no internet (it may need a login, or the phone has no data)</string>
+    <string name="ai_error_timeout">Google didn\'t answer in time: the connection is too slow or has no internet</string>
+    <string name="ai_error_gemini_busy">Google\'s AI is overloaded right now; try again in a few minutes</string>
+    <string name="ai_error_tls">secure connection refused: check the head unit\'s date and time</string>
+    <string name="ai_error_connect">couldn\'t connect to Google</string>
     <string name="ai_error_unknown">unknown error</string>
 </resources>

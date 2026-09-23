@@ -68,6 +68,15 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Unknown device</string>
     <string name="vehicle_no_response">No response from adapter</string>
+    <plurals name="vehicle_engine_lamp_on">
+        <item quantity="one">Engine lamp ON · the engine computer reports %1$d code</item>
+        <item quantity="other">Engine lamp ON · the engine computer reports %1$d codes</item>
+    </plurals>
+    <plurals name="vehicle_engine_lamp_off">
+        <item quantity="one">Engine lamp off · the engine computer reports %1$d code</item>
+        <item quantity="other">Engine lamp off · the engine computer reports %1$d codes</item>
+    </plurals>
+    <string name="vehicle_obd_scope">Standard OBD only sees engine and emissions faults; ABS, airbag and body warnings need Citroën\'s diagnostic tool.</string>
     <string name="vehicle_clear_rejected">Adapter replied \"%1$s\". Turn ignition ON (engine off) and retry.</string>
 
     <!-- Doors tile -->

@@ -25,7 +25,9 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,9 +43,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.InterruptedIOException
 import java.util.Locale
+
+// The Test button's patience: long enough for a slow link, short enough to read the verdict.
+private const val TEST_BUDGET_MS = 45_000L
 
 /** Gemini key, engine, language and voice for the AI mechanic, with a one-tap test. */
 @Composable
@@ -52,6 +59,15 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var config by remember { mutableStateOf(AiSettings.load(context)) }
     var testing by remember { mutableStateOf(false) }
+    // Seconds spent on the current test, shown so a slow link doesn't look frozen.
+    var waited by remember { mutableIntStateOf(0) }
+    LaunchedEffect(testing) {
+        waited = 0
+        while (testing) {
+            delay(1_000)
+            waited++
+        }
+    }
     // (worked, message) from the last test.
     var result by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var code by remember { mutableStateOf("") }
@@ -69,7 +85,11 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
         testing = true
         result = null
         scope.launch {
-            val reply = GeminiClient.generate(config.apiKey.trim(), "Reply with the single word OK.")
+            // A quick check first tells "no internet" from "Gemini slow", and the
+            // test gives up after a while instead of waiting on a dead link.
+            val online = GeminiClient.reachGoogle()
+            val reply = online.exceptionOrNull()?.let { Result.failure(it) }
+                ?: GeminiClient.generate(config.apiKey.trim(), "Reply with the single word OK.", budgetMs = TEST_BUDGET_MS)
             testing = false
             val language = config.language
             reply.onSuccess {
@@ -82,10 +102,16 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                 // Said in the mechanic's language, whatever the screen's.
                 CarVoice.speak(language.resources(context).getString(R.string.ai_say_ready), language.locale)
             }.onFailure {
+                // Google answered the quick check, so the link is fine: Gemini itself is slow.
+                val why = if (online.isSuccess && it is InterruptedIOException) {
+                    context.getString(R.string.ai_error_gemini_busy)
+                } else {
+                    AiMechanic.describe(context, it)
+                }
                 // An activated key is saved either way; only reaching Gemini failed.
                 result = activated to context.getString(
                     if (activated) R.string.ai_test_activated_unreachable else R.string.ai_test_failed,
-                    AiMechanic.describe(context, it)
+                    why
                 )
             }
         }
@@ -183,7 +209,15 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                         colors = buttonColors()
                     ) { Text(stringResource(R.string.ai_test)) }
                     Spacer(Modifier.size(12.dp))
-                    if (testing) CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(22.dp))
+                    if (testing) {
+                        CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            stringResource(R.string.ai_test_waiting, waited),
+                            color = DashColors.TextSecondary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     result?.let { (ok, message) ->
                         Text(
                             message,

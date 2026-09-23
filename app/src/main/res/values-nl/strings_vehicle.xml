@@ -68,6 +68,15 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Onbekend apparaat</string>
     <string name="vehicle_no_response">Geen antwoord van adapter</string>
+    <plurals name="vehicle_engine_lamp_on">
+        <item quantity="one">Motorstoringslampje AAN · de motorcomputer meldt %1$d code</item>
+        <item quantity="other">Motorstoringslampje AAN · de motorcomputer meldt %1$d codes</item>
+    </plurals>
+    <plurals name="vehicle_engine_lamp_off">
+        <item quantity="one">Motorstoringslampje uit · de motorcomputer meldt %1$d code</item>
+        <item quantity="other">Motorstoringslampje uit · de motorcomputer meldt %1$d codes</item>
+    </plurals>
+    <string name="vehicle_obd_scope">Standaard-OBD ziet alleen motor- en emissiestoringen; ABS, airbag en carrosserie vragen het diagnoseapparaat van Citroën.</string>
     <string name="vehicle_clear_rejected">Adapter antwoordde \"%1$s\". Zet het contact AAN (motor uit) en probeer opnieuw.</string>
 
     <!-- Doors tile -->
