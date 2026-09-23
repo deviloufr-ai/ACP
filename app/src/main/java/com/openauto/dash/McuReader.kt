@@ -106,7 +106,7 @@ object McuReader {
     }
 
     /** Persist the learned range word; decodes from the frame already seen, else the next one. */
-    fun saveRangeMapping(m: RangeMapping) {
+    internal fun saveRangeMapping(m: RangeMapping) {
         rangeMapping = m
         _rangeKm.value = _entries.value.firstOrNull { it.key == m.key }?.let { m.decode(it.bytes) }
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
