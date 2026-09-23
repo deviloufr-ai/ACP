@@ -79,12 +79,43 @@ object DockShell {
 
     suspend fun shell(context: Context, cmd: String): String = withContext(Dispatchers.IO) {
         io.withLock {
-            val chosen = backend ?: (if (SystemInstaller.isRootAvailable()) Backend.SU else Backend.ADB)
-                .also { backend = it; Log.i(TAG, "shell backend: $it") }
-            when (chosen) {
-                Backend.SU -> suShell(cmd)
-                Backend.ADB -> adbShell(context, cmd)
-            }
+            // Any other command may move, raise or close a window.
+            listing = null
+            execute(context, cmd)
+        }
+    }
+
+    /** How long an `am stack list` result stands in for a fresh one when nothing was moved meanwhile. */
+    private const val LISTING_FRESH_MS = 500L
+
+    /** Only from inside [io]'s lock. */
+    private var listing: String? = null
+    private var listingAt = 0L
+
+    /**
+     * `am stack list`. During a page swipe every tile, the pager and the
+     * disposed page each ask for the listing within a few hundred milliseconds;
+     * one round trip serves them all, as long as no command in between could
+     * have changed what the system would answer.
+     */
+    suspend fun listStacks(context: Context): String = withContext(Dispatchers.IO) {
+        io.withLock {
+            val now = android.os.SystemClock.elapsedRealtime()
+            listing?.takeIf { now - listingAt <= LISTING_FRESH_MS }
+                ?: execute(context, "am stack list").also { listing = it; listingAt = now }
+        }
+    }
+
+    /** The windows changed behind the shell's back (a task was raised): the next listing must be fresh. */
+    suspend fun forgetListing() = io.withLock { listing = null }
+
+    /** Only from inside [io]'s lock. */
+    private fun execute(context: Context, cmd: String): String {
+        val chosen = backend ?: (if (SystemInstaller.isRootAvailable()) Backend.SU else Backend.ADB)
+            .also { backend = it; Log.i(TAG, "shell backend: $it") }
+        return when (chosen) {
+            Backend.SU -> suShell(cmd)
+            Backend.ADB -> adbShell(context, cmd)
         }
     }
 

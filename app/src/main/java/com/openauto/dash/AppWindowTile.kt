@@ -99,10 +99,17 @@ internal fun PipAnchorCard(
         onWindowBiggerThanTile?.invoke(w, h)
     }
     // Counted while composed, so the window is never mistaken for a stray while
-    // the tracking loop is between restarts.
+    // the tracking loop is between restarts. Counted down before the window is
+    // hidden, so hide() can see whether another tile of the app still shows it.
     DisposableEffect(packageName) {
         PipAnchor.tileShown(packageName)
-        onDispose { PipAnchor.tileHidden(packageName) }
+        onDispose {
+            PipAnchor.tileHidden(packageName)
+            // A Maps page tile standing down for the dock must not close the very
+            // window the dock is about to take over.
+            val handingOverToDock = isMaps && !isDock && PipAnchor.dockActive.value
+            if (!handingOverToDock) PipAnchor.hide(context, packageName)
+        }
     }
 
     var target by remember { mutableStateOf<ScreenRect?>(null) }
@@ -121,17 +128,9 @@ internal fun PipAnchorCard(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            // A Maps page tile standing down for the dock must not close the very
-            // window the dock is about to take over.
-            val handingOverToDock = isMaps && !isDock && PipAnchor.dockActive.value
-            if (!handingOverToDock) PipAnchor.hide(context, packageName)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Re-target after the tile settles: a page swipe or a drag in edit mode
-    // moves it many times per second, and each ADB round trip costs real time.
     // The window steps aside only for a pop-up over this tile (or when every
     // window must); a menu or dialog elsewhere on screen leaves it open.
     val steppedAside by PipAnchor.steppedAside.collectAsState()
@@ -139,14 +138,26 @@ internal fun PipAnchorCard(
     val blocked = steppedAside || target?.let { t ->
         covered.values.any { WindowListing.overlaps(it, t, margin = POPUP_MARGIN_PX) }
     } == true
+    // Parked once per pop-up or swipe, not once per frame: a page swipe moves
+    // the tile (so its target) every frame, and each park is a shell round trip
+    // that queued up behind the one before, so the window came back seconds
+    // after the swipe had ended.
+    val positioned = target != null
+    LaunchedEffect(positioned, started, blocked) {
+        if (positioned && started && blocked) PipAnchor.parkAside(context, packageName)
+    }
+    // Re-target after the tile settles: a drag in edit mode moves it many times
+    // per second, and each ADB round trip costs real time. A tile that was just
+    // uncovered (a swipe ended on it, a pop-up closed) or has not moved since it
+    // was last tracked is already settled, and is tracked at once.
+    val settle = remember { SettleState() }
     LaunchedEffect(target, started, blocked) {
         val rect = target ?: return@LaunchedEffect
-        if (!started) return@LaunchedEffect
-        if (blocked) {
-            PipAnchor.parkAside(context, packageName)
-            return@LaunchedEffect
-        }
-        delay(350)
+        val settled = settle.wasBlocked || rect == settle.tracked
+        settle.wasBlocked = blocked
+        if (!started || blocked) return@LaunchedEffect
+        if (!settled) delay(SETTLE_MS)
+        settle.tracked = rect
         PipAnchor.track(context, rect, packageName)
     }
 
@@ -250,6 +261,15 @@ internal fun PipAnchorCard(
 
 /** A tile status older than three polls is stale: the window is not being tracked right now. */
 private const val STALE_STATUS_MS = 7_500L
+
+/** How long a tile being dragged must hold still before its window is moved after it. */
+private const val SETTLE_MS = 350L
+
+/** What a tile remembers between re-targets: whether it was covered, and where its window was last sent. */
+private class SettleState {
+    var wasBlocked = false
+    var tracked: ScreenRect? = null
+}
 
 /** How close (px) a pop-up may come to a window's tile before the window steps aside; covers its shadow. */
 private const val POPUP_MARGIN_PX = 12

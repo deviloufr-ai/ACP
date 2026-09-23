@@ -252,12 +252,21 @@ object PipAnchor {
     /** Every docked window steps aside (the app drawer is open, or a page swipe is under way). */
     val steppedAside = MutableStateFlow(false)
 
-    /** Slides [packageName]'s window off the right edge at its current size (a thin strip stays visible). */
+    /** Park requests in flight, one per app: a tile asking again meanwhile has nothing to add. */
+    private val parking = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
+
+    /**
+     * Slides [packageName]'s window off the right edge at its current size (a
+     * thin strip stays visible). One park at a time per app: a second request
+     * while one is under way would only repeat its round trips.
+     */
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
-        scope.launch {
-            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            park(context, win, "stepped aside for a dialog")
-            DockShell.release()
+        parking.compute(packageName) { _, running ->
+            if (running?.isActive == true) running
+            else scope.launch {
+                val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+                park(context, win, "stepped aside for a dialog")
+            }
         }
     }
 
@@ -327,9 +336,8 @@ object PipAnchor {
                     // parked aside), or behind the dashboard: raise it.
                     lastRaiseAt[packageName] = now
                     Log.i(TAG, "raising $packageName above the dashboard")
-                    if (!bringToFront(context, win.taskId)) {
-                        lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
-                    }
+                    if (bringToFront(context, win.taskId)) DockShell.forgetListing()
+                    else lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
                 }
                 if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
@@ -523,7 +531,7 @@ object PipAnchor {
 
     fun stashAllExcept(context: Context, onPage: Set<String>) {
         scope.launch {
-            val listing = runCatching { DockShell.shell(context, "am stack list") }.getOrNull() ?: return@launch
+            val listing = runCatching { DockShell.listStacks(context) }.getOrNull() ?: return@launch
             syncFreeform(listing)
             val mine = managedPackages(context)
             for (win in WindowListing.allFloatingWindows(listing, context.packageName)) {
@@ -531,7 +539,6 @@ object PipAnchor {
                 if (isPlaced(win.packageName)) park(context, win, "page change")
                 else closeWindow(context, win, "tile removed")
             }
-            DockShell.release()
         }
     }
 
@@ -548,9 +555,12 @@ object PipAnchor {
      * reset Maps' guidance and stopped the music), and the tile docks it again
      * when it is back; it is closed only once its app has no tile left.
      * Picture-in-picture, which the system keeps on screen anyway, is parked
-     * small in the bottom-right corner.
+     * small in the bottom-right corner. Nothing is done while another tile of
+     * the same app is on screen (the app on both pages of a swipe): the window
+     * is that tile's now, and must not be parked from under it.
      */
     fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
+        if ((tileCounts[packageName] ?: 0) > 0) return
         scope.launch {
             val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
             if (stack == null) {
@@ -558,7 +568,6 @@ object PipAnchor {
                 parked.remove(packageName)
                 noteFreeform(packageName, false)
                 if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
-                DockShell.release()
                 return@launch
             }
             if (stack.mode == "freeform") {
@@ -572,7 +581,6 @@ object PipAnchor {
                 val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
                 runCatching { DockShell.resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             }
-            DockShell.release()
         }
     }
 
@@ -582,7 +590,7 @@ object PipAnchor {
     private var lastListing: String? = null
 
     private suspend fun findFloatingWindow(context: Context, packageName: String? = null): FloatingWindow? {
-        val listing = DockShell.shell(context, "am stack list")
+        val listing = DockShell.listStacks(context)
         if (listing != lastListing) {
             // Full dump once per change: this is what tells us how the ROM
             // reports its floating windows.
