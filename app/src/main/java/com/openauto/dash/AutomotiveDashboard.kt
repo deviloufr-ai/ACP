@@ -176,15 +176,18 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var showSystemDialog by remember { mutableStateOf(false) }
 
     // Docked app windows sit above dialogs on this head unit; have them step
-    // aside while anything modal, or the app drawer, is open, and the moment a
-    // page swipe starts, so they vanish with the swipe instead of after it.
+    // aside while anything modal, or the app drawer, is open. Page tiles' windows
+    // also leave the moment a page swipe starts, so they vanish with the swipe
+    // instead of after it; the Maps dock beside the pages stays put.
     val modalOpen = showThemePicker || showAiSettings || showAllApps || showSplitPicker || showSplitEnable ||
         showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
         layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
         launchBarEditor != null || showLanguagePicker
     val barMenuOpen by PipAnchor.menuOpen.collectAsState()
-    val stepAside = modalOpen || barMenuOpen || pagerState.isScrollInProgress
+    val stepAside = modalOpen || barMenuOpen
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
+    val swiping = pagerState.isScrollInProgress
+    LaunchedEffect(swiping) { PipAnchor.pageSwiping.value = swiping }
 
     /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
     fun windowApps(items: List<DashboardItem>): Set<String> = items.mapNotNull {

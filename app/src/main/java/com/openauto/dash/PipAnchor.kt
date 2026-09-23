@@ -240,7 +240,11 @@ object PipAnchor {
 
     val allowedArea = MutableStateFlow<ScreenRect?>(null)
 
+    /** True while a dialog, the app drawer or a bar menu is open: every docked window steps aside. */
     val steppedAside = MutableStateFlow(false)
+
+    /** True while the pages are being swiped: page tiles' windows step aside, the Maps dock does not. */
+    val pageSwiping = MutableStateFlow(false)
 
     /** Slides [packageName]'s window off the right edge at its current size (a thin strip stays visible). */
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {

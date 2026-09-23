@@ -130,7 +130,11 @@ internal fun PipAnchorCard(
 
     // Re-target after the tile settles: a page swipe or a drag in edit mode
     // moves it many times per second, and each ADB round trip costs real time.
-    val steppedAside by PipAnchor.steppedAside.collectAsState()
+    // The dock sits beside the pager, not on a page: a page swipe does not move
+    // it, so its window stays docked (that is the point of the Maps layouts).
+    val dialogAside by PipAnchor.steppedAside.collectAsState()
+    val pageSwiping by PipAnchor.pageSwiping.collectAsState()
+    val steppedAside = dialogAside || (pageSwiping && !isDock)
     LaunchedEffect(target, started, steppedAside) {
         val rect = target ?: return@LaunchedEffect
         if (!started) return@LaunchedEffect
