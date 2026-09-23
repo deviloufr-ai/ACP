@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -68,10 +67,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -485,15 +486,28 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // whole dashboard down permanently.
     val dockedApps by PipAnchor.dockedPackages.collectAsState()
     val barForced = dockedApps.isNotEmpty()
-    val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.asPaddingValues().calculateTopPadding()
+    val density = LocalDensity.current
+    val rootView = LocalView.current
+    val statusBarPx = WindowInsets.statusBarsIgnoringVisibility.getTop(density)
+    // Only the part of the bar that really covers the dashboard is reserved.
+    // When the bar comes up, the head unit already shifts the window's content
+    // down below it while still reporting the bar's full height as an inset;
+    // padding by that inset again left an empty strip as tall as the bar
+    // between the bar and the tiles. So the padding is the bar's bottom edge
+    // minus where the content actually starts on the screen, never less than 0.
+    var contentTopPx by remember { mutableIntStateOf(0) }
+    val barOverlapPx = if (barForced) (statusBarPx - contentTopPx).coerceAtLeast(0) else 0
     Column(
         modifier = Modifier
             .fillMaxSize()
             .then(dashBackground())
-            .padding(top = if (barForced) statusBarHeight else 0.dp)
+            .onGloballyPositioned { coords ->
+                val origin = IntArray(2).also { rootView.getLocationOnScreen(it) }
+                contentTopPx = origin[1] + coords.positionInRoot().y.roundToInt()
+            }
+            .padding(top = with(density) { barOverlapPx.toDp() })
     ) {
 
-        val rootView = LocalView.current
         Box(
             modifier = Modifier
                 .weight(1f)
