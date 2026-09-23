@@ -95,7 +95,12 @@ object DockPolicy {
         val docked = close && inside && sizeSettled
         if (docked) attempts = 0
 
-        val raise = win.mode == "freeform" && (!win.visible || win.behindDashboard) && now - lastRaiseAt > RAISE_COOLDOWN_MS
+        // A window arriving on its tile (first seen by this tile, or being brought
+        // back from where it was parked aside) can sit behind the dashboard while
+        // the listing still puts it in front, so it is raised then as well.
+        val arriving = !mem.hadWindow || !docked
+        val raise = win.mode == "freeform" && (arriving || !win.visible || win.behindDashboard) &&
+            now - lastRaiseAt > RAISE_COOLDOWN_MS
 
         val oversize = b?.takeIf {
             sizeSettled && ((it.right - it.left) > (rect.right - rect.left) * OVERSIZE_RATIO ||

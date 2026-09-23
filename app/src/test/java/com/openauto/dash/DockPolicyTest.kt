@@ -49,7 +49,8 @@ class DockPolicyTest {
 
     @Test
     fun dockedWindowNeedsNothing() {
-        val (step, mem) = DockPolicy.onPresent(DockPolicy.Memory(), window(tile), tile, area, lastRaiseAt = 0, now = 100_000)
+        val seen = DockPolicy.Memory(hadWindow = true, lastStack = 7)
+        val (step, mem) = DockPolicy.onPresent(seen, window(tile), tile, area, lastRaiseAt = 0, now = 100_000)
         val keep = step as DockPolicy.Step.Keep
         assertTrue(keep.docked)
         assertNull(keep.place)
@@ -175,5 +176,21 @@ class DockPolicyTest {
         val pip = window(tile, mode = "pinned", behind = true)
         val (step3, _) = DockPolicy.onPresent(DockPolicy.Memory(), pip, tile, area, 0, 100_000)
         assertFalse((step3 as DockPolicy.Step.Keep).raise)
+    }
+
+    @Test
+    fun aWindowArrivingOnItsTileIsRaisedEvenWhenListedInFront() {
+        // After a page change or an app restart the dashboard can be drawn over
+        // the window while the listing still puts the window in front.
+        val (first, _) = DockPolicy.onPresent(DockPolicy.Memory(), window(tile), tile, area, lastRaiseAt = 0, now = 100_000)
+        assertTrue((first as DockPolicy.Step.Keep).raise)
+        // Back from being parked aside at the right edge: raised as it is placed.
+        val seen = DockPolicy.Memory(hadWindow = true, lastStack = 7)
+        val (back, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 0, now = 100_000)
+        assertTrue((back as DockPolicy.Step.Keep).raise)
+        assertEquals(tile, back.place)
+        // But not again and again while the placement settles.
+        val (again, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 100_000, now = 102_500)
+        assertFalse((again as DockPolicy.Step.Keep).raise)
     }
 }

@@ -318,8 +318,8 @@ object PipAnchor {
                 mem = next
                 val keep = step as DockPolicy.Step.Keep
                 if (keep.raise) {
-                    // Behind the dashboard (we came back to this page, or the user
-                    // touched the dashboard before focus was declined): raise it.
+                    // Arriving on its tile (this page came back, the window was
+                    // parked aside), or behind the dashboard: raise it.
                     lastRaiseAt[packageName] = now
                     Log.i(TAG, "raising $packageName above the dashboard")
                     if (!bringToFront(context, win.taskId)) {
