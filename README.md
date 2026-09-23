@@ -62,7 +62,7 @@ D:/android car launcher/
 │       │   ├── UpdateManager.kt                   # GitHub Releases auto-update
 │       │   └── AutoDriveReceiver.kt               # Auto-launch on Bluetooth connect (see Troubleshooting)
 │       └── res/
-│           ├── drawable/                          # Vector icons + adaptive-icon layers
+│           ├── drawable/                          # Adaptive-icon layers
 │           ├── mipmap-anydpi-v26/ic_launcher.xml  # Adaptive launcher icon (+ ic_launcher_round)
 │           ├── values/                            # colors.xml, themes.xml, strings.xml
 │           └── xml/                               # file_paths.xml, split_accessibility_config.xml
