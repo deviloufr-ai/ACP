@@ -68,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
@@ -110,6 +111,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     val variant = variantOf(layout)
     var showThemePicker by remember { mutableStateOf(false) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
     var showAiSettings by remember { mutableStateOf(false) }
     DashColors.Sync(themeMode, appearance)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -179,7 +181,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val modalOpen = showThemePicker || showAiSettings || showAllApps || showSplitPicker || showSplitEnable ||
         showDevicePicker || showAddMenu || showAppPicker || showAppWindowPicker || showWidgetMenu ||
         layoutNotice != null || showPairPrimaryPicker || showPairSecondaryPicker || showSystemDialog ||
-        launchBarEditor != null
+        launchBarEditor != null || showLanguagePicker
     val barMenuOpen by PipAnchor.menuOpen.collectAsState()
     val stepAside = modalOpen || barMenuOpen || pagerState.isScrollInProgress
     LaunchedEffect(stepAside) { PipAnchor.steppedAside.value = stepAside }
@@ -231,7 +233,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val cell = DashboardStore.firstFreeCell(list, item.w, item.h)
             ?: DashboardStore.firstFreeCell(list, item.minW(), item.minH())
         if (cell == null) {
-            layoutNotice = "This dashboard has no space for that tile. Remove, resize, or use another page."
+            layoutNotice = context.getString(R.string.dash_notice_no_space)
             return -1
         }
         val fits = DashboardStore.canPlace(list, null, cell.first, cell.second, item.w, item.h)
@@ -283,7 +285,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val list = pages.getOrNull(page) ?: return
         val resolved = DashboardStore.moveResolving(list, index, x, y)
         if (resolved == null) {
-            layoutNotice = "No room to move the other tiles out of the way. Free some space first."
+            layoutNotice = context.getString(R.string.dash_notice_no_room_to_move)
             return
         }
         mutatePage(page) { resolved }
@@ -298,7 +300,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val cw = w.coerceIn(it.minW(), GRID_COLS - it.x)
         val ch = h.coerceIn(it.minH(), GRID_ROWS - it.y)
         if (!DashboardStore.canPlace(list, index, it.x, it.y, cw, ch)) {
-            layoutNotice = "That size overlaps another tile. Make room before resizing."
+            layoutNotice = context.getString(R.string.dash_notice_resize_overlap)
             return
         }
         mutatePage(page) { l -> l.mapIndexed { i, t -> if (i == index) t.withCell(t.x, t.y, cw, ch) else t } }
@@ -585,7 +587,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 ) {
                     Icon(
                         Icons.Filled.SwapHoriz,
-                        contentDescription = "Swap split apps left/right"
+                        contentDescription = stringResource(R.string.dash_swap_split)
                     )
                 }
             }
@@ -677,7 +679,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onToggleEdit = { editing = !editing },
             onTheme = { showThemePicker = true },
             onAi = { showAiSettings = true },
-            onSystem = { showSystemDialog = true }
+            onSystem = { showSystemDialog = true },
+            onLanguage = { showLanguagePicker = true }
         )
 
         PageDots(
@@ -710,11 +713,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         AlertDialog(
             onDismissRequest = { layoutNotice = null },
             containerColor = DashColors.Card,
-            title = { Text("Layout needs room", color = DashColors.TextPrimary) },
+            title = { Text(stringResource(R.string.dash_notice_title), color = DashColors.TextPrimary) },
             text = { Text(notice, color = DashColors.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = { layoutNotice = null }) {
-                    Text("Got it", color = DashColors.Accent)
+                    Text(stringResource(R.string.dash_got_it), color = DashColors.Accent)
                 }
             }
         )
@@ -722,6 +725,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     if (showAiSettings) {
         AiSettingsDialog(onDismiss = { showAiSettings = false })
+    }
+
+    if (showLanguagePicker) {
+        LanguagePickerDialog(onDismiss = { showLanguagePicker = false })
     }
 
     if (showThemePicker) {
@@ -764,23 +771,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         AlertDialog(
             onDismissRequest = { showAddMenu = false },
             containerColor = DashColors.Card,
-            title = { Text("Add to dashboard", color = DashColors.TextPrimary) },
+            title = { Text(stringResource(R.string.dash_add_to_dashboard), color = DashColors.TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AddChoiceRow(Icons.Filled.Apps, "Add app") {
+                    AddChoiceRow(Icons.Filled.Apps, stringResource(R.string.dash_add_app)) {
                         showAddMenu = false
                         showAppPicker = true
                     }
-                    AddChoiceRow(Icons.Filled.OpenInNew, "Add app window (runs in the tile)") {
+                    AddChoiceRow(Icons.Filled.OpenInNew, stringResource(R.string.dash_add_app_window)) {
                         showAddMenu = false
                         showAppWindowPicker = true
                     }
-                    AddChoiceRow(Icons.Filled.Splitscreen, "Add app pair (split)") {
+                    AddChoiceRow(Icons.Filled.Splitscreen, stringResource(R.string.dash_add_app_pair)) {
                         showAddMenu = false
                         pairPrimaryPackage = null
                         showPairPrimaryPicker = true
                     }
-                    AddChoiceRow(Icons.Filled.Widgets, "Add widget") {
+                    AddChoiceRow(Icons.Filled.Widgets, stringResource(R.string.dash_add_widget)) {
                         showAddMenu = false
                         showWidgetMenu = true
                     }
@@ -789,7 +796,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAddMenu = false }) {
-                    Text("Cancel", color = DashColors.Muted)
+                    Text(stringResource(R.string.dash_cancel), color = DashColors.Muted)
                 }
             }
         )
@@ -820,7 +827,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     if (showSplitPicker) {
         AppPickerDialog(
             apps = apps,
-            title = "Split screen with…",
+            title = stringResource(R.string.dash_split_with),
             onPick = { app ->
                 showSplitPicker = false
                 SplitLauncher.launchSplit(context, app.packageName)
@@ -832,7 +839,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     if (showPairPrimaryPicker) {
         AppPickerDialog(
             apps = apps,
-            title = "Split pair — first app (left)",
+            title = stringResource(R.string.dash_pair_first),
             onPick = { app ->
                 pairPrimaryPackage = app.packageName
                 showPairPrimaryPicker = false
@@ -845,7 +852,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     if (showPairSecondaryPicker) {
         AppPickerDialog(
             apps = apps,
-            title = "Split pair — second app (right)",
+            title = stringResource(R.string.dash_pair_second),
             onPick = { app ->
                 showPairSecondaryPicker = false
                 val primary = pairPrimaryPackage
@@ -865,12 +872,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         AlertDialog(
             onDismissRequest = { showSplitEnable = false },
             containerColor = DashColors.Card,
-            title = { Text("Enable split screen", color = DashColors.TextPrimary) },
+            title = { Text(stringResource(R.string.dash_enable_split_title), color = DashColors.TextPrimary) },
             text = {
                 Text(
-                    "This ROM blocks the usual split-screen APIs, so Dashwheel " +
-                        "uses the system's own split — the same one you get from recents. " +
-                        "Turn on \"Dashwheel\" under Settings → Accessibility once to allow it.",
+                    stringResource(R.string.dash_enable_split_body),
                     color = DashColors.Muted
                 )
             },
@@ -879,12 +884,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     showSplitEnable = false
                     SplitLauncher.openAccessibilitySettings(context)
                 }) {
-                    Text("Open settings", color = DashColors.TextPrimary)
+                    Text(stringResource(R.string.dash_open_settings), color = DashColors.TextPrimary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSplitEnable = false }) {
-                    Text("Cancel", color = DashColors.Muted)
+                    Text(stringResource(R.string.dash_cancel), color = DashColors.Muted)
                 }
             }
         )
@@ -918,24 +923,19 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         AlertDialog(
             onDismissRequest = { if (!systemBusy) showSystemDialog = false },
             containerColor = DashColors.Card,
-            title = { Text("System app (advanced)", color = DashColors.TextPrimary) },
+            title = { Text(stringResource(R.string.dash_system_app_title), color = DashColors.TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Install Dashwheel as a privileged system app so it can embed " +
-                            "the real Google Maps app — with navigation — in the Maps tile, " +
-                            "like OEM car launchers. With Magisk it installs systemlessly (a " +
-                            "Magisk module — works even though /system is full); otherwise it " +
-                            "uses su, or the internal root ADB (:${AdbInstaller.DEFAULT_PORT}). " +
-                            "Reboot afterwards to activate it.",
+                        stringResource(R.string.dash_system_app_body, AdbInstaller.DEFAULT_PORT),
                         color = DashColors.TextSecondary,
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = when {
-                            !rootChecked -> "Checking root…"
-                            rootAvailable -> "Root (su) available ✓ — will use Magisk module if present"
-                            else -> "No su — will try internal root ADB (:${AdbInstaller.DEFAULT_PORT})."
+                            !rootChecked -> stringResource(R.string.dash_root_checking)
+                            rootAvailable -> stringResource(R.string.dash_root_available)
+                            else -> stringResource(R.string.dash_root_missing, AdbInstaller.DEFAULT_PORT)
                         },
                         color = if (rootAvailable) DashColors.Good else DashColors.Muted,
                         style = MaterialTheme.typography.labelLarge
@@ -958,7 +958,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             confirmButton = {
                 if (systemInstalled) {
                     TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { SystemInstaller.rebootDevice(context) } } }) {
-                        Text("Reboot now", color = DashColors.Accent)
+                        Text(stringResource(R.string.dash_reboot_now), color = DashColors.Accent)
                     }
                 } else {
                     TextButton(
@@ -973,20 +973,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                                 systemBusy = false
                                 res.onSuccess {
                                     systemInstalled = true
-                                    systemMessage = "Installed. Reboot to activate embedded Maps."
+                                    systemMessage = context.getString(R.string.dash_system_installed)
                                 }.onFailure {
-                                    systemMessage = "Failed: ${it.message}"
+                                    systemMessage = context.getString(R.string.dash_system_failed, it.message.orEmpty())
                                 }
                             }
                         }
                     ) {
-                        Text("Install as system app", color = DashColors.Accent)
+                        Text(stringResource(R.string.dash_install_system_app), color = DashColors.Accent)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { if (!systemBusy) showSystemDialog = false }) {
-                    Text("Close", color = DashColors.Muted)
+                    Text(stringResource(R.string.dash_close), color = DashColors.Muted)
                 }
             }
         )

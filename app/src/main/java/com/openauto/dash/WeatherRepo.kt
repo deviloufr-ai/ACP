@@ -1,5 +1,8 @@
 package com.openauto.dash
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,25 +24,30 @@ data class Weather(
     val loC: Double,
     val fetchedAt: Long
 ) {
-    /** Plain-language condition for a WMO weather code. */
-    val condition: String
+    /** Plain-language condition for a WMO weather code, as a string resource. */
+    @get:StringRes
+    val conditionRes: Int
         get() = when (code) {
-            0 -> "Clear"
-            1 -> "Mostly clear"
-            2 -> "Partly cloudy"
-            3 -> "Overcast"
-            45, 48 -> "Fog"
-            51, 53, 55 -> "Drizzle"
-            56, 57 -> "Freezing drizzle"
-            61, 63, 65 -> "Rain"
-            66, 67 -> "Freezing rain"
-            71, 73, 75, 77 -> "Snow"
-            80, 81, 82 -> "Showers"
-            85, 86 -> "Snow showers"
-            95 -> "Thunderstorm"
-            96, 99 -> "Hail storm"
-            else -> "Unknown"
+            0 -> R.string.info_wx_clear
+            1 -> R.string.info_wx_mostly_clear
+            2 -> R.string.info_wx_partly_cloudy
+            3 -> R.string.info_wx_overcast
+            45, 48 -> R.string.info_wx_fog
+            51, 53, 55 -> R.string.info_wx_drizzle
+            56, 57 -> R.string.info_wx_freezing_drizzle
+            61, 63, 65 -> R.string.info_wx_rain
+            66, 67 -> R.string.info_wx_freezing_rain
+            71, 73, 75, 77 -> R.string.info_wx_snow
+            80, 81, 82 -> R.string.info_wx_showers
+            85, 86 -> R.string.info_wx_snow_showers
+            95 -> R.string.info_wx_thunderstorm
+            96, 99 -> R.string.info_wx_hail_storm
+            else -> R.string.info_wx_unknown
         }
+
+    /** [conditionRes] in the current UI language (read from composables). */
+    val condition: String
+        @Composable get() = stringResource(conditionRes)
 }
 
 object WeatherRepo {
@@ -98,7 +106,8 @@ object WeatherRepo {
                 _weather.value = it
                 _error.value = null
             }.onFailure {
-                _error.value = it.message ?: "No connection"
+                // Technical detail only; the UI adds the localized "Weather unavailable".
+                _error.value = it.message.orEmpty()
                 // Allow a retry before the normal interval.
                 lastFetch = now - REFRESH_MS + 60_000L
             }

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common buttons and labels -->
+    <string name="dash_cancel">Annulla</string>
+    <string name="dash_done">Fine</string>
+    <string name="dash_close">Chiudi</string>
+    <string name="dash_add">Aggiungi</string>
+    <string name="dash_selected">Selezionato</string>
+    <string name="dash_dismiss">Ignora</string>
+    <string name="dash_got_it">Ho capito</string>
+
+    <!-- Top bar -->
+    <string name="dash_all_apps">Tutte le app</string>
+    <string name="dash_screen_layout">Layout schermo: %1$s</string>
+    <string name="dash_more">Altro</string>
+    <string name="dash_obd_connected">OBD connesso</string>
+    <string name="dash_obd_connecting">Connessione OBD…</string>
+    <string name="dash_obd_error">Errore OBD, tocca per riconnettere</string>
+    <string name="dash_obd_off">OBD spento, tocca per connettere</string>
+    <string name="dash_alert_battery">Batteria %1$.1fV</string>
+    <string name="dash_alert_coolant">Refrigerante %1$d°C</string>
+
+    <!-- Top bar menu -->
+    <string name="dash_menu_edit_dashboards">Modifica cruscotti</string>
+    <string name="dash_menu_done_editing">Fine modifica</string>
+    <string name="dash_menu_theme">Tema</string>
+    <string name="dash_menu_split_screen">Schermo diviso con un\'app</string>
+
+    <!-- Edit bar (arranging a dashboard) -->
+    <string name="dash_arranging_dashboard">Disposizione cruscotto %1$d</string>
+    <string name="dash_arranging_hint">Tieni premuto un riquadro per spostarlo, trascina la maniglia nell\'angolo per ridimensionarlo. Rilasciato su un altro riquadro, li scambia o lo sposta.</string>
+    <string name="dash_undo">Annulla</string>
+    <string name="dash_reset_page">Svuota pagina</string>
+
+    <!-- Update banner -->
+    <string name="dash_update_available">Aggiornamento disponibile – %1$s</string>
+    <string name="dash_update_downloading">Download aggiornamento… %1$d%%</string>
+    <string name="dash_update_installing">Avvio dell\'installazione…</string>
+    <string name="dash_update">Aggiorna</string>
+
+    <!-- Tiles while arranging -->
+    <string name="dash_remove_tile">Rimuovi %1$s</string>
+    <string name="dash_resize_tile">Ridimensiona %1$s</string>
+    <string name="dash_app_window">Finestra %1$s</string>
+    <string name="dash_describe_split_pair">coppia di app</string>
+    <string name="dash_describe_launch_bar">barra di avvio</string>
+    <string name="dash_describe_widget">widget</string>
+    <string name="dash_app_widget">Widget app</string>
+    <string name="dash_shown_while_arranging">Mostrato durante la disposizione</string>
+    <string name="dash_map_needs_gpu">La mappa richiede una GPU reale</string>
+    <string name="dash_car3d_needs_gpu">L\'auto 3D richiede una GPU reale</string>
+    <string name="dash_not_on_emulator">Non disponibile nell\'emulatore</string>
+
+    <!-- Layout notices -->
+    <string name="dash_notice_title">Spazio insufficiente</string>
+    <string name="dash_notice_no_space">Questo cruscotto non ha spazio per quel riquadro. Rimuovi o ridimensiona dei riquadri, oppure usa un\'altra pagina.</string>
+    <string name="dash_notice_no_room_to_move">Non c\'è spazio per spostare gli altri riquadri. Libera prima un po\' di spazio.</string>
+    <string name="dash_notice_resize_overlap">Questa dimensione si sovrappone a un altro riquadro. Fai spazio prima di ridimensionare.</string>
+
+    <!-- Add to dashboard -->
+    <string name="dash_add_to_dashboard">Aggiungi al cruscotto</string>
+    <string name="dash_add_app">Aggiungi app</string>
+    <string name="dash_add_app_window">Aggiungi finestra app (nel riquadro)</string>
+    <string name="dash_add_app_pair">Aggiungi coppia di app (schermo diviso)</string>
+    <string name="dash_add_widget">Aggiungi widget</string>
+
+    <!-- Split screen -->
+    <string name="dash_swap_split">Scambia app sinistra/destra</string>
+    <string name="dash_split_with">Schermo diviso con…</string>
+    <string name="dash_pair_first">Coppia di app – prima app (sinistra)</string>
+    <string name="dash_pair_second">Coppia di app – seconda app (destra)</string>
+    <string name="dash_enable_split_title">Attiva schermo diviso</string>
+    <string name="dash_enable_split_body">Questa ROM blocca le normali API dello schermo diviso, quindi Dashwheel usa quello di sistema, lo stesso delle app recenti. Attiva una volta «Dashwheel» in Impostazioni → Accessibilità per consentirlo.</string>
+    <string name="dash_open_settings">Apri impostazioni</string>
+
+    <!-- System app install (root) -->
+    <string name="dash_system_app_title">App di sistema (avanzato)</string>
+    <string name="dash_system_app_body">Installa Dashwheel come app di sistema privilegiata per incorporare la vera app Google Maps, con navigazione, nel riquadro Maps, come i launcher di serie. Con Magisk si installa in modalità systemless (un modulo Magisk, funziona anche se /system è pieno); altrimenti usa su o l\'ADB root interno (:%1$d). Poi riavvia per attivarla.</string>
+    <string name="dash_root_checking">Verifica root…</string>
+    <string name="dash_root_available">Root (su) disponibile ✓ – userà il modulo Magisk se presente</string>
+    <string name="dash_root_missing">Nessun su – proverà l\'ADB root interno (:%1$d).</string>
+    <string name="dash_install_system_app">Installa come app di sistema</string>
+    <string name="dash_reboot_now">Riavvia ora</string>
+    <string name="dash_system_installed">Installato. Riavvia per attivare Maps integrato.</string>
+    <string name="dash_system_failed">Non riuscito: %1$s</string>
+
+    <!-- System app-widget picker -->
+    <string name="dash_widget_unavailable">Widget non disponibile</string>
+    <string name="dash_choose_widget">Scegli un widget</string>
+    <string name="dash_no_widgets_found">Nessun widget trovato.</string>
+
+    <!-- Theme picker -->
+    <string name="dash_theme_picker_title">Tema del cruscotto</string>
+    <string name="dash_appearance_auto">Auto</string>
+    <string name="dash_appearance_dark">Scuro</string>
+    <string name="dash_appearance_light">Chiaro</string>
+    <string name="dash_appearance_auto_hint">Ogni tema segue la modalità giorno/notte dell\'auto</string>
+    <string name="dash_appearance_dark_hint">Ogni tema usa la sua versione scura</string>
+    <string name="dash_appearance_light_hint">Ogni tema usa la sua versione chiara</string>
+
+    <!-- Theme names and descriptions (the enum names are what gets saved) -->
+    <string name="dash_theme_standard">Standard</string>
+    <string name="dash_theme_standard_desc">Schede semplici con indicatori dal bagliore tenue</string>
+    <string name="dash_theme_original">Originale</string>
+    <string name="dash_theme_original_desc">Il primo aspetto del launcher: schede piatte, doppi indicatori a lancetta</string>
+    <string name="dash_theme_aurora">Vetro Aurora</string>
+    <string name="dash_theme_aurora_desc">Pannelli in vetro, indicatori luminosi, comandi sfumati</string>
+    <string name="dash_theme_neon">Neon</string>
+    <string name="dash_theme_neon_desc">Cockpit futuristico blu e viola</string>
+    <string name="dash_theme_clean">Essenziale</string>
+    <string name="dash_theme_clean_desc">Minimale, ad alto contrasto e facile da leggere</string>
+    <string name="dash_theme_premium_glass">Vetro Premium</string>
+    <string name="dash_theme_premium_glass_desc">Vetro fumé di notte, satinato di giorno</string>
+    <string name="dash_theme_sporty">Sportivo</string>
+    <string name="dash_theme_sporty_desc">Cockpit sportivo rosso</string>
+    <string name="dash_theme_floating">Fluttuante</string>
+    <string name="dash_theme_floating_desc">Senza sfondo dei riquadri: widget e icone poggiano sullo sfondo</string>
+    <string name="dash_theme_orbit">Orbita</string>
+    <string name="dash_theme_orbit_desc">Tutto rotondo: un disco che gira, indicatori ad anello, bolle</string>
+    <string name="dash_theme_cockpit">Cockpit</string>
+    <string name="dash_theme_cockpit_desc">Quadranti analogici cromati e interruttori a levetta su pelle cucita</string>
+    <string name="dash_theme_horizon">Orizzonte</string>
+    <string name="dash_theme_horizon_desc">Niente widget, solo il cielo e la strada davanti</string>
+    <string name="dash_theme_tape_deck">Mangianastri</string>
+    <string name="dash_theme_tape_deck_desc">Autoradio synthwave anni \'80: cassetta, griglia al neon, cifre LED</string>
+
+    <!-- Screen layouts (the enum names are what gets saved) -->
+    <string name="dash_layout_grid">Solo cruscotti</string>
+    <string name="dash_layout_grid_desc">Pagine scorrevoli a tutto schermo</string>
+    <string name="dash_layout_maps_left">Mappa a sinistra</string>
+    <string name="dash_layout_maps_left_desc">Google Maps agganciato a sinistra, pagine scorrevoli a destra</string>
+    <string name="dash_layout_maps_right">Mappa a destra</string>
+    <string name="dash_layout_maps_right_desc">Google Maps agganciato a destra, pagine scorrevoli a sinistra</string>
+</resources>

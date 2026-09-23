@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +59,14 @@ import androidx.compose.ui.unit.sp
  * The "Add widget" catalogue: every built-in tile grouped by category, plus
  * the launch bar and hosted system widgets.
  */
+
+/** Display name of a built-in tile, in the current language. */
+val BuiltinKind.label: String
+    @Composable get() = stringResource(labelRes)
+
+/** One-line description of a built-in tile for the picker, in the current language. */
+val BuiltinKind.blurb: String
+    @Composable get() = stringResource(blurbRes)
 
 internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.NAVMAP -> Icons.Filled.Navigation
@@ -95,7 +104,7 @@ internal fun WidgetPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card.copy(alpha = 1f),
-        title = { Text("Add widget", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.apps_add_widget), color = DashColors.TextPrimary) },
         text = {
             Column(
                 modifier = Modifier
@@ -107,7 +116,7 @@ internal fun WidgetPickerDialog(
                     val kinds = BuiltinKind.entries.filter { it.category == category }
                     if (kinds.isEmpty() && category != WidgetCategory.APPS) return@forEach
                     Text(
-                        category.title,
+                        stringResource(category.titleRes),
                         color = DashColors.Muted,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -124,8 +133,8 @@ internal fun WidgetPickerDialog(
                     }
                     if (category == WidgetCategory.APPS) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ChoiceCell(Icons.Filled.Apps, "App launch bar", "Your favourite apps in a row", Modifier.weight(1f), onPickLaunchBar)
-                            ChoiceCell(Icons.Filled.Widgets, "System widget…", "Any installed app widget", Modifier.weight(1f), onPickSystemWidget)
+                            ChoiceCell(Icons.Filled.Apps, stringResource(R.string.apps_pick_launch_bar), stringResource(R.string.apps_pick_launch_bar_blurb), Modifier.weight(1f), onPickLaunchBar)
+                            ChoiceCell(Icons.Filled.Widgets, stringResource(R.string.apps_pick_system_widget), stringResource(R.string.apps_pick_system_widget_blurb), Modifier.weight(1f), onPickSystemWidget)
                         }
                     }
                 }
@@ -133,7 +142,7 @@ internal fun WidgetPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = DashColors.Muted) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.apps_cancel), color = DashColors.Muted) }
         }
     )
 }

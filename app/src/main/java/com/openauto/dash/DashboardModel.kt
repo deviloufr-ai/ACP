@@ -2,54 +2,56 @@ package com.openauto.dash
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.StringRes
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
-/** Sections of the "Add widget" catalogue. */
-enum class WidgetCategory(val title: String) {
-    DRIVING("DRIVING"),
-    NAVIGATION("NAVIGATION"),
-    VEHICLE("VEHICLE"),
-    INFO("INFO & COMMS"),
-    APPS("MEDIA & APPS")
+/** Sections of the "Add widget" catalogue; [titleRes] is the section heading. */
+enum class WidgetCategory(@StringRes val titleRes: Int) {
+    DRIVING(R.string.apps_category_driving),
+    NAVIGATION(R.string.apps_category_navigation),
+    VEHICLE(R.string.apps_category_vehicle),
+    INFO(R.string.apps_category_info),
+    APPS(R.string.apps_category_apps)
 }
 
 /**
  * The kinds of built-in (app-provided) widgets a dashboard tile can show. These
  * are rendered by our own Compose panels, not by the Android app-widget host.
  * [defaultW] x [defaultH] is the span a fresh tile gets. Names are persisted,
- * so never rename an entry.
+ * so never rename an entry. [labelRes] / [blurbRes] are the picker's display
+ * name and one-line description (read them in Compose as `label` / `blurb`).
  */
 enum class BuiltinKind(
-    val label: String,
+    @StringRes val labelRes: Int,
     val category: WidgetCategory,
-    val blurb: String,
+    @StringRes val blurbRes: Int,
     val defaultW: Int = 5,
     val defaultH: Int = 3
 ) {
-    NAVMAP("Map", WidgetCategory.NAVIGATION, "Free 3D map with search and routing"),
-    NAVIGATION("Directions", WidgetCategory.NAVIGATION, "Next turn from Google Maps / Waze", 4, 3),
-    PIP_ANCHOR("Maps window", WidgetCategory.NAVIGATION, "Docks the floating Maps window here", 4, 3),
-    MEDIA("Music player", WidgetCategory.APPS, "Now playing with controls"),
-    TELEMETRY("Telemetry", WidgetCategory.VEHICLE, "Speed gauge, revs, coolant, load, battery"),
-    OBD_DTC("Fault codes", WidgetCategory.VEHICLE, "Read and clear OBD trouble codes", 3, 2),
-    OBD_ALL("All OBD data", WidgetCategory.VEHICLE, "Every live OBD value"),
-    RANGE("Fuel & range", WidgetCategory.VEHICLE, "Tank level and km to empty", 3, 3),
-    CAR3D("3D car", WidgetCategory.VEHICLE, "Spin the car model", 4, 3),
-    DOORS("Doors", WidgetCategory.VEHICLE, "Door and boot status from the MCU", 3, 2),
-    CAN_MON("CAN monitor", WidgetCategory.VEHICLE, "Raw CAN frames (debug)", 4, 3),
-    SPEED_HUD("Speed", WidgetCategory.DRIVING, "Big digital speed from OBD or GPS", 3, 2),
-    COMPASS("Compass", WidgetCategory.DRIVING, "Heading, altitude and GPS speed", 3, 3),
-    TRIP("Trip computer", WidgetCategory.DRIVING, "Distance, time, average and top speed", 4, 2),
-    GFORCE("G-force", WidgetCategory.DRIVING, "Cornering and braking g", 4, 2),
-    PARKING("Parking spot", WidgetCategory.NAVIGATION, "Save where you parked, walk back to it", 4, 2),
-    CLOCK("Clock", WidgetCategory.INFO, "Time and date, large", 3, 2),
-    WEATHER("Weather", WidgetCategory.INFO, "Conditions at the car (no account needed)", 4, 2),
-    CALENDAR("Agenda", WidgetCategory.INFO, "Your next calendar events", 4, 3),
-    QUICK_DIAL("Quick dial", WidgetCategory.INFO, "Starred contacts, one tap to call", 4, 2),
-    NOTIFICATIONS("Notifications", WidgetCategory.INFO, "Messages and alerts from your apps", 4, 3),
-    AUDIO("Audio", WidgetCategory.APPS, "Volume, mute, sound and Bluetooth settings", 3, 2)
+    NAVMAP(R.string.apps_kind_navmap, WidgetCategory.NAVIGATION, R.string.apps_kind_navmap_blurb),
+    NAVIGATION(R.string.apps_kind_navigation, WidgetCategory.NAVIGATION, R.string.apps_kind_navigation_blurb, 4, 3),
+    PIP_ANCHOR(R.string.apps_kind_pip_anchor, WidgetCategory.NAVIGATION, R.string.apps_kind_pip_anchor_blurb, 4, 3),
+    MEDIA(R.string.apps_kind_media, WidgetCategory.APPS, R.string.apps_kind_media_blurb),
+    TELEMETRY(R.string.apps_kind_telemetry, WidgetCategory.VEHICLE, R.string.apps_kind_telemetry_blurb),
+    OBD_DTC(R.string.apps_kind_obd_dtc, WidgetCategory.VEHICLE, R.string.apps_kind_obd_dtc_blurb, 3, 2),
+    OBD_ALL(R.string.apps_kind_obd_all, WidgetCategory.VEHICLE, R.string.apps_kind_obd_all_blurb),
+    RANGE(R.string.apps_kind_range, WidgetCategory.VEHICLE, R.string.apps_kind_range_blurb, 3, 3),
+    CAR3D(R.string.apps_kind_car3d, WidgetCategory.VEHICLE, R.string.apps_kind_car3d_blurb, 4, 3),
+    DOORS(R.string.apps_kind_doors, WidgetCategory.VEHICLE, R.string.apps_kind_doors_blurb, 3, 2),
+    CAN_MON(R.string.apps_kind_can_mon, WidgetCategory.VEHICLE, R.string.apps_kind_can_mon_blurb, 4, 3),
+    SPEED_HUD(R.string.apps_kind_speed_hud, WidgetCategory.DRIVING, R.string.apps_kind_speed_hud_blurb, 3, 2),
+    COMPASS(R.string.apps_kind_compass, WidgetCategory.DRIVING, R.string.apps_kind_compass_blurb, 3, 3),
+    TRIP(R.string.apps_kind_trip, WidgetCategory.DRIVING, R.string.apps_kind_trip_blurb, 4, 2),
+    GFORCE(R.string.apps_kind_gforce, WidgetCategory.DRIVING, R.string.apps_kind_gforce_blurb, 4, 2),
+    PARKING(R.string.apps_kind_parking, WidgetCategory.NAVIGATION, R.string.apps_kind_parking_blurb, 4, 2),
+    CLOCK(R.string.apps_kind_clock, WidgetCategory.INFO, R.string.apps_kind_clock_blurb, 3, 2),
+    WEATHER(R.string.apps_kind_weather, WidgetCategory.INFO, R.string.apps_kind_weather_blurb, 4, 2),
+    CALENDAR(R.string.apps_kind_calendar, WidgetCategory.INFO, R.string.apps_kind_calendar_blurb, 4, 3),
+    QUICK_DIAL(R.string.apps_kind_quick_dial, WidgetCategory.INFO, R.string.apps_kind_quick_dial_blurb, 4, 2),
+    NOTIFICATIONS(R.string.apps_kind_notifications, WidgetCategory.INFO, R.string.apps_kind_notifications_blurb, 4, 3),
+    AUDIO(R.string.apps_kind_audio, WidgetCategory.APPS, R.string.apps_kind_audio_blurb, 3, 2)
 }
 
 /**

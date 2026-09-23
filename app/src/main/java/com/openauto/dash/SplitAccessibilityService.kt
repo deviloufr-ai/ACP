@@ -42,6 +42,11 @@ import kotlin.math.hypot
  */
 class SplitAccessibilityService : AccessibilityService() {
 
+    // Text built here follows the language picked in the launcher.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLanguage.wrap(base))
+    }
+
     override fun onServiceConnected() {
         instance = this
         Log.d(TAG, "connected")
@@ -180,6 +185,7 @@ class SplitAccessibilityService : AccessibilityService() {
         val size = dp(56)
         val button = TextView(this).apply {
             text = "⇄"
+            contentDescription = this@SplitAccessibilityService.getString(R.string.apps_swap_split_panes)
             textSize = 26f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER

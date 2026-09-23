@@ -2,6 +2,7 @@
 
 package com.openauto.dash
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.SpaceDashboard
@@ -61,6 +63,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -88,7 +91,8 @@ internal class TopBarModel(
     val onToggleEdit: () -> Unit,
     val onTheme: () -> Unit,
     val onAi: () -> Unit,
-    val onSystem: () -> Unit
+    val onSystem: () -> Unit,
+    val onLanguage: () -> Unit
 )
 
 @Composable
@@ -106,11 +110,13 @@ internal fun TopBar(
     onToggleEdit: () -> Unit,
     onTheme: () -> Unit,
     onAi: () -> Unit,
-    onSystem: () -> Unit
+    onSystem: () -> Unit,
+    onLanguage: () -> Unit
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
-        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem
+        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
+        onLanguage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -141,11 +147,11 @@ internal fun StandardTopBar(m: TopBarModel) {
         ) {
             Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = m.onApps) {
-                    Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = DashColors.TextPrimary)
+                    Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.dash_all_apps), tint = DashColors.TextPrimary)
                 }
                 LayoutPicker(m) { open ->
                     IconButton(onClick = open) {
-                        LayoutIcon(m.layout, "Screen layout: ${m.layout.title}", DashColors.TextSecondary)
+                        LayoutIcon(m.layout, stringResource(R.string.dash_screen_layout, m.layout.title), DashColors.TextSecondary)
                     }
                 }
             }
@@ -163,7 +169,7 @@ internal fun StandardTopBar(m: TopBarModel) {
                 ObdDot(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
                     IconButton(onClick = open) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DashColors.TextSecondary)
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.dash_more), tint = DashColors.TextSecondary)
                     }
                 }
             }
@@ -215,12 +221,17 @@ internal fun obdStatusColor(state: ObdConnectionState): Color = when (state) {
     ObdConnectionState.DISCONNECTED -> DashColors.Muted
 }
 
-internal fun obdStatusLabel(state: ObdConnectionState): String = when (state) {
-    ObdConnectionState.CONNECTED -> "OBD connected"
-    ObdConnectionState.CONNECTING -> "OBD connecting"
-    ObdConnectionState.ERROR -> "OBD error, tap to reconnect"
-    ObdConnectionState.DISCONNECTED -> "OBD off, tap to connect"
+@StringRes
+internal fun obdStatusLabelRes(state: ObdConnectionState): Int = when (state) {
+    ObdConnectionState.CONNECTED -> R.string.dash_obd_connected
+    ObdConnectionState.CONNECTING -> R.string.dash_obd_connecting
+    ObdConnectionState.ERROR -> R.string.dash_obd_error
+    ObdConnectionState.DISCONNECTED -> R.string.dash_obd_off
 }
+
+/** Spoken OBD link state; outside composition use [obdStatusLabelRes]. */
+@Composable
+internal fun obdStatusLabel(state: ObdConnectionState): String = stringResource(obdStatusLabelRes(state))
 
 /** OBD link as a coloured dot; tapping it while disconnected connects. */
 @Composable
@@ -261,14 +272,15 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
         anchor { open = true }
         DashMenu(open, onDismiss = { open = false }) {
             DashMenuItem(
-                text = if (m.editing) "Done editing" else "Edit dashboards",
+                text = stringResource(if (m.editing) R.string.dash_menu_done_editing else R.string.dash_menu_edit_dashboards),
                 leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
                 onClick = pick(m.onToggleEdit)
             )
-            DashMenuItem("Theme", leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
-            DashMenuItem("AI mechanic", leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
-            DashMenuItem("Split screen with an app", leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
-            DashMenuItem("System app (advanced)", leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
+            DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
+            DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
+            DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
+            DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
+            DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
             Text(
                 "Dashwheel v${m.versionName}",
@@ -312,7 +324,7 @@ private fun DashMenuItem(
         },
         leadingIcon = leading,
         trailingIcon = if (selected) {
-            { Icon(Icons.Filled.Check, contentDescription = "Selected", tint = DashColors.Accent) }
+            { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.dash_selected), tint = DashColors.Accent) }
         } else null,
         onClick = onClick
     )
@@ -333,10 +345,10 @@ internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) 
     val volts = obdData.voltage
     // 0.0 is "no reading yet", not a flat battery.
     if (volts > 0.0 && volts !in 12.0..15.0) {
-        AlertChip(Icons.Filled.BatteryAlert, "Battery %.1fV".format(volts))
+        AlertChip(Icons.Filled.BatteryAlert, stringResource(R.string.dash_alert_battery, volts))
     }
     if (obdData.coolantTempC >= 105) {
-        AlertChip(Icons.Filled.Thermostat, "Coolant ${obdData.coolantTempC}°C")
+        AlertChip(Icons.Filled.Thermostat, stringResource(R.string.dash_alert_coolant, obdData.coolantTempC))
     }
 }
 
@@ -398,13 +410,13 @@ internal fun EditBar(
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "Arranging dashboard ${page + 1}",
+                stringResource(R.string.dash_arranging_dashboard, page + 1),
                 color = DashColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.labelLarge
             )
             Text(
-                "Long-press a tile to move it, drag the corner handle to resize. Dropping on a tile swaps or nudges it.",
+                stringResource(R.string.dash_arranging_hint),
                 color = DashColors.Muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -414,7 +426,7 @@ internal fun EditBar(
         TextButton(onClick = onAdd) {
             Icon(Icons.Filled.Add, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Add", color = DashColors.TextPrimary)
+            Text(stringResource(R.string.dash_add), color = DashColors.TextPrimary)
         }
         TextButton(onClick = onUndo, enabled = canUndo) {
             Icon(
@@ -422,10 +434,10 @@ internal fun EditBar(
                 tint = if (canUndo) DashColors.TextPrimary else DashColors.Muted, modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(4.dp))
-            Text("Undo", color = if (canUndo) DashColors.TextPrimary else DashColors.Muted)
+            Text(stringResource(R.string.dash_undo), color = if (canUndo) DashColors.TextPrimary else DashColors.Muted)
         }
         TextButton(onClick = onReset) {
-            Text("Reset page", color = DashColors.Warning)
+            Text(stringResource(R.string.dash_reset_page), color = DashColors.Warning)
         }
         Button(
             onClick = onDone,
@@ -435,7 +447,7 @@ internal fun EditBar(
         ) {
             Icon(Icons.Filled.Done, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Done")
+            Text(stringResource(R.string.dash_done))
         }
     }
 }
@@ -500,9 +512,9 @@ internal fun UpdateBanner(
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = when (status) {
-                        is UpdateStatus.Available -> "Update available — ${status.info.versionName}"
-                        is UpdateStatus.Downloading -> "Downloading update… ${status.percent}%"
-                        is UpdateStatus.Installing -> "Starting installer…"
+                        is UpdateStatus.Available -> stringResource(R.string.dash_update_available, status.info.versionName)
+                        is UpdateStatus.Downloading -> stringResource(R.string.dash_update_downloading, status.percent)
+                        is UpdateStatus.Installing -> stringResource(R.string.dash_update_installing)
                         else -> ""
                     },
                     color = DashColors.Background,
@@ -521,12 +533,12 @@ internal fun UpdateBanner(
                             contentColor = DashColors.Accent
                         )
                     ) {
-                        Text("Update")
+                        Text(stringResource(R.string.dash_update))
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Dismiss",
+                            contentDescription = stringResource(R.string.dash_dismiss),
                             tint = DashColors.Background
                         )
                     }

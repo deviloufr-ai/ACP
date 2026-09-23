@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -35,7 +36,7 @@ sealed interface UpdateStatus {
     data class Available(val info: UpdateInfo) : UpdateStatus
     data class Downloading(val percent: Int) : UpdateStatus
     data object Installing : UpdateStatus
-    data class Error(val message: String) : UpdateStatus
+    data class Error(@StringRes val messageRes: Int) : UpdateStatus
 }
 
 /**
@@ -62,7 +63,7 @@ class UpdateManager(private val context: Context) {
         _status.value = UpdateStatus.Checking
         val info = withContext(Dispatchers.IO) { fetchLatestRelease() }
         _status.value = when {
-            info == null -> UpdateStatus.Error("Couldn't check for updates")
+            info == null -> UpdateStatus.Error(R.string.sys_update_check_failed)
             info.buildNumber > currentVersionCode -> UpdateStatus.Available(info)
             else -> UpdateStatus.UpToDate
         }
@@ -146,7 +147,7 @@ class UpdateManager(private val context: Context) {
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.apkUrl))
             .setTitle("Dashwheel ${info.versionName}")
-            .setDescription("Downloading update")
+            .setDescription(context.getString(R.string.sys_update_downloading))
             .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, APK_NAME)
@@ -156,7 +157,7 @@ class UpdateManager(private val context: Context) {
 
         val success = withContext(Dispatchers.IO) { awaitDownload(downloadManager, downloadId) }
         if (!success) {
-            _status.value = UpdateStatus.Error("Download failed")
+            _status.value = UpdateStatus.Error(R.string.sys_update_download_failed)
             return
         }
 

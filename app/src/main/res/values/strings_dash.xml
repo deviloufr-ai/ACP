@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common buttons and labels -->
+    <string name="dash_cancel">Cancel</string>
+    <string name="dash_done">Done</string>
+    <string name="dash_close">Close</string>
+    <string name="dash_add">Add</string>
+    <string name="dash_selected">Selected</string>
+    <string name="dash_dismiss">Dismiss</string>
+    <string name="dash_got_it">Got it</string>
+
+    <!-- Top bar -->
+    <string name="dash_all_apps">All apps</string>
+    <string name="dash_screen_layout">Screen layout: %1$s</string>
+    <string name="dash_more">More</string>
+    <string name="dash_obd_connected">OBD connected</string>
+    <string name="dash_obd_connecting">OBD connecting</string>
+    <string name="dash_obd_error">OBD error, tap to reconnect</string>
+    <string name="dash_obd_off">OBD off, tap to connect</string>
+    <string name="dash_alert_battery">Battery %1$.1fV</string>
+    <string name="dash_alert_coolant">Coolant %1$d°C</string>
+
+    <!-- Top bar menu -->
+    <string name="dash_menu_edit_dashboards">Edit dashboards</string>
+    <string name="dash_menu_done_editing">Done editing</string>
+    <string name="dash_menu_theme">Theme</string>
+    <string name="dash_menu_split_screen">Split screen with an app</string>
+
+    <!-- Edit bar (arranging a dashboard) -->
+    <string name="dash_arranging_dashboard">Arranging dashboard %1$d</string>
+    <string name="dash_arranging_hint">Long-press a tile to move it, drag the corner handle to resize. Dropping on a tile swaps or nudges it.</string>
+    <string name="dash_undo">Undo</string>
+    <string name="dash_reset_page">Reset page</string>
+
+    <!-- Update banner -->
+    <string name="dash_update_available">Update available — %1$s</string>
+    <string name="dash_update_downloading">Downloading update… %1$d%%</string>
+    <string name="dash_update_installing">Starting installer…</string>
+    <string name="dash_update">Update</string>
+
+    <!-- Tiles while arranging -->
+    <string name="dash_remove_tile">Remove %1$s</string>
+    <string name="dash_resize_tile">Resize %1$s</string>
+    <string name="dash_app_window">%1$s window</string>
+    <string name="dash_describe_split_pair">split pair</string>
+    <string name="dash_describe_launch_bar">launch bar</string>
+    <string name="dash_describe_widget">widget</string>
+    <string name="dash_app_widget">App widget</string>
+    <string name="dash_shown_while_arranging">Shown while arranging</string>
+    <string name="dash_map_needs_gpu">Map needs a real GPU</string>
+    <string name="dash_car3d_needs_gpu">3D car needs a real GPU</string>
+    <string name="dash_not_on_emulator">Not available on the emulator</string>
+
+    <!-- Layout notices -->
+    <string name="dash_notice_title">Layout needs room</string>
+    <string name="dash_notice_no_space">This dashboard has no space for that tile. Remove, resize, or use another page.</string>
+    <string name="dash_notice_no_room_to_move">No room to move the other tiles out of the way. Free some space first.</string>
+    <string name="dash_notice_resize_overlap">That size overlaps another tile. Make room before resizing.</string>
+
+    <!-- Add to dashboard -->
+    <string name="dash_add_to_dashboard">Add to dashboard</string>
+    <string name="dash_add_app">Add app</string>
+    <string name="dash_add_app_window">Add app window (runs in the tile)</string>
+    <string name="dash_add_app_pair">Add app pair (split)</string>
+    <string name="dash_add_widget">Add widget</string>
+
+    <!-- Split screen -->
+    <string name="dash_swap_split">Swap split apps left/right</string>
+    <string name="dash_split_with">Split screen with…</string>
+    <string name="dash_pair_first">Split pair — first app (left)</string>
+    <string name="dash_pair_second">Split pair — second app (right)</string>
+    <string name="dash_enable_split_title">Enable split screen</string>
+    <string name="dash_enable_split_body">This ROM blocks the usual split-screen APIs, so Dashwheel uses the system\'s own split — the same one you get from recents. Turn on \"Dashwheel\" under Settings → Accessibility once to allow it.</string>
+    <string name="dash_open_settings">Open settings</string>
+
+    <!-- System app install (root) -->
+    <string name="dash_system_app_title">System app (advanced)</string>
+    <string name="dash_system_app_body">Install Dashwheel as a privileged system app so it can embed the real Google Maps app — with navigation — in the Maps tile, like OEM car launchers. With Magisk it installs systemlessly (a Magisk module — works even though /system is full); otherwise it uses su, or the internal root ADB (:%1$d). Reboot afterwards to activate it.</string>
+    <string name="dash_root_checking">Checking root…</string>
+    <string name="dash_root_available">Root (su) available ✓ — will use Magisk module if present</string>
+    <string name="dash_root_missing">No su — will try internal root ADB (:%1$d).</string>
+    <string name="dash_install_system_app">Install as system app</string>
+    <string name="dash_reboot_now">Reboot now</string>
+    <string name="dash_system_installed">Installed. Reboot to activate embedded Maps.</string>
+    <string name="dash_system_failed">Failed: %1$s</string>
+
+    <!-- System app-widget picker -->
+    <string name="dash_widget_unavailable">Widget unavailable</string>
+    <string name="dash_choose_widget">Choose a widget</string>
+    <string name="dash_no_widgets_found">No widgets found.</string>
+
+    <!-- Theme picker -->
+    <string name="dash_theme_picker_title">Dashboard theme</string>
+    <string name="dash_appearance_auto">Auto</string>
+    <string name="dash_appearance_dark">Dark</string>
+    <string name="dash_appearance_light">Light</string>
+    <string name="dash_appearance_auto_hint">Every theme follows the car\'s day/night mode</string>
+    <string name="dash_appearance_dark_hint">Every theme uses its dark version</string>
+    <string name="dash_appearance_light_hint">Every theme uses its light version</string>
+
+    <!-- Theme names and descriptions (the enum names are what gets saved) -->
+    <string name="dash_theme_standard">Standard</string>
+    <string name="dash_theme_standard_desc">Simple cards with softly glowing gauges</string>
+    <string name="dash_theme_original">Original</string>
+    <string name="dash_theme_original_desc">The first launcher look: flat cards, twin needle gauges</string>
+    <string name="dash_theme_aurora">Aurora Glass</string>
+    <string name="dash_theme_aurora_desc">Glass panels, glowing gauges, gradient controls</string>
+    <string name="dash_theme_neon">Neon</string>
+    <string name="dash_theme_neon_desc">Blue + violet futuristic cockpit</string>
+    <string name="dash_theme_clean">Clean</string>
+    <string name="dash_theme_clean_desc">Minimal, high contrast and easy to read</string>
+    <string name="dash_theme_premium_glass">Premium Glass</string>
+    <string name="dash_theme_premium_glass_desc">Smoked glass by night, frosted glass by day</string>
+    <string name="dash_theme_sporty">Sporty</string>
+    <string name="dash_theme_sporty_desc">Red performance cockpit</string>
+    <string name="dash_theme_floating">Floating</string>
+    <string name="dash_theme_floating_desc">No tile backgrounds: widgets and icons sit on the backdrop</string>
+    <string name="dash_theme_orbit">Orbit</string>
+    <string name="dash_theme_orbit_desc">Everything round: a spinning record, ring gauges, bubbles</string>
+    <string name="dash_theme_cockpit">Cockpit</string>
+    <string name="dash_theme_cockpit_desc">Chrome-ringed analog dials and toggle switches on stitched leather</string>
+    <string name="dash_theme_horizon">Horizon</string>
+    <string name="dash_theme_horizon_desc">No widgets, just the sky and the road ahead</string>
+    <string name="dash_theme_tape_deck">Tape Deck</string>
+    <string name="dash_theme_tape_deck_desc">80s synthwave head unit: cassette, neon grid, LED digits</string>
+
+    <!-- Screen layouts (the enum names are what gets saved) -->
+    <string name="dash_layout_grid">Dashboards only</string>
+    <string name="dash_layout_grid_desc">Swipeable pages fill the screen</string>
+    <string name="dash_layout_maps_left">Map on the left</string>
+    <string name="dash_layout_maps_left_desc">Google Maps docked on the left half, pages swipe on the right</string>
+    <string name="dash_layout_maps_right">Map on the right</string>
+    <string name="dash_layout_maps_right_desc">Google Maps docked on the right half, pages swipe on the left</string>
+</resources>

@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -99,7 +100,7 @@ internal fun DirectionsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "DIRECTIONS",
+                    stringResource(R.string.info_directions_title),
                     color = DashColors.Accent,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
@@ -117,7 +118,7 @@ internal fun DirectionsCard(
                         text = when {
                             nav.active && nav.packageName == "com.waze" -> "Waze"
                             nav.active -> "Google Maps"
-                            else -> "No route"
+                            else -> stringResource(R.string.info_directions_no_route)
                         },
                         color = if (nav.active) DashColors.Good else DashColors.Muted,
                         style = MaterialTheme.typography.labelSmall
@@ -128,16 +129,16 @@ internal fun DirectionsCard(
             when {
                 !hasAccess -> DirectionsEmpty(
                     icon = Icons.Filled.Directions,
-                    title = "Notification access needed",
-                    hint = "Directions come from Google Maps' navigation notification.",
-                    action = "Grant access",
+                    title = stringResource(R.string.info_directions_access_title),
+                    hint = stringResource(R.string.info_directions_access_hint),
+                    action = stringResource(R.string.info_grant_access),
                     onAction = { CarMediaController.openNotificationAccessSettings(context) }
                 )
                 !nav.active -> DirectionsEmpty(
                     icon = Icons.Filled.Navigation,
-                    title = "No active route",
-                    hint = "Start navigation in Google Maps or Waze and the next turn shows here.",
-                    action = "Open Google Maps",
+                    title = stringResource(R.string.info_directions_idle_title),
+                    hint = stringResource(R.string.info_directions_idle_hint),
+                    action = stringResource(R.string.info_directions_open_maps),
                     onAction = { openNavigationApp(context, nav) }
                 )
                 else -> {

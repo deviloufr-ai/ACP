@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add-widget catalogue: section headings -->
+    <string name="apps_category_driving">DRIVING</string>
+    <string name="apps_category_navigation">NAVIGATION</string>
+    <string name="apps_category_vehicle">VEHICLE</string>
+    <string name="apps_category_info">INFO &amp; COMMS</string>
+    <string name="apps_category_apps">MEDIA &amp; APPS</string>
+
+    <!-- Add-widget catalogue: built-in tiles (name, then one-line description) -->
+    <string name="apps_kind_navmap">Map</string>
+    <string name="apps_kind_navmap_blurb">Free 3D map with search and routing</string>
+    <string name="apps_kind_navigation">Directions</string>
+    <string name="apps_kind_navigation_blurb">Next turn from Google Maps / Waze</string>
+    <string name="apps_kind_pip_anchor">Maps window</string>
+    <string name="apps_kind_pip_anchor_blurb">Docks the floating Maps window here</string>
+    <string name="apps_kind_media">Music player</string>
+    <string name="apps_kind_media_blurb">Now playing with controls</string>
+    <string name="apps_kind_telemetry">Telemetry</string>
+    <string name="apps_kind_telemetry_blurb">Speed gauge, revs, coolant, load, battery</string>
+    <string name="apps_kind_obd_dtc">Fault codes</string>
+    <string name="apps_kind_obd_dtc_blurb">Read and clear OBD trouble codes</string>
+    <string name="apps_kind_obd_all">All OBD data</string>
+    <string name="apps_kind_obd_all_blurb">Every live OBD value</string>
+    <string name="apps_kind_range">Fuel &amp; range</string>
+    <string name="apps_kind_range_blurb">Tank level and km to empty</string>
+    <string name="apps_kind_car3d">3D car</string>
+    <string name="apps_kind_car3d_blurb">Spin the car model</string>
+    <string name="apps_kind_doors">Doors</string>
+    <string name="apps_kind_doors_blurb">Door and boot status from the MCU</string>
+    <string name="apps_kind_can_mon">CAN monitor</string>
+    <string name="apps_kind_can_mon_blurb">Raw CAN frames (debug)</string>
+    <string name="apps_kind_speed_hud">Speed</string>
+    <string name="apps_kind_speed_hud_blurb">Big digital speed from OBD or GPS</string>
+    <string name="apps_kind_compass">Compass</string>
+    <string name="apps_kind_compass_blurb">Heading, altitude and GPS speed</string>
+    <string name="apps_kind_trip">Trip computer</string>
+    <string name="apps_kind_trip_blurb">Distance, time, average and top speed</string>
+    <string name="apps_kind_gforce">G-force</string>
+    <string name="apps_kind_gforce_blurb">Cornering and braking g</string>
+    <string name="apps_kind_parking">Parking spot</string>
+    <string name="apps_kind_parking_blurb">Save where you parked, walk back to it</string>
+    <string name="apps_kind_clock">Clock</string>
+    <string name="apps_kind_clock_blurb">Time and date, large</string>
+    <string name="apps_kind_weather">Weather</string>
+    <string name="apps_kind_weather_blurb">Conditions at the car (no account needed)</string>
+    <string name="apps_kind_calendar">Agenda</string>
+    <string name="apps_kind_calendar_blurb">Your next calendar events</string>
+    <string name="apps_kind_quick_dial">Quick dial</string>
+    <string name="apps_kind_quick_dial_blurb">Starred contacts, one tap to call</string>
+    <string name="apps_kind_notifications">Notifications</string>
+    <string name="apps_kind_notifications_blurb">Messages and alerts from your apps</string>
+    <string name="apps_kind_audio">Audio</string>
+    <string name="apps_kind_audio_blurb">Volume, mute, sound and Bluetooth settings</string>
+
+    <!-- Add-widget catalogue: dialog -->
+    <string name="apps_add_widget">Add widget</string>
+    <string name="apps_pick_launch_bar">App launch bar</string>
+    <string name="apps_pick_launch_bar_blurb">Your favourite apps in a row</string>
+    <string name="apps_pick_system_widget">System widget…</string>
+    <string name="apps_pick_system_widget_blurb">Any installed app widget</string>
+    <string name="apps_cancel">Cancel</string>
+    <string name="apps_save">Save</string>
+
+    <!-- Launch bar tile and its editor -->
+    <string name="apps_launch_bar_empty">Launch bar — tap the pencil to add apps</string>
+    <string name="apps_launch_bar_edit">Edit launch bar</string>
+    <string name="apps_launch_bar_editor_title">Launch bar apps</string>
+    <string name="apps_launch_bar_editor_empty">No apps yet. Add the ones you launch most.</string>
+    <string name="apps_move_left">Move left</string>
+    <string name="apps_move_right">Move right</string>
+    <string name="apps_remove">Remove</string>
+    <string name="apps_add_app">Add app</string>
+    <plurals name="apps_launch_bar_full">
+        <item quantity="one">Bar is full (%1$d app)</item>
+        <item quantity="other">Bar is full (%1$d apps)</item>
+    </plurals>
+    <string name="apps_launch_bar_add_title">Add to launch bar</string>
+
+    <!-- App picker and all-apps drawer -->
+    <string name="apps_choose_app">Choose an app</string>
+    <string name="apps_all_apps">All apps</string>
+    <string name="apps_close_drawer">Close app drawer</string>
+    <string name="apps_no_apps_found">No apps found</string>
+
+    <!-- Docked app window tile (%1$s is the app name; the tile title is ALL CAPS) -->
+    <string name="apps_window_title">%1$s WINDOW</string>
+    <string name="apps_window_maps_docked_beside">Maps is docked beside the dashboard.</string>
+    <string name="apps_window_docked">Docked: %1$s (%2$s)</string>
+    <string name="apps_window_gave_up">The system keeps %1$s where it is</string>
+    <string name="apps_window_moving">Moving %1$s here…</string>
+    <string name="apps_window_opening">Opening %1$s here…</string>
+    <string name="apps_window_maps_hint">Google Maps docks here.\nOpen it below, or start guidance and press Home.</string>
+    <string name="apps_window_app_hint">%1$s runs here, in a window the size of this tile.</string>
+    <string name="apps_window_open">Open %1$s here</string>
+    <string name="apps_window_open_full">Open full %1$s here</string>
+    <string name="apps_window_error_gave_up">Couldn\'t keep it open as a window</string>
+    <string name="apps_window_error_no_shell">No root (Magisk) and the ADB socket on port %1$d isn\'t listening</string>
+
+    <!-- Docked app window tile: diagnostics (%1$s / %2$s are pixel rectangles or system output) -->
+    <string name="apps_window_diag_position">Window %1$s → target %2$s</string>
+    <string name="apps_window_diag_last">Last: %1$s</string>
+    <string name="apps_window_diag_seen">Windows: %1$s</string>
+
+    <!-- Floating split-screen swap button (accessibility label) -->
+    <string name="apps_swap_split_panes">Swap split-screen apps</string>
+</resources>

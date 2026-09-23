@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
@@ -11,6 +12,11 @@ import android.service.notification.StatusBarNotification
  * navigating, which feeds [NavDirections] for the dashboard's Directions tile.
  */
 class MediaNotificationListenerService : NotificationListenerService() {
+
+    // Text built here follows the language picked in the launcher.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLanguage.wrap(base))
+    }
 
     override fun onListenerConnected() {
         // Pick up a navigation already in progress when the listener binds.

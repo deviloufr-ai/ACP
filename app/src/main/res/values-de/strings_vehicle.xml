@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OBD tiles: shared -->
+    <string name="vehicle_obd_not_connected">OBD nicht verbunden</string>
+    <string name="vehicle_connect">Verbinden</string>
+    <string name="vehicle_speed">Tempo</string>
+    <string name="vehicle_rpm">U/min</string>
+    <string name="vehicle_coolant">Kühlmittel</string>
+    <string name="vehicle_battery">Batterie</string>
+    <string name="vehicle_fuel">Kraftstoff</string>
+    <string name="vehicle_close">Schließen</string>
+    <string name="vehicle_cancel">Abbrechen</string>
+    <string name="vehicle_reset">Zurücksetzen</string>
+    <string name="vehicle_capture_a">Aufnahme A</string>
+    <string name="vehicle_capture_b">Aufnahme B</string>
+
+    <!-- Telemetry tile -->
+    <string name="vehicle_telemetry_title">TELEMETRIE</string>
+    <string name="vehicle_live">Live</string>
+    <string name="vehicle_speed_caps">TEMPO</string>
+    <string name="vehicle_rpm_caps">U/MIN</string>
+    <string name="vehicle_load">Last</string>
+
+    <!-- Fault codes tile -->
+    <string name="vehicle_fault_codes_title">FEHLERCODES</string>
+    <string name="vehicle_scan">Auslesen</string>
+    <string name="vehicle_clear">Löschen</string>
+
+    <!-- OBD data tile -->
+    <string name="vehicle_obd_data_title">OBD-DATEN</string>
+    <string name="vehicle_intake_air">Ansaugluft</string>
+    <string name="vehicle_throttle">Drosselklappe</string>
+    <string name="vehicle_engine_load">Motorlast</string>
+    <string name="vehicle_fuel_level">Kraftstoffstand</string>
+
+    <!-- Fuel & range tile -->
+    <string name="vehicle_fuel_range_title">KRAFTSTOFF &amp; REICHWEITE</string>
+    <string name="vehicle_via_canbox">über CANbox</string>
+    <string name="vehicle_via_obd">über OBD</string>
+    <string name="vehicle_fuel_no_obd">Das OBD dieses Autos meldet keinen Kraftstoffstand. Stattdessen von der CANbox lernen — Root erforderlich.</string>
+    <string name="vehicle_find_fuel_signal">Kraftstoffsignal suchen</string>
+    <string name="vehicle_try_obd_fuel_pid">OBD-Kraftstoff-PID testen</string>
+    <string name="vehicle_km_to_empty">KM BIS LEER</string>
+    <string name="vehicle_range_approx">≈ Reichweite</string>
+    <string name="vehicle_in_tank">Im Tank</string>
+    <string name="vehicle_avg_use">Ø Verbrauch</string>
+    <string name="vehicle_learn_fuel">Kraftstoff von CANbox lernen</string>
+    <string name="vehicle_recalibrate_fuel">Kraftstoff neu kalibrieren</string>
+
+    <!-- Fuel signal finder dialog -->
+    <string name="vehicle_finder_help">Den Stand der Tankanzeige einstellen, Aufnahme A tippen — dann schließen und das Auto normal nutzen. Tage später, wenn die Anzeige etwas gesunken ist, erneut öffnen, den neuen Wert einstellen und Aufnahme B tippen. Aufnahme A bleibt nach Neustarts gespeichert. Nur Bytes, die sich mit dem Kraftstoff bewegt haben, werden angeboten.</string>
+    <string name="vehicle_dash_reads">Anzeige zeigt</string>
+    <string name="vehicle_waiting_canbox">Warte auf CANbox-Daten… (Root nötig)</string>
+    <string name="vehicle_finder_step_a">Angezeigten Kraftstoffstand einstellen, dann Aufnahme A tippen.</string>
+    <string name="vehicle_finder_step_b">A bei %1$d%% erfasst (gespeichert). Schließen und normal fahren — wiederkommen, wenn die Anzeige um ein paar %% gesunken ist, neuen Wert einstellen, dann Aufnahme B.</string>
+    <string name="vehicle_finder_same">A und B haben denselben Stand. Aufnahme B bei anderem Kraftstoffstand machen.</string>
+    <string name="vehicle_finder_none">Kein Byte ist der Änderung gefolgt. B nach größerem Abfall neu aufnehmen.</string>
+    <string name="vehicle_finder_candidates">Bytes, die dem Kraftstoff folgten</string>
+    <string name="vehicle_finder_frame">Frame %1$s · Byte %2$d</string>
+    <string name="vehicle_finder_raw">%1$d → %2$d · voll≈%3$d</string>
+    <string name="vehicle_forget_current">Aktuelles vergessen</string>
+
+    <!-- OBD adapter picker -->
+    <string name="vehicle_select_adapter">OBD-Adapter wählen</string>
+    <string name="vehicle_no_paired">Keine gekoppelten Bluetooth-Geräte. Zuerst den OBD-Adapter in den Bluetooth-Einstellungen koppeln.</string>
+    <string name="vehicle_bt_settings">Bluetooth-Einstellungen</string>
+
+    <!-- OBD adapter status messages -->
+    <string name="vehicle_unknown_device">Unbekanntes Gerät</string>
+    <string name="vehicle_no_response">Keine Antwort vom Adapter</string>
+    <string name="vehicle_clear_rejected">Adapter antwortete „%1$s“. Zündung EIN (Motor aus) und erneut versuchen.</string>
+
+    <!-- Doors tile -->
+    <string name="vehicle_doors_title">TÜREN</string>
+    <string name="vehicle_waiting_mcu">Warte auf MCU-Daten… (Root nötig)</string>
+    <string name="vehicle_door_front_left">Vorne links</string>
+    <string name="vehicle_door_front_right">Vorne rechts</string>
+    <string name="vehicle_door_rear_left">Hinten links</string>
+    <string name="vehicle_door_rear_right">Hinten rechts</string>
+    <string name="vehicle_door_tailgate">Heckklappe</string>
+    <string name="vehicle_door_bonnet">Motorhaube</string>
+    <string name="vehicle_door_any_open">Eine Tür ist offen</string>
+    <string name="vehicle_doors_all_closed">Alles geschlossen</string>
+    <string name="vehicle_door_open_caps">OFFEN</string>
+    <string name="vehicle_door_closed">geschlossen</string>
+
+    <!-- CAN monitor (debug tile) -->
+    <string name="vehicle_can_monitor_title">CAN-MONITOR — Signal finden</string>
+    <string name="vehicle_can_monitor_help">Türen ZU → Aufnahme A. Dann Tür ÖFFNEN → Aufnahme B. Nur abweichende diskrete Signale werden angezeigt.</string>
+    <string name="vehicle_can_a_closed">A ✓ zu</string>
+    <string name="vehicle_can_b_open">B ✓ offen</string>
+    <string name="vehicle_can_prompt">Aufnahme A (zu), dann B (offen) zum Vergleichen.</string>
+    <string name="vehicle_can_no_diff">Kein klarer diskreter Unterschied. Mit Motor AUS wiederholen, damit die Sensoren nicht driften, und die Tür während Aufnahme B offen lassen.</string>
+    <string name="vehicle_can_row_closed">zu: %1$s</string>
+    <string name="vehicle_can_row_open">offen: %1$s</string>
+
+    <!-- Fault code (DTC) descriptions: title + what to check -->
+    <string name="vehicle_dtc_p0300_title">Zufällige/mehrfache Fehlzündungen</string>
+    <string name="vehicle_dtc_p0300_fix">Zündkerzen und Zündspulen prüfen (THP: Spulen sind eine bekannte Schwachstelle), Einspritzdüsen und auf Falschluft prüfen. Kerzen/Spulen im Satz tauschen.</string>
+    <string name="vehicle_dtc_p0301_title">Fehlzündung Zylinder 1</string>
+    <string name="vehicle_dtc_p0301_fix">Spule/Kerze von Zyl. 1 mit anderem Zyl. tauschen; wandert die Fehlzündung mit, diese Spule/Kerze ersetzen. Auch Einspritzdüse 1 prüfen.</string>
+    <string name="vehicle_dtc_p0302_title">Fehlzündung Zylinder 2</string>
+    <string name="vehicle_dtc_p0302_fix">Spule/Kerze zum Eingrenzen tauschen; Einspritzdüse 2 und Kompression prüfen.</string>
+    <string name="vehicle_dtc_p0303_title">Fehlzündung Zylinder 3</string>
+    <string name="vehicle_dtc_p0303_fix">Spule/Kerze zum Eingrenzen tauschen; Einspritzdüse 3 und Kompression prüfen.</string>
+    <string name="vehicle_dtc_p0304_title">Fehlzündung Zylinder 4</string>
+    <string name="vehicle_dtc_p0304_fix">Spule/Kerze zum Eingrenzen tauschen; Einspritzdüse 4 und Kompression prüfen.</string>
+    <string name="vehicle_dtc_p0016_title">Korrelation Kurbelwelle/Nockenwelle (Bank 1 Sensor A)</string>
+    <string name="vehicle_dtc_p0016_fix">Typisch 1.6 THP: gelängte Steuerkette. Kette, Spanner sowie Nocken-/Kurbelwellensensor prüfen. Oft ist ein Steuerkettensatz nötig.</string>
+    <string name="vehicle_dtc_p0017_title">Korrelation Kurbelwelle/Nockenwelle (Bank 1 Sensor B)</string>
+    <string name="vehicle_dtc_p0017_fix">Vermutlich gelängte Steuerkette / Spanner (1.6 THP). Kette und Kettenräder prüfen.</string>
+    <string name="vehicle_dtc_p0011_title">Einlassnockenwelle zu weit auf früh verstellt (Bank 1)</string>
+    <string name="vehicle_dtc_p0011_fix">VVT-Nockenwellenversteller oder Ölsteuerventil. Ölstand/-qualität, VVT-Magnetventil und Steuerkettenverschleiß prüfen.</string>
+    <string name="vehicle_dtc_p0341_title">Nockenwellensensor – Bereich</string>
+    <string name="vehicle_dtc_p0341_fix">Nockenwellensensor und Verkabelung prüfen; Steuerzeiten (Kette) kontrollieren.</string>
+    <string name="vehicle_dtc_p0340_title">Nockenwellensensor – Stromkreis</string>
+    <string name="vehicle_dtc_p0340_fix">Nockenwellensensor testen/ersetzen; Stecker und Verkabelung prüfen.</string>
+    <string name="vehicle_dtc_p0299_title">Ladedruck zu niedrig</string>
+    <string name="vehicle_dtc_p0299_fix">Häufig bei THP/HDi. Auf Ladeluftlecks (Schläuche/Ladeluftkühler), Wastegate/Turbo-Steller und Schubumluftventil prüfen.</string>
+    <string name="vehicle_dtc_p0234_title">Ladedruck zu hoch</string>
+    <string name="vehicle_dtc_p0234_fix">Klemmenden Wastegate-Steller, Ladedruck-Magnetventil und festsitzende VNT (HDi) prüfen.</string>
+    <string name="vehicle_dtc_p0087_title">Kraftstoff-Raildruck zu niedrig</string>
+    <string name="vehicle_dtc_p0087_fix">HDi: Kraftstofffilter, Niederdruckversorgung, Hochdruckpumpe und Raildruckregler prüfen; auf Luft/Lecks achten.</string>
+    <string name="vehicle_dtc_p0089_title">Kraftstoffdruckregler – Funktion</string>
+    <string name="vehicle_dtc_p0089_fix">Raildruckregler/Zumesseinheit und Pumpe prüfen; Kraftstofffilter kontrollieren.</string>
+    <string name="vehicle_dtc_p0093_title">Großes Kraftstoffleck erkannt</string>
+    <string name="vehicle_dtc_p0093_fix">HDi: Injektor-Leckölleitung, Hochdruckleitungen und Pumpendichtungen auf Dieselaustritt prüfen.</string>
+    <string name="vehicle_dtc_p0420_title">Katalysator-Wirkungsgrad unter Schwelle (Bank 1)</string>
+    <string name="vehicle_dtc_p0420_fix">Oft ein verschlissener Kat oder eine träge hintere Lambdasonde. Zuerst Abgaslecks und Fehlzündungen ausschließen.</string>
+    <string name="vehicle_dtc_p0401_title">AGR-Durchfluss zu gering</string>
+    <string name="vehicle_dtc_p0401_fix">AGR-Ventil reinigen oder ersetzen; AGR-Kühler und Kanäle auf Verkokung prüfen (häufig bei HDi).</string>
+    <string name="vehicle_dtc_p0402_title">AGR-Durchfluss zu hoch</string>
+    <string name="vehicle_dtc_p0402_fix">Offen hängendes AGR-Ventil und dessen Ansteuerung prüfen; Verkokung entfernen.</string>
+    <string name="vehicle_dtc_p2463_title">DPF-Rußbeladung zu hoch</string>
+    <string name="vehicle_dtc_p2463_fix">HDi-Diesel: längere Autobahnfahrt zur Regeneration; DPF-Drucksensor und Additivstand (Eolys) prüfen. Evtl. Zwangsregeneration nötig.</string>
+    <string name="vehicle_dtc_p242f_title">DPF-Verstopfung (Ascheablagerung)</string>
+    <string name="vehicle_dtc_p242f_fix">DPF am Lebensende oder verstopft; evtl. Zwangsregeneration oder DPF-Reinigung/-Tausch nötig.</string>
+    <string name="vehicle_dtc_p0113_title">Ansauglufttemperatursensor – Signal hoch</string>
+    <string name="vehicle_dtc_p0113_fix">Ansauglufttemperatursensor und Verkabelung/Stecker prüfen; Sensor reinigen oder ersetzen (oft im LMM/Ansaugtrakt).</string>
+    <string name="vehicle_dtc_p0128_title">Kühlmittel unter Thermostat-Regeltemperatur</string>
+    <string name="vehicle_dtc_p0128_fix">Meist ein offen hängendes Thermostat. Thermostat ersetzen; Kühlmittelstand und Sensor prüfen.</string>
+    <string name="vehicle_dtc_p0135_title">Lambdasonde Heizung (Bank 1 Sonde 1)</string>
+    <string name="vehicle_dtc_p0135_fix">Heizkreis und Sicherung der vorderen Lambdasonde prüfen; Sonde ersetzen, wenn die Heizung unterbrochen ist.</string>
+    <string name="vehicle_dtc_p0130_title">Lambdasonde Stromkreis (Bank 1 Sonde 1)</string>
+    <string name="vehicle_dtc_p0130_fix">Vordere Lambdasonde und Verkabelung prüfen; bei trägem/defektem Verhalten ersetzen.</string>
+    <string name="vehicle_dtc_p0171_title">Gemisch zu mager (Bank 1)</string>
+    <string name="vehicle_dtc_p0171_fix">Auf Ansaug-/Falschluftlecks (häufig), verschmutzten LMM, schwache Kraftstoffpumpe/Einspritzdüsen prüfen.</string>
+    <string name="vehicle_dtc_p0172_title">Gemisch zu fett (Bank 1)</string>
+    <string name="vehicle_dtc_p0172_fix">Auf undichte Einspritzdüsen, zu hohen Kraftstoffdruck, verschmutzten LMM oder defekte Lambdasonde prüfen.</string>
+    <string name="vehicle_dtc_p0505_title">Leerlaufregelung</string>
+    <string name="vehicle_dtc_p0505_fix">Drosselklappe reinigen; auf Ansauglecks und Funktion des Drosselklappenmotors prüfen.</string>
+    <string name="vehicle_dtc_p2100_title">Drosselklappen-Stellmotor – Stromkreis</string>
+    <string name="vehicle_dtc_p2100_fix">Drosselklappenmotor und Verkabelung prüfen; evtl. Drosselklappe ersetzen.</string>
+
+    <!-- Fault codes not in the table: described from the code's structure -->
+    <string name="vehicle_dtc_unknown_code">Unbekannter Code</string>
+    <string name="vehicle_dtc_fallback_title">Fehler %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_fix">Keine Beschreibung hinterlegt. Nach zugehörigen Codes suchen, Sensor/Verkabelung des betroffenen Kreises prüfen und nach „%1$s Citroën C4 Picasso“ suchen, um modellspezifische Hinweise zu finden.</string>
+    <string name="vehicle_dtc_system_powertrain">Antriebsstrang</string>
+    <string name="vehicle_dtc_system_chassis">Fahrwerk</string>
+    <string name="vehicle_dtc_system_body">Karosserie</string>
+    <string name="vehicle_dtc_system_network">Netzwerk</string>
+    <string name="vehicle_dtc_system_unknown">unbekanntes System</string>
+    <string name="vehicle_dtc_scope_generic">generisch</string>
+    <string name="vehicle_dtc_scope_manufacturer">herstellerspezifisch</string>
+    <string name="vehicle_dtc_area_fuel_air">Kraftstoff-/Luftzumessung</string>
+    <string name="vehicle_dtc_area_ignition">Zündung / Fehlzündung</string>
+    <string name="vehicle_dtc_area_emissions">Emissionen / Zusatzsysteme</string>
+    <string name="vehicle_dtc_area_idle">Geschwindigkeit / Leerlaufregelung</string>
+    <string name="vehicle_dtc_area_computer">Steuergerät / Ausgänge</string>
+    <string name="vehicle_dtc_area_transmission">Getriebe</string>
+    <string name="vehicle_dtc_area_system">System</string>
+</resources>

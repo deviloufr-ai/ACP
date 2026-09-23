@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cockpit skin: top bar -->
+    <string name="cockpit_apps">APP</string>
+    <string name="cockpit_layout">LAYOUT</string>
+    <string name="cockpit_screen_layout_desc">Layout schermo: %1$s</string>
+    <string name="cockpit_more">Altro</string>
+    <string name="cockpit_time_desc">Ora %1$s</string>
+    <string name="cockpit_out">EST</string>
+    <string name="cockpit_connect_obd">Connetti OBD</string>
+
+    <!-- Cockpit skin: dial faces (C/H = cold/hot coolant, E/F = empty/full tank) -->
+    <string name="cockpit_dial_rpm_title">×1000 giri/min</string>
+    <string name="cockpit_dial_temp">TEMP</string>
+    <string name="cockpit_dial_fuel">CARB.</string>
+    <string name="cockpit_dial_volt">VOLT</string>
+    <string name="cockpit_dial_load">CARICO</string>
+    <string name="cockpit_dial_cold">50</string>
+    <string name="cockpit_dial_hot">130</string>
+    <string name="cockpit_dial_empty">0</string>
+    <string name="cockpit_dial_full">1</string>
+    <string name="cockpit_dial_fuel_title">CARBURANTE</string>
+    <string name="cockpit_unit_rpm">giri/min</string>
+    <string name="cockpit_rpm_line">%1$s GIRI/MIN</string>
+
+    <!-- Cockpit skin: telemetry and speed -->
+    <string name="cockpit_speed_rpm_caption">KM/H · %1$d GIRI/MIN</string>
+    <string name="cockpit_obd_off">OBD SPENTO</string>
+    <string name="cockpit_no_signal">NESSUN SEGNALE</string>
+    <string name="cockpit_battery">Batteria</string>
+    <string name="cockpit_coolant">Refrigerante</string>
+    <string name="cockpit_speed_warning">Avviso velocità</string>
+    <string name="cockpit_tap_to_connect">TOCCA PER\nCONNETTERE</string>
+
+    <!-- Cockpit skin: media -->
+    <string name="cockpit_media_access_needed">ACCESSO MEDIA NECESSARIO · TOCCA PER ATTIVARE</string>
+    <string name="cockpit_nothing_playing">NESSUNA RIPRODUZIONE</string>
+    <string name="cockpit_tap_to_enable">TOCCA PER ATTIVARE</string>
+    <string name="cockpit_grant_media_access">Consenti accesso ai media</string>
+    <string name="cockpit_previous">Precedente</string>
+    <string name="cockpit_play">Riproduci</string>
+    <string name="cockpit_pause">Pausa</string>
+    <string name="cockpit_next">Successivo</string>
+    <string name="cockpit_vu_left">S</string>
+    <string name="cockpit_vu_right">D</string>
+
+    <!-- Cockpit skin: navigation, clock, weather, range -->
+    <string name="cockpit_open_navigation">Apri navigazione</string>
+    <string name="cockpit_no_access">SENZA ACCESSO</string>
+    <string name="cockpit_no_route">NESSUN PERCORSO</string>
+    <string name="cockpit_tap_for_maps">TOCCA PER MAPS</string>
+    <string name="cockpit_open_alarms">Apri sveglie</string>
+    <string name="cockpit_clock">Orologio</string>
+    <string name="cockpit_loading">CARICAMENTO…</string>
+    <string name="cockpit_feels_wind">PERCEPITA %1$d° · VENTO %2$d KM/H</string>
+    <string name="cockpit_fuel_settings">Impostazioni segnale carburante</string>
+    <string name="cockpit_range">AUTONOMIA</string>
+
+    <!-- Cockpit skin: app toggles and launch bar -->
+    <string name="cockpit_open_app">Apri %1$s</string>
+    <string name="cockpit_launch_bar_empty">BARRA APP — TOCCA LA MATITA PER AGGIUNGERE APP</string>
+    <string name="cockpit_edit_launch_bar">Modifica barra app</string>
+
+    <!-- Orbit skin: top bar -->
+    <string name="orbit_all_apps">Tutte le app</string>
+    <string name="orbit_screen_layout_desc">Layout schermo: %1$s</string>
+    <string name="orbit_more">Altro</string>
+
+    <!-- Orbit skin: speed dial and satellite bubbles -->
+    <string name="orbit_sat_coolant">refrig.</string>
+    <string name="orbit_sat_battery">batteria</string>
+    <string name="orbit_sat_load">carico</string>
+    <string name="orbit_rpm_value">%1$s giri/min</string>
+    <string name="orbit_tap_to_connect">Tocca per connettere</string>
+    <string name="orbit_connecting">Connessione…</string>
+    <string name="orbit_connect_obd">Connetti OBD</string>
+    <string name="orbit_no_signal">Nessun segnale</string>
+
+    <!-- Orbit skin: media -->
+    <string name="orbit_media_access_needed">Accesso ai media</string>
+    <string name="orbit_nothing_playing">Nessuna riproduzione</string>
+    <string name="orbit_tap_to_enable">Tocca per attivare</string>
+    <string name="orbit_start_music">Avvia la musica in un\'app</string>
+    <string name="orbit_previous_track">Brano precedente</string>
+    <string name="orbit_play">Riproduci</string>
+    <string name="orbit_pause">Pausa</string>
+    <string name="orbit_next_track">Brano successivo</string>
+    <string name="orbit_grant_access">Consenti accesso</string>
+
+    <!-- Orbit skin: navigation -->
+    <string name="orbit_no_route">Nessun percorso</string>
+    <string name="orbit_directions_need_access">Il percorso richiede l\'accesso</string>
+    <string name="orbit_tap_open_maps">Tocca per aprire Google Maps</string>
+    <string name="orbit_tap_allow_notifications">Tocca per consentire l\'accesso alle notifiche</string>
+
+    <!-- Orbit skin: clock and weather -->
+    <string name="orbit_open_alarms">Apri sveglie</string>
+    <string name="orbit_feels">Percepita %1$d°</string>
+    <string name="orbit_wind">Vento %1$d km/h</string>
+    <string name="orbit_feels_wind">percepita %1$d° · %2$d km/h</string>
+    <string name="orbit_offline">Offline</string>
+    <string name="orbit_loading">Caricamento…</string>
+
+    <!-- Orbit skin: fuel and range -->
+    <string name="orbit_to_empty">di autonomia</string>
+    <string name="orbit_liters_in_tank">≈ %1$.0f L nel serbatoio</string>
+    <string name="orbit_via_source">via %1$s</string>
+    <string name="orbit_tap_to_recalibrate">tocca per ricalibrare</string>
+    <string name="orbit_recalibrate_fuel">Ricalibra carburante</string>
+    <string name="orbit_fuel_percent">carb. %1$d%%</string>
+
+    <!-- Orbit skin: launch bar -->
+    <string name="orbit_launch_bar_empty">Barra app — tocca la matita per aggiungere app</string>
+    <string name="orbit_edit_launch_bar">Modifica barra app</string>
+</resources>

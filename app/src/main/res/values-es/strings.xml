@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="split_a11y_description">Permite a Dashwheel abrir apps en pantalla dividida junto al panel, con la misma división del sistema que usa la pantalla de apps recientes. No se lee ningún contenido de la pantalla.</string>
+
+    <!-- Language picker; each language is listed under its own name. -->
+    <string name="language_menu">Idioma</string>
+    <string name="language_title">Idioma</string>
+    <string name="language_system">Sistema (%1$s)</string>
+    <string name="language_close">Cerrar</string>
+</resources>

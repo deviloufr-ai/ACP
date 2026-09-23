@@ -223,7 +223,7 @@ object PipAnchor {
             val win = lookup.getOrNull()
             val now = System.currentTimeMillis()
             if (lookup.isFailure) {
-                publishError(packageName, lookup.exceptionOrNull()!!)
+                publishError(context, packageName, lookup.exceptionOrNull()!!)
                 mem = mem.copy(attempts = 0, lastStack = null)
             } else if (win == null) {
                 status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null)
@@ -246,7 +246,7 @@ object PipAnchor {
                         // fullscreen or refused. Stop, or Home would be trapped.
                         Log.w(TAG, "$packageName never appeared as a window; giving up")
                         setAutoOpen(context, false, packageName)
-                        status.value = status.value.copy(error = "Couldn't keep it open as a window")
+                        status.value = status.value.copy(error = context.getString(R.string.apps_window_error_gave_up))
                     }
                     is DockPolicy.Step.Reopen -> {
                         lastReopenAt[packageName] = now
@@ -291,7 +291,7 @@ object PipAnchor {
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
                     mem = mem.copy(lastPlacementFailed = result.isFailure)
-                    result.onFailure { publishError(packageName, it) }
+                    result.onFailure { publishError(context, packageName, it) }
                     if (result.isSuccess) undoStatusBarPolicy(context)
                     status.value = status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else status.value.error)
                 }
@@ -529,11 +529,12 @@ object PipAnchor {
         return WindowListing.parseFloatingWindow(listing, context.packageName, packageName)
     }
 
-    private fun publishError(packageName: String, e: Throwable) {
+    /** Shows [e] on the tile; [context] resolves the message in the UI language (shell errors stay as the system wrote them). */
+    private fun publishError(context: Context, packageName: String, e: Throwable) {
         Log.w(TAG, "PiP anchor error", e)
         val msg = when {
             e is java.net.ConnectException || e.message?.contains("Connection refused") == true ->
-                "No root (Magisk) and the ADB socket on port ${DockShell.adbPort()} isn't listening"
+                context.getString(R.string.apps_window_error_no_shell, DockShell.adbPort())
             else -> e.message ?: e.javaClass.simpleName
         }
         statusFlow(packageName).let { it.value = it.value.copy(error = msg) }

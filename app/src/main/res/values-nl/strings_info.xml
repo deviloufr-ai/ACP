@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared -->
+    <string name="info_waiting_gps">Wachten op GPS…</string>
+    <string name="info_open">Openen</string>
+    <string name="info_clear">Wissen</string>
+    <string name="info_reset">Resetten</string>
+    <string name="info_grant_access">Toegang geven</string>
+    <string name="info_connect">Verbinden</string>
+
+    <!-- Weather tile -->
+    <string name="info_weather_title">WEER</string>
+    <string name="info_weather_refresh">Weer vernieuwen</string>
+    <string name="info_weather_details">Voelt als %1$d° · Wind %2$d km/h</string>
+    <string name="info_weather_details_range">Voelt als %1$d° · Wind %2$d km/h · %3$d° / %4$d°</string>
+    <string name="info_weather_loading">Weer laden…</string>
+    <string name="info_weather_unavailable">Weer niet beschikbaar</string>
+    <string name="info_weather_unavailable_detail">Weer niet beschikbaar (%1$s)</string>
+
+    <!-- Weather conditions (WMO codes), also used by the skins -->
+    <string name="info_wx_clear">Helder</string>
+    <string name="info_wx_mostly_clear">Overwegend helder</string>
+    <string name="info_wx_partly_cloudy">Half bewolkt</string>
+    <string name="info_wx_overcast">Bewolkt</string>
+    <string name="info_wx_fog">Mist</string>
+    <string name="info_wx_drizzle">Motregen</string>
+    <string name="info_wx_freezing_drizzle">Onderkoelde motregen</string>
+    <string name="info_wx_rain">Regen</string>
+    <string name="info_wx_freezing_rain">Onderkoelde regen</string>
+    <string name="info_wx_snow">Sneeuw</string>
+    <string name="info_wx_showers">Buien</string>
+    <string name="info_wx_snow_showers">Sneeuwbuien</string>
+    <string name="info_wx_thunderstorm">Onweer</string>
+    <string name="info_wx_hail_storm">Onweer met hagel</string>
+    <string name="info_wx_unknown">Onbekend</string>
+
+    <!-- Agenda tile -->
+    <string name="info_agenda_title">AGENDA</string>
+    <string name="info_agenda_needs_access">Toon komende afspraken uit je agenda</string>
+    <string name="info_agenda_allow">Agenda toestaan</string>
+    <string name="info_agenda_empty">Niets in de komende 36 uur</string>
+    <string name="info_agenda_no_title">(Geen titel)</string>
+    <string name="info_agenda_all_day">Hele dag</string>
+
+    <!-- Quick dial tile -->
+    <string name="info_quickdial_title">SNELKIEZEN</string>
+    <string name="info_quickdial_dialer">Kiezer</string>
+    <string name="info_quickdial_needs_access">Toon hier je favoriete contacten</string>
+    <string name="info_quickdial_allow">Contacten toestaan</string>
+    <string name="info_quickdial_empty">Markeer contacten met een ster in de app Contacten om ze hier te zien</string>
+
+    <!-- Notifications tile -->
+    <string name="info_notif_title">MELDINGEN</string>
+    <string name="info_notif_needs_access">Toon berichten en meldingen van je apps</string>
+    <string name="info_notif_empty">Geen nieuwe meldingen</string>
+
+    <!-- Audio tile -->
+    <string name="info_audio_title">AUDIO</string>
+    <string name="info_audio_mute">Dempen</string>
+    <string name="info_audio_unmute">Geluid aan</string>
+    <string name="info_audio_sound">Geluid</string>
+
+    <!-- Speed HUD tile (the title is also the Original theme's speed gauge label) -->
+    <string name="info_speed_title">SNELHEID</string>
+    <string name="info_speed_no_signal">Geen signaal</string>
+
+    <!-- Compass tile -->
+    <string name="info_compass_title">KOMPAS</string>
+    <string name="info_compass_no_heading">Rijd om een koers te krijgen</string>
+    <string name="info_compass_altitude">Hoogte</string>
+    <string name="info_compass_gps_speed">GPS-snelheid</string>
+    <string name="info_compass_accuracy">Nauwkeurigheid</string>
+
+    <!-- Compass points (dial letters and heading abbreviations) -->
+    <string name="info_dir_n">N</string>
+    <string name="info_dir_ne">NO</string>
+    <string name="info_dir_e">O</string>
+    <string name="info_dir_se">ZO</string>
+    <string name="info_dir_s">Z</string>
+    <string name="info_dir_sw">ZW</string>
+    <string name="info_dir_w">W</string>
+    <string name="info_dir_nw">NW</string>
+
+    <!-- Trip computer tile -->
+    <string name="info_trip_title">RIT</string>
+    <string name="info_trip_since">sinds %1$s</string>
+    <string name="info_trip_time">Tijd</string>
+    <string name="info_trip_moving">Rijdend</string>
+    <string name="info_trip_average">Gemiddeld</string>
+    <string name="info_trip_top">Max.</string>
+    <string name="info_duration_hm">%1$du %2$02dm</string>
+    <string name="info_duration_ms">%1$dm %2$02ds</string>
+
+    <!-- G-force tile -->
+    <string name="info_gforce_title">G-KRACHT</string>
+    <string name="info_gforce_reset_peaks">Pieken resetten</string>
+    <string name="info_gforce_lateral">Zijdelings</string>
+    <string name="info_gforce_accel_brake">Gas / rem</string>
+    <string name="info_gforce_peaks">Pieken</string>
+
+    <!-- Parking tile -->
+    <string name="info_parking_title">PARKEREN</string>
+    <string name="info_parking_prompt">Onthoud waar de auto staat</string>
+    <string name="info_parking_save">Parkeerplek opslaan</string>
+    <string name="info_parking_dir_right">De geparkeerde auto staat %1$d° naar rechts</string>
+    <string name="info_parking_dir_left">De geparkeerde auto staat %1$d° naar links</string>
+    <string name="info_parking_distance_unknown">Afstand onbekend</string>
+    <string name="info_parking_parked">Geparkeerd %1$s</string>
+    <string name="info_parking_parked_dir">Geparkeerd %1$s · %2$s</string>
+    <string name="info_parking_walk">Loop erheen</string>
+    <string name="info_parking_map_label">Geparkeerde auto</string>
+    <string name="info_ago_just_now">zojuist</string>
+    <string name="info_ago_minutes">%1$d min geleden</string>
+    <string name="info_ago_hours">%1$d u %2$d min geleden</string>
+    <string name="info_ago_days">%1$d d geleden</string>
+
+    <!-- Media tile (both the current and the Original theme) -->
+    <string name="info_now_playing">SPEELT NU</string>
+    <string name="info_nothing_playing">Er speelt niets</string>
+    <string name="info_media_access_needed">Mediatoegang vereist</string>
+    <string name="info_media_tap_to_enable">Tik om in te schakelen</string>
+    <string name="info_media_previous">Vorige</string>
+    <string name="info_media_play_pause">Afspelen/Pauzeren</string>
+    <string name="info_media_next">Volgende</string>
+    <string name="info_media_grant_access">Mediatoegang geven</string>
+
+    <!-- Original theme telemetry tile -->
+    <string name="info_telemetry_title">TELEMETRIE</string>
+    <string name="info_obd_live">Live</string>
+    <string name="info_gauge_rpm">TPM</string>
+    <string name="info_unit_rpm">tpm</string>
+    <string name="info_chip_coolant">Koelvl.</string>
+    <string name="info_chip_load">Belasting</string>
+    <string name="info_chip_battery">Accu</string>
+
+    <!-- Directions tile -->
+    <string name="info_directions_title">ROUTE</string>
+    <string name="info_directions_no_route">Geen route</string>
+    <string name="info_directions_access_title">Meldingstoegang vereist</string>
+    <string name="info_directions_access_hint">De route komt uit de navigatiemelding van Google Maps.</string>
+    <string name="info_directions_idle_title">Geen actieve route</string>
+    <string name="info_directions_idle_hint">Start navigatie in Google Maps of Waze en de volgende afslag verschijnt hier.</string>
+    <string name="info_directions_open_maps">Google Maps openen</string>
+    <string name="info_nav_continue">Doorrijden</string>
+
+    <!-- Map navigator (MapLibre panel) -->
+    <string name="info_map_where_to">Waar naartoe?</string>
+    <string name="info_map_search">Zoeken</string>
+    <string name="info_map_clear_route">Route wissen</string>
+    <string name="info_map_ready">Klaar om te navigeren</string>
+    <string name="info_map_start">Start</string>
+    <string name="info_map_gps_not_ready">GPS niet gereed — Start opent toch Google Maps</string>
+    <string name="info_map_no_route">Geen route gevonden</string>
+    <string name="info_map_routing_failed">Route berekenen mislukt</string>
+    <string name="info_map_routing_failed_detail">Route berekenen mislukt (%1$s)</string>
+    <string name="info_map_address_not_found">Adres niet gevonden</string>
+    <string name="info_map_duration_hm">%1$d u %2$02d min</string>
+    <string name="info_map_duration_min">%1$d min</string>
+</resources>

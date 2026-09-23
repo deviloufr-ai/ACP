@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -171,7 +172,7 @@ internal fun ClockCard(modifier: Modifier = Modifier) {
     }
     val locale = Locale.getDefault()
     val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val dateFmt = remember(locale) { SimpleDateFormat("EEEE d MMMM", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale) }
     val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
     val time = timeFmt.format(now)
     val date = dateFmt.format(now)
@@ -244,16 +245,17 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("WEATHER") {
+            TileHeader(stringResource(R.string.info_weather_title)) {
                 val l = location
                 if (l != null) {
                     var busy by remember { mutableStateOf(false) }
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    val refreshLabel = stringResource(R.string.info_weather_refresh)
                     IconButton(
                         onClick = { scope.launch { busy = true; WeatherRepo.refresh(l.latitude, l.longitude, force = true); busy = false } },
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh weather", tint = if (busy) DashColors.Accent else DashColors.Muted, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.Refresh, contentDescription = refreshLabel, tint = if (busy) DashColors.Accent else DashColors.Muted, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -271,17 +273,31 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
                         }
                         Text(w.condition, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Feels ${w.feelsC.roundToInt()}° · Wind ${w.windKmh.roundToInt()} km/h" +
-                                if (!w.hiC.isNaN()) " · ${w.loC.roundToInt()}° / ${w.hiC.roundToInt()}°" else "",
+                            if (!w.hiC.isNaN()) {
+                                stringResource(
+                                    R.string.info_weather_details_range, w.feelsC.roundToInt(), w.windKmh.roundToInt(),
+                                    w.loC.roundToInt(), w.hiC.roundToInt()
+                                )
+                            } else {
+                                stringResource(R.string.info_weather_details, w.feelsC.roundToInt(), w.windKmh.roundToInt())
+                            },
                             color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
                 location == null -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Waiting for GPS…", color = DashColors.Muted)
+                    Text(stringResource(R.string.info_waiting_gps), color = DashColors.Muted)
                 }
                 else -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(error?.let { "Weather unavailable ($it)" } ?: "Loading weather…", color = DashColors.Muted, textAlign = TextAlign.Center)
+                    val err = error
+                    Text(
+                        when {
+                            err == null -> stringResource(R.string.info_weather_loading)
+                            err.isBlank() -> stringResource(R.string.info_weather_unavailable)
+                            else -> stringResource(R.string.info_weather_unavailable_detail, err)
+                        },
+                        color = DashColors.Muted, textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -307,7 +323,8 @@ private fun loadAgenda(context: Context, hours: Int = 36): List<AgendaEvent> {
                 val end = c.getLong(2)
                 if (end < now) continue
                 out += AgendaEvent(
-                    title = c.getString(0)?.ifBlank { null } ?: "(No title)",
+                    // Blank titles get a localized "(No title)" at display time.
+                    title = c.getString(0).orEmpty(),
                     begin = c.getLong(1), end = end,
                     allDay = c.getInt(3) == 1,
                     location = c.getString(4).orEmpty()
@@ -334,7 +351,7 @@ internal fun CalendarCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("AGENDA") {
+            TileHeader(stringResource(R.string.info_agenda_title)) {
                 TextButton(
                     onClick = {
                         runCatching {
@@ -345,12 +362,15 @@ internal fun CalendarCard(modifier: Modifier = Modifier) {
                         }
                     },
                     modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                ) { Text("Open", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
+                ) { Text(stringResource(R.string.info_open), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
-                !perm.granted -> NeedsAccess(Icons.Filled.Event, "Show upcoming events from your calendar", "Allow calendar", perm.request)
+                !perm.granted -> NeedsAccess(
+                    Icons.Filled.Event, stringResource(R.string.info_agenda_needs_access),
+                    stringResource(R.string.info_agenda_allow), perm.request
+                )
                 events.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Nothing in the next 36 hours", color = DashColors.Muted)
+                    Text(stringResource(R.string.info_agenda_empty), color = DashColors.Muted)
                 }
                 else -> LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(events) { e -> AgendaRow(e) }
@@ -369,6 +389,8 @@ private fun AgendaRow(e: AgendaEvent) {
         a.get(java.util.Calendar.DAY_OF_YEAR) == b.get(java.util.Calendar.DAY_OF_YEAR) && a.get(java.util.Calendar.YEAR) == b.get(java.util.Calendar.YEAR)
     }
     val ongoing = e.begin <= System.currentTimeMillis()
+    val noTitle = stringResource(R.string.info_agenda_no_title)
+    val allDay = stringResource(R.string.info_agenda_all_day)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -386,12 +408,12 @@ private fun AgendaRow(e: AgendaEvent) {
         )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(e.title, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            Text(e.title.ifBlank { noTitle }, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium)
             Text(
                 buildString {
                     if (!today) append(dayFmt.format(Date(e.begin))).append(" ")
-                    append(if (e.allDay) "All day" else "${timeFmt.format(Date(e.begin))} – ${timeFmt.format(Date(e.end))}")
+                    append(if (e.allDay) allDay else "${timeFmt.format(Date(e.begin))} – ${timeFmt.format(Date(e.end))}")
                     if (e.location.isNotBlank()) append(" · ").append(e.location)
                 },
                 color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -445,16 +467,19 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("QUICK DIAL") {
+            TileHeader(stringResource(R.string.info_quickdial_title)) {
                 TextButton(
                     onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) },
                     modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                ) { Text("Dialer", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
+                ) { Text(stringResource(R.string.info_quickdial_dialer), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
-                !perm.granted -> NeedsAccess(Icons.Filled.Call, "Show your starred contacts here", "Allow contacts", perm.request)
+                !perm.granted -> NeedsAccess(
+                    Icons.Filled.Call, stringResource(R.string.info_quickdial_needs_access),
+                    stringResource(R.string.info_quickdial_allow), perm.request
+                )
                 favourites.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Star contacts in the Contacts app to see them here", color = DashColors.Muted, textAlign = TextAlign.Center)
+                    Text(stringResource(R.string.info_quickdial_empty), color = DashColors.Muted, textAlign = TextAlign.Center)
                 }
                 else -> BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val avatar = min(maxHeight.value * 0.55f, 64f).coerceAtLeast(36f).dp
@@ -514,19 +539,22 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("NOTIFICATIONS") {
+            TileHeader(stringResource(R.string.info_notif_title)) {
                 if (items.isNotEmpty()) {
                     TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
-                        Text("Clear", color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.info_clear), color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
             when {
-                !hasAccess -> NeedsAccess(Icons.Filled.Notifications, "Show messages and alerts from your apps", "Grant access") {
+                !hasAccess -> NeedsAccess(
+                    Icons.Filled.Notifications, stringResource(R.string.info_notif_needs_access),
+                    stringResource(R.string.info_grant_access)
+                ) {
                     CarMediaController.openNotificationAccessSettings(context)
                 }
                 items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("No new notifications", color = DashColors.Muted)
+                    Text(stringResource(R.string.info_notif_empty), color = DashColors.Muted)
                 }
                 else -> LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(items, key = { it.key }) { n ->
@@ -595,7 +623,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("AUDIO") {
+            TileHeader(stringResource(R.string.info_audio_title)) {
                 Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
             }
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -606,7 +634,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                     },
                     modifier = Modifier.size(44.dp)
                 ) {
-                    Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = if (muted) "Unmute" else "Mute",
+                    Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = stringResource(if (muted) R.string.info_audio_unmute else R.string.info_audio_mute),
                         tint = if (muted) DashColors.Warning else DashColors.TextPrimary, modifier = Modifier.size(26.dp))
                 }
                 Slider(
@@ -628,7 +656,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallAction("Sound") { context.launchSafely(Intent(Settings.ACTION_SOUND_SETTINGS)) }
+                SmallAction(stringResource(R.string.info_audio_sound)) { context.launchSafely(Intent(Settings.ACTION_SOUND_SETTINGS)) }
                 SmallAction("Bluetooth", Icons.Filled.Bluetooth) { context.launchSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
             }
         }

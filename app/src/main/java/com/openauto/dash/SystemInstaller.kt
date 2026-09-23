@@ -100,7 +100,7 @@ object SystemInstaller {
         val err = process.errorStream.bufferedReader().use { it.readText() }
         process.waitFor()
         if (!out.contains("OKINSTALL")) {
-            error((err.ifBlank { out }).trim().ifBlank { "su install failed" })
+            error((err.ifBlank { out }).trim().ifBlank { context.getString(R.string.sys_install_su_failed) })
         }
     }
 

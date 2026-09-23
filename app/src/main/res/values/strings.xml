@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Dashwheel</string>
-    <string name="obd_status_connected">Connected</string>
-    <string name="obd_status_disconnected">Disconnected</string>
-    <string name="speed_kmh">km/h</string>
-    <string name="rpm_label">RPM</string>
-    <string name="temp_celsius">°C</string>
-    <string name="battery_level">Battery</string>
-    <string name="coolant_temp">Coolant Temp</string>
+    <string name="app_name" translatable="false">Dashwheel</string>
     <string name="split_a11y_description">Lets Dashwheel open apps in split-screen next to the dashboard, using the same system split the recents screen uses. No screen content is read.</string>
+
+    <!-- Language picker; each language is listed under its own name. -->
+    <string name="language_menu">Language</string>
+    <string name="language_title">Language</string>
+    <string name="language_system">System (%1$s)</string>
+    <string name="language_close">Close</string>
 </resources>

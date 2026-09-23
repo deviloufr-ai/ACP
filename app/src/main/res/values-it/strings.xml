@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="split_a11y_description">Consente a Dashwheel di aprire le app a schermo diviso accanto al cruscotto, con la stessa divisione di sistema usata dalla schermata delle app recenti. Nessun contenuto dello schermo viene letto.</string>
+
+    <!-- Language picker; each language is listed under its own name. -->
+    <string name="language_menu">Lingua</string>
+    <string name="language_title">Lingua</string>
+    <string name="language_system">Sistema (%1$s)</string>
+    <string name="language_close">Chiudi</string>
+</resources>

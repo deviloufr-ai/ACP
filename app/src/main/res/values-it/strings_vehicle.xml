@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OBD tiles: shared -->
+    <string name="vehicle_obd_not_connected">OBD non connesso</string>
+    <string name="vehicle_connect">Connetti</string>
+    <string name="vehicle_speed">Velocità</string>
+    <string name="vehicle_rpm">giri/min</string>
+    <string name="vehicle_coolant">Refrigerante</string>
+    <string name="vehicle_battery">Batteria</string>
+    <string name="vehicle_fuel">Carburante</string>
+    <string name="vehicle_close">Chiudi</string>
+    <string name="vehicle_cancel">Annulla</string>
+    <string name="vehicle_reset">Reimposta</string>
+    <string name="vehicle_capture_a">Cattura A</string>
+    <string name="vehicle_capture_b">Cattura B</string>
+
+    <!-- Telemetry tile -->
+    <string name="vehicle_telemetry_title">TELEMETRIA</string>
+    <string name="vehicle_live">In diretta</string>
+    <string name="vehicle_speed_caps">VELOCITÀ</string>
+    <string name="vehicle_rpm_caps">GIRI/MIN</string>
+    <string name="vehicle_load">Carico</string>
+
+    <!-- Fault codes tile -->
+    <string name="vehicle_fault_codes_title">CODICI GUASTO</string>
+    <string name="vehicle_scan">Scansiona</string>
+    <string name="vehicle_clear">Cancella</string>
+
+    <!-- OBD data tile -->
+    <string name="vehicle_obd_data_title">DATI OBD</string>
+    <string name="vehicle_intake_air">Aria aspirata</string>
+    <string name="vehicle_throttle">Farfalla</string>
+    <string name="vehicle_engine_load">Carico motore</string>
+    <string name="vehicle_fuel_level">Livello carburante</string>
+
+    <!-- Fuel & range tile -->
+    <string name="vehicle_fuel_range_title">CARBURANTE E AUTONOMIA</string>
+    <string name="vehicle_via_canbox">via CANbox</string>
+    <string name="vehicle_via_obd">via OBD</string>
+    <string name="vehicle_fuel_no_obd">L\'OBD di quest\'auto non fornisce il carburante. Rilevalo dalla CANbox — richiede root.</string>
+    <string name="vehicle_find_fuel_signal">Trova segnale carburante</string>
+    <string name="vehicle_try_obd_fuel_pid">Prova PID carburante OBD</string>
+    <string name="vehicle_km_to_empty">KM RESIDUI</string>
+    <string name="vehicle_range_approx">≈ autonomia</string>
+    <string name="vehicle_in_tank">Nel serbatoio</string>
+    <string name="vehicle_avg_use">Consumo medio</string>
+    <string name="vehicle_learn_fuel">Rileva carburante dalla CANbox</string>
+    <string name="vehicle_recalibrate_fuel">Ricalibra carburante</string>
+
+    <!-- Fuel signal finder dialog -->
+    <string name="vehicle_finder_help">Imposta il livello indicato dal cruscotto, tocca Cattura A — poi chiudi e usa l\'auto normalmente. Qualche giorno dopo, quando l\'indicatore è sceso un po\', riapri, imposta il nuovo valore e tocca Cattura B. La Cattura A resta salvata dopo i riavvii. Vengono proposti solo i byte che si sono mossi con il carburante.</string>
+    <string name="vehicle_dash_reads">Il cruscotto indica</string>
+    <string name="vehicle_waiting_canbox">In attesa dei dati CANbox… (richiede root)</string>
+    <string name="vehicle_finder_step_a">Imposta il livello carburante indicato, poi tocca Cattura A.</string>
+    <string name="vehicle_finder_step_b">A catturata al %1$d%% (salvata). Puoi chiudere e guidare normalmente — torna quando l\'indicatore scende di qualche %%, imposta il nuovo valore, poi Cattura B.</string>
+    <string name="vehicle_finder_same">A e B sono allo stesso livello. Esegui la Cattura B con un altro livello di carburante.</string>
+    <string name="vehicle_finder_none">Nessun byte ha seguito la variazione. Ripeti B dopo un calo maggiore.</string>
+    <string name="vehicle_finder_candidates">Byte che hanno seguito il carburante</string>
+    <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
+    <string name="vehicle_finder_raw">%1$d → %2$d · pieno≈%3$d</string>
+    <string name="vehicle_forget_current">Dimentica l\'attuale</string>
+
+    <!-- OBD adapter picker -->
+    <string name="vehicle_select_adapter">Seleziona adattatore OBD</string>
+    <string name="vehicle_no_paired">Nessun dispositivo Bluetooth associato. Associa prima l\'adattatore OBD nelle impostazioni Bluetooth.</string>
+    <string name="vehicle_bt_settings">Impostazioni Bluetooth</string>
+
+    <!-- OBD adapter status messages -->
+    <string name="vehicle_unknown_device">Dispositivo sconosciuto</string>
+    <string name="vehicle_no_response">Nessuna risposta dall\'adattatore</string>
+    <string name="vehicle_clear_rejected">L\'adattatore ha risposto «%1$s». Inserisci il quadro (motore spento) e riprova.</string>
+
+    <!-- Doors tile -->
+    <string name="vehicle_doors_title">PORTIERE</string>
+    <string name="vehicle_waiting_mcu">In attesa dei dati MCU… (richiede root)</string>
+    <string name="vehicle_door_front_left">Anteriore sinistra</string>
+    <string name="vehicle_door_front_right">Anteriore destra</string>
+    <string name="vehicle_door_rear_left">Posteriore sinistra</string>
+    <string name="vehicle_door_rear_right">Posteriore destra</string>
+    <string name="vehicle_door_tailgate">Portellone</string>
+    <string name="vehicle_door_bonnet">Cofano</string>
+    <string name="vehicle_door_any_open">Una portiera è aperta</string>
+    <string name="vehicle_doors_all_closed">Tutto chiuso</string>
+    <string name="vehicle_door_open_caps">APERTO</string>
+    <string name="vehicle_door_closed">chiuso</string>
+
+    <!-- CAN monitor (debug tile) -->
+    <string name="vehicle_can_monitor_title">MONITOR CAN — trova un segnale</string>
+    <string name="vehicle_can_monitor_help">Portiere CHIUSE → Cattura A. Poi APRI la portiera → Cattura B. Vengono mostrati solo i segnali discreti che cambiano.</string>
+    <string name="vehicle_can_a_closed">A ✓ chiuso</string>
+    <string name="vehicle_can_b_open">B ✓ aperto</string>
+    <string name="vehicle_can_prompt">Cattura A (chiuso), poi B (aperto) per confrontare.</string>
+    <string name="vehicle_can_no_diff">Nessuna differenza discreta netta. Fallo a motore SPENTO così i sensori non oscillano, e tieni la portiera aperta durante la Cattura B.</string>
+    <string name="vehicle_can_row_closed">chiuso: %1$s</string>
+    <string name="vehicle_can_row_open">aperto: %1$s</string>
+
+    <!-- Fault code (DTC) descriptions: title + what to check -->
+    <string name="vehicle_dtc_p0300_title">Mancata accensione casuale/multipla</string>
+    <string name="vehicle_dtc_p0300_fix">Controlla candele e bobine (THP: le bobine sono un punto debole noto), iniettori e possibili infiltrazioni d\'aria. Sostituisci candele/bobine in blocco.</string>
+    <string name="vehicle_dtc_p0301_title">Mancata accensione cilindro 1</string>
+    <string name="vehicle_dtc_p0301_fix">Scambia bobina/candela del cil. 1 con un altro cil.; se il difetto si sposta, sostituisci quella bobina/candela. Controlla anche l\'iniettore 1.</string>
+    <string name="vehicle_dtc_p0302_title">Mancata accensione cilindro 2</string>
+    <string name="vehicle_dtc_p0302_fix">Scambia bobina/candela per isolare il guasto; controlla l\'iniettore 2 e la compressione.</string>
+    <string name="vehicle_dtc_p0303_title">Mancata accensione cilindro 3</string>
+    <string name="vehicle_dtc_p0303_fix">Scambia bobina/candela per isolare il guasto; controlla l\'iniettore 3 e la compressione.</string>
+    <string name="vehicle_dtc_p0304_title">Mancata accensione cilindro 4</string>
+    <string name="vehicle_dtc_p0304_fix">Scambia bobina/candela per isolare il guasto; controlla l\'iniettore 4 e la compressione.</string>
+    <string name="vehicle_dtc_p0016_title">Correlazione albero motore/albero a camme (bancata 1 sensore A)</string>
+    <string name="vehicle_dtc_p0016_fix">Tipico del 1.6 THP: catena di distribuzione allungata. Controlla catena, tenditore e sensori camme/albero motore. Spesso serve un kit catena di distribuzione.</string>
+    <string name="vehicle_dtc_p0017_title">Correlazione albero motore/camme (bancata 1 sensore B)</string>
+    <string name="vehicle_dtc_p0017_fix">Probabile catena di distribuzione / tenditore allungati (1.6 THP). Ispeziona catena e pignoni.</string>
+    <string name="vehicle_dtc_p0011_title">Fasatura albero a camme aspirazione troppo anticipata (bancata 1)</string>
+    <string name="vehicle_dtc_p0011_fix">Variatore di fase VVT o valvola di controllo olio. Controlla livello/qualità dell\'olio, elettrovalvola VVT e usura della catena di distribuzione.</string>
+    <string name="vehicle_dtc_p0341_title">Sensore posizione albero a camme: campo</string>
+    <string name="vehicle_dtc_p0341_fix">Controlla il sensore camme e il suo cablaggio; verifica che la fasatura (catena) sia corretta.</string>
+    <string name="vehicle_dtc_p0340_title">Sensore posizione albero a camme: circuito</string>
+    <string name="vehicle_dtc_p0340_fix">Testa/sostituisci il sensore camme; ispeziona connettore e cablaggio.</string>
+    <string name="vehicle_dtc_p0299_title">Pressione di sovralimentazione insufficiente</string>
+    <string name="vehicle_dtc_p0299_fix">Comune su THP/HDi. Cerca perdite di sovralimentazione (manicotti/intercooler), controlla wastegate/attuatore turbo e la valvola di ricircolo.</string>
+    <string name="vehicle_dtc_p0234_title">Sovrapressione turbo</string>
+    <string name="vehicle_dtc_p0234_fix">Controlla se l\'attuatore della wastegate è bloccato, l\'elettrovalvola di sovralimentazione e un VNT bloccato (HDi).</string>
+    <string name="vehicle_dtc_p0087_title">Pressione rail carburante troppo bassa</string>
+    <string name="vehicle_dtc_p0087_fix">HDi: controlla filtro carburante, alimentazione bassa pressione, pompa alta pressione e regolatore di pressione del rail; cerca aria/perdite.</string>
+    <string name="vehicle_dtc_p0089_title">Prestazioni regolatore pressione carburante</string>
+    <string name="vehicle_dtc_p0089_fix">Controlla il regolatore di pressione del rail/valvola dosatrice e la pompa; ispeziona il filtro carburante.</string>
+    <string name="vehicle_dtc_p0093_title">Rilevata grave perdita di carburante</string>
+    <string name="vehicle_dtc_p0093_fix">HDi: ispeziona i ricircoli degli iniettori, i tubi alta pressione e le guarnizioni della pompa per perdite di gasolio.</string>
+    <string name="vehicle_dtc_p0420_title">Efficienza catalizzatore sotto soglia (bancata 1)</string>
+    <string name="vehicle_dtc_p0420_fix">Spesso un catalizzatore usurato o una sonda lambda posteriore lenta. Escludi prima perdite allo scarico e mancate accensioni.</string>
+    <string name="vehicle_dtc_p0401_title">Flusso EGR insufficiente</string>
+    <string name="vehicle_dtc_p0401_fix">Pulisci o sostituisci la valvola EGR; controlla il radiatore EGR e i condotti per incrostazioni (comune su HDi).</string>
+    <string name="vehicle_dtc_p0402_title">Flusso EGR eccessivo</string>
+    <string name="vehicle_dtc_p0402_fix">Controlla se la valvola EGR è bloccata aperta e il suo comando; pulisci le incrostazioni.</string>
+    <string name="vehicle_dtc_p2463_title">Accumulo di fuliggine nel DPF troppo alto</string>
+    <string name="vehicle_dtc_p2463_fix">Diesel HDi: fai un lungo tragitto in autostrada per la rigenerazione; controlla il sensore di pressione DPF e il livello di additivo (Eolys). Può servire una rigenerazione forzata.</string>
+    <string name="vehicle_dtc_p242f_title">Intasamento DPF (accumulo di ceneri)</string>
+    <string name="vehicle_dtc_p242f_fix">DPF a fine vita o intasato; può servire una rigenerazione forzata o pulizia/sostituzione del DPF.</string>
+    <string name="vehicle_dtc_p0113_title">Sensore temperatura aria aspirata: segnale alto</string>
+    <string name="vehicle_dtc_p0113_fix">Controlla il sensore IAT e cablaggio/connettore; pulisci o sostituisci il sensore (spesso nel debimetro/aspirazione).</string>
+    <string name="vehicle_dtc_p0128_title">Refrigerante sotto la temperatura del termostato</string>
+    <string name="vehicle_dtc_p0128_fix">Di solito un termostato bloccato aperto. Sostituisci il termostato; verifica livello del refrigerante e sensore.</string>
+    <string name="vehicle_dtc_p0135_title">Riscaldatore sonda lambda (bancata 1 sonda 1)</string>
+    <string name="vehicle_dtc_p0135_fix">Controlla il circuito del riscaldatore della sonda lambda a monte e il fusibile; sostituisci la sonda se il riscaldatore è interrotto.</string>
+    <string name="vehicle_dtc_p0130_title">Circuito sonda lambda (bancata 1 sonda 1)</string>
+    <string name="vehicle_dtc_p0130_fix">Ispeziona la sonda lambda a monte e il cablaggio; sostituiscila se lenta/difettosa.</string>
+    <string name="vehicle_dtc_p0171_title">Miscela troppo magra (bancata 1)</string>
+    <string name="vehicle_dtc_p0171_fix">Cerca infiltrazioni d\'aria in aspirazione/depressione (frequenti), debimetro sporco, pompa carburante/iniettori deboli.</string>
+    <string name="vehicle_dtc_p0172_title">Miscela troppo ricca (bancata 1)</string>
+    <string name="vehicle_dtc_p0172_fix">Cerca iniettori che perdono, pressione carburante alta, debimetro sporco o sonda lambda difettosa.</string>
+    <string name="vehicle_dtc_p0505_title">Sistema di controllo del minimo</string>
+    <string name="vehicle_dtc_p0505_fix">Pulisci il corpo farfallato; cerca infiltrazioni d\'aria e verifica il motorino della farfalla.</string>
+    <string name="vehicle_dtc_p2100_title">Circuito motorino attuatore farfalla</string>
+    <string name="vehicle_dtc_p2100_fix">Controlla il motorino del corpo farfallato e il cablaggio; potrebbe servire sostituire il corpo farfallato.</string>
+
+    <!-- Fault codes not in the table: described from the code's structure -->
+    <string name="vehicle_dtc_unknown_code">Codice sconosciuto</string>
+    <string name="vehicle_dtc_fallback_title">Guasto %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_fix">Nessuna descrizione salvata. Cerca codici correlati, controlla sensore/cablaggio del circuito interessato e cerca «%1$s Citroën C4 Picasso» per indicazioni specifiche del modello.</string>
+    <string name="vehicle_dtc_system_powertrain">motopropulsore</string>
+    <string name="vehicle_dtc_system_chassis">telaio</string>
+    <string name="vehicle_dtc_system_body">carrozzeria</string>
+    <string name="vehicle_dtc_system_network">rete</string>
+    <string name="vehicle_dtc_system_unknown">sistema sconosciuto</string>
+    <string name="vehicle_dtc_scope_generic">generico</string>
+    <string name="vehicle_dtc_scope_manufacturer">specifico del costruttore</string>
+    <string name="vehicle_dtc_area_fuel_air">dosaggio aria/carburante</string>
+    <string name="vehicle_dtc_area_ignition">accensione / mancate accensioni</string>
+    <string name="vehicle_dtc_area_emissions">emissioni / ausiliari</string>
+    <string name="vehicle_dtc_area_idle">velocità / controllo del minimo</string>
+    <string name="vehicle_dtc_area_computer">centralina / uscite</string>
+    <string name="vehicle_dtc_area_transmission">trasmissione</string>
+    <string name="vehicle_dtc_area_system">sistema</string>
+</resources>

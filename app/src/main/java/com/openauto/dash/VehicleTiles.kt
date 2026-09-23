@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -56,21 +57,21 @@ internal fun DoorsCard(modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
         ) {
-            Text("DOORS", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.vehicle_doors_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
             val d = doors
             if (d == null) {
-                Text("Waiting for MCU data… (needs root)", color = DashColors.Muted)
+                Text(stringResource(R.string.vehicle_waiting_mcu), color = DashColors.Muted)
             } else {
-                DoorStatusRow("Front left", d.frontLeft)
-                DoorStatusRow("Front right", d.frontRight)
-                DoorStatusRow("Rear left", d.rearLeft)
-                DoorStatusRow("Rear right", d.rearRight)
-                DoorStatusRow("Tailgate", d.tailgate)
-                DoorStatusRow("Bonnet", d.bonnet)
+                DoorStatusRow(stringResource(R.string.vehicle_door_front_left), d.frontLeft)
+                DoorStatusRow(stringResource(R.string.vehicle_door_front_right), d.frontRight)
+                DoorStatusRow(stringResource(R.string.vehicle_door_rear_left), d.rearLeft)
+                DoorStatusRow(stringResource(R.string.vehicle_door_rear_right), d.rearRight)
+                DoorStatusRow(stringResource(R.string.vehicle_door_tailgate), d.tailgate)
+                DoorStatusRow(stringResource(R.string.vehicle_door_bonnet), d.bonnet)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (d.anyOpen) "A door is open" else "All closed",
+                    stringResource(if (d.anyOpen) R.string.vehicle_door_any_open else R.string.vehicle_doors_all_closed),
                     color = if (d.anyOpen) DashColors.Warning else DashColors.Good,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -88,7 +89,7 @@ internal fun DoorStatusRow(label: String, open: Boolean) {
     ) {
         Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Medium)
         Text(
-            if (open) "OPEN" else "closed",
+            stringResource(if (open) R.string.vehicle_door_open_caps else R.string.vehicle_door_closed),
             color = if (open) DashColors.Warning else DashColors.Good,
             fontWeight = FontWeight.Bold
         )
@@ -147,9 +148,9 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            Text("CAN MONITOR — find a signal", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.vehicle_can_monitor_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Text(
-                "Doors CLOSED → Capture A. Then OPEN the door → Capture B. Only discrete signals that differ are shown.",
+                stringResource(R.string.vehicle_can_monitor_help),
                 color = DashColors.Muted,
                 style = MaterialTheme.typography.labelSmall
             )
@@ -162,7 +163,7 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
                         containerColor = if (closed != null) DashColors.Good else DashColors.Accent,
                         contentColor = DashColors.Background
                     )
-                ) { Text(if (capturing == "A") "…" else if (closed != null) "A ✓ closed" else "Capture A") }
+                ) { Text(if (capturing == "A") "…" else if (closed != null) stringResource(R.string.vehicle_can_a_closed) else stringResource(R.string.vehicle_capture_a)) }
                 Button(
                     onClick = { capture("B") },
                     enabled = capturing == null,
@@ -170,10 +171,10 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
                         containerColor = if (opened != null) DashColors.Good else DashColors.Accent,
                         contentColor = DashColors.Background
                     )
-                ) { Text(if (capturing == "B") "…" else if (opened != null) "B ✓ open" else "Capture B") }
+                ) { Text(if (capturing == "B") "…" else if (opened != null) stringResource(R.string.vehicle_can_b_open) else stringResource(R.string.vehicle_capture_b)) }
                 if (closed != null || opened != null) {
                     TextButton(onClick = { closed = null; opened = null }) {
-                        Text("Reset", color = DashColors.Muted)
+                        Text(stringResource(R.string.vehicle_reset), color = DashColors.Muted)
                     }
                 }
             }
@@ -181,9 +182,9 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
 
             when {
                 closed == null || opened == null ->
-                    Text("Capture A (closed), then B (open) to compare.", color = DashColors.Muted)
+                    Text(stringResource(R.string.vehicle_can_prompt), color = DashColors.Muted)
                 result.isEmpty() ->
-                    Text("No clean discrete difference. Do it with the engine OFF so sensors don't drift, and keep the door open during Capture B.", color = DashColors.Muted)
+                    Text(stringResource(R.string.vehicle_can_no_diff), color = DashColors.Muted)
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                     lazyColumnItems(result, key = { it.first }) { row ->
                         Column(
@@ -194,8 +195,8 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
                             Text(row.first, color = DashColors.TextPrimary, fontWeight = FontWeight.Bold)
-                            Text("closed: ${row.second}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                            Text("open:   ${row.third}", color = DashColors.Accent, style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.vehicle_can_row_closed, row.second), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.vehicle_can_row_open, row.third), color = DashColors.Accent, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

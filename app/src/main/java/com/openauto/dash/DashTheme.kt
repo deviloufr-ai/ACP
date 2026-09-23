@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,32 +9,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 
 /**
  * The dashboard design. Every theme comes in a dark and a light version; which
  * one shows is picked by [DashAppearance]. Enum names are persisted, so the old
  * names (AUTO, NEON_DARK, CLEAN_LIGHT, DARK_GLASS) stay even where the title moved on.
  */
-enum class DashThemeMode(val title: String, val description: String) {
-    AUTO("Standard", "Simple cards with softly glowing gauges"),
-    ORIGINAL("Original", "The first launcher look: flat cards, twin needle gauges"),
-    AURORA("Aurora Glass", "Glass panels, glowing gauges, gradient controls"),
-    NEON_DARK("Neon", "Blue + violet futuristic cockpit"),
-    CLEAN_LIGHT("Clean", "Minimal, high contrast and easy to read"),
-    DARK_GLASS("Premium Glass", "Smoked glass by night, frosted glass by day"),
-    SPORTY("Sporty", "Red performance cockpit"),
-    FLOATING("Floating", "No tile backgrounds: widgets and icons sit on the backdrop"),
-    ORBIT("Orbit", "Everything round: a spinning record, ring gauges, bubbles"),
-    COCKPIT("Cockpit", "Chrome-ringed analog dials and toggle switches on stitched leather"),
-    HORIZON("Horizon", "No widgets, just the sky and the road ahead"),
-    TAPE_DECK("Tape Deck", "80s synthwave head unit: cassette, neon grid, LED digits")
+enum class DashThemeMode(@StringRes val titleRes: Int, @StringRes val descriptionRes: Int) {
+    AUTO(R.string.dash_theme_standard, R.string.dash_theme_standard_desc),
+    ORIGINAL(R.string.dash_theme_original, R.string.dash_theme_original_desc),
+    AURORA(R.string.dash_theme_aurora, R.string.dash_theme_aurora_desc),
+    NEON_DARK(R.string.dash_theme_neon, R.string.dash_theme_neon_desc),
+    CLEAN_LIGHT(R.string.dash_theme_clean, R.string.dash_theme_clean_desc),
+    DARK_GLASS(R.string.dash_theme_premium_glass, R.string.dash_theme_premium_glass_desc),
+    SPORTY(R.string.dash_theme_sporty, R.string.dash_theme_sporty_desc),
+    FLOATING(R.string.dash_theme_floating, R.string.dash_theme_floating_desc),
+    ORBIT(R.string.dash_theme_orbit, R.string.dash_theme_orbit_desc),
+    COCKPIT(R.string.dash_theme_cockpit, R.string.dash_theme_cockpit_desc),
+    HORIZON(R.string.dash_theme_horizon, R.string.dash_theme_horizon_desc),
+    TAPE_DECK(R.string.dash_theme_tape_deck, R.string.dash_theme_tape_deck_desc)
 }
 
 /** Dark or light version of the theme; [AUTO] follows the car's day/night mode. */
-enum class DashAppearance(val title: String) {
-    AUTO("Auto"),
-    DARK("Dark"),
-    LIGHT("Light")
+enum class DashAppearance(@StringRes val titleRes: Int) {
+    AUTO(R.string.dash_appearance_auto),
+    DARK(R.string.dash_appearance_dark),
+    LIGHT(R.string.dash_appearance_light)
 }
 
 /**
@@ -241,11 +243,15 @@ private val TapeDeckLightPalette = DashPalette(
 )
 
 /** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
-enum class DashLayout(val title: String, val description: String) {
-    GRID("Dashboards only", "Swipeable pages fill the screen"),
-    MAPS_LEFT("Map on the left", "Google Maps docked on the left half, pages swipe on the right"),
-    MAPS_RIGHT("Map on the right", "Google Maps docked on the right half, pages swipe on the left")
+enum class DashLayout(@StringRes val titleRes: Int, @StringRes val descriptionRes: Int) {
+    GRID(R.string.dash_layout_grid, R.string.dash_layout_grid_desc),
+    MAPS_LEFT(R.string.dash_layout_maps_left, R.string.dash_layout_maps_left_desc),
+    MAPS_RIGHT(R.string.dash_layout_maps_right, R.string.dash_layout_maps_right_desc)
 }
+
+/** The layout's display name in the current language (the enum name is what gets saved). */
+internal val DashLayout.title: String
+    @Composable get() = stringResource(titleRes)
 
 object DashLayoutStore {
     private const val PREFS = "dashboard_layout"

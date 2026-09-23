@@ -120,7 +120,7 @@ object NavDirections {
             }
         }
         if (lines.isEmpty()) return null
-        return fromLines(lines, icon, sbn.packageName)
+        return fromLines(lines, icon, sbn.packageName, context.getString(R.string.info_nav_continue))
     }
 
     /**
@@ -129,7 +129,13 @@ object NavDirections {
      * that order, de-duplicated). Null when the lines don't describe a turn.
      * Pure so the Maps / Waze formats can be unit tested.
      */
-    internal fun fromLines(lines: List<String>, icon: Bitmap?, packageName: String): NavState? {
+    internal fun fromLines(
+        lines: List<String>,
+        icon: Bitmap?,
+        packageName: String,
+        /** Shown when the card has a distance but no instruction text (localized by [parse]). */
+        continueLabel: String = "Continue"
+    ): NavState? {
         if (lines.isEmpty()) return null
 
         val eta = lines.firstOrNull { it.contains('·') || it.contains('•') } ?: lines.firstOrNull {
@@ -156,7 +162,7 @@ object NavDirections {
 
         return NavState(
             active = true,
-            instruction = instruction.ifEmpty { "Continue" },
+            instruction = instruction.ifEmpty { continueLabel },
             distance = distance,
             eta = eta.orEmpty(),
             icon = icon,

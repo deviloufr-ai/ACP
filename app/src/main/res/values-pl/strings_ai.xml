@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings dialog (also the menu item) -->
+    <string name="ai_title">Mechanik AI</string>
+    <string name="ai_explanation">Po połączeniu adaptera OBD Dashwheel sam sprawdza kody błędów. Nowy kod jest objaśniany przez Google Gemini i odczytywany na głos; szczegóły pojawiają się na kafelku Kody błędów. Wysyłane są tylko kody, odczyty silnika i model auta.</string>
+    <string name="ai_activation_code">Kod aktywacyjny</string>
+    <string name="ai_activation_hint">Odblokowuje wbudowany klucz</string>
+    <string name="ai_activate">Aktywuj</string>
+    <string name="ai_own_key">Lub własny klucz API Gemini</string>
+    <string name="ai_key">Klucz API Gemini</string>
+    <string name="ai_key_hint">Za darmo na aistudio.google.com → Get API key</string>
+    <string name="ai_engine">Silnik</string>
+    <string name="ai_language">Język</string>
+    <string name="ai_language_auto">Jak aplikacja</string>
+    <string name="ai_speak">Komunikaty głosowe</string>
+    <string name="ai_speak_detail">Nowe kody błędów, przegrzanie, brak ładowania akumulatora</string>
+    <string name="ai_test">Testuj</string>
+    <string name="ai_done">Gotowe</string>
+
+    <!-- Settings dialog: test results -->
+    <string name="ai_test_ok">Gemini działa ✓ (%1$s).</string>
+    <string name="ai_test_activated_ok">Aktywowano ✓ Gemini działa ✓ (%1$s).</string>
+    <string name="ai_test_failed">Nie udało się: %1$s</string>
+    <string name="ai_test_activated_unreachable">Aktywowano ✓ Gemini jeszcze niedostępne: %1$s</string>
+    <string name="ai_wrong_code">Nieprawidłowy kod aktywacyjny</string>
+    <string name="ai_no_voice">Brak głosu (%1$s) na tym urządzeniu: dodaj go w Ustawieniach Androida → Zamiana tekstu na mowę.</string>
+
+    <!-- Spoken by the car, in the mechanic's language (resolved with the AI language, not the screen's) -->
+    <string name="ai_say_ready">Mechanik AI jest gotowy.</string>
+    <plurals name="ai_say_new_codes">
+        <item quantity="one">%1$d nowy kod błędu silnika: %2$s. Szczegóły na ekranie.</item>
+        <item quantity="few">%1$d nowe kody błędów silnika: %2$s. Szczegóły na ekranie.</item>
+        <item quantity="many">%1$d nowych kodów błędów silnika: %2$s. Szczegóły na ekranie.</item>
+        <item quantity="other">%1$d nowego kodu błędu silnika: %2$s. Szczegóły na ekranie.</item>
+    </plurals>
+    <string name="ai_say_overheat">Uwaga, silnik się przegrzewa: %1$d stopni. Zatrzymaj się, gdy będzie bezpiecznie, i wyłącz silnik.</string>
+    <string name="ai_say_not_charging">Akumulator nie jest ładowany: %1$s wolta przy pracującym silniku. Jedź do warsztatu i wyłącz zbędne odbiorniki.</string>
+    <string name="ai_say_weak_battery">Akumulator jest słaby: %1$s wolta przy wyłączonym silniku. Warto go wkrótce sprawdzić.</string>
+
+    <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
+    <string name="ai_verdict_ok">Można jechać</string>
+    <string name="ai_verdict_soon">Wkrótce sprawdzić</string>
+    <string name="ai_verdict_stop">Zatrzymaj się</string>
+    <string name="ai_likely">Prawdopodobnie: %1$s</string>
+    <string name="ai_check_first">Najpierw sprawdzić: %1$s</string>
+
+    <!-- Fault codes tile: status -->
+    <string name="ai_no_codes">Brak kodów błędów ✓</string>
+    <string name="ai_cleared">Usunięto ✓</string>
+    <string name="ai_scan_failed">Odczyt nieudany</string>
+    <string name="ai_clear_failed">Usuwanie nieudane</string>
+    <string name="ai_thinking">Pytanie mechanika AI…</string>
+    <string name="ai_retry">Ponów</string>
+    <string name="ai_note_no_key">Dodaj darmowy klucz Gemini (menu → Mechanik AI), aby otrzymywać porady prostym językiem.</string>
+    <string name="ai_note_unavailable">AI niedostępne: %1$s</string>
+
+    <!-- Why asking Gemini failed (follows "AI unavailable: " / "Didn't work: ") -->
+    <string name="ai_error_quota">dzisiejszy darmowy limit został wykorzystany</string>
+    <string name="ai_error_key_refused">klucz został odrzucony</string>
+    <string name="ai_error_gemini">błąd Gemini %1$d</string>
+    <string name="ai_error_empty">Gemini zwróciło pustą odpowiedź</string>
+    <string name="ai_error_unreadable">odpowiedź Gemini była nieczytelna</string>
+    <string name="ai_error_offline">brak połączenia z internetem</string>
+    <string name="ai_error_unknown">nieznany błąd</string>
+</resources>

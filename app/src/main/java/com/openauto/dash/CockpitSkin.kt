@@ -93,6 +93,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -418,13 +419,13 @@ internal fun CockpitTopBar(m: TopBarModel) {
             ChromePill(onClick = m.onApps, description = null) {
                 Icon(Icons.Filled.Apps, contentDescription = null, tint = EngraveInk, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                PillLabel("APPS")
+                PillLabel(stringResource(R.string.cockpit_apps))
             }
             LayoutPicker(m) { open ->
-                ChromePill(onClick = open, description = "Screen layout: ${m.layout.title}") {
+                ChromePill(onClick = open, description = stringResource(R.string.cockpit_screen_layout_desc, m.layout.title)) {
                     LayoutIcon(m.layout, null, EngraveInk, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    PillLabel("LAYOUT")
+                    PillLabel(stringResource(R.string.cockpit_layout))
                 }
             }
         }
@@ -441,7 +442,7 @@ internal fun CockpitTopBar(m: TopBarModel) {
             ObdLamp(m.obdConnection, m.onConnectObd)
             Spacer(Modifier.width(6.dp))
             MorePicker(m) { open ->
-                ChromePill(onClick = open, description = "More", modifier = Modifier.width(52.dp)) {
+                ChromePill(onClick = open, description = stringResource(R.string.cockpit_more), modifier = Modifier.width(52.dp)) {
                     Icon(Icons.Filled.MoreVert, contentDescription = null, tint = EngraveInk, modifier = Modifier.size(22.dp))
                 }
             }
@@ -521,10 +522,11 @@ private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
     val wall = rememberWallClock(100L)
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
+    val timeLabel = stringResource(R.string.cockpit_time_desc, clock)
     Box(
         modifier = modifier
             .size(58.dp)
-            .semantics { contentDescription = "Time $clock" }
+            .semantics { contentDescription = timeLabel }
             .drawWithCache {
                 val r = size.minDimension / 2f
                 val c = center
@@ -593,7 +595,7 @@ private fun OutsideTempLcd() {
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("OUT", style = lcd(12.sp, ink.copy(alpha = 0.7f)), maxLines = 1)
+            Text(stringResource(R.string.cockpit_out), style = lcd(12.sp, ink.copy(alpha = 0.7f)), maxLines = 1)
             Spacer(Modifier.width(8.dp))
             Text(
                 weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--",
@@ -616,11 +618,12 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
     }
     val lit = state != ObdConnectionState.DISCONNECTED
     val pulse = if (state == ObdConnectionState.CONNECTING) rememberLoop(900, reverse = true) else null
+    val statusLabel = obdStatusLabel(state)
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clickable(enabled = idle, onClickLabel = "Connect OBD", role = Role.Button, onClick = onConnect)
-            .semantics(mergeDescendants = true) { contentDescription = obdStatusLabel(state) }
+            .clickable(enabled = idle, onClickLabel = stringResource(R.string.cockpit_connect_obd), role = Role.Button, onClick = onConnect)
+            .semantics(mergeDescendants = true) { contentDescription = statusLabel }
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -818,28 +821,56 @@ private class DialFace(
     val titleSize: Float = 15f
 )
 
+/** The printed words on the dial faces, resolved in composition so faces can be built in plain code. */
+private data class DialWords(
+    val rpmTitle: String,
+    val temp: String,
+    val fuel: String,
+    val volt: String,
+    val load: String,
+    val cold: String,
+    val hot: String,
+    val empty: String,
+    val full: String,
+    val fuelTitle: String
+)
+
+@Composable
+private fun dialWords(): DialWords = DialWords(
+    rpmTitle = stringResource(R.string.cockpit_dial_rpm_title),
+    temp = stringResource(R.string.cockpit_dial_temp),
+    fuel = stringResource(R.string.cockpit_dial_fuel),
+    volt = stringResource(R.string.cockpit_dial_volt),
+    load = stringResource(R.string.cockpit_dial_load),
+    cold = stringResource(R.string.cockpit_dial_cold),
+    hot = stringResource(R.string.cockpit_dial_hot),
+    empty = stringResource(R.string.cockpit_dial_empty),
+    full = stringResource(R.string.cockpit_dial_full),
+    fuelTitle = stringResource(R.string.cockpit_dial_fuel_title)
+)
+
 private val LcdNormal = LcdBox(140f, 306f, 100f, 36f)
 private val LcdTwoLine = LcdBox(132f, 294f, 116f, 52f)
 private val LcdCompact = LcdBox(125f, 294f, 130f, 50f)
 
 /** Tachometer, 0–7 ×1000 r/min, red from 6; coolant and (when known) fuel sub-dials. */
-private fun tachFace(fuel: Boolean, compact: Boolean) = DialFace(
+private fun tachFace(fuel: Boolean, compact: Boolean, w: DialWords) = DialFace(
     labels = (0..7).map { it.toString() },
     minor = if (compact) 2 else 4,
     numeral = if (compact) 36f else 32f,
-    title = "×1000 r/min",
+    title = w.rpmTitle,
     lcd = if (compact) LcdCompact else LcdNormal,
     red = (6f / 7f)..1f,
     subs = when {
         compact -> emptyList()
-        fuel -> listOf(SubDial(147f, 247f, "C", "H", "TEMP"), SubDial(233f, 247f, "E", "F", "FUEL"))
-        else -> listOf(SubDial(190f, 250f, "C", "H", "TEMP"))
+        fuel -> listOf(SubDial(147f, 247f, w.cold, w.hot, w.temp), SubDial(233f, 247f, w.empty, w.full, w.fuel))
+        else -> listOf(SubDial(190f, 250f, w.cold, w.hot, w.temp))
     },
     titleSize = if (compact) 20f else 15f
 )
 
 /** Speedometer, 0–240 km/h; battery and engine-load sub-dials when [subs]. */
-private fun speedFace(subs: Boolean, compact: Boolean, twoLine: Boolean) = DialFace(
+private fun speedFace(subs: Boolean, compact: Boolean, twoLine: Boolean, w: DialWords) = DialFace(
     labels = (0..240 step if (compact) 40 else 20).map { it.toString() },
     minor = if (compact) 4 else 2,
     numeral = if (compact) 30f else 23f,
@@ -850,17 +881,17 @@ private fun speedFace(subs: Boolean, compact: Boolean, twoLine: Boolean) = DialF
         else -> LcdNormal
     },
     subs = if (subs && !compact) {
-        listOf(SubDial(147f, 247f, "8", "16", "VOLT"), SubDial(233f, 247f, "0", "100", "LOAD"))
+        listOf(SubDial(147f, 247f, "8", "16", w.volt), SubDial(233f, 247f, "0", "100", w.load))
     } else emptyList(),
     titleSize = if (compact) 20f else 15f
 )
 
 /** Fuel gauge: a 120° arc over the hub, E to F, red below 12 %. */
-private val FuelFace = DialFace(
-    labels = listOf("E", "½", "F"),
+private fun fuelFace(w: DialWords) = DialFace(
+    labels = listOf(w.empty, "½", w.full),
     minor = 2,
     numeral = 36f,
-    title = "FUEL",
+    title = w.fuelTitle,
     lcd = LcdNormal,
     start = -60f,
     sweep = 120f,
@@ -1076,6 +1107,8 @@ private fun ChromeDial(
                 }
         )
         val lcdTextSize = (du * if (face.lcd == LcdCompact) 30f else 20f)
+        // A long translated unit ("giri/min") shrinks to the width of " km/h" so the readout stays in its window.
+        val unitScale = min(1f, 5f / (unit.length + 1))
         Column(
             modifier = Modifier
                 .offset(du * face.lcd.x, du * face.lcd.y)
@@ -1087,7 +1120,7 @@ private fun ChromeDial(
                 buildAnnotatedString {
                     append(readout)
                     if (unit.isNotEmpty()) {
-                        withStyle(SpanStyle(fontSize = (lcdTextSize * 0.55f).textSize(), color = lcdColor.copy(alpha = 0.7f))) {
+                        withStyle(SpanStyle(fontSize = (lcdTextSize * 0.55f * unitScale).textSize(), color = lcdColor.copy(alpha = 0.7f))) {
                             append(" $unit")
                         }
                     }
@@ -1158,11 +1191,16 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
     val fuelFrac = fuel?.let { it.percent / 100f }
     val volts = if (connected && d.voltage > 0.0) ((d.voltage - 8.0) / 8.0).toFloat() else null
     val load = if (connected) d.engineLoadPct / 100f else null
+    val words = dialWords()
+    val rpmUnit = stringResource(R.string.cockpit_unit_rpm)
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(enabled = idle && !env.editing, onClickLabel = "Connect OBD", role = Role.Button, onClick = env.onConnectObd)
+            .clickable(
+                enabled = idle && !env.editing, onClickLabel = stringResource(R.string.cockpit_connect_obd),
+                role = Role.Button, onClick = env.onConnectObd
+            )
             .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1174,14 +1212,14 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
         @Composable
         fun tach(side: Dp) {
             val compact = side < 230.dp
-            val face = remember(fuel != null, compact) { tachFace(fuel != null, compact) }
+            val face = remember(fuel != null, compact, words) { tachFace(fuel != null, compact, words) }
             ChromeDial(
                 face = face,
                 fraction = rpm?.let { it / 7000f },
                 subFractions = if (fuel != null) listOf(coolant, fuelFrac) else listOf(coolant),
                 live = connected,
                 readout = rpm?.toString() ?: "--",
-                unit = "rpm",
+                unit = rpmUnit,
                 lcdColor = ink,
                 side = side
             )
@@ -1190,7 +1228,7 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
         @Composable
         fun speedo(side: Dp, withRevs: Boolean) {
             val compact = side < 230.dp
-            val face = remember(compact, withRevs) { speedFace(subs = true, compact = compact, twoLine = withRevs) }
+            val face = remember(compact, withRevs, words) { speedFace(subs = true, compact = compact, twoLine = withRevs, w = words) }
             ChromeDial(
                 face = face,
                 fraction = speed?.let { it / 240f },
@@ -1200,12 +1238,16 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
                 unit = "km/h",
                 lcdColor = speedColor,
                 side = side,
-                second = if (withRevs && !compact) "${rpm ?: "--"} RPM" else null
+                second = if (withRevs && !compact) stringResource(R.string.cockpit_rpm_line, rpm?.toString() ?: "--") else null
             )
         }
 
         when {
-            min(w, h) < 120.dp -> SpeedLcd(speed, if (connected) "KM/H · ${rpm ?: 0} RPM" else "OBD OFF", Modifier.fillMaxSize())
+            min(w, h) < 120.dp -> SpeedLcd(
+                speed,
+                if (connected) stringResource(R.string.cockpit_speed_rpm_caption, rpm ?: 0) else stringResource(R.string.cockpit_obd_off),
+                Modifier.fillMaxSize()
+            )
             wide -> {
                 val side = min(h, (w - 12.dp) / 2f)
                 val gap = w - side * 2f
@@ -1255,13 +1297,19 @@ private fun TelemetryTellTales(env: SkinTileEnv, speed: Int?, idle: Boolean, mod
         TellTale(
             Icons.Filled.BatteryAlert,
             if (connected && d.voltage > 0.0 && d.voltage !in 12.0..15.0) warn else null,
-            "Battery"
+            stringResource(R.string.cockpit_battery)
         )
-        TellTale(Icons.Filled.Thermostat, if (connected && d.coolantTempC >= 105) warn else null, "Coolant")
-        TellTale(Icons.Filled.Speed, if ((speed ?: 0) >= SPEED_WARNING_KMH) warn else null, "Speed warning")
+        TellTale(
+            Icons.Filled.Thermostat, if (connected && d.coolantTempC >= 105) warn else null,
+            stringResource(R.string.cockpit_coolant)
+        )
+        TellTale(
+            Icons.Filled.Speed, if ((speed ?: 0) >= SPEED_WARNING_KMH) warn else null,
+            stringResource(R.string.cockpit_speed_warning)
+        )
         if (idle) {
             Text(
-                "TAP TO\nCONNECT",
+                stringResource(R.string.cockpit_tap_to_connect),
                 style = engraved(11.sp),
                 textAlign = TextAlign.Center,
                 maxLines = 2
@@ -1277,9 +1325,10 @@ private fun CockpitSpeedHud(env: SkinTileEnv) {
     val source = when {
         env.obdConnection == ObdConnectionState.CONNECTED -> "OBD"
         speed != null -> "GPS"
-        else -> "NO SIGNAL"
+        else -> stringResource(R.string.cockpit_no_signal)
     }
     val color = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else LcdInk
+    val words = dialWords()
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
         val w = maxWidth
         val h = maxHeight
@@ -1291,7 +1340,7 @@ private fun CockpitSpeedHud(env: SkinTileEnv) {
         @Composable
         fun dial(side: Dp) {
             val compact = side < 230.dp
-            val face = remember(compact) { speedFace(subs = false, compact = compact, twoLine = false) }
+            val face = remember(compact, words) { speedFace(subs = false, compact = compact, twoLine = false, w = words) }
             ChromeDial(
                 face = face,
                 fraction = speed?.let { it / 240f },
@@ -1335,8 +1384,8 @@ private fun CockpitMedia(env: SkinTileEnv) {
     val playing = hasTrack && state.isPlaying
     val positionMs = rememberMediaPosition(state, env.mediaController)
     val text = when {
-        !access -> "MEDIA ACCESS NEEDED · TAP TO ENABLE"
-        !hasTrack -> "NOTHING PLAYING"
+        !access -> stringResource(R.string.cockpit_media_access_needed)
+        !hasTrack -> stringResource(R.string.cockpit_nothing_playing)
         state.artist.isNotBlank() -> "${state.artist} · ${state.title}".uppercase()
         else -> state.title.uppercase()
     }
@@ -1356,12 +1405,13 @@ private fun CockpitMedia(env: SkinTileEnv) {
         return (v * settle.value).coerceIn(0f, 1f)
     }
 
+    val grantLabel = stringResource(R.string.cockpit_grant_media_access)
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .then(
                 if (!access) {
-                    Modifier.clickable(enabled = !env.editing, onClickLabel = "Grant media access", role = Role.Button) {
+                    Modifier.clickable(enabled = !env.editing, onClickLabel = grantLabel, role = Role.Button) {
                         CarMediaController.openNotificationAccessSettings(env.context)
                     }
                 } else Modifier
@@ -1393,13 +1443,13 @@ private fun CockpitMedia(env: SkinTileEnv) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = if (showVu) Arrangement.SpaceBetween else Arrangement.Center
                     ) {
-                        if (showVu) VuMeter({ level(0f) }, "L", Modifier.width(vuW).height(vuW / 1.5f))
+                        if (showVu) VuMeter({ level(0f) }, stringResource(R.string.cockpit_vu_left), Modifier.width(vuW).height(vuW / 1.5f))
                         if (access) {
                             MediaButtons(env, playing, btn)
                         } else {
-                            Text("TAP TO ENABLE", style = engraved(14.sp), maxLines = 1)
+                            Text(stringResource(R.string.cockpit_tap_to_enable), style = engraved(14.sp), maxLines = 1)
                         }
-                        if (showVu) VuMeter({ level(1.7f) }, "R", Modifier.width(vuW).height(vuW / 1.5f))
+                        if (showVu) VuMeter({ level(1.7f) }, stringResource(R.string.cockpit_vu_right), Modifier.width(vuW).height(vuW / 1.5f))
                     }
                 }
             }
@@ -1440,14 +1490,14 @@ private fun MediaLcd(text: String, time: String, glyph: ImageVector, dim: Boolea
 private fun MediaButtons(env: SkinTileEnv, playing: Boolean, diameter: Dp) {
     val c = env.mediaController
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(diameter * 0.16f)) {
-        ChromeRoundButton(Icons.Filled.SkipPrevious, "Previous", diameter, !env.editing) { c.previous() }
+        ChromeRoundButton(Icons.Filled.SkipPrevious, stringResource(R.string.cockpit_previous), diameter, !env.editing) { c.previous() }
         ChromeRoundButton(
             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            if (playing) "Pause" else "Play",
+            stringResource(if (playing) R.string.cockpit_pause else R.string.cockpit_play),
             diameter * 1.18f,
             !env.editing
         ) { c.playPause() }
-        ChromeRoundButton(Icons.Filled.SkipNext, "Next", diameter, !env.editing) { c.next() }
+        ChromeRoundButton(Icons.Filled.SkipNext, stringResource(R.string.cockpit_next), diameter, !env.editing) { c.next() }
     }
 }
 
@@ -1573,21 +1623,24 @@ private fun metresTo(nav: NavState): Float? {
 private fun CockpitNavigation(env: SkinTileEnv) {
     val nav by NavDirections.state.collectAsState()
     val context = env.context
+    val openLabel = stringResource(R.string.cockpit_open_navigation)
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val h = maxHeight
         val w = maxWidth
         LcdPanel(
             Modifier
                 .fillMaxSize()
-                .clickable(enabled = !env.editing, onClickLabel = "Open navigation", role = Role.Button) {
+                .clickable(enabled = !env.editing, onClickLabel = openLabel, role = Role.Button) {
                     if (env.hasMediaAccess) openNavigationApp(context, nav)
                     else CarMediaController.openNotificationAccessSettings(context)
                 },
             corner = 14.dp
         ) {
             when {
-                !env.hasMediaAccess -> LcdMessage("NO ACCESS", "TAP TO ENABLE", h)
-                !nav.active -> LcdMessage("NO ROUTE", "TAP FOR MAPS", h)
+                !env.hasMediaAccess -> LcdMessage(
+                    stringResource(R.string.cockpit_no_access), stringResource(R.string.cockpit_tap_to_enable), h
+                )
+                !nav.active -> LcdMessage(stringResource(R.string.cockpit_no_route), stringResource(R.string.cockpit_tap_for_maps), h)
                 else -> NavReadout(nav, w, h)
             }
         }
@@ -1712,10 +1765,11 @@ private fun TurnSignal(side: Int, blinking: Boolean, diameter: Dp) {
 /** Analog clock with a date window; a wide tile adds the time and date on an LCD. Tap opens alarms. */
 @Composable
 private fun CockpitClock(env: SkinTileEnv) {
+    val openLabel = stringResource(R.string.cockpit_open_alarms)
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(enabled = !env.editing, onClickLabel = "Open alarms", role = Role.Button) { openClockApp(env.context) }
+            .clickable(enabled = !env.editing, onClickLabel = openLabel, role = Role.Button) { openClockApp(env.context) }
             .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1744,11 +1798,12 @@ private fun AnalogClock(side: Dp) {
     val zone = remember { TimeZone.getDefault() }
     val today = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val dateText = remember(today, locale) { SimpleDateFormat("EEE d", locale).format(today).uppercase(locale) }
+    val dateText = remember(today, locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEd"), locale).format(today).uppercase(locale) }
     val measurer = rememberTextMeasurer()
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
     val light = DashColors.Light
+    val clockLabel = stringResource(R.string.cockpit_clock)
     fun local(): Long {
         val t = wall.longValue
         return t + zone.getOffset(t)
@@ -1756,7 +1811,7 @@ private fun AnalogClock(side: Dp) {
     Box(
         Modifier
             .size(side)
-            .semantics { contentDescription = "Clock" }
+            .semantics { contentDescription = clockLabel }
     ) {
         Box(
             Modifier
@@ -1888,7 +1943,7 @@ private fun DateLcd(modifier: Modifier) {
     val now = rememberNow(1_000L)
     val locale = Locale.getDefault()
     val time = remember(now, locale) { SimpleDateFormat("HH:mm", locale).format(now) }
-    val date = remember(now, locale) { SimpleDateFormat("EEEE d MMMM", locale).format(now).uppercase(locale) }
+    val date = remember(now, locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale).format(now).uppercase(locale) }
     val ink = LcdInk
     BoxWithConstraints(modifier) {
         val h = maxHeight
@@ -1946,7 +2001,7 @@ private fun CockpitWeather() {
                 }
                 Column {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("OUT", style = lcd((big * 0.36f).textSize(), ink.copy(alpha = 0.7f)), maxLines = 1)
+                        Text(stringResource(R.string.cockpit_out), style = lcd((big * 0.36f).textSize(), ink.copy(alpha = 0.7f)), maxLines = 1)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--°C",
@@ -1955,14 +2010,14 @@ private fun CockpitWeather() {
                         )
                     }
                     Text(
-                        weather?.condition?.uppercase() ?: "LOADING…",
+                        weather?.condition?.uppercase() ?: stringResource(R.string.cockpit_loading),
                         style = lcd(line.textSize(), ink.copy(alpha = 0.9f)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (weather != null && h >= 110.dp) {
                         Text(
-                            "FEELS ${weather.feelsC.roundToInt()}° · WIND ${weather.windKmh.roundToInt()} KM/H",
+                            stringResource(R.string.cockpit_feels_wind, weather.feelsC.roundToInt(), weather.windKmh.roundToInt()),
                             style = lcd((line * 0.85f).textSize(), ink.copy(alpha = 0.7f)),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -1993,10 +2048,13 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
     val segment = LcdInk
     val ink = if (low) DashColors.Warning else segment
     val cream = DashColors.TextPrimary
+    val words = dialWords()
+    val face = remember(words) { fuelFace(words) }
+    val settingsLabel = stringResource(R.string.cockpit_fuel_settings)
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(enabled = !env.editing, onClickLabel = "Fuel signal settings", role = Role.Button) { finder = true }
+            .clickable(enabled = !env.editing, onClickLabel = settingsLabel, role = Role.Button) { finder = true }
             .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -2006,7 +2064,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
         @Composable
         fun gauge(side: Dp, readout: String, unit: String) {
             ChromeDial(
-                face = FuelFace,
+                face = face,
                 fraction = fuel.percent / 100f,
                 subFractions = emptyList(),
                 live = false,
@@ -2035,7 +2093,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                     LcdPanel(Modifier.fillMaxSize()) {
                         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "RANGE",
+                                stringResource(R.string.cockpit_range),
                                 style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).textSize(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
@@ -2087,10 +2145,11 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
     val media = env.mediaState
     val lastMediaPackage = remember(media.title, media.isPlaying) { CarMediaController.getLastMediaPackage(env.context) }
     val playingHere = media.isPlaying && lastMediaPackage == packageName
+    val openLabel = stringResource(R.string.cockpit_open_app, label)
     BoxWithConstraints(
         modifier = modifier
             .then(if (onPlate) Modifier.togglePlate() else Modifier)
-            .clickable(enabled = !env.editing, onClickLabel = "Open $label", role = Role.Button) {
+            .clickable(enabled = !env.editing, onClickLabel = openLabel, role = Role.Button) {
                 if (busy) return@clickable
                 busy = true
                 scope.launch {
@@ -2264,7 +2323,7 @@ private fun CockpitLaunchRail(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
     ) {
         if (item.packages.isEmpty()) {
             Text(
-                "LAUNCH BAR — TAP THE PENCIL TO ADD APPS",
+                stringResource(R.string.cockpit_launch_bar_empty),
                 style = engraved(13.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2285,7 +2344,10 @@ private fun CockpitLaunchRail(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                 }
             }
         }
-        ChromeRoundButton(Icons.Filled.Edit, "Edit launch bar", 48.dp, enabled = true, disc = 0.72f, onClick = env.onEditLaunchBar)
+        ChromeRoundButton(
+            Icons.Filled.Edit, stringResource(R.string.cockpit_edit_launch_bar), 48.dp,
+            enabled = true, disc = 0.72f, onClick = env.onEditLaunchBar
+        )
     }
 }
 

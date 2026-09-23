@@ -3,6 +3,7 @@
 package com.openauto.dash
 
 import android.Manifest
+import android.content.res.Resources
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -78,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.min
@@ -100,12 +102,12 @@ internal fun batteryColor(voltage: Double): Color =
 /** The "connect first" body shared by the OBD cards. */
 @Composable
 internal fun ObdNotConnected(onConnect: () -> Unit) {
-    Text("OBD not connected", color = DashColors.Muted)
+    Text(stringResource(R.string.vehicle_obd_not_connected), color = DashColors.Muted)
     Spacer(Modifier.height(10.dp))
     Button(
         onClick = onConnect,
         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-    ) { Text("Connect") }
+    ) { Text(stringResource(R.string.vehicle_connect)) }
 }
 
 @Composable
@@ -136,7 +138,7 @@ internal fun ObdCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "TELEMETRY",
+                        stringResource(R.string.vehicle_telemetry_title),
                         color = DashColors.Accent,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -151,7 +153,7 @@ internal fun ObdCard(
                                     .background(DashColors.Good)
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("Live", color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.vehicle_live), color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
                         }
                     } else {
                         Button(
@@ -166,7 +168,7 @@ internal fun ObdCard(
                         ) {
                             Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (connection == ObdConnectionState.CONNECTING) "\u2026" else "Connect")
+                            Text(if (connection == ObdConnectionState.CONNECTING) "\u2026" else stringResource(R.string.vehicle_connect))
                         }
                     }
                 }
@@ -178,7 +180,7 @@ internal fun ObdCard(
                         value = if (connected) obdData.speedKmh.toFloat() else 0f,
                         maxValue = 220f,
                         valueText = if (connected) obdData.speedKmh.toString() else "--",
-                        label = "SPEED",
+                        label = stringResource(R.string.vehicle_speed_caps),
                         unit = "km/h",
                         accent = DashColors.Speed,
                         redlineAccent = DashColors.Warning,
@@ -194,7 +196,7 @@ internal fun ObdCard(
                 }
                 val chips: @Composable (Modifier) -> Unit = { m ->
                     MeterChip(
-                        label = "Coolant",
+                        label = stringResource(R.string.vehicle_coolant),
                         valueText = if (connected) "${obdData.coolantTempC}\u00b0" else "--",
                         fraction = (obdData.coolantTempC / 120f),
                         color = coolantColor(obdData.coolantTempC),
@@ -202,7 +204,7 @@ internal fun ObdCard(
                         modifier = m
                     )
                     MeterChip(
-                        label = "Load",
+                        label = stringResource(R.string.vehicle_load),
                         valueText = if (connected) "${obdData.engineLoadPct}%" else "--",
                         fraction = obdData.engineLoadPct / 100f,
                         color = DashColors.Accent,
@@ -210,7 +212,7 @@ internal fun ObdCard(
                         modifier = m
                     )
                     MeterChip(
-                        label = "Battery",
+                        label = stringResource(R.string.vehicle_battery),
                         valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
                         fraction = batteryFraction(obdData.voltage),
                         color = batteryColor(obdData.voltage),
@@ -282,7 +284,7 @@ internal fun RpmBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("RPM", color = DashColors.TextSecondary, letterSpacing = 1.5.sp, style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.vehicle_rpm_caps), color = DashColors.TextSecondary, letterSpacing = 1.5.sp, style = MaterialTheme.typography.labelSmall)
             Text(
                 text = if (dimmed) "--" else rpm.toString(),
                 color = if (dimmed) DashColors.Muted else if (overRedline) warning else DashColors.Rpm,
@@ -647,13 +649,18 @@ internal fun ObdDtcCard(
     val connected = connection == ObdConnectionState.CONNECTED
     val ai by AiMechanic.state.collectAsState()
     val codes = ai.codes
-    val french = remember(ai) { AiSettings.load(context).language == AiLanguage.FRENCH }
+    // The AI's advice is written in the mechanic's language; its labels follow it.
+    val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
     var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<DtcMessage?>(null) }
+    val scanFailed = stringResource(R.string.ai_scan_failed)
+    val clearFailed = stringResource(R.string.ai_clear_failed)
+    val clearedText = stringResource(R.string.ai_cleared)
+    val noCodes = stringResource(R.string.ai_no_codes)
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text("FAULT CODES", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.vehicle_fault_codes_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
 
             if (!connected) {
@@ -668,11 +675,11 @@ internal fun ObdDtcCard(
                                 val r = ObdBluetoothManager.readTroubleCodes()
                                 busy = false
                                 r.onSuccess { AiMechanic.report(it, announce = false) }
-                                    .onFailure { message = it.message ?: "Scan failed" }
+                                    .onFailure { message = DtcMessage(it.message ?: scanFailed, failed = true) }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                    ) { Text("Scan") }
+                    ) { Text(stringResource(R.string.vehicle_scan)) }
                     Button(
                         enabled = !busy && codes?.isNotEmpty() == true,
                         onClick = {
@@ -680,48 +687,48 @@ internal fun ObdDtcCard(
                             scope.launch {
                                 val res = ObdBluetoothManager.clearTroubleCodes()
                                 busy = false
-                                res.onSuccess { message = "Cleared ✓"; AiMechanic.cleared() }
-                                    .onFailure { message = it.message ?: "Clear failed" }
+                                res.onSuccess { message = DtcMessage(clearedText, failed = false); AiMechanic.cleared() }
+                                    .onFailure { message = DtcMessage(it.message ?: clearFailed, failed = true) }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
-                    ) { Text("Clear") }
+                    ) { Text(stringResource(R.string.vehicle_clear)) }
                 }
                 Spacer(Modifier.height(10.dp))
                 if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DashColors.Accent)
-                (message ?: if (codes?.isEmpty() == true) "No fault codes ✓" else null)?.let {
-                    Text(it, color = if (it.contains("fail", true)) DashColors.Warning else DashColors.Good)
+                (message ?: if (codes?.isEmpty() == true) DtcMessage(noCodes, failed = false) else null)?.let {
+                    Text(it.text, color = if (it.failed) DashColors.Warning else DashColors.Good)
                     Spacer(Modifier.height(6.dp))
                 }
                 if (codes != null && codes.isNotEmpty()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        ai.diagnosis?.let { MechanicVerdict(it, french) }
+                        ai.diagnosis?.let { MechanicVerdict(it, aiText) }
                         if (ai.thinking) {
-                            Text("Asking the AI mechanic…", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.ai_thinking), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                         }
                         ai.note?.let { note ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(note, color = DashColors.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                Text(AiMechanic.noteText(context, note), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                                 if (ai.canRetry) {
-                                    TextButton(onClick = AiMechanic::refresh) { Text("Retry", color = DashColors.Accent) }
+                                    TextButton(onClick = AiMechanic::refresh) { Text(stringResource(R.string.ai_retry), color = DashColors.Accent) }
                                 }
                             }
                         }
                         codes.forEach { code ->
                             val advice = ai.diagnosis?.codes?.firstOrNull { it.code == code }
                             if (advice != null) {
-                                CodeAdviceRow(advice, french)
+                                CodeAdviceRow(advice, aiText)
                             } else {
                                 val dtc = ObdCodes.describe(code)
                                 Column(modifier = Modifier.padding(vertical = 6.dp)) {
                                     Text(
-                                        "${dtc.code} — ${dtc.title}",
+                                        "${dtc.code} — ${dtc.localizedTitle()}",
                                         color = DashColors.Warning,
                                         fontWeight = FontWeight.SemiBold,
                                         style = MaterialTheme.typography.titleSmall
                                     )
                                     Text(
-                                        dtc.fix,
+                                        dtc.localizedFix(),
                                         color = DashColors.TextSecondary,
                                         style = MaterialTheme.typography.bodySmall
                                     )
@@ -735,16 +742,19 @@ internal fun ObdDtcCard(
     }
 }
 
+/** A Scan / Clear outcome; [failed] picks the colour, so it never depends on the wording. */
+private class DtcMessage(val text: String, val failed: Boolean)
+
 // The palette has no amber; "get it checked soon" needs one between Good and Warning.
 private val SoonAmber = Color(0xFFF5A623)
 
-/** The AI's overall call: a coloured dot, what to do, and the sentence it spoke. */
+/** The AI's overall call: a coloured dot, what to do, and the sentence it spoke. [aiText]: the mechanic's language. */
 @Composable
-private fun MechanicVerdict(d: Diagnosis, french: Boolean) {
+private fun MechanicVerdict(d: Diagnosis, aiText: Resources) {
     val (color, label) = when (d.severity) {
-        Severity.OK -> DashColors.Good to if (french) "Vous pouvez rouler" else "OK to drive"
-        Severity.SOON -> SoonAmber to if (french) "À faire vérifier bientôt" else "Get it checked soon"
-        Severity.STOP -> DashColors.Warning to if (french) "Arrêtez-vous" else "Stop driving"
+        Severity.OK -> DashColors.Good to aiText.getString(R.string.ai_verdict_ok)
+        Severity.SOON -> SoonAmber to aiText.getString(R.string.ai_verdict_soon)
+        Severity.STOP -> DashColors.Warning to aiText.getString(R.string.ai_verdict_stop)
     }
     Column(modifier = Modifier.padding(bottom = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -756,9 +766,9 @@ private fun MechanicVerdict(d: Diagnosis, french: Boolean) {
     }
 }
 
-/** One code as the AI mechanic explained it. */
+/** One code as the AI mechanic explained it. [aiText]: the mechanic's language. */
 @Composable
-private fun CodeAdviceRow(advice: CodeAdvice, french: Boolean) {
+private fun CodeAdviceRow(advice: CodeAdvice, aiText: Resources) {
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         Text(
             "${advice.code} — ${advice.meaning}",
@@ -768,14 +778,14 @@ private fun CodeAdviceRow(advice: CodeAdvice, french: Boolean) {
         )
         if (advice.causes.isNotEmpty()) {
             Text(
-                (if (french) "Causes probables : " else "Likely: ") + advice.causes.joinToString(" · "),
+                aiText.getString(R.string.ai_likely, advice.causes.joinToString(" · ")),
                 color = DashColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
         }
         if (advice.checkFirst.isNotEmpty()) {
             Text(
-                (if (french) "À vérifier d'abord : " else "Check first: ") + advice.checkFirst,
+                aiText.getString(R.string.ai_check_first, advice.checkFirst),
                 color = DashColors.TextPrimary,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -794,26 +804,26 @@ internal fun ObdAllCard(
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
-            Text("OBD DATA", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.vehicle_obd_data_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
             if (!connected) {
                 ObdNotConnected(onConnect)
             } else {
-                MeterChip("Speed", "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_speed), "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("RPM", "${obdData.rpm}", obdData.rpm / 7000f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_rpm), "${obdData.rpm}", obdData.rpm / 7000f, DashColors.Rpm, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Coolant", "${obdData.coolantTempC} °C", obdData.coolantTempC / 120f, coolantColor(obdData.coolantTempC), false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_coolant), "${obdData.coolantTempC} °C", obdData.coolantTempC / 120f, coolantColor(obdData.coolantTempC), false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Intake air", "${obdData.intakeTempC} °C", obdData.intakeTempC / 80f, DashColors.Accent, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_intake_air), "${obdData.intakeTempC} °C", obdData.intakeTempC / 80f, DashColors.Accent, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Throttle", "${obdData.throttlePct} %", obdData.throttlePct / 100f, DashColors.Accent, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_throttle), "${obdData.throttlePct} %", obdData.throttlePct / 100f, DashColors.Accent, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Engine load", "${obdData.engineLoadPct} %", obdData.engineLoadPct / 100f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_engine_load), "${obdData.engineLoadPct} %", obdData.engineLoadPct / 100f, DashColors.Rpm, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Fuel level", "${obdData.fuelLevelPct} %", obdData.fuelLevelPct / 100f, DashColors.Good, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_fuel_level), "${obdData.fuelLevelPct} %", obdData.fuelLevelPct / 100f, DashColors.Good, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip("Battery", "%.1f V".format(obdData.voltage), batteryFraction(obdData.voltage), batteryColor(obdData.voltage), false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_battery), "%.1f V".format(obdData.voltage), batteryFraction(obdData.voltage), batteryColor(obdData.voltage), false, Modifier.fillMaxWidth())
             }
         }
     }
@@ -850,7 +860,8 @@ internal fun RangeCard(
 
     // Prefer CANbox fuel; fall back to OBD; null when neither is available yet.
     val fuelPct: Int? = canFuel ?: obdFuel.takeIf { it > 0 }
-    val source = if (canFuel != null) "via CANbox" else if (obdFuel > 0) "via OBD" else null
+    val source = if (canFuel != null) stringResource(R.string.vehicle_via_canbox)
+        else if (obdFuel > 0) stringResource(R.string.vehicle_via_obd) else null
 
     var showFinder by remember { mutableStateOf(false) }
 
@@ -864,7 +875,7 @@ internal fun RangeCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("FUEL & RANGE", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.vehicle_fuel_range_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 source?.let {
                     Text(it, color = if (canFuel != null) DashColors.Good else DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
@@ -876,7 +887,7 @@ internal fun RangeCard(
                 Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Muted, modifier = Modifier.size(44.dp))
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "This car's OBD doesn't report fuel. Learn it from the CANbox instead — needs root.",
+                    stringResource(R.string.vehicle_fuel_no_obd),
                     color = DashColors.Muted,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall
@@ -888,11 +899,11 @@ internal fun RangeCard(
                 ) {
                     Icon(Icons.Filled.Sensors, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Find fuel signal")
+                    Text(stringResource(R.string.vehicle_find_fuel_signal))
                 }
                 if (!obdConnected) {
                     TextButton(onClick = onConnect) {
-                        Text("Try OBD fuel PID", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.vehicle_try_obd_fuel_pid), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -906,8 +917,8 @@ internal fun RangeCard(
                         value = fuelPct.toFloat(),
                         maxValue = 100f,
                         valueText = "$rangeKm",
-                        label = "KM TO EMPTY",
-                        unit = "≈ range",
+                        label = stringResource(R.string.vehicle_km_to_empty),
+                        unit = stringResource(R.string.vehicle_range_approx),
                         accent = if (fuelPct <= 12) DashColors.Warning else DashColors.Good,
                         // No redline band on fuel (more fill = more fuel); the whole
                         // sweep just turns amber when the tank drops into reserve.
@@ -921,14 +932,14 @@ internal fun RangeCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    MeterChip("Fuel", "$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
-                    MeterChip("In tank", "%.0f L".format(liters), (liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
-                    MeterChip("Avg use", "%.1f".format(AVG_L_PER_100KM), 0.5f, DashColors.Accent, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_fuel), "$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_in_tank), "%.0f L".format(liters), (liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(AVG_L_PER_100KM), 0.5f, DashColors.Accent, false, Modifier.weight(1f))
                 }
                 // Always reachable, so a learned mapping can be recalibrated or forgotten.
                 TextButton(onClick = { showFinder = true }) {
                     Text(
-                        if (canFuel == null) "Learn fuel from CANbox" else "Recalibrate fuel",
+                        stringResource(if (canFuel == null) R.string.vehicle_learn_fuel else R.string.vehicle_recalibrate_fuel),
                         color = DashColors.Muted,
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -1002,17 +1013,17 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
-        title = { Text("Find fuel signal", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.TextPrimary) },
         text = {
             Column {
                 Text(
-                    "Set your dash gauge %, tap Capture A — then close this and use the car normally. Days later, once the gauge has dropped a few %, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.",
+                    stringResource(R.string.vehicle_finder_help),
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Dash reads", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.vehicle_dash_reads), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
                     FilledIconButton(
                         onClick = { currentPct = (currentPct - 5).coerceAtLeast(5) },
                         modifier = Modifier.size(44.dp),
@@ -1033,12 +1044,12 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                             McuReader.saveFuelCaptureA(currentPct, snap)
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
-                    ) { Text(if (capA == null) "Capture A" else "A ✓ $pctA%") }
+                    ) { Text(if (capA == null) stringResource(R.string.vehicle_capture_a) else "A ✓ $pctA%") }
                     TextButton(
                         onClick = { capB = snapshot(); pctB = currentPct },
                         enabled = capA != null,
                         colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Accent)
-                    ) { Text(if (capB == null) "Capture B" else "B ✓ $pctB%") }
+                    ) { Text(if (capB == null) stringResource(R.string.vehicle_capture_b) else "B ✓ $pctB%") }
                     if (capA != null || capB != null) {
                         TextButton(
                             onClick = {
@@ -1046,23 +1057,23 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                                 McuReader.clearFuelCaptureA()
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = DashColors.Muted)
-                        ) { Text("Reset") }
+                        ) { Text(stringResource(R.string.vehicle_reset)) }
                     }
                 }
                 Spacer(Modifier.height(6.dp))
                 when {
                     entries.isEmpty() ->
-                        Text("Waiting for CANbox data… (needs root)", color = DashColors.Muted)
+                        Text(stringResource(R.string.vehicle_waiting_canbox), color = DashColors.Muted)
                     capA == null ->
-                        Text("Set your current fuel %, then tap Capture A.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.vehicle_finder_step_a), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                     capB == null ->
-                        Text("Captured A at $pctA% (saved). You can close this and drive normally — come back once the gauge drops a few %, set the new value, then Capture B.", color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.vehicle_finder_step_b, pctA), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                     pctA == pctB ->
-                        Text("A and B are the same %. Capture B at a different fuel level.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.vehicle_finder_same), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
                     candidates.isEmpty() ->
-                        Text("No byte tracked the change. Recapture B after a bigger drop.", color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.vehicle_finder_none), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
                     else -> {
-                        Text("Bytes that moved with the fuel", color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.vehicle_finder_candidates), color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         LazyColumn(modifier = Modifier.fillMaxWidth().height(210.dp)) {
                             lazyColumnItems(candidates, key = { "${it.key}#${it.index}" }) { c ->
@@ -1082,8 +1093,8 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column {
-                                        Text("frame ${c.key}  ·  byte ${c.index}", color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
-                                        Text("${c.rawA} → ${c.rawB}  ·  full≈${c.fullRaw}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                        Text(stringResource(R.string.vehicle_finder_frame, c.key, c.index), color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                                        Text(stringResource(R.string.vehicle_finder_raw, c.rawA, c.rawB, c.fullRaw), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                                     }
                                     Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                                 }
@@ -1096,12 +1107,12 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
         confirmButton = {
             if (McuReader.fuelConfigured) {
                 TextButton(onClick = { McuReader.clearFuelMapping(); onDismiss() }) {
-                    Text("Forget current", color = DashColors.Warning)
+                    Text(stringResource(R.string.vehicle_forget_current), color = DashColors.Warning)
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = DashColors.Muted) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.vehicle_close), color = DashColors.Muted) }
         }
     )
 }
@@ -1135,12 +1146,12 @@ internal fun DevicePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
-        title = { Text("Select OBD adapter", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.vehicle_select_adapter), color = DashColors.TextPrimary) },
         text = {
             Column {
                 if (devices.isEmpty()) {
                     Text(
-                        "No paired Bluetooth devices. Pair your OBD adapter in Bluetooth settings first.",
+                        stringResource(R.string.vehicle_no_paired),
                         color = DashColors.TextSecondary
                     )
                 } else {
@@ -1160,12 +1171,12 @@ internal fun DevicePickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onOpenSettings) {
-                Text("Bluetooth settings", color = DashColors.Accent)
+                Text(stringResource(R.string.vehicle_bt_settings), color = DashColors.Accent)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = DashColors.Muted)
+                Text(stringResource(R.string.vehicle_cancel), color = DashColors.Muted)
             }
         }
     )

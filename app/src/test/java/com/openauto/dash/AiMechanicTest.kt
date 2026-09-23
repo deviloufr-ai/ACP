@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /** The AI mechanic's pure parts: the question, reading the answer, and the live-reading rules. */
 class AiMechanicTest {
@@ -145,17 +146,55 @@ class AiMechanicTest {
     }
 
     @Test
-    fun offlineLinesSpellCodesOutInTheChosenLanguage() {
+    fun offlineLinesSpellCodesOutAndCountThem() {
         assertEquals(
-            "Nouveau code défaut moteur : P 0 1 2 8. Détails à l'écran.",
-            MechanicLines.newCodes(listOf("P0128"), AiLanguage.FRENCH)
+            SpokenLine(R.plurals.ai_say_new_codes, listOf(1, "P 0 1 2 8"), quantity = 1),
+            MechanicLines.newCodes(listOf("P0128"))
         )
         assertEquals(
-            "New engine fault codes: P 0 1 2 8, P 0 4 8 0. Details are on screen.",
-            MechanicLines.newCodes(listOf("P0128", "P0480"), AiLanguage.ENGLISH)
+            SpokenLine(R.plurals.ai_say_new_codes, listOf(2, "P 0 1 2 8, P 0 4 8 0"), quantity = 2),
+            MechanicLines.newCodes(listOf("P0128", "P0480"))
         )
-        assertTrue(
-            MechanicLines.alert(LiveWatch.Alert.NOT_CHARGING, ObdData(voltage = 12.1), AiLanguage.FRENCH).contains("12,1 volts")
+    }
+
+    @Test
+    fun alertsPickTheirSentenceAndWriteVoltsTheVoiceLanguagesWay() {
+        assertEquals(
+            SpokenLine(R.string.ai_say_not_charging, listOf("12,1")),
+            MechanicLines.alert(LiveWatch.Alert.NOT_CHARGING, ObdData(voltage = 12.1), AiLanguage.FRENCH)
         )
+        assertEquals(
+            SpokenLine(R.string.ai_say_weak_battery, listOf("11.7")),
+            MechanicLines.alert(LiveWatch.Alert.WEAK_BATTERY, ObdData(voltage = 11.7), AiLanguage.ENGLISH)
+        )
+        assertEquals(
+            SpokenLine(R.string.ai_say_weak_battery, listOf("11,7")),
+            MechanicLines.alert(LiveWatch.Alert.WEAK_BATTERY, ObdData(voltage = 11.7), AiLanguage.GERMAN)
+        )
+        assertEquals(
+            SpokenLine(R.string.ai_say_overheat, listOf(112)),
+            MechanicLines.alert(LiveWatch.Alert.OVERHEAT, ObdData(coolantTempC = 112), AiLanguage.POLISH)
+        )
+    }
+
+    @Test
+    fun theMechanicFollowsTheLauncherUnlessOneWasPicked() {
+        assertEquals(AiLanguage.GERMAN, AiLanguage.of(Locale.GERMANY))
+        assertEquals(AiLanguage.PORTUGUESE, AiLanguage.of(Locale("pt", "BR")))
+        assertEquals(AiLanguage.ENGLISH, AiLanguage.of(Locale.JAPAN))
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale("nl", "BE"))
+            assertEquals(AiLanguage.DUTCH, AiConfig().language)
+            assertEquals(AiLanguage.FRENCH, AiConfig(languageChoice = AiLanguage.FRENCH).language)
+        } finally {
+            Locale.setDefault(saved)
+        }
+    }
+
+    @Test
+    fun promptAsksForTheChosenLanguageByItsEnglishName() {
+        val prompt = MechanicPrompt.build(listOf("P0128"), CarEngine.HDI_16, AiLanguage.POLISH, null)
+        assertTrue(prompt.contains("Answer in Polish."))
     }
 }

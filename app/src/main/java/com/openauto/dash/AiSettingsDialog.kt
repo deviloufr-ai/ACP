@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 /** Gemini key, engine, language and voice for the AI mechanic, with a one-tap test. */
 @Composable
@@ -69,23 +71,22 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
         scope.launch {
             val reply = GeminiClient.generate(config.apiKey.trim(), "Reply with the single word OK.")
             testing = false
-            val lead = if (activated) "Activated ✓ " else ""
+            val language = config.language
             reply.onSuccess {
-                val french = config.language == AiLanguage.FRENCH
-                val voice = when (CarVoice.canSpeak(config.language.locale)) {
-                    true -> ""
-                    false -> " No ${config.language.promptName} voice on this unit: add one in Android Settings → Text-to-speech."
-                    null -> ""
-                }
-                result = true to "${lead}Gemini works ✓ (${it.model}).$voice"
-                CarVoice.speak(
-                    if (french) "L'assistant mécanique est prêt." else "The AI mechanic is ready.",
-                    config.language.locale
-                )
+                val works = context.getString(if (activated) R.string.ai_test_activated_ok else R.string.ai_test_ok, it.model)
+                // The missing voice is named in the screen's language ("allemand" on a French screen).
+                val voice = if (CarVoice.canSpeak(language.locale) == false) {
+                    " " + context.getString(R.string.ai_no_voice, language.locale.getDisplayLanguage(Locale.getDefault()))
+                } else ""
+                result = true to works + voice
+                // Said in the mechanic's language, whatever the screen's.
+                CarVoice.speak(language.resources(context).getString(R.string.ai_say_ready), language.locale)
             }.onFailure {
                 // An activated key is saved either way; only reaching Gemini failed.
-                result = activated to
-                    (if (activated) "${lead}Gemini not reachable yet: " else "Didn't work: ") + AiMechanic.describe(it)
+                result = activated to context.getString(
+                    if (activated) R.string.ai_test_activated_unreachable else R.string.ai_test_failed,
+                    AiMechanic.describe(context, it)
+                )
             }
         }
     }
@@ -97,7 +98,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
             val key = withContext(Dispatchers.Default) { AiKeyVault.unlock(code) }
             testing = false
             if (key == null) {
-                result = false to "Wrong activation code"
+                result = false to context.getString(R.string.ai_wrong_code)
             } else {
                 config = config.copy(apiKey = key, keyFromCode = true)
                 code = ""
@@ -109,27 +110,25 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = ::close,
         containerColor = DashColors.Card,
-        title = { Text("AI mechanic", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.ai_title), color = DashColors.TextPrimary) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    "When the OBD adapter connects, Dashwheel checks for fault codes by itself. " +
-                        "A new code is explained by Google Gemini and said out loud; the details " +
-                        "go on the Fault codes tile. Only the codes, engine readings and car model are sent.",
+                    stringResource(R.string.ai_explanation),
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
                 if (AiKeyVault.available) {
-                    Label("Activation code")
+                    Label(stringResource(R.string.ai_activation_code))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = code,
                             onValueChange = { code = it; result = null },
-                            placeholder = { Text("Unlocks the built-in key", color = DashColors.Muted) },
+                            placeholder = { Text(stringResource(R.string.ai_activation_hint), color = DashColors.Muted) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             colors = fieldColors()
@@ -139,33 +138,40 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                             enabled = !testing && code.isNotBlank(),
                             onClick = ::activate,
                             colors = buttonColors()
-                        ) { Text("Activate") }
+                        ) { Text(stringResource(R.string.ai_activate)) }
                     }
                 }
 
-                Label(if (AiKeyVault.available) "Or your own Gemini API key" else "Gemini API key")
+                Label(stringResource(if (AiKeyVault.available) R.string.ai_own_key else R.string.ai_key))
                 OutlinedTextField(
                     value = config.apiKey,
                     onValueChange = { config = config.copy(apiKey = it.trim(), keyFromCode = false); result = null },
                     // The built-in key stays hidden; typing replaces it with your own.
                     visualTransformation = if (config.keyFromCode) PasswordVisualTransformation() else VisualTransformation.None,
-                    placeholder = { Text("Free at aistudio.google.com → Get API key", color = DashColors.Muted) },
+                    placeholder = { Text(stringResource(R.string.ai_key_hint), color = DashColors.Muted) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = fieldColors()
                 )
 
-                Label("Engine")
+                Label(stringResource(R.string.ai_engine))
                 ChoiceRow(CarEngine.entries, config.engine, { it.label }) { config = config.copy(engine = it) }
 
-                Label("Language")
-                ChoiceRow(AiLanguage.entries, config.language, { it.label }) { config = config.copy(language = it) }
+                Label(stringResource(R.string.ai_language))
+                // "Same as app" (null) first, then every language by its own name.
+                val sameAsApp = stringResource(R.string.ai_language_auto)
+                ChoiceRow(
+                    listOf<AiLanguage?>(null) + AiLanguage.entries,
+                    config.languageChoice,
+                    { it?.label ?: sameAsApp },
+                    perRow = 3
+                ) { config = config.copy(languageChoice = it) }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Speak alerts", color = DashColors.TextPrimary)
+                        Text(stringResource(R.string.ai_speak), color = DashColors.TextPrimary)
                         Text(
-                            "New fault codes, overheating, battery not charging",
+                            stringResource(R.string.ai_speak_detail),
                             color = DashColors.TextSecondary,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -185,7 +191,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                         enabled = !testing && config.apiKey.isNotBlank(),
                         onClick = { test() },
                         colors = buttonColors()
-                    ) { Text("Test") }
+                    ) { Text(stringResource(R.string.ai_test)) }
                     Spacer(Modifier.size(12.dp))
                     if (testing) CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(22.dp))
                     result?.let { (ok, message) ->
@@ -198,7 +204,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = ::close) { Text("Done", color = DashColors.Accent) } }
+        confirmButton = { TextButton(onClick = ::close) { Text(stringResource(R.string.ai_done), color = DashColors.Accent) } }
     )
 }
 
@@ -225,33 +231,48 @@ private fun Label(text: String) {
     Text(text, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
 }
 
-/** Segmented single choice; the picked segment wears the accent gradient. */
+/**
+ * Segmented single choice; the picked segment wears the accent gradient.
+ * Long lists wrap onto rows of [perRow] segments.
+ */
 @Composable
-private fun <T> ChoiceRow(options: List<T>, selected: T, label: (T) -> String, onPick: (T) -> Unit) {
+private fun <T> ChoiceRow(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    perRow: Int = options.size,
+    onPick: (T) -> Unit
+) {
     val shape = RoundedCornerShape(14.dp)
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, DashColors.Line, shape)
             .background(DashColors.CardHi.copy(alpha = DashColors.CardHi.alpha * 0.5f), shape)
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        options.forEach { option ->
-            val chosen = option == selected
-            val segment = RoundedCornerShape(10.dp)
-            Text(
-                label(option),
-                color = if (chosen) DashColors.OnAccent else DashColors.TextPrimary,
-                fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(segment)
-                    .then(if (chosen) Modifier.background(DashColors.AccentBrush, segment) else Modifier)
-                    .clickable { onPick(option) }
-                    .padding(vertical = 10.dp)
-            )
+        options.chunked(perRow.coerceAtLeast(1)).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                row.forEach { option ->
+                    val chosen = option == selected
+                    val segment = RoundedCornerShape(10.dp)
+                    Text(
+                        label(option),
+                        color = if (chosen) DashColors.OnAccent else DashColors.TextPrimary,
+                        fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(segment)
+                            .then(if (chosen) Modifier.background(DashColors.AccentBrush, segment) else Modifier)
+                            .clickable { onPick(option) }
+                            .padding(vertical = 10.dp)
+                    )
+                }
+                // Keep a short last row's segments the same width as the others.
+                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
     }
 }

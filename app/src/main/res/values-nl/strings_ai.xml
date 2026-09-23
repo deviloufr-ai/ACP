@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings dialog (also the menu item) -->
+    <string name="ai_title">AI-monteur</string>
+    <string name="ai_explanation">Zodra de OBD-adapter verbinding maakt, zoekt Dashwheel zelf naar foutcodes. Een nieuwe code wordt door Google Gemini uitgelegd en hardop voorgelezen; de details staan op de tegel Foutcodes. Alleen de codes, de motorwaarden en het automodel worden verstuurd.</string>
+    <string name="ai_activation_code">Activeringscode</string>
+    <string name="ai_activation_hint">Ontgrendelt de ingebouwde sleutel</string>
+    <string name="ai_activate">Activeren</string>
+    <string name="ai_own_key">Of je eigen Gemini-API-sleutel</string>
+    <string name="ai_key">Gemini-API-sleutel</string>
+    <string name="ai_key_hint">Gratis op aistudio.google.com → Get API key</string>
+    <string name="ai_engine">Motor</string>
+    <string name="ai_language">Taal</string>
+    <string name="ai_language_auto">Zoals de app</string>
+    <string name="ai_speak">Waarschuwingen uitspreken</string>
+    <string name="ai_speak_detail">Nieuwe foutcodes, oververhitting, accu laadt niet op</string>
+    <string name="ai_test">Testen</string>
+    <string name="ai_done">Klaar</string>
+
+    <!-- Settings dialog: test results -->
+    <string name="ai_test_ok">Gemini werkt ✓ (%1$s).</string>
+    <string name="ai_test_activated_ok">Geactiveerd ✓ Gemini werkt ✓ (%1$s).</string>
+    <string name="ai_test_failed">Mislukt: %1$s</string>
+    <string name="ai_test_activated_unreachable">Geactiveerd ✓ Gemini nog niet bereikbaar: %1$s</string>
+    <string name="ai_wrong_code">Onjuiste activeringscode</string>
+    <string name="ai_no_voice">Geen stem voor %1$s op dit apparaat: voeg er een toe via Android-instellingen → Tekst-naar-spraak.</string>
+
+    <!-- Spoken by the car, in the mechanic's language (resolved with the AI language, not the screen's) -->
+    <string name="ai_say_ready">De AI-monteur is klaar.</string>
+    <plurals name="ai_say_new_codes">
+        <item quantity="one">%1$d nieuwe motorfoutcode: %2$s. Details op het scherm.</item>
+        <item quantity="other">%1$d nieuwe motorfoutcodes: %2$s. Details op het scherm.</item>
+    </plurals>
+    <string name="ai_say_overheat">Let op, de motor raakt oververhit: %1$d graden. Stop zodra het veilig is en zet de motor uit.</string>
+    <string name="ai_say_not_charging">De accu laadt niet op: %1$s volt met draaiende motor. Rij naar een garage en zet uit wat je niet nodig hebt.</string>
+    <string name="ai_say_weak_battery">De accu is zwak: %1$s volt met de motor uit. Laat hem binnenkort testen.</string>
+
+    <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
+    <string name="ai_verdict_ok">Je kunt doorrijden</string>
+    <string name="ai_verdict_soon">Laat het snel nakijken</string>
+    <string name="ai_verdict_stop">Stop met rijden</string>
+    <string name="ai_likely">Waarschijnlijk: %1$s</string>
+    <string name="ai_check_first">Eerst controleren: %1$s</string>
+
+    <!-- Fault codes tile: status -->
+    <string name="ai_no_codes">Geen foutcodes ✓</string>
+    <string name="ai_cleared">Gewist ✓</string>
+    <string name="ai_scan_failed">Uitlezen mislukt</string>
+    <string name="ai_clear_failed">Wissen mislukt</string>
+    <string name="ai_thinking">AI-monteur wordt geraadpleegd…</string>
+    <string name="ai_retry">Opnieuw</string>
+    <string name="ai_note_no_key">Voeg een gratis Gemini-sleutel toe (menu → AI-monteur) voor advies in gewone taal.</string>
+    <string name="ai_note_unavailable">AI niet beschikbaar: %1$s</string>
+
+    <!-- Why asking Gemini failed (follows "AI unavailable: " / "Didn't work: ") -->
+    <string name="ai_error_quota">het gratis tegoed van vandaag is op</string>
+    <string name="ai_error_key_refused">de sleutel is geweigerd</string>
+    <string name="ai_error_gemini">Gemini-fout %1$d</string>
+    <string name="ai_error_empty">Gemini gaf een leeg antwoord</string>
+    <string name="ai_error_unreadable">het antwoord van Gemini was onleesbaar</string>
+    <string name="ai_error_offline">geen internetverbinding</string>
+    <string name="ai_error_unknown">onbekende fout</string>
+</resources>

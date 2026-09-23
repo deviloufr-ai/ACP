@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -165,7 +166,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         val loc = map?.locationComponent?.lastKnownLocation
         if (map == null || loc == null) {
             loading = false
-            error = "GPS not ready — Start still opens Google Maps"
+            error = context.getString(R.string.info_map_gps_not_ready)
             return
         }
         val origin = Point.fromLngLat(loc.longitude, loc.latitude)
@@ -177,14 +178,18 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
             loading = false
             result.onSuccess { resp ->
                 val first = resp.routes.firstOrNull()
-                if (first == null) { error = "No route found"; return@onSuccess }
+                if (first == null) { error = context.getString(R.string.info_map_no_route); return@onSuccess }
                 route = first
                 navRoute?.addRoutes(resp.routes)
-                info = formatEta(first.distance, first.duration)
+                info = formatEta(context, first.distance, first.duration)
                 map.animateCamera(
                     CameraUpdateFactory.newLatLngZoom(LatLng(dest.latitude(), dest.longitude()), 13.0)
                 )
-            }.onFailure { error = it.message ?: "Routing failed" }
+            }.onFailure {
+                error = it.message?.takeIf { m -> m.isNotBlank() }
+                    ?.let { m -> context.getString(R.string.info_map_routing_failed_detail, m) }
+                    ?: context.getString(R.string.info_map_routing_failed)
+            }
         }
     }
 
@@ -194,7 +199,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         error = null; info = null; loading = true
         scope.launch {
             val dest = withContext(Dispatchers.IO) { runCatching { geocode(q) }.getOrNull() }
-            if (dest == null) { loading = false; error = "Address not found"; return@launch }
+            if (dest == null) { loading = false; error = context.getString(R.string.info_map_address_not_found); return@launch }
             val ll = LatLng(dest.latitude(), dest.longitude())
             mapRef?.addMarker(MarkerOptions().position(ll))
             mapRef?.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 14.0))
@@ -287,7 +292,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Where to?", color = Color(0xFF9AA0A6)) },
+                    placeholder = { Text(stringResource(R.string.info_map_where_to), color = Color(0xFF9AA0A6)) },
                     singleLine = true,
                     modifier = Modifier
                         .weight(1f)
@@ -319,12 +324,12 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                     CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Accent, strokeWidth = 3.dp)
                 } else {
                     IconButton(onClick = { submitSearch() }) {
-                        Icon(Icons.Filled.Search, contentDescription = "Search", tint = Accent)
+                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.info_map_search), tint = Accent)
                     }
                 }
                 if (route != null) {
                     IconButton(onClick = { clearRoute() }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Clear route", tint = Color(0xFF9AA0A6))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.info_map_clear_route), tint = Color(0xFF9AA0A6))
                     }
                 }
             }
@@ -346,7 +351,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = currentInfo ?: currentError ?: "Ready to navigate",
+                        text = currentInfo ?: currentError ?: stringResource(R.string.info_map_ready),
                         color = if (currentError != null) Color(0xFFF28B82) else Color.White
                     )
                     if (hasDest) {
@@ -356,7 +361,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                         ) {
                             Icon(Icons.Filled.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Start")
+                            Text(stringResource(R.string.info_map_start))
                         }
                     }
                 }
@@ -517,16 +522,17 @@ private fun valhallaRoute(origin: Point, dest: Point, language: String): Directi
         .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
         .build()
     OkHttpClient().newCall(request).execute().use { resp ->
-        if (!resp.isSuccessful) error("Routing failed (${resp.code})")
+        if (!resp.isSuccessful) error("HTTP ${resp.code}")
         val rb = resp.body?.string() ?: error("Empty routing response")
         return DirectionsResponse.fromJson(rb)
     }
 }
 
-private fun formatEta(distanceMeters: Double?, durationSeconds: Double?): String {
+private fun formatEta(context: Context, distanceMeters: Double?, durationSeconds: Double?): String {
     val km = (distanceMeters ?: 0.0) / 1000.0
     val mins = ((durationSeconds ?: 0.0) / 60.0).toInt()
     val dist = if (km >= 10) "%.0f km".format(km) else "%.1f km".format(km)
-    val time = if (mins >= 60) "%dh %02dmin".format(mins / 60, mins % 60) else "$mins min"
+    val time = if (mins >= 60) context.getString(R.string.info_map_duration_hm, mins / 60, mins % 60)
+    else context.getString(R.string.info_map_duration_min, mins)
     return "$dist · $time"
 }

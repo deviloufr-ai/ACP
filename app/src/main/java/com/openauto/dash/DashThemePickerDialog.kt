@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -47,7 +48,7 @@ fun DashThemePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
-        title = { Text("Dashboard theme", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.dash_theme_picker_title), color = DashColors.TextPrimary) },
         text = {
             // Twelve options outgrow a 720p head unit; let the list scroll.
             Column(
@@ -56,11 +57,13 @@ fun DashThemePickerDialog(
             ) {
                 AppearanceSwitch(appearance, onAppearance)
                 Text(
-                    when (appearance) {
-                        DashAppearance.AUTO -> "Every theme follows the car's day/night mode"
-                        DashAppearance.DARK -> "Every theme uses its dark version"
-                        DashAppearance.LIGHT -> "Every theme uses its light version"
-                    },
+                    stringResource(
+                        when (appearance) {
+                            DashAppearance.AUTO -> R.string.dash_appearance_auto_hint
+                            DashAppearance.DARK -> R.string.dash_appearance_dark_hint
+                            DashAppearance.LIGHT -> R.string.dash_appearance_light_hint
+                        }
+                    ),
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(start = 4.dp)
@@ -71,7 +74,7 @@ fun DashThemePickerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = DashColors.Accent) } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_done), color = DashColors.Accent) } }
     )
 }
 
@@ -112,7 +115,7 @@ private fun AppearanceSwitch(appearance: DashAppearance, onAppearance: (DashAppe
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.size(8.dp))
-                Text(option.title, color = ink, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+                Text(stringResource(option.titleRes), color = ink, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
             }
         }
     }
@@ -135,10 +138,10 @@ private fun ThemeOption(mode: DashThemeMode, light: Boolean, selected: Boolean, 
         )
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(mode.title, color = DashColors.TextPrimary)
-            Text(mode.description, color = DashColors.TextSecondary)
+            Text(stringResource(mode.titleRes), color = DashColors.TextPrimary)
+            Text(stringResource(mode.descriptionRes), color = DashColors.TextSecondary)
         }
-        if (selected) Icon(Icons.Filled.Check, contentDescription = "Selected", tint = DashColors.Accent)
+        if (selected) Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.dash_selected), tint = DashColors.Accent)
     }
 }
 

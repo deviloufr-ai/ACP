@@ -1,5 +1,7 @@
 package com.openauto.dash
 
+import java.util.Locale
+
 /**
  * Pure decoding of ELM327 / OBD-II replies, kept free of Android types so it
  * runs under plain JVM unit tests. [ObdBluetoothManager] owns the socket and
@@ -110,7 +112,7 @@ object ObdParser {
         val d2 = a and 0x0F
         val d3 = (b and 0xF0) shr 4
         val d4 = b and 0x0F
-        return "%c%d%X%X%X".format(letter, d1, d2, d3, d4)
+        return "%c%d%X%X%X".format(Locale.US, letter, d1, d2, d3, d4)
     }
 
     /** Extracts the data bytes that follow [header] (e.g. "410D") in [response]. */

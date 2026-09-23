@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cockpit skin: top bar -->
+    <string name="cockpit_apps">APPS</string>
+    <string name="cockpit_layout">ECRÃ</string>
+    <string name="cockpit_screen_layout_desc">Esquema do ecrã: %1$s</string>
+    <string name="cockpit_more">Mais</string>
+    <string name="cockpit_time_desc">Hora %1$s</string>
+    <string name="cockpit_out">EXT</string>
+    <string name="cockpit_connect_obd">Ligar OBD</string>
+
+    <!-- Cockpit skin: dial faces (C/H = cold/hot coolant, E/F = empty/full tank) -->
+    <string name="cockpit_dial_rpm_title">×1000 rpm</string>
+    <string name="cockpit_dial_temp">TEMP</string>
+    <string name="cockpit_dial_fuel">COMB.</string>
+    <string name="cockpit_dial_volt">VOLT</string>
+    <string name="cockpit_dial_load">CARGA</string>
+    <string name="cockpit_dial_cold">50</string>
+    <string name="cockpit_dial_hot">130</string>
+    <string name="cockpit_dial_empty">0</string>
+    <string name="cockpit_dial_full">1</string>
+    <string name="cockpit_dial_fuel_title">COMBUSTÍVEL</string>
+    <string name="cockpit_unit_rpm">rpm</string>
+    <string name="cockpit_rpm_line">%1$s RPM</string>
+
+    <!-- Cockpit skin: telemetry and speed -->
+    <string name="cockpit_speed_rpm_caption">KM/H · %1$d RPM</string>
+    <string name="cockpit_obd_off">OBD DESL.</string>
+    <string name="cockpit_no_signal">SEM SINAL</string>
+    <string name="cockpit_battery">Bateria</string>
+    <string name="cockpit_coolant">Líquido de refrigeração</string>
+    <string name="cockpit_speed_warning">Aviso de velocidade</string>
+    <string name="cockpit_tap_to_connect">TOCAR PARA\nLIGAR</string>
+
+    <!-- Cockpit skin: media -->
+    <string name="cockpit_media_access_needed">ACESSO A MULTIMÉDIA NECESSÁRIO · TOCAR PARA ATIVAR</string>
+    <string name="cockpit_nothing_playing">NADA A REPRODUZIR</string>
+    <string name="cockpit_tap_to_enable">TOCAR PARA ATIVAR</string>
+    <string name="cockpit_grant_media_access">Permitir acesso a multimédia</string>
+    <string name="cockpit_previous">Anterior</string>
+    <string name="cockpit_play">Reproduzir</string>
+    <string name="cockpit_pause">Pausa</string>
+    <string name="cockpit_next">Seguinte</string>
+    <string name="cockpit_vu_left">E</string>
+    <string name="cockpit_vu_right">D</string>
+
+    <!-- Cockpit skin: navigation, clock, weather, range -->
+    <string name="cockpit_open_navigation">Abrir navegação</string>
+    <string name="cockpit_no_access">SEM ACESSO</string>
+    <string name="cockpit_no_route">SEM PERCURSO</string>
+    <string name="cockpit_tap_for_maps">TOCAR PARA MAPS</string>
+    <string name="cockpit_open_alarms">Abrir alarmes</string>
+    <string name="cockpit_clock">Relógio</string>
+    <string name="cockpit_loading">A CARREGAR…</string>
+    <string name="cockpit_feels_wind">SENSAÇÃO %1$d° · VENTO %2$d KM/H</string>
+    <string name="cockpit_fuel_settings">Definições do sinal de combustível</string>
+    <string name="cockpit_range">AUTONOMIA</string>
+
+    <!-- Cockpit skin: app toggles and launch bar -->
+    <string name="cockpit_open_app">Abrir %1$s</string>
+    <string name="cockpit_launch_bar_empty">BARRA DE APPS — TOCAR NO LÁPIS PARA ADICIONAR APPS</string>
+    <string name="cockpit_edit_launch_bar">Editar barra de apps</string>
+
+    <!-- Orbit skin: top bar -->
+    <string name="orbit_all_apps">Todas as apps</string>
+    <string name="orbit_screen_layout_desc">Esquema do ecrã: %1$s</string>
+    <string name="orbit_more">Mais</string>
+
+    <!-- Orbit skin: speed dial and satellite bubbles -->
+    <string name="orbit_sat_coolant">refrig.</string>
+    <string name="orbit_sat_battery">bateria</string>
+    <string name="orbit_sat_load">carga</string>
+    <string name="orbit_rpm_value">%1$s rpm</string>
+    <string name="orbit_tap_to_connect">Tocar para ligar</string>
+    <string name="orbit_connecting">A ligar…</string>
+    <string name="orbit_connect_obd">Ligar OBD</string>
+    <string name="orbit_no_signal">Sem sinal</string>
+
+    <!-- Orbit skin: media -->
+    <string name="orbit_media_access_needed">Acesso multimédia</string>
+    <string name="orbit_nothing_playing">Nada a reproduzir</string>
+    <string name="orbit_tap_to_enable">Tocar para ativar</string>
+    <string name="orbit_start_music">Iniciar música em qualquer app</string>
+    <string name="orbit_previous_track">Faixa anterior</string>
+    <string name="orbit_play">Reproduzir</string>
+    <string name="orbit_pause">Pausa</string>
+    <string name="orbit_next_track">Faixa seguinte</string>
+    <string name="orbit_grant_access">Permitir acesso</string>
+
+    <!-- Orbit skin: navigation -->
+    <string name="orbit_no_route">Sem percurso</string>
+    <string name="orbit_directions_need_access">O percurso precisa de acesso</string>
+    <string name="orbit_tap_open_maps">Tocar para abrir o Google Maps</string>
+    <string name="orbit_tap_allow_notifications">Tocar para permitir o acesso às notificações</string>
+
+    <!-- Orbit skin: clock and weather -->
+    <string name="orbit_open_alarms">Abrir alarmes</string>
+    <string name="orbit_feels">Sensação %1$d°</string>
+    <string name="orbit_wind">Vento %1$d km/h</string>
+    <string name="orbit_feels_wind">sensação %1$d° · %2$d km/h</string>
+    <string name="orbit_offline">Sem ligação</string>
+    <string name="orbit_loading">A carregar…</string>
+
+    <!-- Orbit skin: fuel and range -->
+    <string name="orbit_to_empty">de autonomia</string>
+    <string name="orbit_liters_in_tank">≈ %1$.0f L no depósito</string>
+    <string name="orbit_via_source">via %1$s</string>
+    <string name="orbit_tap_to_recalibrate">tocar para recalibrar</string>
+    <string name="orbit_recalibrate_fuel">Recalibrar combustível</string>
+    <string name="orbit_fuel_percent">comb. %1$d%%</string>
+
+    <!-- Orbit skin: launch bar -->
+    <string name="orbit_launch_bar_empty">Barra de apps — tocar no lápis para adicionar apps</string>
+    <string name="orbit_edit_launch_bar">Editar barra de apps</string>
+</resources>

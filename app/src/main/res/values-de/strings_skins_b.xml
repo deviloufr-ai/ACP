@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Horizon skin: top bar -->
+    <string name="horizon_cd_all_apps">Alle Apps</string>
+    <string name="horizon_cd_screen_layout">Bildschirmlayout: %1$s</string>
+    <string name="horizon_cd_more">Mehr</string>
+
+    <!-- Horizon skin: telemetry and speed -->
+    <string name="horizon_connect_obd">OBD verbinden</string>
+    <string name="horizon_obd_connecting">Verbindung mit OBD…</string>
+    <string name="horizon_obd_error_retry">OBD-Fehler · tippen zum Wiederholen</string>
+    <string name="horizon_obd_tap_connect">Tippen, um OBD zu verbinden</string>
+    <string name="horizon_rpm_value">%1$s U/min</string>
+    <string name="horizon_coolant_value">%1$d° Kühlmittel</string>
+    <string name="horizon_load_value">%1$d %% Last</string>
+    <string name="horizon_no_signal_tap_obd">KEIN SIGNAL · OBD VERBINDEN</string>
+    <string name="horizon_no_signal">KEIN SIGNAL</string>
+
+    <!-- Horizon skin: music -->
+    <string name="horizon_cd_previous_track">Vorheriger Titel</string>
+    <string name="horizon_cd_pause">Pause</string>
+    <string name="horizon_cd_play">Wiedergabe</string>
+    <string name="horizon_cd_next_track">Nächster Titel</string>
+    <string name="horizon_allow_media_access">Medienzugriff erlauben</string>
+    <string name="horizon_music_caps">MUSIK</string>
+    <string name="horizon_now_playing_caps">WIEDERGABE</string>
+    <string name="horizon_paused_caps">PAUSIERT</string>
+    <string name="horizon_media_access_needed">Medienzugriff nötig</string>
+    <string name="horizon_nothing_playing">Keine Wiedergabe</string>
+    <string name="horizon_tap_allow_notification_access">Tippen, um Benachrichtigungszugriff zu erlauben</string>
+    <string name="horizon_play_something">In einer beliebigen Musik-App abspielen</string>
+    <string name="horizon_unknown_artist">Unbekannter Künstler</string>
+
+    <!-- Horizon skin: directions -->
+    <string name="horizon_directions">Route</string>
+    <string name="horizon_no_route">Keine Route</string>
+    <string name="horizon_start_navigation">Navigation in Google Maps oder Waze starten</string>
+    <string name="horizon_open_navigation">Navigation öffnen</string>
+
+    <!-- Horizon skin: clock (a weather condition, lower case, set in the part of the day: "clear evening") -->
+    <string name="horizon_mood_morning">morgens %1$s</string>
+    <string name="horizon_mood_afternoon">nachmittags %1$s</string>
+    <string name="horizon_mood_evening">abends %1$s</string>
+    <string name="horizon_mood_night">nachts %1$s</string>
+    <string name="horizon_open_clock">Uhr öffnen</string>
+
+    <!-- Horizon skin: weather and range -->
+    <string name="horizon_loading">Wird geladen…</string>
+    <string name="horizon_weather_at_car">Wetter am Fahrzeug</string>
+    <string name="horizon_feels">gefühlt %1$d°</string>
+    <string name="horizon_wind">Wind %1$d km/h</string>
+    <string name="horizon_range_fuel">Reichweite · %1$d %% Kraftstoff</string>
+
+    <!-- Horizon skin: apps and launch bar -->
+    <string name="horizon_open_app">%1$s öffnen</string>
+    <string name="horizon_launch_bar_empty">Noch keine Apps · Stift antippen zum Hinzufügen</string>
+    <string name="horizon_cd_edit_launch_bar">Startleiste bearbeiten</string>
+
+    <!-- Tape Deck skin: top bar -->
+    <string name="tape_apps_caps">APPS</string>
+    <string name="tape_cd_all_apps">Alle Apps</string>
+    <string name="tape_layout_caps">LAYOUT</string>
+    <string name="tape_cd_screen_layout">Bildschirmlayout: %1$s</string>
+    <string name="tape_cd_more">Mehr</string>
+
+    <!-- Tape Deck skin: telemetry and speed -->
+    <string name="tape_temp_caps">TEMP</string>
+    <string name="tape_batt_caps">BATT</string>
+    <string name="tape_load_caps">LAST</string>
+    <string name="tape_cd_choose_adapter">OBD-Adapter wählen</string>
+    <string name="tape_rpm_caps">U/MIN</string>
+    <string name="tape_telemetry_caps">TELEMETRIE</string>
+    <string name="tape_live_caps">LIVE</string>
+    <string name="tape_linking_caps">VERBINDE</string>
+    <string name="tape_obd_error_tap">OBD-FEHLER · TIPPEN</string>
+    <string name="tape_no_obd_tap">KEIN OBD · TIPPEN</string>
+    <string name="tape_no_signal_caps">KEIN SIGNAL</string>
+    <string name="tape_speed_caps">TEMPO</string>
+
+    <!-- Tape Deck skin: cassette deck -->
+    <string name="tape_media_access_caps">MEDIENZUGRIFF</string>
+    <string name="tape_no_tape_caps">KEINE KASSETTE</string>
+    <string name="tape_tap_to_enable_caps">ZUM AKTIVIEREN TIPPEN</string>
+    <string name="tape_unknown_artist_caps">UNBEKANNTER KÜNSTLER</string>
+    <string name="tape_start_music_app_caps">MUSIK-APP STARTEN</string>
+    <string name="tape_cd_grant_media_access">Medienzugriff erlauben</string>
+    <string name="tape_grant_access_caps">ZUGRIFF ERLAUBEN</string>
+    <string name="tape_cd_previous_track">Vorheriger Titel</string>
+    <string name="tape_cd_pause">Pause</string>
+    <string name="tape_cd_play">Wiedergabe</string>
+    <string name="tape_cd_next_track">Nächster Titel</string>
+    <string name="tape_cd_open_music_app">Musik-App öffnen</string>
+    <string name="tape_no_access_caps">KEIN ZUGRIFF</string>
+    <string name="tape_play_caps">WIEDERGABE</string>
+    <string name="tape_pause_caps">PAUSE</string>
+    <string name="tape_stop_caps">STOPP</string>
+    <string name="tape_hifi_stereo_caps">HI-FI STEREO</string>
+
+    <!-- Tape Deck skin: directions CRT -->
+    <string name="tape_tap_grant_notification_access_caps">TIPPEN, UM BENACHRICHTIGUNGEN ZU ERLAUBEN</string>
+    <string name="tape_no_route_caps">KEINE ROUTE</string>
+    <string name="tape_tap_open_maps_caps">TIPPEN, UM MAPS ZU ÖFFNEN</string>
+    <string name="tape_eta_caps">ANKUNFT %1$s</string>
+
+    <!-- Tape Deck skin: weather neon sign -->
+    <string name="tape_loading_caps">LADEN</string>
+    <string name="tape_feels_wind_caps">GEFÜHLT %1$d° · WIND %2$d KM/H</string>
+    <string name="tape_low_high_caps">MIN %1$d° · MAX %2$d°</string>
+
+    <!-- Tape Deck skin: fuel and range -->
+    <string name="tape_fuel_range_caps">KRAFTSTOFF &amp; REICHWEITE</string>
+    <string name="tape_fuel_caps">TANK</string>
+    <string name="tape_range_caps">REICHWEITE</string>
+
+    <!-- Tape Deck skin: radio presets -->
+    <string name="tape_presets_empty_caps">KEINE SPEICHERTASTEN · STIFT ANTIPPEN, UM APPS HINZUZUFÜGEN</string>
+    <string name="tape_cd_edit_launch_bar">Startleiste bearbeiten</string>
+
+    <!-- In-app updater -->
+    <string name="sys_update_check_failed">Suche nach Updates fehlgeschlagen</string>
+    <string name="sys_update_download_failed">Download fehlgeschlagen</string>
+    <string name="sys_update_downloading">Update wird heruntergeladen</string>
+
+    <!-- System-app install (shown after "Failed: " in the install dialog) -->
+    <string name="sys_install_su_failed">Installation über su fehlgeschlagen</string>
+    <string name="sys_install_failed">Installation fehlgeschlagen</string>
+    <string name="sys_install_failed_not_root">%1$s (adbd ohne Root: uid=%2$s)</string>
+</resources>

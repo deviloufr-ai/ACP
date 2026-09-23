@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -74,6 +75,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -721,7 +723,7 @@ private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState):
 internal fun HorizonTopBar(m: TopBarModel) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val dateFmt = remember(locale) { SimpleDateFormat("EEEE d MMMM", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(longDatePattern(locale), locale) }
     val date = dateFmt.format(now).replaceFirstChar { it.titlecase(locale) }
     val ink = DashColors.TextPrimary
     val soft = DashColors.TextSecondary
@@ -740,17 +742,17 @@ internal fun HorizonTopBar(m: TopBarModel) {
         }
         VehicleAlerts(m.obdConnection, m.obdData)
         IconButton(onClick = m.onApps) {
-            Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = ink)
+            Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.horizon_cd_all_apps), tint = ink)
         }
         LayoutPicker(m) { open ->
             IconButton(onClick = open) {
-                LayoutIcon(m.layout, "Screen layout: ${m.layout.title}", soft)
+                LayoutIcon(m.layout, stringResource(R.string.horizon_cd_screen_layout, m.layout.title), soft)
             }
         }
         HorizonObdDot(m.obdConnection, m.onConnectObd)
         MorePicker(m) { open ->
             IconButton(onClick = open) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = soft)
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.horizon_cd_more), tint = soft)
             }
         }
     }
@@ -834,13 +836,13 @@ private fun SpeedFigure(speed: Int?, maxW: Dp, maxH: Dp) {
 private fun groupThousands(n: Int): String = if (n < 1000) "$n" else "${n / 1000}\u2009${"%03d".format(n % 1000)}"
 
 /** The stats line under the telemetry speed, longest first. */
-private fun telemetryLines(d: ObdData): List<String> {
-    val rpm = "${groupThousands(d.rpm)} rpm"
-    val coolant = "${d.coolantTempC}° coolant"
+private fun telemetryLines(d: ObdData, context: android.content.Context): List<String> {
+    val rpm = context.getString(R.string.horizon_rpm_value, groupThousands(d.rpm))
+    val coolant = context.getString(R.string.horizon_coolant_value, d.coolantTempC)
     val volts = if (d.voltage > 0.0) "%.1f V".format(d.voltage) else null
     val core = listOfNotNull(rpm, coolant, volts)
     return listOf(
-        (core + "${d.engineLoadPct}% load").joinToString(DOT),
+        (core + context.getString(R.string.horizon_load_value, d.engineLoadPct)).joinToString(DOT),
         core.joinToString(DOT),
         "$rpm$DOT${d.coolantTempC}°",
         rpm
@@ -857,17 +859,17 @@ private fun HorizonTelemetry(env: SkinTileEnv, side: Side) {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer()
-            .tap(idle && !env.editing, "Connect OBD", env.onConnectObd)
+            .tap(idle && !env.editing, stringResource(R.string.horizon_connect_obd), env.onConnectObd)
             .padding(TilePad),
         contentAlignment = side.box
     ) {
         val lineSp = (maxWidth.value / 24f).coerceIn(12f, 20f)
         val lineStyle = ui(lineSp, if (connected || state == ObdConnectionState.CONNECTING) DashColors.TextSecondary else DashColors.Accent)
         val line = when (state) {
-            ObdConnectionState.CONNECTED -> firstFitting(telemetryLines(env.obdData), lineStyle, maxWidth)
-            ObdConnectionState.CONNECTING -> "Connecting to OBD…"
-            ObdConnectionState.ERROR -> "OBD error · tap to retry"
-            ObdConnectionState.DISCONNECTED -> "Tap to connect OBD"
+            ObdConnectionState.CONNECTED -> firstFitting(telemetryLines(env.obdData, env.context), lineStyle, maxWidth)
+            ObdConnectionState.CONNECTING -> stringResource(R.string.horizon_obd_connecting)
+            ObdConnectionState.ERROR -> stringResource(R.string.horizon_obd_error_retry)
+            ObdConnectionState.DISCONNECTED -> stringResource(R.string.horizon_obd_tap_connect)
         }
         val figureW = maxWidth
         val figureH = maxHeight - (lineSp * 1.3f + 8f).dp
@@ -890,7 +892,7 @@ private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer()
-            .tap(canConnect, "Connect OBD", env.onConnectObd)
+            .tap(canConnect, stringResource(R.string.horizon_connect_obd), env.onConnectObd)
             .padding(TilePad),
         contentAlignment = side.box
     ) {
@@ -898,8 +900,8 @@ private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
         val source = when {
             obd -> "OBD"
             speed != null -> "GPS"
-            idle -> "NO SIGNAL · TAP FOR OBD"
-            else -> "NO SIGNAL"
+            idle -> stringResource(R.string.horizon_no_signal_tap_obd)
+            else -> stringResource(R.string.horizon_no_signal)
         }
         val figureW = maxWidth
         val figureH = maxHeight - (capsSp * 1.3f + 8f).dp
@@ -961,15 +963,15 @@ private fun MediaControls(env: SkinTileEnv, size: Dp) {
     val playing = env.mediaState.isPlaying
     val enabled = !env.editing
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(size * 0.24f)) {
-        RoundControl(Icons.Filled.SkipPrevious, "Previous track", size, filled = false, enabled = enabled) {
+        RoundControl(Icons.Filled.SkipPrevious, stringResource(R.string.horizon_cd_previous_track), size, filled = false, enabled = enabled) {
             env.mediaController.previous()
         }
         RoundControl(
             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            if (playing) "Pause" else "Play",
+            stringResource(if (playing) R.string.horizon_cd_pause else R.string.horizon_cd_play),
             size, filled = true, enabled = enabled
         ) { env.mediaController.playPause() }
-        RoundControl(Icons.Filled.SkipNext, "Next track", size, filled = false, enabled = enabled) {
+        RoundControl(Icons.Filled.SkipNext, stringResource(R.string.horizon_cd_next_track), size, filled = false, enabled = enabled) {
             env.mediaController.next()
         }
     }
@@ -992,7 +994,7 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer()
-            .tap(!access && !env.editing, "Allow media access") { CarMediaController.openNotificationAccessSettings(context) }
+            .tap(!access && !env.editing, stringResource(R.string.horizon_allow_media_access)) { CarMediaController.openNotificationAccessSettings(context) }
             .padding(TilePad),
         contentAlignment = side.box
     ) {
@@ -1018,12 +1020,14 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                             Spacer(Modifier.width(8.dp))
                         }
                         SceneText(
-                            when {
-                                !access -> "MUSIC"
-                                ms.isPlaying -> "NOW PLAYING"
-                                hasTrack -> "PAUSED"
-                                else -> "MUSIC"
-                            },
+                            stringResource(
+                                when {
+                                    !access -> R.string.horizon_music_caps
+                                    ms.isPlaying -> R.string.horizon_now_playing_caps
+                                    hasTrack -> R.string.horizon_paused_caps
+                                    else -> R.string.horizon_music_caps
+                                }
+                            ),
                             caps(capsSp)
                         )
                     }
@@ -1031,9 +1035,9 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                 }
                 SceneText(
                     when {
-                        !access -> "Media access needed"
+                        !access -> stringResource(R.string.horizon_media_access_needed)
                         hasTrack -> ms.title
-                        else -> "Nothing playing"
+                        else -> stringResource(R.string.horizon_nothing_playing)
                     },
                     display(titleSp, italic = !hasTrack || !access),
                     maxLines = titleLines,
@@ -1041,13 +1045,13 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                 )
                 if (!access || !hasTrack) {
                     SceneText(
-                        if (!access) "Tap to allow notification access" else "Play something in any music app",
+                        stringResource(if (!access) R.string.horizon_tap_allow_notification_access else R.string.horizon_play_something),
                         ui((subSp * 0.8f).coerceIn(12f, 20f), if (!access) DashColors.Accent else DashColors.TextSecondary),
                         align = side.text
                     )
                 } else {
                     SceneText(
-                        ms.artist.ifBlank { "Unknown artist" },
+                        ms.artist.ifBlank { stringResource(R.string.horizon_unknown_artist) },
                         display(subSp, DashColors.TextSecondary, italic = true),
                         align = side.text
                     )
@@ -1141,18 +1145,18 @@ private fun HorizonDirections(env: SkinTileEnv, side: Side) {
     val canTap = !env.editing
     when {
         !env.hasMediaAccess -> SceneEmpty(
-            "Directions", "Tap to allow notification access", side,
+            stringResource(R.string.horizon_directions), stringResource(R.string.horizon_tap_allow_notification_access), side,
             if (canTap) ({ CarMediaController.openNotificationAccessSettings(context) }) else null
         )
         !nav.active -> SceneEmpty(
-            "No route", "Start navigation in Google Maps or Waze", side,
+            stringResource(R.string.horizon_no_route), stringResource(R.string.horizon_start_navigation), side,
             if (canTap) ({ openNavigationApp(context, nav) }) else null
         )
         else -> BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer()
-                .tap(canTap, "Open navigation") { openNavigationApp(context, nav) }
+                .tap(canTap, stringResource(R.string.horizon_open_navigation)) { openNavigationApp(context, nav) }
                 .padding(TilePad),
             contentAlignment = side.box
         ) {
@@ -1194,15 +1198,21 @@ private fun HorizonDirections(env: SkinTileEnv, side: Side) {
     }
 }
 
-private fun partOfDay(date: Date): String {
+/** The phrase ("%1$s evening") that sets a weather condition in the part of the day at [date]. */
+@StringRes
+private fun partOfDayMood(date: Date): Int {
     val hour = Calendar.getInstance().apply { time = date }.get(Calendar.HOUR_OF_DAY)
     return when (hour) {
-        in 5..11 -> "morning"
-        in 12..17 -> "afternoon"
-        in 18..21 -> "evening"
-        else -> "night"
+        in 5..11 -> R.string.horizon_mood_morning
+        in 12..17 -> R.string.horizon_mood_afternoon
+        in 18..21 -> R.string.horizon_mood_evening
+        else -> R.string.horizon_mood_night
     }
 }
+
+/** Weekday, day and month ("Wednesday 23 September") in the order and punctuation of [locale]. */
+private fun longDatePattern(locale: Locale): String =
+    android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM")
 
 /** Clock: huge serif time, the date in sans and, on tall tiles, "20° · clear evening". Tap opens alarms. */
 @Composable
@@ -1210,21 +1220,22 @@ private fun HorizonClock(env: SkinTileEnv, side: Side) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
     val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val dateFmt = remember(locale) { SimpleDateFormat("EEEE d MMMM", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(longDatePattern(locale), locale) }
     val weather by WeatherRepo.weather.collectAsState()
     val context = env.context
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer()
-            .tap(!env.editing, "Open clock") { openClockApp(context) }
+            .tap(!env.editing, stringResource(R.string.horizon_open_clock)) { openClockApp(context) }
             .padding(TilePad),
         contentAlignment = side.box
     ) {
         val dateSp = (maxWidth.value / 24f).coerceIn(12f, 24f)
         val w = weather
+        // Lowercased mid-sentence, except German, whose nouns stay capitalized ("Nebel").
         val mood = if (w != null && maxHeight > 190.dp) {
-            "${w.tempC.roundToInt()}°$DOT${w.condition.lowercase(locale)} ${partOfDay(now)}"
+            "${w.tempC.roundToInt()}°$DOT" + stringResource(partOfDayMood(now), w.condition.let { if (locale.language == "de") it else it.lowercase(locale) })
         } else null
         val below = (dateSp * 1.3f * (if (mood != null) 2 else 1) + 8f).dp
         val timeSp = fitSp("00:00", display(100f), maxWidth, maxHeight - below, 28f, 420f)
@@ -1242,7 +1253,7 @@ private fun HorizonClock(env: SkinTileEnv, side: Side) {
 private fun HorizonWeather(side: Side) {
     val w = rememberWeather()
     if (w == null) {
-        SceneEmpty("Loading…", "Weather at the car", side, null)
+        SceneEmpty(stringResource(R.string.horizon_loading), stringResource(R.string.horizon_weather_at_car), side, null)
         return
     }
     BoxWithConstraints(
@@ -1259,8 +1270,8 @@ private fun HorizonWeather(side: Side) {
         val tempBase = display(100f)
         val details: @Composable (Dp) -> Unit = { maxW ->
             val lineStyle = ui(lineSp, DashColors.Muted)
-            val feels = "feels ${w.feelsC.roundToInt()}°"
-            val wind = "wind ${w.windKmh.roundToInt()} km/h"
+            val feels = stringResource(R.string.horizon_feels, w.feelsC.roundToInt())
+            val wind = stringResource(R.string.horizon_wind, w.windKmh.roundToInt())
             val range = if (!w.hiC.isNaN()) "${w.loC.roundToInt()}° / ${w.hiC.roundToInt()}°" else null
             val line = firstFitting(
                 listOfNotNull(range?.let { "$feels$DOT$wind$DOT$it" }, "$feels$DOT$wind", feels),
@@ -1320,7 +1331,7 @@ private fun HorizonRange(item: DashboardItem, env: SkinTileEnv, side: Side) {
                 SceneText("km", display(unitSp, DashColors.TextSecondary, italic = true), Modifier.alignByBaseline())
             }
             SceneText(
-                "range$DOT${fuel.percent}% fuel",
+                stringResource(R.string.horizon_range_fuel, fuel.percent),
                 ui(lineSp, if (low) DashColors.Warning else DashColors.TextSecondary),
                 align = side.text
             )
@@ -1345,7 +1356,7 @@ private fun HorizonApp(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer()
-            .tap(!env.editing, "Open $label") { env.onLaunchApp(item.packageName) },
+            .tap(!env.editing, stringResource(R.string.horizon_open_app, label)) { env.onLaunchApp(item.packageName) },
         contentAlignment = Alignment.Center
     ) {
         val iconSize = (min(maxWidth.value, maxHeight.value) * 0.42f).coerceIn(30f, 64f).dp
@@ -1410,7 +1421,7 @@ private fun HorizonLaunchBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
         Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             if (pkgs.isEmpty()) {
                 SceneText(
-                    "No apps yet · tap the pencil to add some",
+                    stringResource(R.string.horizon_launch_bar_empty),
                     display(emptySp, DashColors.TextSecondary, italic = true),
                     Modifier.weight(1f).padding(start = 8.dp)
                 )
@@ -1436,7 +1447,7 @@ private fun HorizonLaunchBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
             IconButton(onClick = env.onEditLaunchBar) {
                 Icon(
                     Icons.Filled.Edit,
-                    contentDescription = "Edit launch bar",
+                    contentDescription = stringResource(R.string.horizon_cd_edit_launch_bar),
                     tint = DashColors.TextSecondary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -1459,10 +1470,11 @@ private fun LaunchEntry(
     onClick: () -> Unit
 ) {
     val name = appLabel(app, packageName)
+    val openLabel = stringResource(R.string.horizon_open_app, name)
     val base = modifier
         .clip(RoundedCornerShape(14.dp))
         .then(
-            if (enabled) Modifier.clickable(onClickLabel = "Open $name", role = Role.Button, onClick = onClick)
+            if (enabled) Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = onClick)
             else Modifier
         )
         .semantics { contentDescription = name }

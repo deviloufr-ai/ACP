@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -144,7 +146,7 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
     val source = when {
         obdConnected -> "OBD"
         gpsFresh -> "GPS"
-        else -> "No signal"
+        else -> stringResource(R.string.info_speed_no_signal)
     }
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
 
@@ -152,7 +154,7 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             val numSize = (min(maxWidth.value * 0.42f, maxHeight.value * 0.62f)).coerceIn(40f, 150f).roundToInt()
             Column(modifier = Modifier.fillMaxSize()) {
-                TileHeader("SPEED") {
+                TileHeader(stringResource(R.string.info_speed_title)) {
                     Text(
                         source,
                         color = if (speed != null) DashColors.Good else DashColors.Muted,
@@ -206,12 +208,18 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
     val glow = DashColors.Glow
     val labelStyle = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = muted)
     val northStyle = labelStyle.copy(color = DashColors.Warning)
+    // Dial letters in the UI language (e.g. O for Ouest / Osten); North is always first.
+    val dialLabels = listOf(
+        stringResource(R.string.info_dir_n) to 0, stringResource(R.string.info_dir_e) to 90,
+        stringResource(R.string.info_dir_s) to 180, stringResource(R.string.info_dir_w) to 270
+    )
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("COMPASS") {
+            TileHeader(stringResource(R.string.info_compass_title)) {
                 Text(
-                    heading?.let { "${it.roundToInt()}° ${cardinal(it)}" } ?: "Move to get a heading",
+                    heading?.let { "${it.roundToInt()}° ${stringResource(cardinalRes(it))}" }
+                        ?: stringResource(R.string.info_compass_no_heading),
                     color = if (heading != null) DashColors.TextPrimary else DashColors.Muted,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelLarge
@@ -239,10 +247,10 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
                                 cap = StrokeCap.Round
                             )
                         }
-                        listOf("N" to 0, "E" to 90, "S" to 180, "W" to 270).forEach { (l, deg) ->
+                        dialLabels.forEachIndexed { i, (l, deg) ->
                             val a = Math.toRadians((deg - 90).toDouble())
                             val lr = r - 26.dp.toPx()
-                            val layout = textMeasurer.measure(l, if (l == "N") northStyle else labelStyle)
+                            val layout = textMeasurer.measure(l, if (i == 0) northStyle else labelStyle)
                             drawText(
                                 layout,
                                 topLeft = Offset(
@@ -271,16 +279,21 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatBlock("Altitude", location?.takeIf { it.hasAltitude() }?.let { "${it.altitude.roundToInt()} m" } ?: "--")
-                StatBlock("GPS speed", location?.let { "${(it.speed * 3.6f).roundToInt()} km/h" } ?: "--")
-                StatBlock("Accuracy", location?.let { "±${it.accuracy.roundToInt()} m" } ?: "--")
+                StatBlock(stringResource(R.string.info_compass_altitude), location?.takeIf { it.hasAltitude() }?.let { "${it.altitude.roundToInt()} m" } ?: "--")
+                StatBlock(stringResource(R.string.info_compass_gps_speed), location?.let { "${(it.speed * 3.6f).roundToInt()} km/h" } ?: "--")
+                StatBlock(stringResource(R.string.info_compass_accuracy), location?.let { "±${it.accuracy.roundToInt()} m" } ?: "--")
             }
         }
     }
 }
 
-private fun cardinal(deg: Float): String {
-    val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+/** Eight-point compass direction for a bearing, as a localized abbreviation. */
+@StringRes
+private fun cardinalRes(deg: Float): Int {
+    val dirs = listOf(
+        R.string.info_dir_n, R.string.info_dir_ne, R.string.info_dir_e, R.string.info_dir_se,
+        R.string.info_dir_s, R.string.info_dir_sw, R.string.info_dir_w, R.string.info_dir_nw
+    )
     return dirs[(((deg % 360 + 360) % 360 + 22.5f) / 45f).toInt() % 8]
 }
 
@@ -311,9 +324,9 @@ internal fun TripCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("TRIP") {
+            TileHeader(stringResource(R.string.info_trip_title)) {
                 TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
-                    Text("Reset", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.info_reset), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
             Row(
@@ -327,13 +340,13 @@ internal fun TripCard(modifier: Modifier = Modifier) {
                         Text("KM", color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold, letterSpacing = 0.2.em,
                             style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
                     }
-                    Text("since ${formatClock(trip.startedAt)}", color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.info_trip_since, formatClock(trip.startedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TripRow("Time", formatDuration(trip.elapsedMs))
-                    TripRow("Moving", formatDuration(trip.movingMs))
-                    TripRow("Average", "${trip.avgSpeedKmh.roundToInt()} km/h")
-                    TripRow("Top", "${trip.maxSpeedKmh.roundToInt()} km/h")
+                    TripRow(stringResource(R.string.info_trip_time), formatDuration(trip.elapsedMs))
+                    TripRow(stringResource(R.string.info_trip_moving), formatDuration(trip.movingMs))
+                    TripRow(stringResource(R.string.info_trip_average), "${trip.avgSpeedKmh.roundToInt()} km/h")
+                    TripRow(stringResource(R.string.info_trip_top), "${trip.maxSpeedKmh.roundToInt()} km/h")
                 }
             }
         }
@@ -348,11 +361,14 @@ private fun TripRow(label: String, value: String) {
     }
 }
 
+/** "1h 05m" / "12m 30s", in the UI language's abbreviations. */
+@Composable
 internal fun formatDuration(ms: Long): String {
     val s = ms / 1000
     val h = s / 3600
     val m = (s % 3600) / 60
-    return if (h > 0) "${h}h ${String.format(Locale.US, "%02d", m)}m" else "${m}m ${String.format(Locale.US, "%02d", s % 60)}s"
+    return if (h > 0) stringResource(R.string.info_duration_hm, h, m)
+    else stringResource(R.string.info_duration_ms, m, s % 60)
 }
 
 internal fun formatClock(epochMs: Long): String =
@@ -376,9 +392,9 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("G-FORCE") {
+            TileHeader(stringResource(R.string.info_gforce_title)) {
                 TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
-                    Text("Reset peaks", color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.info_gforce_reset_peaks), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
             val ink = DashColors.TextPrimary
@@ -412,10 +428,14 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
                     // Two-row tiles only have room for the live values; peaks need a taller tile.
                     val showPeaks = maxHeight >= 150.dp
                     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
-                        StatBlock("Lateral", String.format(Locale.US, "%+.2f g", g.lateral), Modifier.fillMaxWidth())
-                        StatBlock("Accel / brake", String.format(Locale.US, "%+.2f g", g.longitudinal), Modifier.fillMaxWidth())
+                        StatBlock(stringResource(R.string.info_gforce_lateral), String.format(Locale.getDefault(), "%+.2f g", g.lateral), Modifier.fillMaxWidth())
+                        StatBlock(stringResource(R.string.info_gforce_accel_brake), String.format(Locale.getDefault(), "%+.2f g", g.longitudinal), Modifier.fillMaxWidth())
                         if (showPeaks) {
-                            StatBlock("Peaks", String.format(Locale.US, "%.2f / %.2f g", g.peakLateral, g.peakLongitudinal), Modifier.fillMaxWidth(), valueColor = DashColors.Warning)
+                            StatBlock(
+                                stringResource(R.string.info_gforce_peaks),
+                                String.format(Locale.getDefault(), "%.2f / %.2f g", g.peakLateral, g.peakLongitudinal),
+                                Modifier.fillMaxWidth(), valueColor = DashColors.Warning
+                            )
                         }
                     }
                 }
@@ -446,10 +466,10 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            TileHeader("PARKING") {
+            TileHeader(stringResource(R.string.info_parking_title)) {
                 if (spot != null) {
                     TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
-                        Text("Clear", color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.info_clear), color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -463,7 +483,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                     Icon(Icons.Filled.LocalParking, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(34.dp))
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        if (hasFix) "Remember where the car is" else "Waiting for GPS…",
+                        stringResource(if (hasFix) R.string.info_parking_prompt else R.string.info_waiting_gps),
                         color = DashColors.TextSecondary,
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodySmall
@@ -475,7 +495,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
                         shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
-                    ) { Text("Save parking spot") }
+                    ) { Text(stringResource(R.string.info_parking_save)) }
                 }
             } else {
                 val here = location
@@ -497,9 +517,15 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                     ) {
                         // Arrow points from the car's heading towards the spot.
                         val heading = LocationFeed.headingDeg.collectAsState().value ?: 0f
+                        val relative = bearing?.let { (it - heading + 360f) % 360f }
+                        val arrowDescription = when {
+                            relative == null -> null
+                            relative <= 180f -> stringResource(R.string.info_parking_dir_right, relative.roundToInt())
+                            else -> stringResource(R.string.info_parking_dir_left, (360f - relative).roundToInt())
+                        }
                         Icon(
                             Icons.Filled.Navigation,
-                            contentDescription = bearing?.let { "Parked car is %.0f degrees to the %s".format(((it - heading + 360f) % 360f), if (((it - heading + 360f) % 360f) <= 180f) "right" else "left") },
+                            contentDescription = arrowDescription,
                             tint = DashColors.OnAccent,
                             modifier = Modifier.size(34.dp).rotate(((bearing ?: 0f) - heading + 360f) % 360f)
                         )
@@ -507,12 +533,14 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            dist?.let { formatDistance(it) } ?: "Distance unknown",
+                            dist?.let { formatDistance(it) } ?: stringResource(R.string.info_parking_distance_unknown),
                             color = DashColors.TextPrimary, fontWeight = FontWeight.ExtraBold,
                             style = MaterialTheme.typography.headlineSmall
                         )
+                        val ago = formatAgo(s.savedAt)
                         Text(
-                            "Parked ${formatAgo(s.savedAt)} · ${bearing?.let { cardinal(it) } ?: ""}",
+                            if (bearing != null) stringResource(R.string.info_parking_parked_dir, ago, stringResource(cardinalRes(bearing)))
+                            else stringResource(R.string.info_parking_parked, ago),
                             color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -521,7 +549,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
                         shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                    ) { Text("Walk there") }
+                    ) { Text(stringResource(R.string.info_parking_walk)) }
                 }
             }
         }
@@ -532,7 +560,9 @@ private fun walkTo(context: Context, spot: ParkingSpot) {
     val uri = Uri.parse(String.format(Locale.US, "google.navigation:q=%.6f,%.6f&mode=w", spot.lat, spot.lng))
     val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }.onFailure {
-        val geo = Uri.parse(String.format(Locale.US, "geo:%.6f,%.6f?q=%.6f,%.6f(Parked car)", spot.lat, spot.lng, spot.lat, spot.lng))
+        // Coordinates stay Locale.US (machine-read); only the pin label is localized.
+        val label = Uri.encode(context.getString(R.string.info_parking_map_label))
+        val geo = Uri.parse(String.format(Locale.US, "geo:%.6f,%.6f?q=%.6f,%.6f(%s)", spot.lat, spot.lng, spot.lat, spot.lng, label))
         context.launchSafely(Intent(Intent.ACTION_VIEW, geo))
     }
 }
@@ -540,13 +570,14 @@ private fun walkTo(context: Context, spot: ParkingSpot) {
 internal fun formatDistance(m: Float): String =
     if (m < 1000f) "${m.roundToInt()} m" else String.format(Locale.getDefault(), "%.1f km", m / 1000f)
 
+@Composable
 internal fun formatAgo(epochMs: Long): String {
     val mins = ((System.currentTimeMillis() - epochMs) / 60_000L).coerceAtLeast(0)
     return when {
-        mins < 1 -> "just now"
-        mins < 60 -> "${mins}m ago"
-        mins < 24 * 60 -> "${mins / 60}h ${mins % 60}m ago"
-        else -> "${mins / (24 * 60)}d ago"
+        mins < 1 -> stringResource(R.string.info_ago_just_now)
+        mins < 60 -> stringResource(R.string.info_ago_minutes, mins)
+        mins < 24 * 60 -> stringResource(R.string.info_ago_hours, mins / 60, mins % 60)
+        else -> stringResource(R.string.info_ago_days, mins / (24 * 60))
     }
 }
 

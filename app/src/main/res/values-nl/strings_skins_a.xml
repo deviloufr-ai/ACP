@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cockpit skin: top bar -->
+    <string name="cockpit_apps">APPS</string>
+    <string name="cockpit_layout">INDELING</string>
+    <string name="cockpit_screen_layout_desc">Schermindeling: %1$s</string>
+    <string name="cockpit_more">Meer</string>
+    <string name="cockpit_time_desc">Tijd %1$s</string>
+    <string name="cockpit_out">BUITEN</string>
+    <string name="cockpit_connect_obd">OBD verbinden</string>
+
+    <!-- Cockpit skin: dial faces (C/H = cold/hot coolant, E/F = empty/full tank) -->
+    <string name="cockpit_dial_rpm_title">×1000 tpm</string>
+    <string name="cockpit_dial_temp">TEMP</string>
+    <string name="cockpit_dial_fuel">TANK</string>
+    <string name="cockpit_dial_volt">VOLT</string>
+    <string name="cockpit_dial_load">LAST</string>
+    <string name="cockpit_dial_cold">50</string>
+    <string name="cockpit_dial_hot">130</string>
+    <string name="cockpit_dial_empty">0</string>
+    <string name="cockpit_dial_full">1</string>
+    <string name="cockpit_dial_fuel_title">BRANDSTOF</string>
+    <string name="cockpit_unit_rpm">tpm</string>
+    <string name="cockpit_rpm_line">%1$s TPM</string>
+
+    <!-- Cockpit skin: telemetry and speed -->
+    <string name="cockpit_speed_rpm_caption">KM/H · %1$d TPM</string>
+    <string name="cockpit_obd_off">OBD UIT</string>
+    <string name="cockpit_no_signal">GEEN SIGNAAL</string>
+    <string name="cockpit_battery">Accu</string>
+    <string name="cockpit_coolant">Koelvloeistof</string>
+    <string name="cockpit_speed_warning">Snelheidswaarschuwing</string>
+    <string name="cockpit_tap_to_connect">TIK OM TE\nVERBINDEN</string>
+
+    <!-- Cockpit skin: media -->
+    <string name="cockpit_media_access_needed">MEDIATOEGANG NODIG · TIK OM TE ACTIVEREN</string>
+    <string name="cockpit_nothing_playing">ER SPEELT NIETS</string>
+    <string name="cockpit_tap_to_enable">TIK OM TE ACTIVEREN</string>
+    <string name="cockpit_grant_media_access">Mediatoegang toestaan</string>
+    <string name="cockpit_previous">Vorige</string>
+    <string name="cockpit_play">Afspelen</string>
+    <string name="cockpit_pause">Pauzeren</string>
+    <string name="cockpit_next">Volgende</string>
+    <string name="cockpit_vu_left">L</string>
+    <string name="cockpit_vu_right">R</string>
+
+    <!-- Cockpit skin: navigation, clock, weather, range -->
+    <string name="cockpit_open_navigation">Navigatie openen</string>
+    <string name="cockpit_no_access">GEEN TOEGANG</string>
+    <string name="cockpit_no_route">GEEN ROUTE</string>
+    <string name="cockpit_tap_for_maps">TIK VOOR MAPS</string>
+    <string name="cockpit_open_alarms">Wekkers openen</string>
+    <string name="cockpit_clock">Klok</string>
+    <string name="cockpit_loading">LADEN…</string>
+    <string name="cockpit_feels_wind">VOELT %1$d° · WIND %2$d KM/H</string>
+    <string name="cockpit_fuel_settings">Instellingen brandstofsignaal</string>
+    <string name="cockpit_range">ACTIERADIUS</string>
+
+    <!-- Cockpit skin: app toggles and launch bar -->
+    <string name="cockpit_open_app">%1$s openen</string>
+    <string name="cockpit_launch_bar_empty">STARTBALK — TIK OP HET POTLOOD OM APPS TOE TE VOEGEN</string>
+    <string name="cockpit_edit_launch_bar">Startbalk bewerken</string>
+
+    <!-- Orbit skin: top bar -->
+    <string name="orbit_all_apps">Alle apps</string>
+    <string name="orbit_screen_layout_desc">Schermindeling: %1$s</string>
+    <string name="orbit_more">Meer</string>
+
+    <!-- Orbit skin: speed dial and satellite bubbles -->
+    <string name="orbit_sat_coolant">koeling</string>
+    <string name="orbit_sat_battery">accu</string>
+    <string name="orbit_sat_load">belasting</string>
+    <string name="orbit_rpm_value">%1$s tpm</string>
+    <string name="orbit_tap_to_connect">Tik om te verbinden</string>
+    <string name="orbit_connecting">Verbinden…</string>
+    <string name="orbit_connect_obd">OBD verbinden</string>
+    <string name="orbit_no_signal">Geen signaal</string>
+
+    <!-- Orbit skin: media -->
+    <string name="orbit_media_access_needed">Mediatoegang nodig</string>
+    <string name="orbit_nothing_playing">Er speelt niets</string>
+    <string name="orbit_tap_to_enable">Tik om te activeren</string>
+    <string name="orbit_start_music">Start muziek in een app</string>
+    <string name="orbit_previous_track">Vorig nummer</string>
+    <string name="orbit_play">Afspelen</string>
+    <string name="orbit_pause">Pauzeren</string>
+    <string name="orbit_next_track">Volgend nummer</string>
+    <string name="orbit_grant_access">Toegang geven</string>
+
+    <!-- Orbit skin: navigation -->
+    <string name="orbit_no_route">Geen route</string>
+    <string name="orbit_directions_need_access">Route heeft toegang nodig</string>
+    <string name="orbit_tap_open_maps">Tik om Google Maps te openen</string>
+    <string name="orbit_tap_allow_notifications">Tik om meldingstoegang toe te staan</string>
+
+    <!-- Orbit skin: clock and weather -->
+    <string name="orbit_open_alarms">Wekkers openen</string>
+    <string name="orbit_feels">Voelt als %1$d°</string>
+    <string name="orbit_wind">Wind %1$d km/h</string>
+    <string name="orbit_feels_wind">voelt als %1$d° · %2$d km/h</string>
+    <string name="orbit_offline">Offline</string>
+    <string name="orbit_loading">Laden…</string>
+
+    <!-- Orbit skin: fuel and range -->
+    <string name="orbit_to_empty">tot leeg</string>
+    <string name="orbit_liters_in_tank">≈ %1$.0f L in de tank</string>
+    <string name="orbit_via_source">via %1$s</string>
+    <string name="orbit_tap_to_recalibrate">tik om te herkalibreren</string>
+    <string name="orbit_recalibrate_fuel">Brandstof herkalibreren</string>
+    <string name="orbit_fuel_percent">tank %1$d%%</string>
+
+    <!-- Orbit skin: launch bar -->
+    <string name="orbit_launch_bar_empty">Startbalk — tik op het potlood om apps toe te voegen</string>
+    <string name="orbit_edit_launch_bar">Startbalk bewerken</string>
+</resources>

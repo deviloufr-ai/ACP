@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -162,7 +163,7 @@ object ObdBluetoothManager {
         val adapter = manager.adapter ?: return emptyList()
         return try {
             adapter.bondedDevices.map { device ->
-                (runCatching { device.name }.getOrNull() ?: "Unknown device") to device.address
+                (runCatching { device.name }.getOrNull() ?: context.getString(R.string.vehicle_unknown_device)) to device.address
             }.sortedBy { it.first.lowercase() }
         } catch (e: SecurityException) {
             emptyList()
@@ -217,11 +218,11 @@ object ObdBluetoothManager {
      */
     suspend fun readTroubleCodes(): Result<List<String>> = withContext(Dispatchers.IO) {
         if (_connectionState.value != ObdConnectionState.CONNECTED) {
-            return@withContext Result.failure(IllegalStateException("OBD not connected"))
+            return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
             val response = sendCommand("03")
-                ?: return@withLock Result.failure(IllegalStateException("No response from adapter"))
+                ?: return@withLock failure(R.string.vehicle_no_response)
             Result.success(ObdParser.parseDtcs(response))
         }
     }
@@ -229,19 +230,30 @@ object ObdBluetoothManager {
     /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
     suspend fun clearTroubleCodes(): Result<Unit> = withContext(Dispatchers.IO) {
         if (_connectionState.value != ObdConnectionState.CONNECTED) {
-            return@withContext Result.failure(IllegalStateException("OBD not connected"))
+            return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
             val raw = sendCommand("04")
-                ?: return@withLock Result.failure(IllegalStateException("No response from adapter"))
+                ?: return@withLock failure(R.string.vehicle_no_response)
             val r = raw.uppercase().trim()
             if (r.contains("44") || r.contains("OK")) {
                 Result.success(Unit)
             } else {
                 // Common cause: ignition must be ON (engine off) to clear codes.
-                Result.failure(IllegalStateException("Adapter replied \"$raw\". Turn ignition ON (engine off) and retry."))
+                failure(R.string.vehicle_clear_rejected, raw)
             }
         }
+    }
+
+    /** A failed [Result] whose message is shown in the UI, so it is localized. */
+    private fun failure(@StringRes message: Int, vararg args: Any): Result<Nothing> {
+        val context = appContext
+        val text = when {
+            context == null -> "OBD error"
+            args.isEmpty() -> context.getString(message)
+            else -> context.getString(message, *args)
+        }
+        return Result.failure(IllegalStateException(text))
     }
 
     /**

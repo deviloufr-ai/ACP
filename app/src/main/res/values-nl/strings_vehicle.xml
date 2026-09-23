@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OBD tiles: shared -->
+    <string name="vehicle_obd_not_connected">OBD niet verbonden</string>
+    <string name="vehicle_connect">Verbinden</string>
+    <string name="vehicle_speed">Snelheid</string>
+    <string name="vehicle_rpm">tpm</string>
+    <string name="vehicle_coolant">Koelvloeistof</string>
+    <string name="vehicle_battery">Accu</string>
+    <string name="vehicle_fuel">Brandstof</string>
+    <string name="vehicle_close">Sluiten</string>
+    <string name="vehicle_cancel">Annuleren</string>
+    <string name="vehicle_reset">Resetten</string>
+    <string name="vehicle_capture_a">Opname A</string>
+    <string name="vehicle_capture_b">Opname B</string>
+
+    <!-- Telemetry tile -->
+    <string name="vehicle_telemetry_title">TELEMETRIE</string>
+    <string name="vehicle_live">Live</string>
+    <string name="vehicle_speed_caps">SNELHEID</string>
+    <string name="vehicle_rpm_caps">TPM</string>
+    <string name="vehicle_load">Belasting</string>
+
+    <!-- Fault codes tile -->
+    <string name="vehicle_fault_codes_title">FOUTCODES</string>
+    <string name="vehicle_scan">Uitlezen</string>
+    <string name="vehicle_clear">Wissen</string>
+
+    <!-- OBD data tile -->
+    <string name="vehicle_obd_data_title">OBD-GEGEVENS</string>
+    <string name="vehicle_intake_air">Inlaatlucht</string>
+    <string name="vehicle_throttle">Gasklep</string>
+    <string name="vehicle_engine_load">Motorbelasting</string>
+    <string name="vehicle_fuel_level">Brandstofniveau</string>
+
+    <!-- Fuel & range tile -->
+    <string name="vehicle_fuel_range_title">BRANDSTOF &amp; ACTIERADIUS</string>
+    <string name="vehicle_via_canbox">via CANbox</string>
+    <string name="vehicle_via_obd">via OBD</string>
+    <string name="vehicle_fuel_no_obd">De OBD van deze auto geeft geen brandstof door. Leer het in plaats daarvan van de CANbox — root vereist.</string>
+    <string name="vehicle_find_fuel_signal">Brandstofsignaal zoeken</string>
+    <string name="vehicle_try_obd_fuel_pid">OBD-brandstof-PID proberen</string>
+    <string name="vehicle_km_to_empty">KM TOT LEEG</string>
+    <string name="vehicle_range_approx">≈ actieradius</string>
+    <string name="vehicle_in_tank">In tank</string>
+    <string name="vehicle_avg_use">Gem. verbruik</string>
+    <string name="vehicle_learn_fuel">Brandstof leren van CANbox</string>
+    <string name="vehicle_recalibrate_fuel">Brandstof herkalibreren</string>
+
+    <!-- Fuel signal finder dialog -->
+    <string name="vehicle_finder_help">Stel het niveau van je brandstofmeter in en tik op Opname A — sluit dit daarna en gebruik de auto normaal. Dagen later, als de meter wat gezakt is, open je dit opnieuw, stel je de nieuwe waarde in en tik je op Opname B. Opname A blijft bewaard na herstarten. Alleen bytes die met de brandstof meebewogen worden aangeboden.</string>
+    <string name="vehicle_dash_reads">Meter geeft aan</string>
+    <string name="vehicle_waiting_canbox">Wachten op CANbox-gegevens… (root vereist)</string>
+    <string name="vehicle_finder_step_a">Stel het getoonde brandstofniveau in en tik op Opname A.</string>
+    <string name="vehicle_finder_step_b">A vastgelegd op %1$d%% (bewaard). Je kunt dit sluiten en normaal rijden — kom terug als de meter een paar %% gezakt is, stel de nieuwe waarde in en dan Opname B.</string>
+    <string name="vehicle_finder_same">A en B staan op hetzelfde niveau. Doe Opname B bij een ander brandstofniveau.</string>
+    <string name="vehicle_finder_none">Geen byte volgde de verandering. Neem B opnieuw op na een grotere daling.</string>
+    <string name="vehicle_finder_candidates">Bytes die met de brandstof meebewogen</string>
+    <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
+    <string name="vehicle_finder_raw">%1$d → %2$d · vol≈%3$d</string>
+    <string name="vehicle_forget_current">Huidige vergeten</string>
+
+    <!-- OBD adapter picker -->
+    <string name="vehicle_select_adapter">OBD-adapter kiezen</string>
+    <string name="vehicle_no_paired">Geen gekoppelde Bluetooth-apparaten. Koppel eerst je OBD-adapter in de Bluetooth-instellingen.</string>
+    <string name="vehicle_bt_settings">Bluetooth-instellingen</string>
+
+    <!-- OBD adapter status messages -->
+    <string name="vehicle_unknown_device">Onbekend apparaat</string>
+    <string name="vehicle_no_response">Geen antwoord van adapter</string>
+    <string name="vehicle_clear_rejected">Adapter antwoordde \"%1$s\". Zet het contact AAN (motor uit) en probeer opnieuw.</string>
+
+    <!-- Doors tile -->
+    <string name="vehicle_doors_title">PORTIEREN</string>
+    <string name="vehicle_waiting_mcu">Wachten op MCU-gegevens… (root vereist)</string>
+    <string name="vehicle_door_front_left">Linksvoor</string>
+    <string name="vehicle_door_front_right">Rechtsvoor</string>
+    <string name="vehicle_door_rear_left">Linksachter</string>
+    <string name="vehicle_door_rear_right">Rechtsachter</string>
+    <string name="vehicle_door_tailgate">Achterklep</string>
+    <string name="vehicle_door_bonnet">Motorkap</string>
+    <string name="vehicle_door_any_open">Er staat een portier open</string>
+    <string name="vehicle_doors_all_closed">Alles dicht</string>
+    <string name="vehicle_door_open_caps">OPEN</string>
+    <string name="vehicle_door_closed">dicht</string>
+
+    <!-- CAN monitor (debug tile) -->
+    <string name="vehicle_can_monitor_title">CAN-MONITOR — signaal zoeken</string>
+    <string name="vehicle_can_monitor_help">Portieren DICHT → Opname A. Dan het portier OPENEN → Opname B. Alleen afwijkende discrete signalen worden getoond.</string>
+    <string name="vehicle_can_a_closed">A ✓ dicht</string>
+    <string name="vehicle_can_b_open">B ✓ open</string>
+    <string name="vehicle_can_prompt">Opname A (dicht), dan B (open) om te vergelijken.</string>
+    <string name="vehicle_can_no_diff">Geen duidelijk discreet verschil. Doe het met de motor UIT zodat sensoren niet verlopen, en houd het portier open tijdens Opname B.</string>
+    <string name="vehicle_can_row_closed">dicht: %1$s</string>
+    <string name="vehicle_can_row_open">open: %1$s</string>
+
+    <!-- Fault code (DTC) descriptions: title + what to check -->
+    <string name="vehicle_dtc_p0300_title">Willekeurige/meervoudige ontstekingsfouten</string>
+    <string name="vehicle_dtc_p0300_fix">Controleer bougies en bobines (THP: bobines zijn een bekend zwak punt), verstuivers en op valse lucht. Vervang bougies/bobines als set.</string>
+    <string name="vehicle_dtc_p0301_title">Ontstekingsfout cilinder 1</string>
+    <string name="vehicle_dtc_p0301_fix">Wissel bobine/bougie van cil. 1 met een andere cil.; verhuist de fout mee, vervang dan die bobine/bougie. Controleer ook verstuiver 1.</string>
+    <string name="vehicle_dtc_p0302_title">Ontstekingsfout cilinder 2</string>
+    <string name="vehicle_dtc_p0302_fix">Wissel bobine/bougie om te isoleren; controleer verstuiver 2 en de compressie.</string>
+    <string name="vehicle_dtc_p0303_title">Ontstekingsfout cilinder 3</string>
+    <string name="vehicle_dtc_p0303_fix">Wissel bobine/bougie om te isoleren; controleer verstuiver 3 en de compressie.</string>
+    <string name="vehicle_dtc_p0304_title">Ontstekingsfout cilinder 4</string>
+    <string name="vehicle_dtc_p0304_fix">Wissel bobine/bougie om te isoleren; controleer verstuiver 4 en de compressie.</string>
+    <string name="vehicle_dtc_p0016_title">Correlatie krukas/nokkenas (bank 1 sensor A)</string>
+    <string name="vehicle_dtc_p0016_fix">Klassiek bij 1.6 THP: uitgerekte distributieketting. Controleer ketting, spanner en nokkenas-/krukassensor. Vaak is een distributiekettingset nodig.</string>
+    <string name="vehicle_dtc_p0017_title">Correlatie krukas/nokkenas (bank 1 sensor B)</string>
+    <string name="vehicle_dtc_p0017_fix">Waarschijnlijk uitgerekte distributieketting / spanner (1.6 THP). Inspecteer ketting en tandwielen.</string>
+    <string name="vehicle_dtc_p0011_title">Inlaatnokkenas te ver vervroegd (bank 1)</string>
+    <string name="vehicle_dtc_p0011_fix">VVT-nokkenasversteller of oliestuurklep. Controleer oliepeil/-kwaliteit, VVT-klep en slijtage van de distributieketting.</string>
+    <string name="vehicle_dtc_p0341_title">Nokkenaspositiesensor – bereik</string>
+    <string name="vehicle_dtc_p0341_fix">Controleer de nokkenassensor en bedrading; controleer of de afstelling (ketting) klopt.</string>
+    <string name="vehicle_dtc_p0340_title">Nokkenaspositiesensor – circuit</string>
+    <string name="vehicle_dtc_p0340_fix">Test/vervang de nokkenassensor; inspecteer stekker en bedrading.</string>
+    <string name="vehicle_dtc_p0299_title">Turbodruk te laag</string>
+    <string name="vehicle_dtc_p0299_fix">Vaak bij THP/HDi. Zoek drukverlies (slangen/intercooler), controleer wastegate/turboactuator en de blow-offklep.</string>
+    <string name="vehicle_dtc_p0234_title">Turbodruk te hoog</string>
+    <string name="vehicle_dtc_p0234_fix">Controleer op een vastzittende wastegate-actuator, de turbodrukklep en een vastzittende VNT (HDi).</string>
+    <string name="vehicle_dtc_p0087_title">Brandstofraildruk te laag</string>
+    <string name="vehicle_dtc_p0087_fix">HDi: controleer brandstoffilter, lagedruktoevoer, hogedrukpomp en raildrukregelaar; zoek naar lucht/lekken.</string>
+    <string name="vehicle_dtc_p0089_title">Brandstofdrukregelaar – prestatie</string>
+    <string name="vehicle_dtc_p0089_fix">Controleer de raildrukregelaar/doseerklep en pomp; inspecteer het brandstoffilter.</string>
+    <string name="vehicle_dtc_p0093_title">Groot brandstoflek gedetecteerd</string>
+    <string name="vehicle_dtc_p0093_fix">HDi: inspecteer de lekleidingen van de verstuivers, hogedrukleidingen en pompafdichtingen op diesellekken.</string>
+    <string name="vehicle_dtc_p0420_title">Katalysatorrendement onder drempel (bank 1)</string>
+    <string name="vehicle_dtc_p0420_fix">Vaak een versleten katalysator of een trage achterste lambdasonde. Sluit eerst uitlaatlekken en ontstekingsfouten uit.</string>
+    <string name="vehicle_dtc_p0401_title">EGR-doorstroming onvoldoende</string>
+    <string name="vehicle_dtc_p0401_fix">Reinig of vervang de EGR-klep; controleer EGR-koeler en kanalen op koolaanslag (vaak bij HDi).</string>
+    <string name="vehicle_dtc_p0402_title">EGR-doorstroming te groot</string>
+    <string name="vehicle_dtc_p0402_fix">Controleer of de EGR-klep open vastzit en de aansturing; verwijder koolaanslag.</string>
+    <string name="vehicle_dtc_p2463_title">Roetophoping roetfilter te hoog</string>
+    <string name="vehicle_dtc_p2463_fix">HDi-diesel: maak een lange snelwegrit voor regeneratie; controleer de roetfilterdruksensor en het additiefniveau (Eolys). Mogelijk geforceerde regeneratie nodig.</string>
+    <string name="vehicle_dtc_p242f_title">Roetfilter verstopt (asophoping)</string>
+    <string name="vehicle_dtc_p242f_fix">Roetfilter aan het eind van zijn levensduur of verstopt; mogelijk geforceerde regeneratie of reiniging/vervanging nodig.</string>
+    <string name="vehicle_dtc_p0113_title">Inlaatluchttemperatuursensor – signaal hoog</string>
+    <string name="vehicle_dtc_p0113_fix">Controleer de IAT-sensor en bedrading/stekker; reinig of vervang de sensor (vaak in de luchtmassameter/inlaat).</string>
+    <string name="vehicle_dtc_p0128_title">Koelvloeistof onder thermostaattemperatuur</string>
+    <string name="vehicle_dtc_p0128_fix">Meestal een open vastzittende thermostaat. Vervang de thermostaat; controleer koelvloeistofpeil en sensor.</string>
+    <string name="vehicle_dtc_p0135_title">Lambdasonde-verwarming (bank 1 sensor 1)</string>
+    <string name="vehicle_dtc_p0135_fix">Controleer het verwarmingscircuit en de zekering van de voorste lambdasonde; vervang de sonde als de verwarming onderbroken is.</string>
+    <string name="vehicle_dtc_p0130_title">Lambdasonde-circuit (bank 1 sensor 1)</string>
+    <string name="vehicle_dtc_p0130_fix">Inspecteer de voorste lambdasonde en bedrading; vervang bij traag/defect gedrag.</string>
+    <string name="vehicle_dtc_p0171_title">Mengsel te arm (bank 1)</string>
+    <string name="vehicle_dtc_p0171_fix">Zoek naar inlaat-/vacuümlekken (vaak), vuile luchtmassameter, zwakke brandstofpomp/verstuivers.</string>
+    <string name="vehicle_dtc_p0172_title">Mengsel te rijk (bank 1)</string>
+    <string name="vehicle_dtc_p0172_fix">Zoek naar lekkende verstuivers, te hoge brandstofdruk, vuile luchtmassameter of defecte lambdasonde.</string>
+    <string name="vehicle_dtc_p0505_title">Stationairregeling</string>
+    <string name="vehicle_dtc_p0505_fix">Reinig het gasklephuis; zoek naar inlaatlekken en controleer de werking van de gasklepmotor.</string>
+    <string name="vehicle_dtc_p2100_title">Gasklepactuator – motorcircuit</string>
+    <string name="vehicle_dtc_p2100_fix">Controleer gasklepmotor en bedrading; mogelijk moet het gasklephuis vervangen worden.</string>
+
+    <!-- Fault codes not in the table: described from the code's structure -->
+    <string name="vehicle_dtc_unknown_code">Onbekende code</string>
+    <string name="vehicle_dtc_fallback_title">Storing %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_fix">Geen beschrijving opgeslagen. Zoek naar gerelateerde codes, controleer sensor/bedrading van het betreffende circuit en zoek op \"%1$s Citroën C4 Picasso\" voor modelspecifieke tips.</string>
+    <string name="vehicle_dtc_system_powertrain">aandrijflijn</string>
+    <string name="vehicle_dtc_system_chassis">chassis</string>
+    <string name="vehicle_dtc_system_body">carrosserie</string>
+    <string name="vehicle_dtc_system_network">netwerk</string>
+    <string name="vehicle_dtc_system_unknown">onbekend systeem</string>
+    <string name="vehicle_dtc_scope_generic">generiek</string>
+    <string name="vehicle_dtc_scope_manufacturer">fabrikantspecifiek</string>
+    <string name="vehicle_dtc_area_fuel_air">brandstof-/luchtdosering</string>
+    <string name="vehicle_dtc_area_ignition">ontsteking / ontstekingsfouten</string>
+    <string name="vehicle_dtc_area_emissions">emissies / hulpsystemen</string>
+    <string name="vehicle_dtc_area_idle">snelheid / stationairregeling</string>
+    <string name="vehicle_dtc_area_computer">regeleenheid / uitgangen</string>
+    <string name="vehicle_dtc_area_transmission">transmissie</string>
+    <string name="vehicle_dtc_area_system">systeem</string>
+</resources>

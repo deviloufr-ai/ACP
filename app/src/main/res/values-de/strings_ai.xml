@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings dialog (also the menu item) -->
+    <string name="ai_title">KI-Mechaniker</string>
+    <string name="ai_explanation">Sobald der OBD-Adapter verbunden ist, sucht Dashwheel selbstständig nach Fehlercodes. Ein neuer Code wird von Google Gemini erklärt und vorgelesen; die Details erscheinen auf der Kachel „Fehlercodes“. Gesendet werden nur die Codes, die Motorwerte und das Fahrzeugmodell.</string>
+    <string name="ai_activation_code">Aktivierungscode</string>
+    <string name="ai_activation_hint">Schaltet den integrierten Schlüssel frei</string>
+    <string name="ai_activate">Aktivieren</string>
+    <string name="ai_own_key">Oder eigener Gemini-API-Schlüssel</string>
+    <string name="ai_key">Gemini-API-Schlüssel</string>
+    <string name="ai_key_hint">Kostenlos auf aistudio.google.com → Get API key</string>
+    <string name="ai_engine">Motor</string>
+    <string name="ai_language">Sprache</string>
+    <string name="ai_language_auto">Wie die App</string>
+    <string name="ai_speak">Warnungen ansagen</string>
+    <string name="ai_speak_detail">Neue Fehlercodes, Überhitzung, Batterie lädt nicht</string>
+    <string name="ai_test">Testen</string>
+    <string name="ai_done">Fertig</string>
+
+    <!-- Settings dialog: test results -->
+    <string name="ai_test_ok">Gemini funktioniert ✓ (%1$s).</string>
+    <string name="ai_test_activated_ok">Aktiviert ✓ Gemini funktioniert ✓ (%1$s).</string>
+    <string name="ai_test_failed">Fehlgeschlagen: %1$s</string>
+    <string name="ai_test_activated_unreachable">Aktiviert ✓ Gemini noch nicht erreichbar: %1$s</string>
+    <string name="ai_wrong_code">Falscher Aktivierungscode</string>
+    <string name="ai_no_voice">Keine Stimme für %1$s auf diesem Gerät: in den Android-Einstellungen → Text-in-Sprache hinzufügen.</string>
+
+    <!-- Spoken by the car, in the mechanic's language (resolved with the AI language, not the screen's) -->
+    <string name="ai_say_ready">Der KI-Mechaniker ist bereit.</string>
+    <plurals name="ai_say_new_codes">
+        <item quantity="one">%1$d neuer Motor-Fehlercode: %2$s. Details auf dem Bildschirm.</item>
+        <item quantity="other">%1$d neue Motor-Fehlercodes: %2$s. Details auf dem Bildschirm.</item>
+    </plurals>
+    <string name="ai_say_overheat">Achtung, der Motor überhitzt: %1$d Grad. Sobald es sicher ist, anhalten und den Motor abstellen.</string>
+    <string name="ai_say_not_charging">Die Batterie wird nicht geladen: %1$s Volt bei laufendem Motor. Eine Werkstatt anfahren und unnötige Verbraucher ausschalten.</string>
+    <string name="ai_say_weak_battery">Die Batterie ist schwach: %1$s Volt bei abgestelltem Motor. Bald prüfen lassen.</string>
+
+    <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
+    <string name="ai_verdict_ok">Weiterfahrt möglich</string>
+    <string name="ai_verdict_soon">Bald prüfen lassen</string>
+    <string name="ai_verdict_stop">Anhalten</string>
+    <string name="ai_likely">Wahrscheinlich: %1$s</string>
+    <string name="ai_check_first">Zuerst prüfen: %1$s</string>
+
+    <!-- Fault codes tile: status -->
+    <string name="ai_no_codes">Keine Fehlercodes ✓</string>
+    <string name="ai_cleared">Gelöscht ✓</string>
+    <string name="ai_scan_failed">Auslesen fehlgeschlagen</string>
+    <string name="ai_clear_failed">Löschen fehlgeschlagen</string>
+    <string name="ai_thinking">KI-Mechaniker wird gefragt…</string>
+    <string name="ai_retry">Erneut versuchen</string>
+    <string name="ai_note_no_key">Kostenlosen Gemini-Schlüssel hinzufügen (Menü → KI-Mechaniker) für verständliche Tipps.</string>
+    <string name="ai_note_unavailable">KI nicht verfügbar: %1$s</string>
+
+    <!-- Why asking Gemini failed (follows "AI unavailable: " / "Didn't work: ") -->
+    <string name="ai_error_quota">das heutige Gratis-Kontingent ist aufgebraucht</string>
+    <string name="ai_error_key_refused">der Schlüssel wurde abgelehnt</string>
+    <string name="ai_error_gemini">Gemini-Fehler %1$d</string>
+    <string name="ai_error_empty">Gemini hat leer geantwortet</string>
+    <string name="ai_error_unreadable">Antwort von Gemini war unlesbar</string>
+    <string name="ai_error_offline">keine Internetverbindung</string>
+    <string name="ai_error_unknown">unbekannter Fehler</string>
+</resources>

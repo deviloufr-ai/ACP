@@ -1,6 +1,8 @@
 package com.openauto.dash
 
 import android.content.Context
+import android.content.res.Configuration
+import android.content.res.Resources
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,10 +25,33 @@ enum class CarEngine(val label: String, val detail: String) {
     HDI_20("2.0 HDi", "2.0 HDi diesel (PSA DW10, 150-163 hp, particulate filter)")
 }
 
-/** Language the mechanic writes and speaks in. */
+/**
+ * Language the mechanic writes and speaks in. [label] is the language's own
+ * name (for the picker), [promptName] its English name (for Gemini), [locale]
+ * the voice and the number format. Entry names are persisted.
+ */
 enum class AiLanguage(val label: String, val promptName: String, val locale: Locale) {
+    ENGLISH("English", "English", Locale.UK),
     FRENCH("Français", "French", Locale.FRANCE),
-    ENGLISH("English", "English", Locale.UK)
+    GERMAN("Deutsch", "German", Locale.GERMANY),
+    SPANISH("Español", "Spanish", Locale("es", "ES")),
+    ITALIAN("Italiano", "Italian", Locale.ITALY),
+    PORTUGUESE("Português", "Portuguese", Locale("pt", "PT")),
+    DUTCH("Nederlands", "Dutch", Locale("nl", "NL")),
+    POLISH("Polski", "Polish", Locale("pl", "PL"));
+
+    /**
+     * The app's strings in this language, whatever the launcher's own: spoken
+     * lines must match the voice. A blank Configuration is a delta, so only
+     * the locale changes.
+     */
+    fun resources(context: Context): Resources =
+        context.createConfigurationContext(Configuration().apply { setLocale(locale) }).resources
+
+    companion object {
+        /** The language matching [locale], English when the mechanic doesn't speak it. */
+        fun of(locale: Locale): AiLanguage = entries.firstOrNull { it.locale.language == locale.language } ?: ENGLISH
+    }
 }
 
 data class AiConfig(
@@ -34,23 +59,25 @@ data class AiConfig(
     /** The key was unlocked with the activation code, so it isn't shown on screen. */
     val keyFromCode: Boolean = false,
     val engine: CarEngine = CarEngine.HDI_16,
-    val language: AiLanguage = AiLanguage.ENGLISH,
+    /** The driver's pick; null follows the launcher's language. */
+    val languageChoice: AiLanguage? = null,
     val speak: Boolean = true
-)
+) {
+    /** The language actually used: the pick, else the launcher's current one. */
+    val language: AiLanguage get() = languageChoice ?: AiLanguage.of(Locale.getDefault())
+}
 
 object AiSettings {
     private const val PREFS = "ai_prefs"
 
     fun load(context: Context): AiConfig {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val defaultLanguage = if (Locale.getDefault().language == "fr") AiLanguage.FRENCH else AiLanguage.ENGLISH
         return AiConfig(
             apiKey = p.getString("api_key", "").orEmpty(),
             keyFromCode = p.getBoolean("key_from_code", false),
             engine = p.getString("engine", null)?.let { runCatching { CarEngine.valueOf(it) }.getOrNull() }
                 ?: CarEngine.HDI_16,
-            language = p.getString("language", null)?.let { runCatching { AiLanguage.valueOf(it) }.getOrNull() }
-                ?: defaultLanguage,
+            languageChoice = p.getString("language", null)?.let { runCatching { AiLanguage.valueOf(it) }.getOrNull() },
             speak = p.getBoolean("speak", true)
         )
     }
@@ -60,7 +87,7 @@ object AiSettings {
             .putString("api_key", config.apiKey.trim())
             .putBoolean("key_from_code", config.keyFromCode)
             .putString("engine", config.engine.name)
-            .putString("language", config.language.name)
+            .apply { config.languageChoice?.let { putString("language", it.name) } ?: remove("language") }
             .putBoolean("speak", config.speak)
             .apply()
     }
@@ -231,41 +258,40 @@ internal class LiveWatch {
     }
 }
 
+/**
+ * A sentence to say: a string (or, with [quantity], a plurals) resource and its
+ * arguments. Kept apart from the text so the choice is testable on the JVM;
+ * [text] resolves it with [AiLanguage.resources] so it matches the voice.
+ */
+internal data class SpokenLine(val res: Int, val args: List<Any>, val quantity: Int? = null) {
+    fun text(resources: Resources): String {
+        val a = args.toTypedArray()
+        return if (quantity != null) resources.getQuantityString(res, quantity, *a) else resources.getString(res, *a)
+    }
+}
+
 /** Sentences the car says without the AI (offline, no key, or live-reading warnings). */
 internal object MechanicLines {
 
-    fun newCodes(codes: List<String>, language: AiLanguage): String {
+    fun newCodes(codes: List<String>): SpokenLine {
         // Spaced out so the voice reads "P 0 1 2 8", not "P one hundred twenty-eight".
         val spoken = codes.joinToString(", ") { it.toCharArray().joinToString(" ") }
-        return when (language) {
-            AiLanguage.FRENCH ->
-                (if (codes.size == 1) "Nouveau code défaut moteur : " else "Nouveaux codes défaut moteur : ") +
-                    "$spoken. Détails à l'écran."
-            AiLanguage.ENGLISH ->
-                (if (codes.size == 1) "New engine fault code: " else "New engine fault codes: ") +
-                    "$spoken. Details are on screen."
-        }
+        return SpokenLine(R.plurals.ai_say_new_codes, listOf(codes.size, spoken), quantity = codes.size)
     }
 
-    fun alert(alert: LiveWatch.Alert, d: ObdData, language: AiLanguage): String {
-        val fr = language == AiLanguage.FRENCH
-        val volts = String.format(if (fr) Locale.FRANCE else Locale.UK, "%.1f", d.voltage)
+    fun alert(alert: LiveWatch.Alert, d: ObdData, language: AiLanguage): SpokenLine {
+        // Written the way the voice's language writes it: "12,1" in French.
+        val volts = String.format(language.locale, "%.1f", d.voltage)
         return when (alert) {
-            LiveWatch.Alert.OVERHEAT -> if (fr)
-                "Attention, le moteur surchauffe : ${d.coolantTempC} degrés. Arrêtez-vous dès que possible et coupez le moteur."
-            else
-                "Warning, the engine is overheating: ${d.coolantTempC} degrees. Pull over when it's safe and switch the engine off."
-            LiveWatch.Alert.NOT_CHARGING -> if (fr)
-                "La batterie ne charge plus : $volts volts moteur tournant. Allez vers un garage et coupez ce qui n'est pas utile."
-            else
-                "The battery isn't charging: $volts volts with the engine running. Head to a garage and switch off what you don't need."
-            LiveWatch.Alert.WEAK_BATTERY -> if (fr)
-                "La batterie est faible : $volts volts moteur coupé. Faites-la tester bientôt."
-            else
-                "The battery is weak: $volts volts with the engine off. Get it tested soon."
+            LiveWatch.Alert.OVERHEAT -> SpokenLine(R.string.ai_say_overheat, listOf(d.coolantTempC))
+            LiveWatch.Alert.NOT_CHARGING -> SpokenLine(R.string.ai_say_not_charging, listOf(volts))
+            LiveWatch.Alert.WEAK_BATTERY -> SpokenLine(R.string.ai_say_weak_battery, listOf(volts))
         }
     }
 }
+
+/** Gemini answered, but not in the requested shape. */
+internal class UnreadableAnswerException : Exception("Gemini's answer was unreadable")
 
 /**
  * The AI mechanic. When the OBD link comes up it scans for fault codes by
@@ -283,10 +309,18 @@ object AiMechanic {
         val diagnosis: Diagnosis? = null,
         val thinking: Boolean = false,
         /** Why there's no AI advice (no key, offline, refused). */
-        val note: String? = null,
+        val note: Note? = null,
         /** The request failed in a way asking again might fix. */
         val canRetry: Boolean = false
     )
+
+    /** Why a tile shows no AI advice; turned into text when shown, in the launcher's language. */
+    sealed interface Note {
+        /** No Gemini key: only the built-in table's explanations. */
+        data object NoKey : Note
+        /** Asking Gemini failed because of [error]. */
+        data class Unavailable(val error: Throwable) : Note
+    }
 
     private const val PREFS = "ai_mechanic"
     private const val KEY_KNOWN = "known_codes"
@@ -352,14 +386,16 @@ object AiMechanic {
         val alert = liveWatch.check(data, System.currentTimeMillis()) ?: return
         val context = appContext ?: return
         val config = AiSettings.load(context)
-        if (config.speak) CarVoice.speak(MechanicLines.alert(alert, data, config.language), config.language.locale)
+        if (!config.speak) return
+        val line = MechanicLines.alert(alert, data, config.language)
+        CarVoice.speak(line.text(config.language.resources(context)), config.language.locale)
     }
 
     /** Fills in the advice for [codes]; speaks only when some are [fresh] (new and to be announced). */
     private suspend fun explain(context: Context, codes: List<String>, fresh: List<String>) {
         val config = AiSettings.load(context)
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
-        val offline = MechanicLines.newCodes(fresh, config.language)
+        val offline = MechanicLines.newCodes(fresh).text(config.language.resources(context))
         val cacheKey = "diag_" + codes.sorted().joinToString(",") + "|" + config.engine.name + "|" + config.language.name
         val cache = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -369,7 +405,7 @@ object AiMechanic {
             return
         }
         if (config.apiKey.isBlank()) {
-            _state.value = State(codes = codes, note = "Add a free Gemini key (menu → AI mechanic) for plain-language advice.")
+            _state.value = State(codes = codes, note = Note.NoKey)
             say(offline)
             return
         }
@@ -377,26 +413,35 @@ object AiMechanic {
         _state.value = State(codes = codes, thinking = true)
         val prompt = MechanicPrompt.build(codes, config.engine, config.language, ObdBluetoothManager.data.value)
         GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.SCHEMA)
-            .mapCatching { reply -> reply.text to (MechanicPrompt.parse(reply.text) ?: error("Gemini's answer was unreadable")) }
+            .mapCatching { reply -> reply.text to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
             .onSuccess { (raw, diagnosis) ->
                 cache.edit().putString(cacheKey, raw).apply()
                 _state.value = State(codes = codes, diagnosis = diagnosis)
                 say(diagnosis.summary)
             }
             .onFailure {
-                _state.value = State(codes = codes, note = "AI unavailable: ${describe(it)}", canRetry = true)
+                _state.value = State(codes = codes, note = Note.Unavailable(it), canRetry = true)
                 say(offline)
             }
     }
 
-    /** A short, human reason for a failed request. */
-    internal fun describe(error: Throwable): String = when (error) {
+    /** [note] as shown on the tile, in [context]'s language. */
+    fun noteText(context: Context, note: Note): String = when (note) {
+        Note.NoKey -> context.getString(R.string.ai_note_no_key)
+        is Note.Unavailable -> context.getString(R.string.ai_note_unavailable, describe(context, note.error))
+    }
+
+    /** A short, human reason for a failed request. Google's own error messages are shown as they come. */
+    internal fun describe(context: Context, error: Throwable): String = when (error) {
         is GeminiException -> when (error.status) {
-            429 -> "today's free quota is used up"
-            400, 401, 403 -> error.message ?: "the key was refused"
-            else -> error.message ?: "Gemini error ${error.status}"
+            429 -> context.getString(R.string.ai_error_quota)
+            400, 401, 403 -> error.message ?: context.getString(R.string.ai_error_key_refused)
+            // A 2xx that still failed: the answer had no text.
+            in 200..299 -> context.getString(R.string.ai_error_empty)
+            else -> error.message ?: context.getString(R.string.ai_error_gemini, error.status)
         }
-        is IOException -> "no internet connection"
-        else -> error.message ?: "unknown error"
+        is UnreadableAnswerException -> context.getString(R.string.ai_error_unreadable)
+        is IOException -> context.getString(R.string.ai_error_offline)
+        else -> error.message ?: context.getString(R.string.ai_error_unknown)
     }
 }

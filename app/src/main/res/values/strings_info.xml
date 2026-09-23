@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared -->
+    <string name="info_waiting_gps">Waiting for GPS…</string>
+    <string name="info_open">Open</string>
+    <string name="info_clear">Clear</string>
+    <string name="info_reset">Reset</string>
+    <string name="info_grant_access">Grant access</string>
+    <string name="info_connect">Connect</string>
+
+    <!-- Weather tile -->
+    <string name="info_weather_title">WEATHER</string>
+    <string name="info_weather_refresh">Refresh weather</string>
+    <string name="info_weather_details">Feels %1$d° · Wind %2$d km/h</string>
+    <string name="info_weather_details_range">Feels %1$d° · Wind %2$d km/h · %3$d° / %4$d°</string>
+    <string name="info_weather_loading">Loading weather…</string>
+    <string name="info_weather_unavailable">Weather unavailable</string>
+    <string name="info_weather_unavailable_detail">Weather unavailable (%1$s)</string>
+
+    <!-- Weather conditions (WMO codes), also used by the skins -->
+    <string name="info_wx_clear">Clear</string>
+    <string name="info_wx_mostly_clear">Mostly clear</string>
+    <string name="info_wx_partly_cloudy">Partly cloudy</string>
+    <string name="info_wx_overcast">Overcast</string>
+    <string name="info_wx_fog">Fog</string>
+    <string name="info_wx_drizzle">Drizzle</string>
+    <string name="info_wx_freezing_drizzle">Freezing drizzle</string>
+    <string name="info_wx_rain">Rain</string>
+    <string name="info_wx_freezing_rain">Freezing rain</string>
+    <string name="info_wx_snow">Snow</string>
+    <string name="info_wx_showers">Showers</string>
+    <string name="info_wx_snow_showers">Snow showers</string>
+    <string name="info_wx_thunderstorm">Thunderstorm</string>
+    <string name="info_wx_hail_storm">Hail storm</string>
+    <string name="info_wx_unknown">Unknown</string>
+
+    <!-- Agenda tile -->
+    <string name="info_agenda_title">AGENDA</string>
+    <string name="info_agenda_needs_access">Show upcoming events from your calendar</string>
+    <string name="info_agenda_allow">Allow calendar</string>
+    <string name="info_agenda_empty">Nothing in the next 36 hours</string>
+    <string name="info_agenda_no_title">(No title)</string>
+    <string name="info_agenda_all_day">All day</string>
+
+    <!-- Quick dial tile -->
+    <string name="info_quickdial_title">QUICK DIAL</string>
+    <string name="info_quickdial_dialer">Dialer</string>
+    <string name="info_quickdial_needs_access">Show your starred contacts here</string>
+    <string name="info_quickdial_allow">Allow contacts</string>
+    <string name="info_quickdial_empty">Star contacts in the Contacts app to see them here</string>
+
+    <!-- Notifications tile -->
+    <string name="info_notif_title">NOTIFICATIONS</string>
+    <string name="info_notif_needs_access">Show messages and alerts from your apps</string>
+    <string name="info_notif_empty">No new notifications</string>
+
+    <!-- Audio tile -->
+    <string name="info_audio_title">AUDIO</string>
+    <string name="info_audio_mute">Mute</string>
+    <string name="info_audio_unmute">Unmute</string>
+    <string name="info_audio_sound">Sound</string>
+
+    <!-- Speed HUD tile (the title is also the Original theme's speed gauge label) -->
+    <string name="info_speed_title">SPEED</string>
+    <string name="info_speed_no_signal">No signal</string>
+
+    <!-- Compass tile -->
+    <string name="info_compass_title">COMPASS</string>
+    <string name="info_compass_no_heading">Move to get a heading</string>
+    <string name="info_compass_altitude">Altitude</string>
+    <string name="info_compass_gps_speed">GPS speed</string>
+    <string name="info_compass_accuracy">Accuracy</string>
+
+    <!-- Compass points (dial letters and heading abbreviations) -->
+    <string name="info_dir_n">N</string>
+    <string name="info_dir_ne">NE</string>
+    <string name="info_dir_e">E</string>
+    <string name="info_dir_se">SE</string>
+    <string name="info_dir_s">S</string>
+    <string name="info_dir_sw">SW</string>
+    <string name="info_dir_w">W</string>
+    <string name="info_dir_nw">NW</string>
+
+    <!-- Trip computer tile -->
+    <string name="info_trip_title">TRIP</string>
+    <string name="info_trip_since">since %1$s</string>
+    <string name="info_trip_time">Time</string>
+    <string name="info_trip_moving">Moving</string>
+    <string name="info_trip_average">Average</string>
+    <string name="info_trip_top">Top</string>
+    <string name="info_duration_hm">%1$dh %2$02dm</string>
+    <string name="info_duration_ms">%1$dm %2$02ds</string>
+
+    <!-- G-force tile -->
+    <string name="info_gforce_title">G-FORCE</string>
+    <string name="info_gforce_reset_peaks">Reset peaks</string>
+    <string name="info_gforce_lateral">Lateral</string>
+    <string name="info_gforce_accel_brake">Accel / brake</string>
+    <string name="info_gforce_peaks">Peaks</string>
+
+    <!-- Parking tile -->
+    <string name="info_parking_title">PARKING</string>
+    <string name="info_parking_prompt">Remember where the car is</string>
+    <string name="info_parking_save">Save parking spot</string>
+    <string name="info_parking_dir_right">Parked car is %1$d° to the right</string>
+    <string name="info_parking_dir_left">Parked car is %1$d° to the left</string>
+    <string name="info_parking_distance_unknown">Distance unknown</string>
+    <string name="info_parking_parked">Parked %1$s</string>
+    <string name="info_parking_parked_dir">Parked %1$s · %2$s</string>
+    <string name="info_parking_walk">Walk there</string>
+    <string name="info_parking_map_label">Parked car</string>
+    <string name="info_ago_just_now">just now</string>
+    <string name="info_ago_minutes">%1$dm ago</string>
+    <string name="info_ago_hours">%1$dh %2$dm ago</string>
+    <string name="info_ago_days">%1$dd ago</string>
+
+    <!-- Media tile (both the current and the Original theme) -->
+    <string name="info_now_playing">NOW PLAYING</string>
+    <string name="info_nothing_playing">Nothing playing</string>
+    <string name="info_media_access_needed">Media access needed</string>
+    <string name="info_media_tap_to_enable">Tap to enable</string>
+    <string name="info_media_previous">Previous</string>
+    <string name="info_media_play_pause">Play/Pause</string>
+    <string name="info_media_next">Next</string>
+    <string name="info_media_grant_access">Grant Media Access</string>
+
+    <!-- Original theme telemetry tile -->
+    <string name="info_telemetry_title">TELEMETRY</string>
+    <string name="info_obd_live">Live</string>
+    <string name="info_gauge_rpm">RPM</string>
+    <string name="info_unit_rpm">rpm</string>
+    <string name="info_chip_coolant">Coolant</string>
+    <string name="info_chip_load">Load</string>
+    <string name="info_chip_battery">Battery</string>
+
+    <!-- Directions tile -->
+    <string name="info_directions_title">DIRECTIONS</string>
+    <string name="info_directions_no_route">No route</string>
+    <string name="info_directions_access_title">Notification access needed</string>
+    <string name="info_directions_access_hint">Directions come from Google Maps\' navigation notification.</string>
+    <string name="info_directions_idle_title">No active route</string>
+    <string name="info_directions_idle_hint">Start navigation in Google Maps or Waze and the next turn shows here.</string>
+    <string name="info_directions_open_maps">Open Google Maps</string>
+    <string name="info_nav_continue">Continue</string>
+
+    <!-- Map navigator (MapLibre panel) -->
+    <string name="info_map_where_to">Where to?</string>
+    <string name="info_map_search">Search</string>
+    <string name="info_map_clear_route">Clear route</string>
+    <string name="info_map_ready">Ready to navigate</string>
+    <string name="info_map_start">Start</string>
+    <string name="info_map_gps_not_ready">GPS not ready — Start still opens Google Maps</string>
+    <string name="info_map_no_route">No route found</string>
+    <string name="info_map_routing_failed">Routing failed</string>
+    <string name="info_map_routing_failed_detail">Routing failed (%1$s)</string>
+    <string name="info_map_address_not_found">Address not found</string>
+    <string name="info_map_duration_hm">%1$dh %2$02dmin</string>
+    <string name="info_map_duration_min">%1$d min</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="split_a11y_description">Pozwala Dashwheel otwierać aplikacje na podzielonym ekranie obok pulpitu, z tym samym systemowym podziałem, którego używa ekran ostatnich aplikacji. Zawartość ekranu nie jest odczytywana.</string>
+
+    <!-- Language picker; each language is listed under its own name. -->
+    <string name="language_menu">Język</string>
+    <string name="language_title">Język</string>
+    <string name="language_system">Systemowy (%1$s)</string>
+    <string name="language_close">Zamknij</string>
+</resources>

@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,7 @@ internal fun OriginalMediaCard(
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "NOW PLAYING",
+                        text = stringResource(R.string.info_now_playing),
                         color = DashColors.Accent,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
@@ -129,8 +130,8 @@ internal fun OriginalMediaCard(
                     Text(
                         text = when {
                             mediaState.hasMedia && mediaState.title.isNotBlank() -> mediaState.title
-                            hasAccess -> "Nothing playing"
-                            else -> "Media access needed"
+                            hasAccess -> stringResource(R.string.info_nothing_playing)
+                            else -> stringResource(R.string.info_media_access_needed)
                         },
                         color = DashColors.TextPrimary,
                         fontWeight = FontWeight.SemiBold,
@@ -138,8 +139,9 @@ internal fun OriginalMediaCard(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    val tapToEnable = stringResource(R.string.info_media_tap_to_enable)
                     Text(
-                        text = mediaState.artist.ifBlank { if (hasAccess) "—" else "Tap to enable" },
+                        text = mediaState.artist.ifBlank { if (hasAccess) "—" else tapToEnable },
                         color = DashColors.TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -181,7 +183,7 @@ internal fun OriginalMediaCard(
                     IconButton(onClick = { controller.previous() }, modifier = Modifier.size(56.dp)) {
                         Icon(
                             imageVector = Icons.Filled.SkipPrevious,
-                            contentDescription = "Previous",
+                            contentDescription = stringResource(R.string.info_media_previous),
                             tint = DashColors.TextPrimary,
                             modifier = Modifier.size(36.dp)
                         )
@@ -197,7 +199,7 @@ internal fun OriginalMediaCard(
                     ) {
                         Icon(
                             imageVector = if (mediaState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = "Play/Pause",
+                            contentDescription = stringResource(R.string.info_media_play_pause),
                             modifier = Modifier.size(40.dp)
                         )
                     }
@@ -205,7 +207,7 @@ internal fun OriginalMediaCard(
                     IconButton(onClick = { controller.next() }, modifier = Modifier.size(56.dp)) {
                         Icon(
                             imageVector = Icons.Filled.SkipNext,
-                            contentDescription = "Next",
+                            contentDescription = stringResource(R.string.info_media_next),
                             tint = DashColors.TextPrimary,
                             modifier = Modifier.size(36.dp)
                         )
@@ -221,7 +223,7 @@ internal fun OriginalMediaCard(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant Media Access")
+                    Text(stringResource(R.string.info_media_grant_access))
                 }
             }
         }
@@ -246,7 +248,7 @@ internal fun OriginalObdCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "TELEMETRY",
+                    stringResource(R.string.info_telemetry_title),
                     color = DashColors.Accent,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelMedium
@@ -255,7 +257,7 @@ internal fun OriginalObdCard(
                     TextButton(onClick = onPickDevice, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
                         Icon(Icons.Filled.BluetoothConnected, null, tint = DashColors.Good, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Live", color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.info_obd_live), color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     Button(
@@ -270,7 +272,7 @@ internal fun OriginalObdCard(
                     ) {
                         Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(if (connection == ObdConnectionState.CONNECTING) "…" else "Connect")
+                        Text(if (connection == ObdConnectionState.CONNECTING) "…" else stringResource(R.string.info_connect))
                     }
                 }
             }
@@ -287,7 +289,7 @@ internal fun OriginalObdCard(
                     value = if (connected) obdData.speedKmh.toFloat() else 0f,
                     maxValue = 220f,
                     valueText = if (connected) obdData.speedKmh.toString() else "--",
-                    label = "SPEED",
+                    label = stringResource(R.string.info_speed_title),
                     unit = "km/h",
                     accent = DashColors.Speed,
                     redlineAccent = DashColors.Warning,
@@ -299,8 +301,8 @@ internal fun OriginalObdCard(
                     value = if (connected) obdData.rpm.toFloat() else 0f,
                     maxValue = 7000f,
                     valueText = if (connected) obdData.rpm.toString() else "--",
-                    label = "RPM",
-                    unit = "rpm",
+                    label = stringResource(R.string.info_gauge_rpm),
+                    unit = stringResource(R.string.info_unit_rpm),
                     accent = DashColors.Rpm,
                     redlineAccent = DashColors.Warning,
                     redlineFraction = 0.82f,
@@ -317,7 +319,7 @@ internal fun OriginalObdCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OriginalMeterChip(
-                    label = "Coolant",
+                    label = stringResource(R.string.info_chip_coolant),
                     valueText = if (connected) "${obdData.coolantTempC}°" else "--",
                     fraction = (obdData.coolantTempC / 120f),
                     color = coolantColor(obdData.coolantTempC),
@@ -325,7 +327,7 @@ internal fun OriginalObdCard(
                     modifier = Modifier.weight(1f)
                 )
                 OriginalMeterChip(
-                    label = "Load",
+                    label = stringResource(R.string.info_chip_load),
                     valueText = if (connected) "${obdData.engineLoadPct}%" else "--",
                     fraction = obdData.engineLoadPct / 100f,
                     color = DashColors.Accent,
@@ -333,7 +335,7 @@ internal fun OriginalObdCard(
                     modifier = Modifier.weight(1f)
                 )
                 OriginalMeterChip(
-                    label = "Battery",
+                    label = stringResource(R.string.info_chip_battery),
                     valueText = if (connected) "%.1fV".format(obdData.voltage) else "--",
                     fraction = batteryFraction(obdData.voltage),
                     color = batteryColor(obdData.voltage),

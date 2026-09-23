@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -368,12 +369,16 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
                 TapeLogo()
                 Spacer(Modifier.width(18.dp))
             }
-            NeonPill("APPS", "All apps", m.onApps) {
+            NeonPill(stringResource(R.string.tape_apps_caps), stringResource(R.string.tape_cd_all_apps), m.onApps) {
                 Icon(Icons.Filled.Apps, contentDescription = null, tint = legend, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(6.dp))
             LayoutPicker(m) { open ->
-                NeonPill("LAYOUT", "Screen layout: ${m.layout.title}", open) {
+                NeonPill(
+                    stringResource(R.string.tape_layout_caps),
+                    stringResource(R.string.tape_cd_screen_layout, m.layout.title),
+                    open
+                ) {
                     LayoutIcon(m.layout, null, legend, Modifier.size(16.dp))
                 }
             }
@@ -386,7 +391,7 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
             OutsideTemp()
             VehicleAlerts(m.obdConnection, m.obdData)
             MorePicker(m) { open ->
-                NeonPill(null, "More", open) {
+                NeonPill(null, stringResource(R.string.tape_cd_more), open) {
                     Icon(Icons.Filled.MoreVert, contentDescription = null, tint = legend, modifier = Modifier.size(20.dp))
                 }
             }
@@ -1017,7 +1022,7 @@ private fun RpmLeds(rpm: Int, live: Boolean, labelSize: TextUnit, modifier: Modi
     val magenta = DashColors.Accent2
     val lit = if (live) (rpm / RPM_MAX * RPM_LEDS).roundToInt().coerceIn(0, RPM_LEDS) else 0
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text("RPM", style = vfdText(cyan, labelSize), maxLines = 1)
+        Text(stringResource(R.string.tape_rpm_caps), style = vfdText(cyan, labelSize), maxLines = 1)
         Spacer(Modifier.width(8.dp))
         LedBar(lit, RPM_LEDS, Modifier.weight(1f).fillMaxHeight()) { i ->
             when {
@@ -1054,10 +1059,11 @@ private fun TapeTelemetry(env: SkinTileEnv) {
     val speedColor = if (live && d.speedKmh >= SPEED_WARNING_KMH) DashColors.Warning else cyan
     val volts = live && d.voltage > 0.0
     val readouts = listOf(
-        TdReadout("TEMP", if (live) "${d.coolantTempC}°C" else "--", live && d.coolantTempC >= 105),
-        TdReadout("BATT", if (volts) "%.1fV".format(d.voltage) else "--", volts && d.voltage !in 12.0..15.0),
-        TdReadout("LOAD", if (live) "${d.engineLoadPct}%" else "--")
+        TdReadout(stringResource(R.string.tape_temp_caps), if (live) "${d.coolantTempC}°C" else "--", live && d.coolantTempC >= 105),
+        TdReadout(stringResource(R.string.tape_batt_caps), if (volts) "%.1fV".format(d.voltage) else "--", volts && d.voltage !in 12.0..15.0),
+        TdReadout(stringResource(R.string.tape_load_caps), if (live) "${d.engineLoadPct}%" else "--")
     )
+    val chooseAdapter = stringResource(R.string.tape_cd_choose_adapter)
     Box(
         Modifier
             .fillMaxSize()
@@ -1075,13 +1081,14 @@ private fun TapeTelemetry(env: SkinTileEnv) {
             val digits = speedDigits(if (live) d.speedKmh else null)
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("TELEMETRY", style = chromeText(magenta, label), maxLines = 1)
+                    Text(stringResource(R.string.tape_telemetry_caps), style = chromeText(magenta, label), maxLines = 1)
                     Spacer(Modifier.weight(1f))
                     when (state) {
-                        ObdConnectionState.CONNECTED -> Text("LIVE", style = vfdText(DashColors.Good, label), maxLines = 1)
-                        ObdConnectionState.CONNECTING -> BlinkingText("LINKING", vfdText(cyan, label))
-                        ObdConnectionState.ERROR -> BlinkingText("OBD ERROR · TAP", vfdText(magenta, label))
-                        ObdConnectionState.DISCONNECTED -> BlinkingText("NO OBD · TAP", vfdText(magenta, label))
+                        ObdConnectionState.CONNECTED ->
+                            Text(stringResource(R.string.tape_live_caps), style = vfdText(DashColors.Good, label), maxLines = 1)
+                        ObdConnectionState.CONNECTING -> BlinkingText(stringResource(R.string.tape_linking_caps), vfdText(cyan, label))
+                        ObdConnectionState.ERROR -> BlinkingText(stringResource(R.string.tape_obd_error_tap), vfdText(magenta, label))
+                        ObdConnectionState.DISCONNECTED -> BlinkingText(stringResource(R.string.tape_no_obd_tap), vfdText(magenta, label))
                     }
                 }
                 Spacer(Modifier.height(6.dp))
@@ -1112,7 +1119,7 @@ private fun TapeTelemetry(env: SkinTileEnv) {
                     .align(Alignment.TopEnd)
                     .size(width = 104.dp, height = 48.dp)
                     .clickable(enabled = !env.editing, role = Role.Button, onClick = env.onPickDevice)
-                    .semantics { contentDescription = "Choose OBD adapter" }
+                    .semantics { contentDescription = chooseAdapter }
             )
         }
     }
@@ -1127,7 +1134,7 @@ private fun TapeSpeedHud(env: SkinTileEnv) {
     val source = when {
         env.obdConnection == ObdConnectionState.CONNECTED -> "OBD"
         speed != null -> "GPS"
-        else -> "NO SIGNAL"
+        else -> stringResource(R.string.tape_no_signal_caps)
     }
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
     val color = if (over) DashColors.Warning else cyan
@@ -1141,7 +1148,7 @@ private fun TapeSpeedHud(env: SkinTileEnv) {
         val label = (maxHeight.value * 0.07f).coerceIn(11f, 18f).sp
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("SPEED", style = chromeText(magenta, label), maxLines = 1)
+                Text(stringResource(R.string.tape_speed_caps), style = chromeText(magenta, label), maxLines = 1)
                 Spacer(Modifier.weight(1f))
                 Text(source, style = vfdText(if (speed != null) DashColors.Good else DashColors.Muted, label), maxLines = 1)
             }
@@ -1179,14 +1186,14 @@ private fun TapeMedia(env: SkinTileEnv) {
     val spin = rememberSpin(REEL_SPIN_MS, running = state.isPlaying)
     val loaded = state.hasMedia && state.title.isNotBlank()
     val title = when {
-        !access -> "MEDIA ACCESS"
+        !access -> stringResource(R.string.tape_media_access_caps)
         loaded -> state.title.uppercase()
-        else -> "NO TAPE"
+        else -> stringResource(R.string.tape_no_tape_caps)
     }
     val artist = when {
-        !access -> "TAP TO ENABLE"
-        loaded -> state.artist.uppercase().ifBlank { "UNKNOWN ARTIST" }
-        else -> "START A MUSIC APP"
+        !access -> stringResource(R.string.tape_tap_to_enable_caps)
+        loaded -> state.artist.uppercase().ifBlank { stringResource(R.string.tape_unknown_artist_caps) }
+        else -> stringResource(R.string.tape_start_music_app_caps)
     }
     val openAccess = { CarMediaController.openNotificationAccessSettings(env.context) }
     BoxWithConstraints(
@@ -1219,8 +1226,8 @@ private fun TapeMedia(env: SkinTileEnv) {
                 if (access) {
                     TransportKeys(env, state, iconSize, Modifier.width(colW).height(keysH))
                 } else {
-                    PianoKey("Grant media access", !env.editing, openAccess, Modifier.width(colW).height(keysH)) {
-                        Text("GRANT ACCESS", style = chromeText(TdPrint, 12.sp), maxLines = 1)
+                    PianoKey(stringResource(R.string.tape_cd_grant_media_access), !env.editing, openAccess, Modifier.width(colW).height(keysH)) {
+                        Text(stringResource(R.string.tape_grant_access_caps), style = chromeText(TdPrint, 12.sp), maxLines = 1)
                     }
                 }
                 if (deckBelow) {
@@ -1399,20 +1406,20 @@ private fun TransportKeys(env: SkinTileEnv, state: MediaState, iconSize: Dp, mod
         val ejectApp = lastApp?.takeIf { maxWidth >= 250.dp }
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val key = Modifier.weight(1f).fillMaxHeight()
-            PianoKey("Previous track", !env.editing, { controller.previous() }, key) {
+            PianoKey(stringResource(R.string.tape_cd_previous_track), !env.editing, { controller.previous() }, key) {
                 KeyIcon(Icons.Filled.SkipPrevious, iconSize)
             }
             PianoKey(
-                if (state.isPlaying) "Pause" else "Play", !env.editing, { controller.playPause() }, key,
+                stringResource(if (state.isPlaying) R.string.tape_cd_pause else R.string.tape_cd_play), !env.editing, { controller.playPause() }, key,
                 latched = state.isPlaying
             ) {
                 KeyIcon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, iconSize)
             }
-            PianoKey("Next track", !env.editing, { controller.next() }, key) {
+            PianoKey(stringResource(R.string.tape_cd_next_track), !env.editing, { controller.next() }, key) {
                 KeyIcon(Icons.Filled.SkipNext, iconSize)
             }
             if (ejectApp != null) {
-                PianoKey("Open music app", !env.editing, { env.onLaunchApp(ejectApp) }, key) {
+                PianoKey(stringResource(R.string.tape_cd_open_music_app), !env.editing, { env.onLaunchApp(ejectApp) }, key) {
                     KeyIcon(Icons.Filled.Eject, iconSize)
                 }
             }
@@ -1498,10 +1505,10 @@ private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modi
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
     val (status, statusColor) = when {
-        !access -> "NO ACCESS" to magenta
-        state.isPlaying -> "PLAY" to DashColors.Good
-        state.hasMedia -> "PAUSE" to TdYellowText
-        else -> "STOP" to DashColors.Muted
+        !access -> stringResource(R.string.tape_no_access_caps) to magenta
+        state.isPlaying -> stringResource(R.string.tape_play_caps) to DashColors.Good
+        state.hasMedia -> stringResource(R.string.tape_pause_caps) to TdYellowText
+        else -> stringResource(R.string.tape_stop_caps) to DashColors.Muted
     }
     BoxWithConstraints(modifier.vfdPanel(cyan.copy(alpha = 0.8f), 12.dp).padding(horizontal = 10.dp, vertical = 8.dp)) {
         val roomy = maxHeight >= 120.dp
@@ -1524,7 +1531,7 @@ private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modi
             Spectrum(state.isPlaying, Modifier.weight(1f).fillMaxWidth())
             if (roomy) {
                 Spacer(Modifier.height(6.dp))
-                Text("HI-FI STEREO", style = chromeText(magenta, 10.sp), maxLines = 1)
+                Text(stringResource(R.string.tape_hifi_stereo_caps), style = chromeText(magenta, 10.sp), maxLines = 1)
             }
         }
     }
@@ -1636,8 +1643,16 @@ private fun TapeNavigation(env: SkinTileEnv) {
                 .padding(horizontal = rx * 0.6f + 8.dp, vertical = 10.dp)
         ) {
             when {
-                !access -> CrtMessage("NO SIGNAL", "TAP TO GRANT NOTIFICATION ACCESS", innerW, innerH)
-                !nav.active -> CrtMessage("NO ROUTE", "TAP TO OPEN MAPS", innerW, innerH)
+                !access -> CrtMessage(
+                    stringResource(R.string.tape_no_signal_caps),
+                    stringResource(R.string.tape_tap_grant_notification_access_caps),
+                    innerW, innerH
+                )
+                !nav.active -> CrtMessage(
+                    stringResource(R.string.tape_no_route_caps),
+                    stringResource(R.string.tape_tap_open_maps_caps),
+                    innerW, innerH
+                )
                 else -> CrtRoute(nav, innerW, innerH)
             }
             if (access && nav.active) {
@@ -1767,7 +1782,7 @@ private fun CrtRoute(nav: NavState, w: Dp, h: Dp) {
             if (eta.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "ETA $eta",
+                    stringResource(R.string.tape_eta_caps, eta),
                     style = phosphorText(etaSize, alpha = 0.75f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1838,7 +1853,10 @@ private fun TapeClock(env: SkinTileEnv) {
     val blink = rememberBlink()
     val locale = Locale.getDefault()
     val time = remember(now, locale) { SimpleDateFormat("HH:mm", locale).format(now) }
-    val date = remember(now, locale) { SimpleDateFormat("EEE d MMM yyyy", locale).format(now).uppercase() }
+    val date = remember(now, locale) {
+        val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMMyyyy")
+        SimpleDateFormat(pattern, locale).format(now).uppercase(locale)
+    }
     val digits = time.padStart(5, ' ')
     BoxWithConstraints(
         Modifier
@@ -1970,7 +1988,7 @@ private fun TapeWeather() {
         val w = weather
         if (w == null) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("LOADING", style = vfdText(cyan, 18.sp), maxLines = 1)
+                Text(stringResource(R.string.tape_loading_caps), style = vfdText(cyan, 18.sp), maxLines = 1)
                 BlinkingText("_", vfdText(cyan, 18.sp), offAlpha = 0f)
             }
         } else {
@@ -1982,8 +2000,9 @@ private fun TapeWeather() {
             val iconSize = (tempSize * 0.55f).dp
             val condSize = (tempSize * 0.2f).coerceIn(12f, 28f).sp
             val smallSize = (tempSize * 0.145f).coerceIn(10f, 18f).sp
-            val feels = "FEELS ${w.feelsC.roundToInt()}° · WIND ${w.windKmh.roundToInt()} KM/H"
-            val range = if (w.hiC.isNaN() || w.loC.isNaN()) null else "LO ${w.loC.roundToInt()}° · HI ${w.hiC.roundToInt()}°"
+            val feels = stringResource(R.string.tape_feels_wind_caps, w.feelsC.roundToInt(), w.windKmh.roundToInt())
+            val range = if (w.hiC.isNaN() || w.loC.isNaN()) null
+            else stringResource(R.string.tape_low_high_caps, w.loC.roundToInt(), w.hiC.roundToInt())
             val sign: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     NeonIcon(weatherIcon(w.code), cyan, iconSize)
@@ -2054,22 +2073,24 @@ private fun TapeRange(item: DashboardItem, env: SkinTileEnv) {
         val stacked = stackedDigits > sideDigits
         val pct = fuel.percent.coerceIn(0, 999).toString().padStart(3, ' ')
         val km = fuel.rangeKm.coerceIn(0, 9999).toString().padStart(3, ' ')
+        val fuelLabel = stringResource(R.string.tape_fuel_caps)
+        val rangeLabel = stringResource(R.string.tape_range_caps)
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("FUEL & RANGE", style = chromeText(magenta, label), maxLines = 1)
+                Text(stringResource(R.string.tape_fuel_range_caps), style = chromeText(magenta, label), maxLines = 1)
                 Spacer(Modifier.weight(1f))
                 Text(fuel.source.uppercase(), style = vfdText(muted, label, glow = false), maxLines = 1)
             }
             Spacer(Modifier.height(6.dp))
             if (stacked) {
                 Column(Modifier.weight(1f).fillMaxWidth()) {
-                    SegValue("FUEL", pct, "%", color, label, Modifier.weight(1f).fillMaxWidth())
-                    SegValue("RANGE", km, "KM", cyan, label, Modifier.weight(1f).fillMaxWidth())
+                    SegValue(fuelLabel, pct, "%", color, label, Modifier.weight(1f).fillMaxWidth())
+                    SegValue(rangeLabel, km, "KM", cyan, label, Modifier.weight(1f).fillMaxWidth())
                 }
             } else {
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    SegValue("FUEL", pct, "%", color, label, Modifier.weight(1f).fillMaxHeight())
-                    SegValue("RANGE", km, "KM", cyan, label, Modifier.weight(1f).fillMaxHeight())
+                    SegValue(fuelLabel, pct, "%", color, label, Modifier.weight(1f).fillMaxHeight())
+                    SegValue(rangeLabel, km, "KM", cyan, label, Modifier.weight(1f).fillMaxHeight())
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -2228,7 +2249,7 @@ private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
         ) {
             if (n == 0) {
                 Text(
-                    "NO PRESETS · TAP THE PENCIL TO ADD APPS",
+                    stringResource(R.string.tape_presets_empty_caps),
                     style = vfdText(DashColors.Muted, 12.sp, glow = false),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -2269,7 +2290,7 @@ private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                     }
                 }
             }
-            PresetButton("Edit launch bar", true, env.onEditLaunchBar, Modifier.width(pencilW).fillMaxHeight()) {
+            PresetButton(stringResource(R.string.tape_cd_edit_launch_bar), true, env.onEditLaunchBar, Modifier.width(pencilW).fillMaxHeight()) {
                 Icon(Icons.Filled.Edit, contentDescription = null, tint = legend, modifier = Modifier.size(22.dp))
             }
         }

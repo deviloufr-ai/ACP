@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common buttons and labels -->
+    <string name="dash_cancel">Anuluj</string>
+    <string name="dash_done">Gotowe</string>
+    <string name="dash_close">Zamknij</string>
+    <string name="dash_add">Dodaj</string>
+    <string name="dash_selected">Wybrano</string>
+    <string name="dash_dismiss">Odrzuć</string>
+    <string name="dash_got_it">Rozumiem</string>
+
+    <!-- Top bar -->
+    <string name="dash_all_apps">Wszystkie aplikacje</string>
+    <string name="dash_screen_layout">Układ ekranu: %1$s</string>
+    <string name="dash_more">Więcej</string>
+    <string name="dash_obd_connected">OBD połączono</string>
+    <string name="dash_obd_connecting">Łączenie z OBD</string>
+    <string name="dash_obd_error">Błąd OBD, dotknij, aby połączyć ponownie</string>
+    <string name="dash_obd_off">OBD wyłączone, dotknij, aby połączyć</string>
+    <string name="dash_alert_battery">Akumulator %1$.1fV</string>
+    <string name="dash_alert_coolant">Płyn chłodn. %1$d°C</string>
+
+    <!-- Top bar menu -->
+    <string name="dash_menu_edit_dashboards">Edytuj pulpity</string>
+    <string name="dash_menu_done_editing">Zakończ edycję</string>
+    <string name="dash_menu_theme">Motyw</string>
+    <string name="dash_menu_split_screen">Podzielony ekran z aplikacją</string>
+
+    <!-- Edit bar (arranging a dashboard) -->
+    <string name="dash_arranging_dashboard">Układanie pulpitu %1$d</string>
+    <string name="dash_arranging_hint">Przytrzymaj kafelek, aby go przesunąć; przeciągnij uchwyt w rogu, aby zmienić rozmiar. Upuszczenie na inny kafelek zamienia je lub go odsuwa.</string>
+    <string name="dash_undo">Cofnij</string>
+    <string name="dash_reset_page">Wyczyść stronę</string>
+
+    <!-- Update banner -->
+    <string name="dash_update_available">Dostępna aktualizacja – %1$s</string>
+    <string name="dash_update_downloading">Pobieranie aktualizacji… %1$d%%</string>
+    <string name="dash_update_installing">Uruchamianie instalatora…</string>
+    <string name="dash_update">Aktualizuj</string>
+
+    <!-- Tiles while arranging -->
+    <string name="dash_remove_tile">Usuń: %1$s</string>
+    <string name="dash_resize_tile">Zmień rozmiar: %1$s</string>
+    <string name="dash_app_window">Okno %1$s</string>
+    <string name="dash_describe_split_pair">para aplikacji</string>
+    <string name="dash_describe_launch_bar">pasek skrótów</string>
+    <string name="dash_describe_widget">widżet</string>
+    <string name="dash_app_widget">Widżet aplikacji</string>
+    <string name="dash_shown_while_arranging">Widoczne podczas układania</string>
+    <string name="dash_map_needs_gpu">Mapa wymaga prawdziwego GPU</string>
+    <string name="dash_car3d_needs_gpu">Auto 3D wymaga prawdziwego GPU</string>
+    <string name="dash_not_on_emulator">Niedostępne w emulatorze</string>
+
+    <!-- Layout notices -->
+    <string name="dash_notice_title">Brak miejsca</string>
+    <string name="dash_notice_no_space">Na tym pulpicie brakuje miejsca na ten kafelek. Usuń lub zmniejsz kafelki albo użyj innej strony.</string>
+    <string name="dash_notice_no_room_to_move">Brak miejsca, by odsunąć pozostałe kafelki. Najpierw zwolnij trochę miejsca.</string>
+    <string name="dash_notice_resize_overlap">Ten rozmiar nachodzi na inny kafelek. Zrób miejsce przed zmianą rozmiaru.</string>
+
+    <!-- Add to dashboard -->
+    <string name="dash_add_to_dashboard">Dodaj do pulpitu</string>
+    <string name="dash_add_app">Dodaj aplikację</string>
+    <string name="dash_add_app_window">Dodaj okno aplikacji (w kafelku)</string>
+    <string name="dash_add_app_pair">Dodaj parę aplikacji (podział)</string>
+    <string name="dash_add_widget">Dodaj widżet</string>
+
+    <!-- Split screen -->
+    <string name="dash_swap_split">Zamień aplikacje lewa/prawa</string>
+    <string name="dash_split_with">Podzielony ekran z…</string>
+    <string name="dash_pair_first">Para aplikacji – pierwsza (z lewej)</string>
+    <string name="dash_pair_second">Para aplikacji – druga (z prawej)</string>
+    <string name="dash_enable_split_title">Włącz podzielony ekran</string>
+    <string name="dash_enable_split_body">Ten ROM blokuje zwykłe API podzielonego ekranu, więc Dashwheel korzysta z systemowego podziału – tego samego co w ostatnich aplikacjach. Aby na to zezwolić, jednorazowo włącz „Dashwheel” w Ustawienia → Ułatwienia dostępu.</string>
+    <string name="dash_open_settings">Otwórz ustawienia</string>
+
+    <!-- System app install (root) -->
+    <string name="dash_system_app_title">Aplikacja systemowa (zaawansowane)</string>
+    <string name="dash_system_app_body">Zainstaluj Dashwheel jako uprzywilejowaną aplikację systemową, aby osadzić prawdziwą aplikację Google Maps – z nawigacją – w kafelku Maps, jak w fabrycznych launcherach. Z Magiskiem instaluje się bez modyfikacji systemu (moduł Magisk – działa nawet przy pełnym /system); w przeciwnym razie przez su lub wewnętrzne root ADB (:%1$d). Następnie uruchom ponownie, aby aktywować.</string>
+    <string name="dash_root_checking">Sprawdzanie roota…</string>
+    <string name="dash_root_available">Root (su) dostępny ✓ – użyje modułu Magisk, jeśli jest</string>
+    <string name="dash_root_missing">Brak su – próba przez wewnętrzne root ADB (:%1$d).</string>
+    <string name="dash_install_system_app">Zainstaluj jako systemową</string>
+    <string name="dash_reboot_now">Uruchom ponownie</string>
+    <string name="dash_system_installed">Zainstalowano. Uruchom ponownie, aby włączyć wbudowane Maps.</string>
+    <string name="dash_system_failed">Niepowodzenie: %1$s</string>
+
+    <!-- System app-widget picker -->
+    <string name="dash_widget_unavailable">Widżet niedostępny</string>
+    <string name="dash_choose_widget">Wybierz widżet</string>
+    <string name="dash_no_widgets_found">Nie znaleziono widżetów.</string>
+
+    <!-- Theme picker -->
+    <string name="dash_theme_picker_title">Motyw pulpitu</string>
+    <string name="dash_appearance_auto">Auto</string>
+    <string name="dash_appearance_dark">Ciemny</string>
+    <string name="dash_appearance_light">Jasny</string>
+    <string name="dash_appearance_auto_hint">Każdy motyw działa według trybu dzień/noc auta</string>
+    <string name="dash_appearance_dark_hint">Każdy motyw używa wersji ciemnej</string>
+    <string name="dash_appearance_light_hint">Każdy motyw używa wersji jasnej</string>
+
+    <!-- Theme names and descriptions (the enum names are what gets saved) -->
+    <string name="dash_theme_standard">Standardowy</string>
+    <string name="dash_theme_standard_desc">Proste karty z delikatnie świecącymi wskaźnikami</string>
+    <string name="dash_theme_original">Oryginalny</string>
+    <string name="dash_theme_original_desc">Pierwszy wygląd launchera: płaskie karty, dwa zegary wskazówkowe</string>
+    <string name="dash_theme_aurora">Szkło Aurora</string>
+    <string name="dash_theme_aurora_desc">Szklane panele, świecące wskaźniki, przyciski z gradientem</string>
+    <string name="dash_theme_neon">Neon</string>
+    <string name="dash_theme_neon_desc">Futurystyczny kokpit w błękicie i fiolecie</string>
+    <string name="dash_theme_clean">Czysty</string>
+    <string name="dash_theme_clean_desc">Minimalistyczny, kontrastowy i czytelny</string>
+    <string name="dash_theme_premium_glass">Szkło Premium</string>
+    <string name="dash_theme_premium_glass_desc">Przydymione szkło nocą, matowe za dnia</string>
+    <string name="dash_theme_sporty">Sportowy</string>
+    <string name="dash_theme_sporty_desc">Czerwony sportowy kokpit</string>
+    <string name="dash_theme_floating">Pływający</string>
+    <string name="dash_theme_floating_desc">Bez tła kafelków: widżety i ikony leżą na tle</string>
+    <string name="dash_theme_orbit">Orbita</string>
+    <string name="dash_theme_orbit_desc">Wszystko okrągłe: kręcąca się płyta, wskaźniki pierścieniowe, bąbelki</string>
+    <string name="dash_theme_cockpit">Kokpit</string>
+    <string name="dash_theme_cockpit_desc">Analogowe zegary w chromowanych ramkach i przełączniki na przeszywanej skórze</string>
+    <string name="dash_theme_horizon">Horyzont</string>
+    <string name="dash_theme_horizon_desc">Bez widżetów, tylko niebo i droga przed tobą</string>
+    <string name="dash_theme_tape_deck">Magnetofon</string>
+    <string name="dash_theme_tape_deck_desc">Radio synthwave z lat 80.: kaseta, neonowa siatka, cyfry LED</string>
+
+    <!-- Screen layouts (the enum names are what gets saved) -->
+    <string name="dash_layout_grid">Tylko pulpity</string>
+    <string name="dash_layout_grid_desc">Przesuwane strony na całym ekranie</string>
+    <string name="dash_layout_maps_left">Mapa po lewej</string>
+    <string name="dash_layout_maps_left_desc">Google Maps zadokowane po lewej, strony przesuwane po prawej</string>
+    <string name="dash_layout_maps_right">Mapa po prawej</string>
+    <string name="dash_layout_maps_right_desc">Google Maps zadokowane po prawej, strony przesuwane po lewej</string>
+</resources>

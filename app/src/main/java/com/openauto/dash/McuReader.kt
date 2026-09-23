@@ -3,6 +3,7 @@ package com.openauto.dash
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -191,8 +192,8 @@ object McuReader {
         if (bytes.isEmpty()) return
 
         val sub = if (bytes.size >= 3 && bytes[1] == 0xfd) bytes[2] else -1
-        val key = if (sub >= 0) "%d.%02X".format(cmdId, sub) else cmdId.toString()
-        val hex = bytes.joinToString(" ") { "%02X".format(it) }
+        val key = if (sub >= 0) "%d.%02X".format(Locale.US, cmdId, sub) else cmdId.toString()
+        val hex = bytes.joinToString(" ") { "%02X".format(Locale.US, it) }
         val now = System.currentTimeMillis()
         val prev = latest[key]
         val changed = prev == null || prev.hex != hex

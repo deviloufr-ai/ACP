@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OBD tiles: shared -->
+    <string name="vehicle_obd_not_connected">OBD not connected</string>
+    <string name="vehicle_connect">Connect</string>
+    <string name="vehicle_speed">Speed</string>
+    <string name="vehicle_rpm">RPM</string>
+    <string name="vehicle_coolant">Coolant</string>
+    <string name="vehicle_battery">Battery</string>
+    <string name="vehicle_fuel">Fuel</string>
+    <string name="vehicle_close">Close</string>
+    <string name="vehicle_cancel">Cancel</string>
+    <string name="vehicle_reset">Reset</string>
+    <string name="vehicle_capture_a">Capture A</string>
+    <string name="vehicle_capture_b">Capture B</string>
+
+    <!-- Telemetry tile -->
+    <string name="vehicle_telemetry_title">TELEMETRY</string>
+    <string name="vehicle_live">Live</string>
+    <string name="vehicle_speed_caps">SPEED</string>
+    <string name="vehicle_rpm_caps">RPM</string>
+    <string name="vehicle_load">Load</string>
+
+    <!-- Fault codes tile -->
+    <string name="vehicle_fault_codes_title">FAULT CODES</string>
+    <string name="vehicle_scan">Scan</string>
+    <string name="vehicle_clear">Clear</string>
+
+    <!-- OBD data tile -->
+    <string name="vehicle_obd_data_title">OBD DATA</string>
+    <string name="vehicle_intake_air">Intake air</string>
+    <string name="vehicle_throttle">Throttle</string>
+    <string name="vehicle_engine_load">Engine load</string>
+    <string name="vehicle_fuel_level">Fuel level</string>
+
+    <!-- Fuel & range tile -->
+    <string name="vehicle_fuel_range_title">FUEL &amp; RANGE</string>
+    <string name="vehicle_via_canbox">via CANbox</string>
+    <string name="vehicle_via_obd">via OBD</string>
+    <string name="vehicle_fuel_no_obd">This car\'s OBD doesn\'t report fuel. Learn it from the CANbox instead — needs root.</string>
+    <string name="vehicle_find_fuel_signal">Find fuel signal</string>
+    <string name="vehicle_try_obd_fuel_pid">Try OBD fuel PID</string>
+    <string name="vehicle_km_to_empty">KM TO EMPTY</string>
+    <string name="vehicle_range_approx">≈ range</string>
+    <string name="vehicle_in_tank">In tank</string>
+    <string name="vehicle_avg_use">Avg use</string>
+    <string name="vehicle_learn_fuel">Learn fuel from CANbox</string>
+    <string name="vehicle_recalibrate_fuel">Recalibrate fuel</string>
+
+    <!-- Fuel signal finder dialog -->
+    <string name="vehicle_finder_help">Set the level your dash gauge shows, tap Capture A — then close this and use the car normally. Days later, once the gauge has dropped a little, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.</string>
+    <string name="vehicle_dash_reads">Dash reads</string>
+    <string name="vehicle_waiting_canbox">Waiting for CANbox data… (needs root)</string>
+    <string name="vehicle_finder_step_a">Set the fuel level your dash shows, then tap Capture A.</string>
+    <string name="vehicle_finder_step_b">Captured A at %1$d%% (saved). You can close this and drive normally — come back once the gauge drops a few %%, set the new value, then Capture B.</string>
+    <string name="vehicle_finder_same">A and B are at the same level. Capture B at a different fuel level.</string>
+    <string name="vehicle_finder_none">No byte tracked the change. Recapture B after a bigger drop.</string>
+    <string name="vehicle_finder_candidates">Bytes that moved with the fuel</string>
+    <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
+    <string name="vehicle_finder_raw">%1$d → %2$d · full≈%3$d</string>
+    <string name="vehicle_forget_current">Forget current</string>
+
+    <!-- OBD adapter picker -->
+    <string name="vehicle_select_adapter">Select OBD adapter</string>
+    <string name="vehicle_no_paired">No paired Bluetooth devices. Pair your OBD adapter in Bluetooth settings first.</string>
+    <string name="vehicle_bt_settings">Bluetooth settings</string>
+
+    <!-- OBD adapter status messages -->
+    <string name="vehicle_unknown_device">Unknown device</string>
+    <string name="vehicle_no_response">No response from adapter</string>
+    <string name="vehicle_clear_rejected">Adapter replied \"%1$s\". Turn ignition ON (engine off) and retry.</string>
+
+    <!-- Doors tile -->
+    <string name="vehicle_doors_title">DOORS</string>
+    <string name="vehicle_waiting_mcu">Waiting for MCU data… (needs root)</string>
+    <string name="vehicle_door_front_left">Front left</string>
+    <string name="vehicle_door_front_right">Front right</string>
+    <string name="vehicle_door_rear_left">Rear left</string>
+    <string name="vehicle_door_rear_right">Rear right</string>
+    <string name="vehicle_door_tailgate">Tailgate</string>
+    <string name="vehicle_door_bonnet">Bonnet</string>
+    <string name="vehicle_door_any_open">A door is open</string>
+    <string name="vehicle_doors_all_closed">All closed</string>
+    <string name="vehicle_door_open_caps">OPEN</string>
+    <string name="vehicle_door_closed">closed</string>
+
+    <!-- CAN monitor (debug tile) -->
+    <string name="vehicle_can_monitor_title">CAN MONITOR — find a signal</string>
+    <string name="vehicle_can_monitor_help">Doors CLOSED → Capture A. Then OPEN the door → Capture B. Only discrete signals that differ are shown.</string>
+    <string name="vehicle_can_a_closed">A ✓ closed</string>
+    <string name="vehicle_can_b_open">B ✓ open</string>
+    <string name="vehicle_can_prompt">Capture A (closed), then B (open) to compare.</string>
+    <string name="vehicle_can_no_diff">No clean discrete difference. Do it with the engine OFF so sensors don\'t drift, and keep the door open during Capture B.</string>
+    <string name="vehicle_can_row_closed">closed: %1$s</string>
+    <string name="vehicle_can_row_open">open: %1$s</string>
+
+    <!-- Fault code (DTC) descriptions: title + what to check -->
+    <string name="vehicle_dtc_p0300_title">Random/multiple cylinder misfire</string>
+    <string name="vehicle_dtc_p0300_fix">Check spark plugs &amp; coils (THP: coils are a known weak point), fuel injectors, and for vacuum leaks. Do plugs/coils as a set.</string>
+    <string name="vehicle_dtc_p0301_title">Cylinder 1 misfire</string>
+    <string name="vehicle_dtc_p0301_fix">Swap coil/plug from cyl 1 to another cyl; if the misfire follows, replace that coil/plug. Also check injector 1.</string>
+    <string name="vehicle_dtc_p0302_title">Cylinder 2 misfire</string>
+    <string name="vehicle_dtc_p0302_fix">Swap coil/plug to isolate; check injector 2 and compression.</string>
+    <string name="vehicle_dtc_p0303_title">Cylinder 3 misfire</string>
+    <string name="vehicle_dtc_p0303_fix">Swap coil/plug to isolate; check injector 3 and compression.</string>
+    <string name="vehicle_dtc_p0304_title">Cylinder 4 misfire</string>
+    <string name="vehicle_dtc_p0304_fix">Swap coil/plug to isolate; check injector 4 and compression.</string>
+    <string name="vehicle_dtc_p0016_title">Crankshaft/camshaft correlation (bank1 sensor A)</string>
+    <string name="vehicle_dtc_p0016_fix">Classic 1.6 THP stretched timing chain. Check chain, tensioner and cam/crank sensors. Often needs a timing chain kit.</string>
+    <string name="vehicle_dtc_p0017_title">Crank/cam correlation (bank1 sensor B)</string>
+    <string name="vehicle_dtc_p0017_fix">Likely stretched timing chain / tensioner (1.6 THP). Inspect chain &amp; sprockets.</string>
+    <string name="vehicle_dtc_p0011_title">Intake camshaft timing over-advanced (bank1)</string>
+    <string name="vehicle_dtc_p0011_fix">VVT/cam phaser or oil control valve. Check oil level/quality, VVT solenoid, and timing chain wear.</string>
+    <string name="vehicle_dtc_p0341_title">Camshaft position sensor range</string>
+    <string name="vehicle_dtc_p0341_fix">Check the cam sensor and its wiring; verify timing (chain) is correct.</string>
+    <string name="vehicle_dtc_p0340_title">Camshaft position sensor circuit</string>
+    <string name="vehicle_dtc_p0340_fix">Test/replace cam sensor; inspect connector and wiring.</string>
+    <string name="vehicle_dtc_p0299_title">Turbocharger underboost</string>
+    <string name="vehicle_dtc_p0299_fix">Common on THP/HDi. Check for boost leaks (hoses/intercooler), wastegate/turbo actuator, and the diverter valve.</string>
+    <string name="vehicle_dtc_p0234_title">Turbo overboost</string>
+    <string name="vehicle_dtc_p0234_fix">Check wastegate actuator sticking, boost solenoid, and for a stuck VNT (HDi).</string>
+    <string name="vehicle_dtc_p0087_title">Fuel rail pressure too low</string>
+    <string name="vehicle_dtc_p0087_fix">HDi: check fuel filter, low-pressure supply, high-pressure pump and rail pressure regulator; look for air/leaks.</string>
+    <string name="vehicle_dtc_p0089_title">Fuel pressure regulator performance</string>
+    <string name="vehicle_dtc_p0089_fix">Check the rail pressure regulator/metering valve and pump; inspect fuel filter.</string>
+    <string name="vehicle_dtc_p0093_title">Large fuel leak detected</string>
+    <string name="vehicle_dtc_p0093_fix">HDi: inspect injector leak-off, high-pressure pipes and pump seals for diesel leaks.</string>
+    <string name="vehicle_dtc_p0420_title">Catalyst efficiency below threshold (bank1)</string>
+    <string name="vehicle_dtc_p0420_fix">Often a worn catalytic converter or a lazy rear O2 sensor. Rule out exhaust leaks and misfires first.</string>
+    <string name="vehicle_dtc_p0401_title">EGR flow insufficient</string>
+    <string name="vehicle_dtc_p0401_fix">Clean or replace the EGR valve; check EGR cooler and passages for carbon (common on HDi).</string>
+    <string name="vehicle_dtc_p0402_title">EGR flow excessive</string>
+    <string name="vehicle_dtc_p0402_fix">Check EGR valve stuck open and its control; clean carbon build-up.</string>
+    <string name="vehicle_dtc_p2463_title">DPF soot accumulation too high</string>
+    <string name="vehicle_dtc_p2463_fix">HDi diesel: do a long highway run for regeneration; check DPF pressure sensor and additive (Eolys) level. May need forced regen.</string>
+    <string name="vehicle_dtc_p242f_title">DPF restriction (ash accumulation)</string>
+    <string name="vehicle_dtc_p242f_fix">DPF near end of life or blocked; may need forced regen or DPF cleaning/replacement.</string>
+    <string name="vehicle_dtc_p0113_title">Intake air temperature sensor high</string>
+    <string name="vehicle_dtc_p0113_fix">Check IAT sensor and wiring/connector; clean or replace the sensor (often in the MAF/intake).</string>
+    <string name="vehicle_dtc_p0128_title">Coolant below thermostat regulating temp</string>
+    <string name="vehicle_dtc_p0128_fix">Usually a stuck-open thermostat. Replace thermostat; verify coolant level and sensor.</string>
+    <string name="vehicle_dtc_p0135_title">O2 sensor heater (bank1 sensor1)</string>
+    <string name="vehicle_dtc_p0135_fix">Check the upstream O2 sensor heater circuit and fuse; replace the sensor if the heater is open.</string>
+    <string name="vehicle_dtc_p0130_title">O2 sensor circuit (bank1 sensor1)</string>
+    <string name="vehicle_dtc_p0130_fix">Inspect upstream O2 sensor and wiring; replace if lazy/faulty.</string>
+    <string name="vehicle_dtc_p0171_title">System too lean (bank1)</string>
+    <string name="vehicle_dtc_p0171_fix">Check for intake/vacuum leaks (common), dirty MAF, weak fuel pump/injectors.</string>
+    <string name="vehicle_dtc_p0172_title">System too rich (bank1)</string>
+    <string name="vehicle_dtc_p0172_fix">Check for leaking injectors, high fuel pressure, dirty MAF or faulty O2 sensor.</string>
+    <string name="vehicle_dtc_p0505_title">Idle air control system</string>
+    <string name="vehicle_dtc_p0505_fix">Clean throttle body; check for intake leaks and throttle motor operation.</string>
+    <string name="vehicle_dtc_p2100_title">Throttle actuator motor circuit</string>
+    <string name="vehicle_dtc_p2100_fix">Check throttle body motor and wiring; may need throttle body replacement.</string>
+
+    <!-- Fault codes not in the table: described from the code's structure -->
+    <string name="vehicle_dtc_unknown_code">Unknown code</string>
+    <string name="vehicle_dtc_fallback_title">%1$s %2$s fault — %3$s</string>
+    <string name="vehicle_dtc_fallback_fix">No stored description. Scan for related codes, check the affected circuit\'s sensor/wiring, and search \"%1$s Citroën C4 Picasso\" for model-specific guidance.</string>
+    <string name="vehicle_dtc_system_powertrain">Powertrain</string>
+    <string name="vehicle_dtc_system_chassis">Chassis</string>
+    <string name="vehicle_dtc_system_body">Body</string>
+    <string name="vehicle_dtc_system_network">Network</string>
+    <string name="vehicle_dtc_system_unknown">Unknown</string>
+    <string name="vehicle_dtc_scope_generic">generic</string>
+    <string name="vehicle_dtc_scope_manufacturer">manufacturer-specific</string>
+    <string name="vehicle_dtc_area_fuel_air">fuel &amp; air metering</string>
+    <string name="vehicle_dtc_area_ignition">ignition / misfire</string>
+    <string name="vehicle_dtc_area_emissions">emissions / auxiliary</string>
+    <string name="vehicle_dtc_area_idle">speed / idle control</string>
+    <string name="vehicle_dtc_area_computer">computer / outputs</string>
+    <string name="vehicle_dtc_area_transmission">transmission</string>
+    <string name="vehicle_dtc_area_system">system</string>
+</resources>

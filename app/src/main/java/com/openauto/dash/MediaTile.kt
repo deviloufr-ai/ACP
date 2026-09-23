@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -171,7 +172,7 @@ internal fun MediaCard(
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = "NOW PLAYING",
+                            text = stringResource(R.string.info_now_playing),
                             color = DashColors.Accent,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
@@ -182,8 +183,8 @@ internal fun MediaCard(
                     Text(
                         text = when {
                             mediaState.hasMedia && mediaState.title.isNotBlank() -> mediaState.title
-                            hasAccess -> "Nothing playing"
-                            else -> "Media access needed"
+                            hasAccess -> stringResource(R.string.info_nothing_playing)
+                            else -> stringResource(R.string.info_media_access_needed)
                         },
                         color = DashColors.TextPrimary,
                         fontWeight = FontWeight.SemiBold,
@@ -191,8 +192,9 @@ internal fun MediaCard(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    val tapToEnable = stringResource(R.string.info_media_tap_to_enable)
                     Text(
-                        text = mediaState.artist.ifBlank { if (hasAccess) "\u2014" else "Tap to enable" },
+                        text = mediaState.artist.ifBlank { if (hasAccess) "\u2014" else tapToEnable },
                         color = DashColors.TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -223,7 +225,7 @@ internal fun MediaCard(
                 ) {
                     GlassRoundButton(
                         icon = Icons.Filled.SkipPrevious,
-                        contentDescription = "Previous",
+                        contentDescription = stringResource(R.string.info_media_previous),
                         size = 52.dp,
                         iconSize = 30.dp,
                         onClick = { controller.previous() }
@@ -231,7 +233,7 @@ internal fun MediaCard(
                     Spacer(Modifier.width(18.dp))
                     GradientRoundButton(
                         icon = if (mediaState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = "Play/Pause",
+                        contentDescription = stringResource(R.string.info_media_play_pause),
                         size = 70.dp,
                         iconSize = 38.dp,
                         onClick = { controller.playPause() }
@@ -239,7 +241,7 @@ internal fun MediaCard(
                     Spacer(Modifier.width(18.dp))
                     GlassRoundButton(
                         icon = Icons.Filled.SkipNext,
-                        contentDescription = "Next",
+                        contentDescription = stringResource(R.string.info_media_next),
                         size = 52.dp,
                         iconSize = 30.dp,
                         onClick = { controller.next() }
@@ -255,7 +257,7 @@ internal fun MediaCard(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant Media Access")
+                    Text(stringResource(R.string.info_media_grant_access))
                 }
             }
         }

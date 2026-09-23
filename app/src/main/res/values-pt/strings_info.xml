@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared -->
+    <string name="info_waiting_gps">A aguardar GPS…</string>
+    <string name="info_open">Abrir</string>
+    <string name="info_clear">Limpar</string>
+    <string name="info_reset">Repor</string>
+    <string name="info_grant_access">Conceder acesso</string>
+    <string name="info_connect">Ligar</string>
+
+    <!-- Weather tile -->
+    <string name="info_weather_title">METEOROLOGIA</string>
+    <string name="info_weather_refresh">Atualizar meteorologia</string>
+    <string name="info_weather_details">Sensação %1$d° · Vento %2$d km/h</string>
+    <string name="info_weather_details_range">Sensação %1$d° · Vento %2$d km/h · %3$d° / %4$d°</string>
+    <string name="info_weather_loading">A carregar meteorologia…</string>
+    <string name="info_weather_unavailable">Meteorologia indisponível</string>
+    <string name="info_weather_unavailable_detail">Meteorologia indisponível (%1$s)</string>
+
+    <!-- Weather conditions (WMO codes), also used by the skins -->
+    <string name="info_wx_clear">Céu limpo</string>
+    <string name="info_wx_mostly_clear">Pouco nublado</string>
+    <string name="info_wx_partly_cloudy">Parcialmente nublado</string>
+    <string name="info_wx_overcast">Encoberto</string>
+    <string name="info_wx_fog">Nevoeiro</string>
+    <string name="info_wx_drizzle">Chuvisco</string>
+    <string name="info_wx_freezing_drizzle">Chuvisco gelado</string>
+    <string name="info_wx_rain">Chuva</string>
+    <string name="info_wx_freezing_rain">Chuva gelada</string>
+    <string name="info_wx_snow">Neve</string>
+    <string name="info_wx_showers">Aguaceiros</string>
+    <string name="info_wx_snow_showers">Aguaceiros de neve</string>
+    <string name="info_wx_thunderstorm">Trovoada</string>
+    <string name="info_wx_hail_storm">Trovoada com granizo</string>
+    <string name="info_wx_unknown">Desconhecido</string>
+
+    <!-- Agenda tile -->
+    <string name="info_agenda_title">AGENDA</string>
+    <string name="info_agenda_needs_access">Mostrar os próximos eventos do calendário</string>
+    <string name="info_agenda_allow">Permitir calendário</string>
+    <string name="info_agenda_empty">Nada nas próximas 36 horas</string>
+    <string name="info_agenda_no_title">(Sem título)</string>
+    <string name="info_agenda_all_day">Todo o dia</string>
+
+    <!-- Quick dial tile -->
+    <string name="info_quickdial_title">MARCAÇÃO RÁPIDA</string>
+    <string name="info_quickdial_dialer">Teclado</string>
+    <string name="info_quickdial_needs_access">Mostrar aqui os contactos favoritos</string>
+    <string name="info_quickdial_allow">Permitir contactos</string>
+    <string name="info_quickdial_empty">Os contactos favoritos da app Contactos aparecem aqui</string>
+
+    <!-- Notifications tile -->
+    <string name="info_notif_title">NOTIFICAÇÕES</string>
+    <string name="info_notif_needs_access">Mostrar mensagens e alertas das apps</string>
+    <string name="info_notif_empty">Sem notificações novas</string>
+
+    <!-- Audio tile -->
+    <string name="info_audio_title">ÁUDIO</string>
+    <string name="info_audio_mute">Silenciar</string>
+    <string name="info_audio_unmute">Ativar som</string>
+    <string name="info_audio_sound">Som</string>
+
+    <!-- Speed HUD tile (the title is also the Original theme's speed gauge label) -->
+    <string name="info_speed_title">VELOCIDADE</string>
+    <string name="info_speed_no_signal">Sem sinal</string>
+
+    <!-- Compass tile -->
+    <string name="info_compass_title">BÚSSOLA</string>
+    <string name="info_compass_no_heading">Rumo disponível em movimento</string>
+    <string name="info_compass_altitude">Altitude</string>
+    <string name="info_compass_gps_speed">Velocidade GPS</string>
+    <string name="info_compass_accuracy">Precisão</string>
+
+    <!-- Compass points (dial letters and heading abbreviations) -->
+    <string name="info_dir_n">N</string>
+    <string name="info_dir_ne">NE</string>
+    <string name="info_dir_e">E</string>
+    <string name="info_dir_se">SE</string>
+    <string name="info_dir_s">S</string>
+    <string name="info_dir_sw">SO</string>
+    <string name="info_dir_w">O</string>
+    <string name="info_dir_nw">NO</string>
+
+    <!-- Trip computer tile -->
+    <string name="info_trip_title">VIAGEM</string>
+    <string name="info_trip_since">desde as %1$s</string>
+    <string name="info_trip_time">Tempo</string>
+    <string name="info_trip_moving">Em marcha</string>
+    <string name="info_trip_average">Média</string>
+    <string name="info_trip_top">Máx.</string>
+    <string name="info_duration_hm">%1$dh %2$02dm</string>
+    <string name="info_duration_ms">%1$dm %2$02ds</string>
+
+    <!-- G-force tile -->
+    <string name="info_gforce_title">FORÇA G</string>
+    <string name="info_gforce_reset_peaks">Repor picos</string>
+    <string name="info_gforce_lateral">Lateral</string>
+    <string name="info_gforce_accel_brake">Acel. / travão</string>
+    <string name="info_gforce_peaks">Picos</string>
+
+    <!-- Parking tile -->
+    <string name="info_parking_title">ESTACIONAMENTO</string>
+    <string name="info_parking_prompt">Memorizar onde está o carro</string>
+    <string name="info_parking_save">Guardar lugar</string>
+    <string name="info_parking_dir_right">O carro estacionado está a %1$d° à direita</string>
+    <string name="info_parking_dir_left">O carro estacionado está a %1$d° à esquerda</string>
+    <string name="info_parking_distance_unknown">Distância desconhecida</string>
+    <string name="info_parking_parked">Estacionado %1$s</string>
+    <string name="info_parking_parked_dir">Estacionado %1$s · %2$s</string>
+    <string name="info_parking_walk">Ir a pé</string>
+    <string name="info_parking_map_label">Carro estacionado</string>
+    <string name="info_ago_just_now">agora mesmo</string>
+    <string name="info_ago_minutes">há %1$d min</string>
+    <string name="info_ago_hours">há %1$d h %2$d min</string>
+    <string name="info_ago_days">há %1$d d</string>
+
+    <!-- Media tile (both the current and the Original theme) -->
+    <string name="info_now_playing">A REPRODUZIR</string>
+    <string name="info_nothing_playing">Nada a reproduzir</string>
+    <string name="info_media_access_needed">Acesso multimédia</string>
+    <string name="info_media_tap_to_enable">Tocar para ativar</string>
+    <string name="info_media_previous">Anterior</string>
+    <string name="info_media_play_pause">Reproduzir/Pausa</string>
+    <string name="info_media_next">Seguinte</string>
+    <string name="info_media_grant_access">Conceder acesso a multimédia</string>
+
+    <!-- Original theme telemetry tile -->
+    <string name="info_telemetry_title">TELEMETRIA</string>
+    <string name="info_obd_live">Em direto</string>
+    <string name="info_gauge_rpm">RPM</string>
+    <string name="info_unit_rpm">rpm</string>
+    <string name="info_chip_coolant">Líq. refrig.</string>
+    <string name="info_chip_load">Carga</string>
+    <string name="info_chip_battery">Bateria</string>
+
+    <!-- Directions tile -->
+    <string name="info_directions_title">PERCURSO</string>
+    <string name="info_directions_no_route">Sem percurso</string>
+    <string name="info_directions_access_title">Acesso a notificações necessário</string>
+    <string name="info_directions_access_hint">O percurso vem da notificação de navegação do Google Maps.</string>
+    <string name="info_directions_idle_title">Sem percurso ativo</string>
+    <string name="info_directions_idle_hint">Com a navegação ativa no Google Maps ou no Waze, a próxima manobra aparece aqui.</string>
+    <string name="info_directions_open_maps">Abrir o Google Maps</string>
+    <string name="info_nav_continue">Continuar</string>
+
+    <!-- Map navigator (MapLibre panel) -->
+    <string name="info_map_where_to">Para onde?</string>
+    <string name="info_map_search">Pesquisar</string>
+    <string name="info_map_clear_route">Limpar percurso</string>
+    <string name="info_map_ready">Pronto para navegar</string>
+    <string name="info_map_start">Iniciar</string>
+    <string name="info_map_gps_not_ready">GPS não pronto: Iniciar abre na mesma o Google Maps</string>
+    <string name="info_map_no_route">Nenhum percurso encontrado</string>
+    <string name="info_map_routing_failed">Falha no cálculo do percurso</string>
+    <string name="info_map_routing_failed_detail">Falha no cálculo do percurso (%1$s)</string>
+    <string name="info_map_address_not_found">Morada não encontrada</string>
+    <string name="info_map_duration_hm">%1$d h %2$02d min</string>
+    <string name="info_map_duration_min">%1$d min</string>
+</resources>

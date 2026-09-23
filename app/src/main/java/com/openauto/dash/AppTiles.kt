@@ -54,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,7 +94,7 @@ internal fun LaunchBarTile(
             ) {
                 if (item.packages.isEmpty()) {
                     Text(
-                        "Launch bar \u2014 tap the pencil to add apps",
+                        stringResource(R.string.apps_launch_bar_empty),
                         color = DashColors.Muted,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f).padding(start = 8.dp)
@@ -142,7 +144,7 @@ internal fun LaunchBarTile(
                 IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Edit launch bar",
+                        contentDescription = stringResource(R.string.apps_launch_bar_edit),
                         tint = DashColors.Muted,
                         modifier = Modifier.size(18.dp)
                     )
@@ -167,7 +169,7 @@ internal fun LaunchBarEditorDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
-        title = { Text("Launch bar apps", color = DashColors.TextPrimary) },
+        title = { Text(stringResource(R.string.apps_launch_bar_editor_title), color = DashColors.TextPrimary) },
         text = {
             Column(
                 modifier = Modifier
@@ -176,7 +178,7 @@ internal fun LaunchBarEditorDialog(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (current.isEmpty()) {
-                    Text("No apps yet. Add the ones you launch most.", color = DashColors.Muted)
+                    Text(stringResource(R.string.apps_launch_bar_editor_empty), color = DashColors.Muted)
                 }
                 current.forEachIndexed { i, pkg ->
                     val app = appsByPackage[pkg]
@@ -199,13 +201,13 @@ internal fun LaunchBarEditorDialog(
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { current = current.swap(i, i - 1) }, enabled = i > 0, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Move left", tint = if (i > 0) DashColors.TextSecondary else DashColors.Muted)
+                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.apps_move_left), tint = if (i > 0) DashColors.TextSecondary else DashColors.Muted)
                         }
                         IconButton(onClick = { current = current.swap(i, i + 1) }, enabled = i < current.lastIndex, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Move right", tint = if (i < current.lastIndex) DashColors.TextSecondary else DashColors.Muted)
+                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.apps_move_right), tint = if (i < current.lastIndex) DashColors.TextSecondary else DashColors.Muted)
                         }
                         IconButton(onClick = { current = current.filterIndexed { j, _ -> j != i } }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Filled.Close, contentDescription = "Remove", tint = DashColors.Warning)
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.apps_remove), tint = DashColors.Warning)
                         }
                     }
                 }
@@ -213,24 +215,25 @@ internal fun LaunchBarEditorDialog(
                     Icon(Icons.Filled.Add, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        if (current.size < MAX_LAUNCH_BAR_APPS) "Add app" else "Bar is full ($MAX_LAUNCH_BAR_APPS apps)",
+                        if (current.size < MAX_LAUNCH_BAR_APPS) stringResource(R.string.apps_add_app)
+                        else pluralStringResource(R.plurals.apps_launch_bar_full, MAX_LAUNCH_BAR_APPS, MAX_LAUNCH_BAR_APPS),
                         color = DashColors.Accent
                     )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(current) }) { Text("Save", color = DashColors.Accent) }
+            TextButton(onClick = { onSave(current) }) { Text(stringResource(R.string.apps_save), color = DashColors.Accent) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = DashColors.Muted) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.apps_cancel), color = DashColors.Muted) }
         }
     )
 
     if (showPicker) {
         AppPickerDialog(
             apps = apps.filter { it.packageName !in current },
-            title = "Add to launch bar",
+            title = stringResource(R.string.apps_launch_bar_add_title),
             onPick = { app ->
                 showPicker = false
                 if (app.packageName !in current) current = current + app.packageName
@@ -385,7 +388,7 @@ internal fun AppPickerDialog(
     apps: List<AppEntry>,
     onPick: (AppEntry) -> Unit,
     onDismiss: () -> Unit,
-    title: String = "Choose an app"
+    title: String = stringResource(R.string.apps_choose_app)
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -409,7 +412,7 @@ internal fun AppPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = DashColors.Muted)
+                Text(stringResource(R.string.apps_cancel), color = DashColors.Muted)
             }
         }
     )
@@ -432,7 +435,7 @@ internal fun AppDrawer(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "All apps",
+                    text = stringResource(R.string.apps_all_apps),
                     color = DashColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleLarge
@@ -440,7 +443,7 @@ internal fun AppDrawer(
                 IconButton(onClick = onClose) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = "Close app drawer",
+                        contentDescription = stringResource(R.string.apps_close_drawer),
                         tint = DashColors.TextSecondary
                     )
                 }
@@ -448,7 +451,7 @@ internal fun AppDrawer(
 
             if (apps.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No apps found", color = DashColors.Muted)
+                    Text(stringResource(R.string.apps_no_apps_found), color = DashColors.Muted)
                 }
             } else {
                 LazyVerticalGrid(

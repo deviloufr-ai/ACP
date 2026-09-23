@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,9 +80,9 @@ internal fun PipAnchorCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("MAPS WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.apps_window_title, "MAPS"), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(8.dp))
-                Text("Maps is docked beside the dashboard.", color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.apps_window_maps_docked_beside), color = DashColors.TextSecondary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
             }
         }
         return
@@ -163,19 +164,20 @@ internal fun PipAnchorCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("${appLabel.uppercase()} WINDOW", color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.apps_window_title, appLabel.uppercase()), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
             val pkg = status.pipPackage
             val err = status.error
             val name = pkg?.substringAfterLast('.')
             Text(
                 text = when {
-                    pkg != null && status.docked -> "Docked: $name (${status.mode})"
-                    pkg != null && status.gaveUp -> "The system keeps $name where it is"
-                    pkg != null -> "Moving $name here…"
-                    PipAnchor.autoOpen(context, packageName) -> "Opening $appLabel here\u2026"
-                    isMaps -> "Google Maps docks here.\nOpen it below, or start guidance and press Home."
-                    else -> "$appLabel runs here, in a window the size of this tile."
+                    // The mode ("freeform" / "pinned") is the system's own term, shown as is.
+                    pkg != null && status.docked -> stringResource(R.string.apps_window_docked, name.orEmpty(), status.mode.orEmpty())
+                    pkg != null && status.gaveUp -> stringResource(R.string.apps_window_gave_up, name.orEmpty())
+                    pkg != null -> stringResource(R.string.apps_window_moving, name.orEmpty())
+                    PipAnchor.autoOpen(context, packageName) -> stringResource(R.string.apps_window_opening, appLabel)
+                    isMaps -> stringResource(R.string.apps_window_maps_hint)
+                    else -> stringResource(R.string.apps_window_app_hint, appLabel)
                 },
                 color = when {
                     pkg != null && status.docked -> DashColors.Good
@@ -195,14 +197,14 @@ internal fun PipAnchorCard(
                 Spacer(Modifier.height(4.dp))
                 val at = status.windowBounds?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
                 val to = status.target?.let { "[${it.left},${it.top} ${it.right},${it.bottom}]" } ?: "?"
-                Text("Window $at \u2192 target $to", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.apps_window_diag_position, at, to), color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
                 status.lastResult?.let {
-                    Text("Last: $it", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.apps_window_diag_last, it), color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
                 }
             }
             status.seen?.let { seen ->
                 Spacer(Modifier.height(6.dp))
-                Text("Windows: $seen", color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.apps_window_diag_seen, seen), color = DashColors.Muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
             }
             // Full Maps UI in a window sized to this tile (a freeform task), the
             // way the head unit's stock launcher shows it. Offered whenever the
@@ -222,7 +224,7 @@ internal fun PipAnchorCard(
                     shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     modifier = Modifier.fillMaxWidth(0.8f)
-                ) { Text(if (pkg == null) "Open $appLabel here" else "Open full $appLabel here") }
+                ) { Text(if (pkg == null) stringResource(R.string.apps_window_open, appLabel) else stringResource(R.string.apps_window_open_full, appLabel)) }
             }
         }
     }

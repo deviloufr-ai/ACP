@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -295,7 +296,7 @@ internal fun orbitBackground(): Modifier {
 internal fun OrbitTopBar(m: TopBarModel) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val dateFmt = remember(locale) { SimpleDateFormat("EEE d MMM", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale) }
     val shape = RoundedCornerShape(28.dp)
     val light = DashColors.Light
     val ink = DashColors.TextPrimary
@@ -320,11 +321,14 @@ internal fun OrbitTopBar(m: TopBarModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             OrbitBarButton(onClick = m.onApps, filled = true) {
-                Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = DashColors.TextPrimary, modifier = Modifier.size(22.dp))
+                Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.orbit_all_apps), tint = DashColors.TextPrimary, modifier = Modifier.size(22.dp))
             }
             LayoutPicker(m) { open ->
                 OrbitBarButton(onClick = open) {
-                    LayoutIcon(m.layout, "Screen layout: ${m.layout.title}", DashColors.TextSecondary, Modifier.size(22.dp))
+                    LayoutIcon(
+                        m.layout, stringResource(R.string.orbit_screen_layout_desc, m.layout.title),
+                        DashColors.TextSecondary, Modifier.size(22.dp)
+                    )
                 }
             }
             Row(
@@ -356,7 +360,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
             ObdDot(m.obdConnection, m.onConnectObd)
             MorePicker(m) { open ->
                 OrbitBarButton(onClick = open) {
-                    Icon(Icons.Filled.MoreVert, "More", tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Filled.MoreVert, stringResource(R.string.orbit_more), tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -488,15 +492,18 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
             (data.coolantTempC - 40) / 90f,
             if (data.coolantTempC >= 105) DashColors.Warning else teal,
             if (connected) "${data.coolantTempC}°" else "--",
-            "coolant"
+            stringResource(R.string.orbit_sat_coolant)
         ),
         Satellite(
             batteryFraction(data.voltage),
             batteryColor(data.voltage),
             if (connected && data.voltage > 0.0) "%.1fV".format(data.voltage) else "--",
-            "battery"
+            stringResource(R.string.orbit_sat_battery)
         ),
-        Satellite(data.engineLoadPct / 100f, DashColors.Accent2, if (connected) "${data.engineLoadPct}%" else "--", "load")
+        Satellite(
+            data.engineLoadPct / 100f, DashColors.Accent2, if (connected) "${data.engineLoadPct}%" else "--",
+            stringResource(R.string.orbit_sat_load)
+        )
     )
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val layout = dialLayout(maxWidth.value, maxHeight.value, satellites.size)
@@ -526,9 +533,9 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
             Spacer(Modifier.height((d * 0.025f).dp))
             OrbitText(
                 when {
-                    connected -> "${groupThousands(data.rpm)} rpm"
-                    idle -> "Tap to connect"
-                    else -> "Connecting…"
+                    connected -> stringResource(R.string.orbit_rpm_value, groupThousands(data.rpm))
+                    idle -> stringResource(R.string.orbit_tap_to_connect)
+                    else -> stringResource(R.string.orbit_connecting)
                 },
                 max(11f, d * 0.042f),
                 when {
@@ -616,13 +623,14 @@ private fun OrbitDial(
     val value = animateFloatAsState(speedFraction.coerceIn(0f, 1f), tween(500), label = "dial speed")
     val outer = animateFloatAsState((outerFraction ?: 0f).coerceIn(0f, 1f), tween(500), label = "dial rpm")
     val showOuter = outerFraction != null
+    val connectLabel = stringResource(R.string.orbit_connect_obd)
     Box(
         modifier = modifier
             .size(diameter.dp)
             .orbitShadow()
             .then(
                 if (onClick != null) {
-                    Modifier.clip(CircleShape).clickable(onClickLabel = "Connect OBD", role = Role.Button, onClick = onClick)
+                    Modifier.clip(CircleShape).clickable(onClickLabel = connectLabel, role = Role.Button, onClick = onClick)
                 } else Modifier
             )
             .drawWithCache {
@@ -793,7 +801,7 @@ private fun OrbitSpeedHud(env: SkinTileEnv) {
                 when {
                     obd -> "OBD"
                     speed != null -> "GPS"
-                    else -> "No signal"
+                    else -> stringResource(R.string.orbit_no_signal)
                 },
                 max(11f, d * 0.042f),
                 if (speed != null) DashColors.Rpm else DashColors.Muted,
@@ -990,14 +998,14 @@ private fun OrbitMediaInfo(env: SkinTileEnv, k: Float, onGrant: () -> Unit, modi
     val access = env.hasMediaAccess
     val controller = env.mediaController
     val title = when {
-        !access -> "Media access needed"
+        !access -> stringResource(R.string.orbit_media_access_needed)
         state.hasMedia && state.title.isNotBlank() -> state.title
-        else -> "Nothing playing"
+        else -> stringResource(R.string.orbit_nothing_playing)
     }
     val subtitle = when {
-        !access -> "Tap to enable"
+        !access -> stringResource(R.string.orbit_tap_to_enable)
         state.hasMedia -> state.artist
-        else -> "Start music in any app"
+        else -> stringResource(R.string.orbit_start_music)
     }
     Column(
         modifier = modifier,
@@ -1021,15 +1029,16 @@ private fun OrbitMediaInfo(env: SkinTileEnv, k: Float, onGrant: () -> Unit, modi
                 horizontalArrangement = Arrangement.spacedBy((12f * k).dp)
             ) {
                 OrbitRoundButton(
-                    Icons.Filled.SkipPrevious, "Previous track", 48f * k, 22f * k,
+                    Icons.Filled.SkipPrevious, stringResource(R.string.orbit_previous_track), 48f * k, 22f * k,
                     frost(0.07f), DashColors.TextPrimary, !env.editing, bubble = true
                 ) { controller.previous() }
                 OrbitRoundButton(
-                    if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (playing) "Pause" else "Play",
+                    if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    stringResource(if (playing) R.string.orbit_pause else R.string.orbit_play),
                     62f * k, 30f * k, DashColors.Accent, OrbitInk, !env.editing, glow = DashColors.Accent
                 ) { controller.playPause() }
                 OrbitRoundButton(
-                    Icons.Filled.SkipNext, "Next track", 48f * k, 22f * k,
+                    Icons.Filled.SkipNext, stringResource(R.string.orbit_next_track), 48f * k, 22f * k,
                     frost(0.07f), DashColors.TextPrimary, !env.editing, bubble = true
                 ) { controller.next() }
             }
@@ -1044,7 +1053,7 @@ private fun OrbitMediaInfo(env: SkinTileEnv, k: Float, onGrant: () -> Unit, modi
                     .padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center
             ) {
-                OrbitText("Grant access", 15f, OrbitInk, weight = FontWeight.SemiBold)
+                OrbitText(stringResource(R.string.orbit_grant_access), 15f, OrbitInk, weight = FontWeight.SemiBold)
             }
         }
     }
@@ -1266,8 +1275,8 @@ private fun OrbitNoRoute(access: Boolean, wide: Boolean, bubble: Float) {
     val ink = DashColors.TextPrimary.copy(alpha = 0.8f)
     val disc = if (DashColors.Light) OrbitFrost.copy(alpha = 0.5f) else white(0.03f)
     val dashColor = mist(0.18f)
-    val title = if (access) "No route" else "Directions need access"
-    val hint = if (access) "Tap to open Google Maps" else "Tap to allow notification access"
+    val title = stringResource(if (access) R.string.orbit_no_route else R.string.orbit_directions_need_access)
+    val hint = stringResource(if (access) R.string.orbit_tap_open_maps else R.string.orbit_tap_allow_notifications)
     val d = bubble * 0.8f
     val titleSize = (d * 0.16f).coerceIn(14f, 26f)
     val hintSize = max(11f, titleSize * 0.72f)
@@ -1326,9 +1335,9 @@ private fun OrbitClock(env: SkinTileEnv) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
     val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val shortDate = remember(locale) { SimpleDateFormat("EEE d MMM", locale) }
+    val shortDate = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale) }
     val dayFmt = remember(locale) { SimpleDateFormat("EEEE", locale) }
-    val longDate = remember(locale) { SimpleDateFormat("d MMMM", locale) }
+    val longDate = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMM"), locale) }
     // Progress through the current minute, refreshed every frame and read only while drawing.
     val seconds = remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) {
@@ -1374,12 +1383,13 @@ private fun OrbitClockRing(
 ) {
     val teal = DashColors.Rpm
     val light = DashColors.Light
+    val openLabel = stringResource(R.string.orbit_open_alarms)
     Box(
         modifier = Modifier
             .size(d.dp)
             .orbitShadow()
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClickLabel = "Open alarms", role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, onClickLabel = openLabel, role = Role.Button, onClick = onClick)
             .drawWithCache {
                 val mid = size.center
                 val dotR = max(3.dp.toPx(), size.minDimension * 0.016f)
@@ -1448,8 +1458,14 @@ private fun OrbitWeather() {
                 OrbitWeatherBubble(d, weather, offline = false, feels = false)
                 Spacer(Modifier.width((14f + d * 0.06f).dp))
                 Column {
-                    OrbitText("Feels ${weather.feelsC.roundToInt()}°", detail, DashColors.Muted, align = TextAlign.Start)
-                    OrbitText("Wind ${weather.windKmh.roundToInt()} km/h", detail, DashColors.Muted, align = TextAlign.Start)
+                    OrbitText(
+                        stringResource(R.string.orbit_feels, weather.feelsC.roundToInt()), detail, DashColors.Muted,
+                        align = TextAlign.Start
+                    )
+                    OrbitText(
+                        stringResource(R.string.orbit_wind, weather.windKmh.roundToInt()), detail, DashColors.Muted,
+                        align = TextAlign.Start
+                    )
                     if (!weather.hiC.isNaN() && !weather.loC.isNaN()) {
                         OrbitText(
                             "${weather.loC.roundToInt()}° / ${weather.hiC.roundToInt()}°", detail, DashColors.Muted,
@@ -1494,7 +1510,7 @@ private fun OrbitWeatherBubble(d: Float, weather: Weather?, offline: Boolean, fe
                 OrbitText(weather.condition, max(11f, d * 0.105f), DashColors.Muted, Modifier.widthIn(max = (d * 0.76f).dp))
                 if (feels) {
                     OrbitText(
-                        "feels ${weather.feelsC.roundToInt()}° · ${weather.windKmh.roundToInt()} km/h",
+                        stringResource(R.string.orbit_feels_wind, weather.feelsC.roundToInt(), weather.windKmh.roundToInt()),
                         max(11f, d * 0.068f),
                         DashColors.Muted.copy(alpha = 0.8f),
                         Modifier.widthIn(max = (d * 0.72f).dp)
@@ -1507,7 +1523,10 @@ private fun OrbitWeatherBubble(d: Float, weather: Weather?, offline: Boolean, fe
                     tint = DashColors.Muted,
                     modifier = Modifier.size((d * 0.2f).dp)
                 )
-                OrbitText(if (offline) "Offline" else "Loading…", max(11f, d * 0.1f), DashColors.Muted)
+                OrbitText(
+                    stringResource(if (offline) R.string.orbit_offline else R.string.orbit_loading),
+                    max(11f, d * 0.1f), DashColors.Muted
+                )
             }
         }
     }
@@ -1541,13 +1560,16 @@ private fun OrbitRange(item: DashboardItem, env: SkinTileEnv) {
                 Column {
                     val liters = fuel.percent / 100.0 * TANK_LITERS
                     OrbitText(
-                        "to empty", (d * 0.12f).coerceIn(13f, 26f), DashColors.TextPrimary,
+                        stringResource(R.string.orbit_to_empty), (d * 0.12f).coerceIn(13f, 26f), DashColors.TextPrimary,
                         weight = FontWeight.SemiBold, align = TextAlign.Start
                     )
                     Spacer(Modifier.height(4.dp))
-                    OrbitText("≈ %.0f L in tank".format(liters), detail, DashColors.Muted, align = TextAlign.Start)
-                    OrbitText("via ${fuel.source}", detail, DashColors.Muted, align = TextAlign.Start)
-                    OrbitText("tap to recalibrate", max(11f, detail * 0.8f), DashColors.Muted.copy(alpha = 0.7f), align = TextAlign.Start)
+                    OrbitText(stringResource(R.string.orbit_liters_in_tank, liters), detail, DashColors.Muted, align = TextAlign.Start)
+                    OrbitText(stringResource(R.string.orbit_via_source, fuel.source), detail, DashColors.Muted, align = TextAlign.Start)
+                    OrbitText(
+                        stringResource(R.string.orbit_tap_to_recalibrate), max(11f, detail * 0.8f),
+                        DashColors.Muted.copy(alpha = 0.7f), align = TextAlign.Start
+                    )
                 }
             }
         } else {
@@ -1570,12 +1592,13 @@ private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick:
     val fluidInk = if (light) lerp(fluid, DashColors.TextPrimary, 0.3f) else fluid
     val level = animateFloatAsState(fuel.percent.coerceIn(0, 100) / 100f, tween(900), label = "fuel level")
     val wave = rememberLoop(3_000)
+    val recalibrateLabel = stringResource(R.string.orbit_recalibrate_fuel)
     Box(
         modifier = Modifier
             .size(d.dp)
             .orbitShadow()
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClickLabel = "Recalibrate fuel", role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, onClickLabel = recalibrateLabel, role = Role.Button, onClick = onClick)
             .drawWithCache {
                 val dd = size.minDimension
                 val amp = dd * 0.028f
@@ -1609,7 +1632,10 @@ private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick:
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             OrbitText("${fuel.rangeKm} km", d * 0.17f, DashColors.TextPrimary, weight = FontWeight.SemiBold, tight = true)
-            OrbitText("fuel ${fuel.percent}%", max(11f, d * 0.1f), fluidInk, weight = FontWeight.Medium)
+            OrbitText(
+                stringResource(R.string.orbit_fuel_percent, fuel.percent), max(11f, d * 0.1f), fluidInk,
+                weight = FontWeight.Medium
+            )
         }
     }
 }
@@ -1673,7 +1699,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         if (item.packages.isEmpty()) {
             OrbitText(
-                "Launch bar — tap the pencil to add apps", 14f, DashColors.Muted,
+                stringResource(R.string.orbit_launch_bar_empty), 14f, DashColors.Muted,
                 Modifier.weight(1f).padding(start = 8.dp), align = TextAlign.Start
             )
         } else {
@@ -1747,7 +1773,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                 .clickable(role = Role.Button, onClick = env.onEditLaunchBar),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Edit, contentDescription = "Edit launch bar", tint = DashColors.Muted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.orbit_edit_launch_bar), tint = DashColors.Muted, modifier = Modifier.size(20.dp))
         }
     }
 }

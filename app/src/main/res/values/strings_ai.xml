@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings dialog (also the menu item) -->
+    <string name="ai_title">AI mechanic</string>
+    <string name="ai_explanation">When the OBD adapter connects, Dashwheel checks for fault codes by itself. A new code is explained by Google Gemini and said out loud; the details go on the Fault codes tile. Only the codes, engine readings and car model are sent.</string>
+    <string name="ai_activation_code">Activation code</string>
+    <string name="ai_activation_hint">Unlocks the built-in key</string>
+    <string name="ai_activate">Activate</string>
+    <string name="ai_own_key">Or your own Gemini API key</string>
+    <string name="ai_key">Gemini API key</string>
+    <string name="ai_key_hint">Free at aistudio.google.com → Get API key</string>
+    <string name="ai_engine">Engine</string>
+    <string name="ai_language">Language</string>
+    <string name="ai_language_auto">Same as app</string>
+    <string name="ai_speak">Speak alerts</string>
+    <string name="ai_speak_detail">New fault codes, overheating, battery not charging</string>
+    <string name="ai_test">Test</string>
+    <string name="ai_done">Done</string>
+
+    <!-- Settings dialog: test results -->
+    <string name="ai_test_ok">Gemini works ✓ (%1$s).</string>
+    <string name="ai_test_activated_ok">Activated ✓ Gemini works ✓ (%1$s).</string>
+    <string name="ai_test_failed">Didn\'t work: %1$s</string>
+    <string name="ai_test_activated_unreachable">Activated ✓ Gemini not reachable yet: %1$s</string>
+    <string name="ai_wrong_code">Wrong activation code</string>
+    <string name="ai_no_voice">No %1$s voice on this unit: add one in Android Settings → Text-to-speech.</string>
+
+    <!-- Spoken by the car, in the mechanic's language (resolved with the AI language, not the screen's) -->
+    <string name="ai_say_ready">The AI mechanic is ready.</string>
+    <plurals name="ai_say_new_codes">
+        <item quantity="one">%1$d new engine fault code: %2$s. Details are on screen.</item>
+        <item quantity="other">%1$d new engine fault codes: %2$s. Details are on screen.</item>
+    </plurals>
+    <string name="ai_say_overheat">Warning, the engine is overheating: %1$d degrees. Pull over when it\'s safe and switch the engine off.</string>
+    <string name="ai_say_not_charging">The battery isn\'t charging: %1$s volts with the engine running. Head to a garage and switch off what you don\'t need.</string>
+    <string name="ai_say_weak_battery">The battery is weak: %1$s volts with the engine off. Get it tested soon.</string>
+
+    <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
+    <string name="ai_verdict_ok">OK to drive</string>
+    <string name="ai_verdict_soon">Get it checked soon</string>
+    <string name="ai_verdict_stop">Stop driving</string>
+    <string name="ai_likely">Likely: %1$s</string>
+    <string name="ai_check_first">Check first: %1$s</string>
+
+    <!-- Fault codes tile: status -->
+    <string name="ai_no_codes">No fault codes ✓</string>
+    <string name="ai_cleared">Cleared ✓</string>
+    <string name="ai_scan_failed">Scan failed</string>
+    <string name="ai_clear_failed">Clear failed</string>
+    <string name="ai_thinking">Asking the AI mechanic…</string>
+    <string name="ai_retry">Retry</string>
+    <string name="ai_note_no_key">Add a free Gemini key (menu → AI mechanic) for plain-language advice.</string>
+    <string name="ai_note_unavailable">AI unavailable: %1$s</string>
+
+    <!-- Why asking Gemini failed (follows "AI unavailable: " / "Didn't work: ") -->
+    <string name="ai_error_quota">today\'s free quota is used up</string>
+    <string name="ai_error_key_refused">the key was refused</string>
+    <string name="ai_error_gemini">Gemini error %1$d</string>
+    <string name="ai_error_empty">Gemini gave an empty answer</string>
+    <string name="ai_error_unreadable">Gemini\'s answer was unreadable</string>
+    <string name="ai_error_offline">no internet connection</string>
+    <string name="ai_error_unknown">unknown error</string>
+</resources>

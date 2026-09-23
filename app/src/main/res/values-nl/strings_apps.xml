@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add-widget catalogue: section headings -->
+    <string name="apps_category_driving">RIJDEN</string>
+    <string name="apps_category_navigation">NAVIGATIE</string>
+    <string name="apps_category_vehicle">VOERTUIG</string>
+    <string name="apps_category_info">INFO &amp; COMMUNICATIE</string>
+    <string name="apps_category_apps">MEDIA &amp; APPS</string>
+
+    <!-- Add-widget catalogue: built-in tiles (name, then one-line description) -->
+    <string name="apps_kind_navmap">Kaart</string>
+    <string name="apps_kind_navmap_blurb">Gratis 3D-kaart met zoeken en routes</string>
+    <string name="apps_kind_navigation">Route</string>
+    <string name="apps_kind_navigation_blurb">Volgende afslag uit Google Maps / Waze</string>
+    <string name="apps_kind_pip_anchor">Maps-venster</string>
+    <string name="apps_kind_pip_anchor_blurb">Zet het zwevende Maps-venster hier vast</string>
+    <string name="apps_kind_media">Muziekspeler</string>
+    <string name="apps_kind_media_blurb">Speelt nu, met bediening</string>
+    <string name="apps_kind_telemetry">Telemetrie</string>
+    <string name="apps_kind_telemetry_blurb">Snelheid, toerental, koelvloeistof, belasting, accu</string>
+    <string name="apps_kind_obd_dtc">Foutcodes</string>
+    <string name="apps_kind_obd_dtc_blurb">OBD-foutcodes lezen en wissen</string>
+    <string name="apps_kind_obd_all">Alle OBD-gegevens</string>
+    <string name="apps_kind_obd_all_blurb">Alle live OBD-waarden</string>
+    <string name="apps_kind_range">Brandstof &amp; actieradius</string>
+    <string name="apps_kind_range_blurb">Tankniveau en resterende km</string>
+    <string name="apps_kind_car3d">3D-auto</string>
+    <string name="apps_kind_car3d_blurb">Draai het automodel</string>
+    <string name="apps_kind_doors">Portieren</string>
+    <string name="apps_kind_doors_blurb">Status van portieren en kofferbak (MCU)</string>
+    <string name="apps_kind_can_mon">CAN-monitor</string>
+    <string name="apps_kind_can_mon_blurb">Ruwe CAN-frames (debug)</string>
+    <string name="apps_kind_speed_hud">Snelheid</string>
+    <string name="apps_kind_speed_hud_blurb">Grote digitale snelheid via OBD of GPS</string>
+    <string name="apps_kind_compass">Kompas</string>
+    <string name="apps_kind_compass_blurb">Koers, hoogte en GPS-snelheid</string>
+    <string name="apps_kind_trip">Boordcomputer</string>
+    <string name="apps_kind_trip_blurb">Afstand, tijd, gemiddelde en topsnelheid</string>
+    <string name="apps_kind_gforce">G-kracht</string>
+    <string name="apps_kind_gforce_blurb">g in bochten en bij remmen</string>
+    <string name="apps_kind_parking">Parkeerplek</string>
+    <string name="apps_kind_parking_blurb">Bewaar waar je parkeerde en loop terug</string>
+    <string name="apps_kind_clock">Klok</string>
+    <string name="apps_kind_clock_blurb">Tijd en datum, groot</string>
+    <string name="apps_kind_weather">Weer</string>
+    <string name="apps_kind_weather_blurb">Weer bij de auto (geen account nodig)</string>
+    <string name="apps_kind_calendar">Agenda</string>
+    <string name="apps_kind_calendar_blurb">Je volgende afspraken</string>
+    <string name="apps_kind_quick_dial">Snelkiezen</string>
+    <string name="apps_kind_quick_dial_blurb">Favoriete contacten, bellen met één tik</string>
+    <string name="apps_kind_notifications">Meldingen</string>
+    <string name="apps_kind_notifications_blurb">Berichten en meldingen van je apps</string>
+    <string name="apps_kind_audio">Audio</string>
+    <string name="apps_kind_audio_blurb">Volume, dempen, geluid en Bluetooth-instellingen</string>
+
+    <!-- Add-widget catalogue: dialog -->
+    <string name="apps_add_widget">Widget toevoegen</string>
+    <string name="apps_pick_launch_bar">App-balk</string>
+    <string name="apps_pick_launch_bar_blurb">Je favoriete apps op een rij</string>
+    <string name="apps_pick_system_widget">Systeemwidget…</string>
+    <string name="apps_pick_system_widget_blurb">Elke geïnstalleerde app-widget</string>
+    <string name="apps_cancel">Annuleren</string>
+    <string name="apps_save">Opslaan</string>
+
+    <!-- Launch bar tile and its editor -->
+    <string name="apps_launch_bar_empty">App-balk — tik op het potlood om apps toe te voegen</string>
+    <string name="apps_launch_bar_edit">App-balk bewerken</string>
+    <string name="apps_launch_bar_editor_title">Apps in de balk</string>
+    <string name="apps_launch_bar_editor_empty">Nog geen apps. Voeg toe wat je het meest gebruikt.</string>
+    <string name="apps_move_left">Naar links</string>
+    <string name="apps_move_right">Naar rechts</string>
+    <string name="apps_remove">Verwijderen</string>
+    <string name="apps_add_app">App toevoegen</string>
+    <plurals name="apps_launch_bar_full">
+        <item quantity="one">Balk is vol (%1$d app)</item>
+        <item quantity="other">Balk is vol (%1$d apps)</item>
+    </plurals>
+    <string name="apps_launch_bar_add_title">Aan balk toevoegen</string>
+
+    <!-- App picker and all-apps drawer -->
+    <string name="apps_choose_app">Kies een app</string>
+    <string name="apps_all_apps">Alle apps</string>
+    <string name="apps_close_drawer">App-lade sluiten</string>
+    <string name="apps_no_apps_found">Geen apps gevonden</string>
+
+    <!-- Docked app window tile (%1$s is the app name; the tile title is ALL CAPS) -->
+    <string name="apps_window_title">%1$s-VENSTER</string>
+    <string name="apps_window_maps_docked_beside">Maps staat vast naast het dashboard.</string>
+    <string name="apps_window_docked">Vastgezet: %1$s (%2$s)</string>
+    <string name="apps_window_gave_up">Het systeem houdt %1$s op zijn plek</string>
+    <string name="apps_window_moving">%1$s wordt hierheen verplaatst…</string>
+    <string name="apps_window_opening">%1$s wordt hier geopend…</string>
+    <string name="apps_window_maps_hint">Google Maps komt hier te staan.\nOpen het hieronder, of start de navigatie en druk op Home.</string>
+    <string name="apps_window_app_hint">%1$s draait hier, in een venster zo groot als deze tegel.</string>
+    <string name="apps_window_open">%1$s hier openen</string>
+    <string name="apps_window_open_full">%1$s volledig hier openen</string>
+    <string name="apps_window_error_gave_up">Kon het niet als venster open houden</string>
+    <string name="apps_window_error_no_shell">Geen root (Magisk) en de ADB-socket op poort %1$d luistert niet</string>
+
+    <!-- Docked app window tile: diagnostics (%1$s / %2$s are pixel rectangles or system output) -->
+    <string name="apps_window_diag_position">Venster %1$s → doel %2$s</string>
+    <string name="apps_window_diag_last">Laatste: %1$s</string>
+    <string name="apps_window_diag_seen">Vensters: %1$s</string>
+
+    <!-- Floating split-screen swap button (accessibility label) -->
+    <string name="apps_swap_split_panes">Apps in gesplitst scherm wisselen</string>
+</resources>

@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
@@ -95,7 +96,7 @@ fun HostedSystemWidget(appWidgetId: Int, modifier: Modifier = Modifier) {
     if (info == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text(
-                "Widget unavailable",
+                stringResource(R.string.dash_widget_unavailable),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -262,10 +263,10 @@ private fun SystemWidgetPickerDialog(
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose a widget") },
+        title = { Text(stringResource(R.string.dash_choose_widget)) },
         text = {
             if (providers.isEmpty()) {
-                Text("No widgets found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.dash_no_widgets_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().height(380.dp)) {
                     items(providers) { info ->
@@ -309,7 +310,7 @@ private fun SystemWidgetPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_cancel)) }
         }
     )
 }

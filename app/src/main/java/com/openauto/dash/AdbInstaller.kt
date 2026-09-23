@@ -65,8 +65,8 @@ object AdbInstaller {
             val res = dadb.shell(INSTALL_SCRIPT)
             val ok = res.allOutput.lineSequence().firstOrNull { it.startsWith("OKINSTALL:") }
             if (ok == null) {
-                val hint = if (uid != "0") " (adbd not root: uid=$uid)" else ""
-                error("${res.allOutput.trim().ifBlank { "install failed" }}$hint")
+                val detail = res.allOutput.trim().ifBlank { context.getString(R.string.sys_install_failed) }
+                error(if (uid != "0") context.getString(R.string.sys_install_failed_not_root, detail, uid) else detail)
             }
             Log.d("AdbInstaller", "Installed via ADB :$port (uid=$uid): ${ok.removePrefix("OKINSTALL:")}")
         }

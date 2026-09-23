@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.WindowManager
@@ -26,6 +27,11 @@ class MainActivity : ComponentActivity() {
     // the activity alive across the transition, so we drive it via a Compose
     // state updated from onMultiWindowModeChanged.
     private val inMultiWindow = mutableStateOf(false)
+
+    // The language picked in the launcher, if any, over the system's.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

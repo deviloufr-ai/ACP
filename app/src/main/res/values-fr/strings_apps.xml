@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add-widget catalogue: section headings -->
+    <string name="apps_category_driving">CONDUITE</string>
+    <string name="apps_category_navigation">NAVIGATION</string>
+    <string name="apps_category_vehicle">VÉHICULE</string>
+    <string name="apps_category_info">INFOS &amp; COMMUNICATION</string>
+    <string name="apps_category_apps">MÉDIAS &amp; APPLIS</string>
+
+    <!-- Add-widget catalogue: built-in tiles (name, then one-line description) -->
+    <string name="apps_kind_navmap">Carte</string>
+    <string name="apps_kind_navmap_blurb">Carte 3D gratuite, recherche et itinéraires</string>
+    <string name="apps_kind_navigation">Itinéraire</string>
+    <string name="apps_kind_navigation_blurb">Prochain virage de Google Maps / Waze</string>
+    <string name="apps_kind_pip_anchor">Fenêtre Maps</string>
+    <string name="apps_kind_pip_anchor_blurb">Ancre ici la fenêtre flottante de Maps</string>
+    <string name="apps_kind_media">Lecteur audio</string>
+    <string name="apps_kind_media_blurb">En cours de lecture, avec commandes</string>
+    <string name="apps_kind_telemetry">Télémétrie</string>
+    <string name="apps_kind_telemetry_blurb">Vitesse, régime, liquide de refroid., charge, batterie</string>
+    <string name="apps_kind_obd_dtc">Codes défaut</string>
+    <string name="apps_kind_obd_dtc_blurb">Lire et effacer les codes défaut OBD</string>
+    <string name="apps_kind_obd_all">Toutes les données OBD</string>
+    <string name="apps_kind_obd_all_blurb">Toutes les valeurs OBD en direct</string>
+    <string name="apps_kind_range">Carburant &amp; autonomie</string>
+    <string name="apps_kind_range_blurb">Niveau du réservoir et km restants</string>
+    <string name="apps_kind_car3d">Voiture 3D</string>
+    <string name="apps_kind_car3d_blurb">Faites pivoter le modèle</string>
+    <string name="apps_kind_doors">Portes</string>
+    <string name="apps_kind_doors_blurb">État des portes et du coffre (MCU)</string>
+    <string name="apps_kind_can_mon">Moniteur CAN</string>
+    <string name="apps_kind_can_mon_blurb">Trames CAN brutes (débogage)</string>
+    <string name="apps_kind_speed_hud">Vitesse</string>
+    <string name="apps_kind_speed_hud_blurb">Grande vitesse numérique (OBD ou GPS)</string>
+    <string name="apps_kind_compass">Boussole</string>
+    <string name="apps_kind_compass_blurb">Cap, altitude et vitesse GPS</string>
+    <string name="apps_kind_trip">Ordinateur de bord</string>
+    <string name="apps_kind_trip_blurb">Distance, durée, vitesse moy. et max.</string>
+    <string name="apps_kind_gforce">Force G</string>
+    <string name="apps_kind_gforce_blurb">g en virage et au freinage</string>
+    <string name="apps_kind_parking">Place de parking</string>
+    <string name="apps_kind_parking_blurb">Mémorisez où vous êtes garé, retrouvez-le à pied</string>
+    <string name="apps_kind_clock">Horloge</string>
+    <string name="apps_kind_clock_blurb">Heure et date en grand</string>
+    <string name="apps_kind_weather">Météo</string>
+    <string name="apps_kind_weather_blurb">Conditions sur place (sans compte)</string>
+    <string name="apps_kind_calendar">Agenda</string>
+    <string name="apps_kind_calendar_blurb">Vos prochains rendez-vous</string>
+    <string name="apps_kind_quick_dial">Appel rapide</string>
+    <string name="apps_kind_quick_dial_blurb">Contacts favoris, appel en une touche</string>
+    <string name="apps_kind_notifications">Notifications</string>
+    <string name="apps_kind_notifications_blurb">Messages et alertes de vos applis</string>
+    <string name="apps_kind_audio">Audio</string>
+    <string name="apps_kind_audio_blurb">Volume, sourdine, son et réglages Bluetooth</string>
+
+    <!-- Add-widget catalogue: dialog -->
+    <string name="apps_add_widget">Ajouter un widget</string>
+    <string name="apps_pick_launch_bar">Barre d\'applis</string>
+    <string name="apps_pick_launch_bar_blurb">Vos applis favorites en ligne</string>
+    <string name="apps_pick_system_widget">Widget système…</string>
+    <string name="apps_pick_system_widget_blurb">N\'importe quel widget installé</string>
+    <string name="apps_cancel">Annuler</string>
+    <string name="apps_save">Enregistrer</string>
+
+    <!-- Launch bar tile and its editor -->
+    <string name="apps_launch_bar_empty">Barre d\'applis — touchez le crayon pour en ajouter</string>
+    <string name="apps_launch_bar_edit">Modifier la barre d\'applis</string>
+    <string name="apps_launch_bar_editor_title">Applis de la barre</string>
+    <string name="apps_launch_bar_editor_empty">Aucune appli. Ajoutez celles que vous utilisez le plus.</string>
+    <string name="apps_move_left">Déplacer à gauche</string>
+    <string name="apps_move_right">Déplacer à droite</string>
+    <string name="apps_remove">Retirer</string>
+    <string name="apps_add_app">Ajouter une appli</string>
+    <plurals name="apps_launch_bar_full">
+        <item quantity="one">Barre pleine (%1$d appli)</item>
+        <item quantity="many">Barre pleine (%1$d applis)</item>
+        <item quantity="other">Barre pleine (%1$d applis)</item>
+    </plurals>
+    <string name="apps_launch_bar_add_title">Ajouter à la barre</string>
+
+    <!-- App picker and all-apps drawer -->
+    <string name="apps_choose_app">Choisir une appli</string>
+    <string name="apps_all_apps">Toutes les applis</string>
+    <string name="apps_close_drawer">Fermer la liste des applis</string>
+    <string name="apps_no_apps_found">Aucune appli trouvée</string>
+
+    <!-- Docked app window tile (%1$s is the app name; the tile title is ALL CAPS) -->
+    <string name="apps_window_title">FENÊTRE %1$s</string>
+    <string name="apps_window_maps_docked_beside">Maps est ancré à côté du tableau de bord.</string>
+    <string name="apps_window_docked">Ancré : %1$s (%2$s)</string>
+    <string name="apps_window_gave_up">Le système maintient %1$s à sa place</string>
+    <string name="apps_window_moving">Déplacement de %1$s ici…</string>
+    <string name="apps_window_opening">Ouverture de %1$s ici…</string>
+    <string name="apps_window_maps_hint">Google Maps s\'ancre ici.\nOuvrez-le ci-dessous, ou lancez le guidage et appuyez sur Accueil.</string>
+    <string name="apps_window_app_hint">%1$s s\'affiche ici, dans une fenêtre de la taille de cette tuile.</string>
+    <string name="apps_window_open">Ouvrir %1$s ici</string>
+    <string name="apps_window_open_full">Ouvrir %1$s en entier ici</string>
+    <string name="apps_window_error_gave_up">Impossible de garder l\'appli ouverte en fenêtre</string>
+    <string name="apps_window_error_no_shell">Pas de root (Magisk) et le socket ADB du port %1$d n\'écoute pas</string>
+
+    <!-- Docked app window tile: diagnostics (%1$s / %2$s are pixel rectangles or system output) -->
+    <string name="apps_window_diag_position">Fenêtre %1$s → cible %2$s</string>
+    <string name="apps_window_diag_last">Dernier : %1$s</string>
+    <string name="apps_window_diag_seen">Fenêtres : %1$s</string>
+
+    <!-- Floating split-screen swap button (accessibility label) -->
+    <string name="apps_swap_split_panes">Inverser les applis de l\'écran partagé</string>
+</resources>

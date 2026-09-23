@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings dialog (also the menu item) -->
+    <string name="ai_title">Mecânico IA</string>
+    <string name="ai_explanation">Quando o adaptador OBD se liga, o Dashwheel procura códigos de avaria sozinho. Cada código novo é explicado pelo Google Gemini e dito em voz alta; os detalhes aparecem no bloco Códigos de avaria. Só são enviados os códigos, as leituras do motor e o modelo do carro.</string>
+    <string name="ai_activation_code">Código de ativação</string>
+    <string name="ai_activation_hint">Desbloqueia a chave integrada</string>
+    <string name="ai_activate">Ativar</string>
+    <string name="ai_own_key">Ou uma chave API Gemini própria</string>
+    <string name="ai_key">Chave API Gemini</string>
+    <string name="ai_key_hint">Grátis em aistudio.google.com → Get API key</string>
+    <string name="ai_engine">Motor</string>
+    <string name="ai_language">Idioma</string>
+    <string name="ai_language_auto">Como a app</string>
+    <string name="ai_speak">Avisos por voz</string>
+    <string name="ai_speak_detail">Novos códigos de avaria, sobreaquecimento, bateria sem carregar</string>
+    <string name="ai_test">Testar</string>
+    <string name="ai_done">Concluído</string>
+
+    <!-- Settings dialog: test results -->
+    <string name="ai_test_ok">O Gemini funciona ✓ (%1$s).</string>
+    <string name="ai_test_activated_ok">Ativado ✓ O Gemini funciona ✓ (%1$s).</string>
+    <string name="ai_test_failed">Não funcionou: %1$s</string>
+    <string name="ai_test_activated_unreachable">Ativado ✓ Gemini ainda inacessível: %1$s</string>
+    <string name="ai_wrong_code">Código de ativação errado</string>
+    <string name="ai_no_voice">Nenhuma voz em %1$s neste aparelho: adicionar uma em Definições do Android → Texto para voz.</string>
+
+    <!-- Spoken by the car, in the mechanic's language (resolved with the AI language, not the screen's) -->
+    <string name="ai_say_ready">O mecânico IA está pronto.</string>
+    <plurals name="ai_say_new_codes">
+        <item quantity="one">%1$d novo código de avaria do motor: %2$s. Detalhes no ecrã.</item>
+        <item quantity="many">%1$d novos códigos de avaria do motor: %2$s. Detalhes no ecrã.</item>
+        <item quantity="other">%1$d novos códigos de avaria do motor: %2$s. Detalhes no ecrã.</item>
+    </plurals>
+    <string name="ai_say_overheat">Atenção, o motor está a sobreaquecer: %1$d graus. Pare quando for seguro e desligue o motor.</string>
+    <string name="ai_say_not_charging">A bateria não está a carregar: %1$s volts com o motor a trabalhar. Siga para uma oficina e desligue o que não for necessário.</string>
+    <string name="ai_say_weak_battery">A bateria está fraca: %1$s volts com o motor desligado. Convém testá-la em breve.</string>
+
+    <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
+    <string name="ai_verdict_ok">Pode seguir viagem</string>
+    <string name="ai_verdict_soon">Verificar em breve</string>
+    <string name="ai_verdict_stop">Pare o carro</string>
+    <string name="ai_likely">Provável: %1$s</string>
+    <string name="ai_check_first">Verificar primeiro: %1$s</string>
+
+    <!-- Fault codes tile: status -->
+    <string name="ai_no_codes">Sem códigos de avaria ✓</string>
+    <string name="ai_cleared">Apagados ✓</string>
+    <string name="ai_scan_failed">Falha na leitura</string>
+    <string name="ai_clear_failed">Falha ao apagar</string>
+    <string name="ai_thinking">A consultar o mecânico IA…</string>
+    <string name="ai_retry">Tentar de novo</string>
+    <string name="ai_note_no_key">Adicionar uma chave Gemini gratuita (menu → Mecânico IA) para conselhos em linguagem simples.</string>
+    <string name="ai_note_unavailable">IA indisponível: %1$s</string>
+
+    <!-- Why asking Gemini failed (follows "AI unavailable: " / "Didn't work: ") -->
+    <string name="ai_error_quota">a quota gratuita de hoje esgotou-se</string>
+    <string name="ai_error_key_refused">a chave foi recusada</string>
+    <string name="ai_error_gemini">erro do Gemini %1$d</string>
+    <string name="ai_error_empty">o Gemini deu uma resposta vazia</string>
+    <string name="ai_error_unreadable">a resposta do Gemini era ilegível</string>
+    <string name="ai_error_offline">sem ligação à Internet</string>
+    <string name="ai_error_unknown">erro desconhecido</string>
+</resources>

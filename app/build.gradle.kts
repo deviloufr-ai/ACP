@@ -89,6 +89,17 @@ android {
         buildConfig = true
     }
 
+    androidResources {
+        // The languages the app is translated into (see tools/check_translations.py);
+        // drops the dozens of others the libraries bring, keeping the APK small.
+        localeFilters += listOf("en", "fr", "de", "es", "it", "pt", "nl", "pl")
+    }
+
+    // The language can be switched inside the app, so every build carries them all.
+    bundle {
+        language { enableSplit = false }
+    }
+
     lint {
         // Errors fail CI; warnings (unused resources, newer versions) do not.
         abortOnError = true

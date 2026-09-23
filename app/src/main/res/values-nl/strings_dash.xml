@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common buttons and labels -->
+    <string name="dash_cancel">Annuleren</string>
+    <string name="dash_done">Klaar</string>
+    <string name="dash_close">Sluiten</string>
+    <string name="dash_add">Toevoegen</string>
+    <string name="dash_selected">Geselecteerd</string>
+    <string name="dash_dismiss">Sluiten</string>
+    <string name="dash_got_it">Begrepen</string>
+
+    <!-- Top bar -->
+    <string name="dash_all_apps">Alle apps</string>
+    <string name="dash_screen_layout">Schermindeling: %1$s</string>
+    <string name="dash_more">Meer</string>
+    <string name="dash_obd_connected">OBD verbonden</string>
+    <string name="dash_obd_connecting">OBD maakt verbinding</string>
+    <string name="dash_obd_error">OBD-fout, tik om opnieuw te verbinden</string>
+    <string name="dash_obd_off">OBD uit, tik om te verbinden</string>
+    <string name="dash_alert_battery">Accu %1$.1fV</string>
+    <string name="dash_alert_coolant">Koelvloeistof %1$d°C</string>
+
+    <!-- Top bar menu -->
+    <string name="dash_menu_edit_dashboards">Dashboards bewerken</string>
+    <string name="dash_menu_done_editing">Klaar met bewerken</string>
+    <string name="dash_menu_theme">Thema</string>
+    <string name="dash_menu_split_screen">Gesplitst scherm met een app</string>
+
+    <!-- Edit bar (arranging a dashboard) -->
+    <string name="dash_arranging_dashboard">Dashboard %1$d indelen</string>
+    <string name="dash_arranging_hint">Houd een tegel ingedrukt om hem te verplaatsen, sleep de hoekgreep om het formaat te wijzigen. Neerzetten op een tegel wisselt of verschuift die.</string>
+    <string name="dash_undo">Ongedaan maken</string>
+    <string name="dash_reset_page">Pagina wissen</string>
+
+    <!-- Update banner -->
+    <string name="dash_update_available">Update beschikbaar – %1$s</string>
+    <string name="dash_update_downloading">Update downloaden… %1$d%%</string>
+    <string name="dash_update_installing">Installatie starten…</string>
+    <string name="dash_update">Bijwerken</string>
+
+    <!-- Tiles while arranging -->
+    <string name="dash_remove_tile">%1$s verwijderen</string>
+    <string name="dash_resize_tile">Formaat wijzigen: %1$s</string>
+    <string name="dash_app_window">%1$s-venster</string>
+    <string name="dash_describe_split_pair">app-paar</string>
+    <string name="dash_describe_launch_bar">startbalk</string>
+    <string name="dash_describe_widget">widget</string>
+    <string name="dash_app_widget">App-widget</string>
+    <string name="dash_shown_while_arranging">Getoond tijdens indelen</string>
+    <string name="dash_map_needs_gpu">Kaart heeft een echte GPU nodig</string>
+    <string name="dash_car3d_needs_gpu">3D-auto heeft een echte GPU nodig</string>
+    <string name="dash_not_on_emulator">Niet beschikbaar op de emulator</string>
+
+    <!-- Layout notices -->
+    <string name="dash_notice_title">Onvoldoende ruimte</string>
+    <string name="dash_notice_no_space">Dit dashboard heeft geen ruimte voor die tegel. Verwijder of verklein tegels, of gebruik een andere pagina.</string>
+    <string name="dash_notice_no_room_to_move">Geen ruimte om de andere tegels opzij te schuiven. Maak eerst wat ruimte vrij.</string>
+    <string name="dash_notice_resize_overlap">Dit formaat overlapt een andere tegel. Maak eerst ruimte vrij.</string>
+
+    <!-- Add to dashboard -->
+    <string name="dash_add_to_dashboard">Toevoegen aan dashboard</string>
+    <string name="dash_add_app">App toevoegen</string>
+    <string name="dash_add_app_window">App-venster toevoegen (draait in de tegel)</string>
+    <string name="dash_add_app_pair">App-paar toevoegen (gesplitst)</string>
+    <string name="dash_add_widget">Widget toevoegen</string>
+
+    <!-- Split screen -->
+    <string name="dash_swap_split">Gesplitste apps links/rechts wisselen</string>
+    <string name="dash_split_with">Gesplitst scherm met…</string>
+    <string name="dash_pair_first">App-paar – eerste app (links)</string>
+    <string name="dash_pair_second">App-paar – tweede app (rechts)</string>
+    <string name="dash_enable_split_title">Gesplitst scherm inschakelen</string>
+    <string name="dash_enable_split_body">Deze ROM blokkeert de gebruikelijke API\'s voor gesplitst scherm, dus gebruikt Dashwheel de eigen splitsing van het systeem, dezelfde als bij recente apps. Zet eenmalig ‘Dashwheel’ aan onder Instellingen → Toegankelijkheid om dit toe te staan.</string>
+    <string name="dash_open_settings">Instellingen openen</string>
+
+    <!-- System app install (root) -->
+    <string name="dash_system_app_title">Systeem-app (geavanceerd)</string>
+    <string name="dash_system_app_body">Installeer Dashwheel als geprivilegieerde systeem-app, zodat het de echte Google Maps-app – met navigatie – in de Maps-tegel kan insluiten, zoals fabriekslaunchers. Met Magisk gebeurt dat systemless (een Magisk-module – werkt ook als /system vol is); anders via su of de interne root-ADB (:%1$d). Start daarna opnieuw op om het te activeren.</string>
+    <string name="dash_root_checking">Root controleren…</string>
+    <string name="dash_root_available">Root (su) beschikbaar ✓ – gebruikt Magisk-module indien aanwezig</string>
+    <string name="dash_root_missing">Geen su – probeert interne root-ADB (:%1$d).</string>
+    <string name="dash_install_system_app">Installeren als systeem-app</string>
+    <string name="dash_reboot_now">Nu herstarten</string>
+    <string name="dash_system_installed">Geïnstalleerd. Herstart om ingesloten Maps te activeren.</string>
+    <string name="dash_system_failed">Mislukt: %1$s</string>
+
+    <!-- System app-widget picker -->
+    <string name="dash_widget_unavailable">Widget niet beschikbaar</string>
+    <string name="dash_choose_widget">Kies een widget</string>
+    <string name="dash_no_widgets_found">Geen widgets gevonden.</string>
+
+    <!-- Theme picker -->
+    <string name="dash_theme_picker_title">Dashboardthema</string>
+    <string name="dash_appearance_auto">Auto</string>
+    <string name="dash_appearance_dark">Donker</string>
+    <string name="dash_appearance_light">Licht</string>
+    <string name="dash_appearance_auto_hint">Elk thema volgt de dag-/nachtmodus van de auto</string>
+    <string name="dash_appearance_dark_hint">Elk thema gebruikt zijn donkere versie</string>
+    <string name="dash_appearance_light_hint">Elk thema gebruikt zijn lichte versie</string>
+
+    <!-- Theme names and descriptions (the enum names are what gets saved) -->
+    <string name="dash_theme_standard">Standaard</string>
+    <string name="dash_theme_standard_desc">Eenvoudige kaarten met zacht gloeiende meters</string>
+    <string name="dash_theme_original">Origineel</string>
+    <string name="dash_theme_original_desc">De eerste launcher-look: platte kaarten, twee wijzermeters</string>
+    <string name="dash_theme_aurora">Auroraglas</string>
+    <string name="dash_theme_aurora_desc">Glazen panelen, gloeiende meters, bediening met kleurverloop</string>
+    <string name="dash_theme_neon">Neon</string>
+    <string name="dash_theme_neon_desc">Futuristische cockpit in blauw en violet</string>
+    <string name="dash_theme_clean">Strak</string>
+    <string name="dash_theme_clean_desc">Minimaal, hoog contrast en goed leesbaar</string>
+    <string name="dash_theme_premium_glass">Premium glas</string>
+    <string name="dash_theme_premium_glass_desc">Rookglas \'s nachts, matglas overdag</string>
+    <string name="dash_theme_sporty">Sportief</string>
+    <string name="dash_theme_sporty_desc">Rode sportcockpit</string>
+    <string name="dash_theme_floating">Zwevend</string>
+    <string name="dash_theme_floating_desc">Geen tegelachtergrond: widgets en pictogrammen staan op de achtergrond</string>
+    <string name="dash_theme_orbit">Orbit</string>
+    <string name="dash_theme_orbit_desc">Alles rond: een draaiende plaat, ringmeters, bellen</string>
+    <string name="dash_theme_cockpit">Cockpit</string>
+    <string name="dash_theme_cockpit_desc">Analoge meters met chroomringen en tuimelschakelaars op gestikt leer</string>
+    <string name="dash_theme_horizon">Horizon</string>
+    <string name="dash_theme_horizon_desc">Geen widgets, alleen de lucht en de weg vooruit</string>
+    <string name="dash_theme_tape_deck">Cassettedeck</string>
+    <string name="dash_theme_tape_deck_desc">Synthwave-autoradio uit de jaren 80: cassette, neonraster, ledcijfers</string>
+
+    <!-- Screen layouts (the enum names are what gets saved) -->
+    <string name="dash_layout_grid">Alleen dashboards</string>
+    <string name="dash_layout_grid_desc">Veegbare pagina\'s vullen het scherm</string>
+    <string name="dash_layout_maps_left">Kaart links</string>
+    <string name="dash_layout_maps_left_desc">Google Maps vast op de linkerhelft, pagina\'s vegen rechts</string>
+    <string name="dash_layout_maps_right">Kaart rechts</string>
+    <string name="dash_layout_maps_right_desc">Google Maps vast op de rechterhelft, pagina\'s vegen links</string>
+</resources>

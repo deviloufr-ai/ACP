@@ -51,6 +51,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import kotlin.math.ceil
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -359,7 +360,7 @@ internal fun GridTile(
                     containerColor = DashColors.Warning, contentColor = Color.Black
                 )
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove ${item.describe()}", modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(18.dp))
             }
 
             // Bottom-right resize handle: drag to change the cell span.
@@ -393,7 +394,7 @@ internal fun GridTile(
             ) {
                 Icon(
                     imageVector = Icons.Filled.OpenInFull,
-                    contentDescription = "Resize ${item.describe()}",
+                    contentDescription = stringResource(R.string.dash_resize_tile, item.describe()),
                     tint = DashColors.Background,
                     modifier = Modifier.size(18.dp)
                 )
@@ -443,7 +444,7 @@ internal fun TileContent(
         is DashboardItem.AppWindow -> {
             val label = appsByPackage[item.packageName]?.label ?: item.packageName.substringAfterLast('.')
             // While arranging, the window would cover its own tile's handles.
-            if (editing) EditPlaceholder(icon = Icons.Filled.OpenInNew, label = "$label window")
+            if (editing) EditPlaceholder(icon = Icons.Filled.OpenInNew, label = stringResource(R.string.dash_app_window, label))
             else PipAnchorCard(modifier = Modifier.fillMaxSize(), packageName = item.packageName, appLabel = label, onWindowBiggerThanTile = onFitToWindow)
         }
 
@@ -466,7 +467,7 @@ internal fun TileContent(
                 EditPlaceholder(icon = Icons.Filled.Navigation, label = BuiltinKind.NAVMAP.label)
             } else if (isEmulator) {
                 // MapLibre's native renderer segfaults on the emulator's software GL.
-                EditPlaceholder(icon = Icons.Filled.Navigation, label = "Map needs a real GPU", hint = "Not available on the emulator")
+                EditPlaceholder(icon = Icons.Filled.Navigation, label = stringResource(R.string.dash_map_needs_gpu), hint = stringResource(R.string.dash_not_on_emulator))
             } else Box(
                 modifier = Modifier.fillMaxSize().background(DashColors.Card)
             ) {
@@ -513,7 +514,7 @@ internal fun TileContent(
                 EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
             } else if (isEmulator) {
                 // Filament fails the same way as the map on the emulator.
-                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = "3D car needs a real GPU", hint = "Not available on the emulator")
+                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = stringResource(R.string.dash_car3d_needs_gpu), hint = stringResource(R.string.dash_not_on_emulator))
             } else Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -534,7 +535,7 @@ internal fun TileContent(
         }
 
         is DashboardItem.SystemWidget -> if (editing) {
-            EditPlaceholder(icon = Icons.Filled.Widgets, label = "App widget")
+            EditPlaceholder(icon = Icons.Filled.Widgets, label = stringResource(R.string.dash_app_widget))
         } else Card(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -559,21 +560,22 @@ internal fun AddTile(onClick: () -> Unit) {
                 .itemFill(DashColors.Card, CircleShape, rim = null),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add", tint = DashColors.Accent, modifier = Modifier.size(34.dp))
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.dash_add), tint = DashColors.Accent, modifier = Modifier.size(34.dp))
         }
         Spacer(Modifier.height(6.dp))
-        Text("Add", color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        Text(stringResource(R.string.dash_add), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
     }
 }
 
 /** Short spoken name for a tile, for the edit controls' accessibility labels. */
+@Composable
 private fun DashboardItem.describe(): String = when (this) {
     is DashboardItem.BuiltinWidget -> kind.label
     is DashboardItem.AppShortcut -> packageName.substringAfterLast('.')
-    is DashboardItem.SplitPair -> "split pair"
-    is DashboardItem.LaunchBar -> "launch bar"
-    is DashboardItem.SystemWidget -> "widget"
-    is DashboardItem.AppWindow -> packageName.substringAfterLast('.') + " window"
+    is DashboardItem.SplitPair -> stringResource(R.string.dash_describe_split_pair)
+    is DashboardItem.LaunchBar -> stringResource(R.string.dash_describe_launch_bar)
+    is DashboardItem.SystemWidget -> stringResource(R.string.dash_describe_widget)
+    is DashboardItem.AppWindow -> stringResource(R.string.dash_app_window, packageName.substringAfterLast('.'))
 }
 
 /**
@@ -600,7 +602,11 @@ internal fun tileKeys(items: List<DashboardItem>): List<String> {
 
 /** Static stand-in for a view-hosting tile while the dashboard is being arranged. */
 @Composable
-internal fun EditPlaceholder(icon: ImageVector, label: String, hint: String = "Shown while arranging") {
+internal fun EditPlaceholder(
+    icon: ImageVector,
+    label: String,
+    hint: String = stringResource(R.string.dash_shown_while_arranging)
+) {
     Card(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),

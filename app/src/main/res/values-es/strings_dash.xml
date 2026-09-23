@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common buttons and labels -->
+    <string name="dash_cancel">Cancelar</string>
+    <string name="dash_done">Listo</string>
+    <string name="dash_close">Cerrar</string>
+    <string name="dash_add">Añadir</string>
+    <string name="dash_selected">Seleccionado</string>
+    <string name="dash_dismiss">Descartar</string>
+    <string name="dash_got_it">Entendido</string>
+
+    <!-- Top bar -->
+    <string name="dash_all_apps">Todas las apps</string>
+    <string name="dash_screen_layout">Diseño de pantalla: %1$s</string>
+    <string name="dash_more">Más</string>
+    <string name="dash_obd_connected">OBD conectado</string>
+    <string name="dash_obd_connecting">Conectando OBD</string>
+    <string name="dash_obd_error">Error de OBD, toca para reconectar</string>
+    <string name="dash_obd_off">OBD desactivado, toca para conectar</string>
+    <string name="dash_alert_battery">Batería %1$.1fV</string>
+    <string name="dash_alert_coolant">Refrigerante %1$d°C</string>
+
+    <!-- Top bar menu -->
+    <string name="dash_menu_edit_dashboards">Editar paneles</string>
+    <string name="dash_menu_done_editing">Terminar edición</string>
+    <string name="dash_menu_theme">Tema</string>
+    <string name="dash_menu_split_screen">Pantalla dividida con una app</string>
+
+    <!-- Edit bar (arranging a dashboard) -->
+    <string name="dash_arranging_dashboard">Organizando panel %1$d</string>
+    <string name="dash_arranging_hint">Mantén pulsada una tarjeta para moverla y arrastra el tirador de la esquina para cambiar su tamaño. Al soltarla sobre otra, se intercambian o se desplaza.</string>
+    <string name="dash_undo">Deshacer</string>
+    <string name="dash_reset_page">Vaciar página</string>
+
+    <!-- Update banner -->
+    <string name="dash_update_available">Actualización disponible: %1$s</string>
+    <string name="dash_update_downloading">Descargando actualización… %1$d %%</string>
+    <string name="dash_update_installing">Iniciando el instalador…</string>
+    <string name="dash_update">Actualizar</string>
+
+    <!-- Tiles while arranging -->
+    <string name="dash_remove_tile">Quitar %1$s</string>
+    <string name="dash_resize_tile">Cambiar tamaño: %1$s</string>
+    <string name="dash_app_window">Ventana de %1$s</string>
+    <string name="dash_describe_split_pair">par de apps</string>
+    <string name="dash_describe_launch_bar">barra de inicio</string>
+    <string name="dash_describe_widget">widget</string>
+    <string name="dash_app_widget">Widget de app</string>
+    <string name="dash_shown_while_arranging">Se muestra al organizar</string>
+    <string name="dash_map_needs_gpu">El mapa necesita una GPU real</string>
+    <string name="dash_car3d_needs_gpu">El coche 3D necesita una GPU real</string>
+    <string name="dash_not_on_emulator">No disponible en el emulador</string>
+
+    <!-- Layout notices -->
+    <string name="dash_notice_title">Falta espacio</string>
+    <string name="dash_notice_no_space">Este panel no tiene espacio para esa tarjeta. Quita o redimensiona tarjetas, o usa otra página.</string>
+    <string name="dash_notice_no_room_to_move">No hay sitio para apartar las otras tarjetas. Libera espacio primero.</string>
+    <string name="dash_notice_resize_overlap">Ese tamaño se superpone a otra tarjeta. Haz sitio antes de cambiar el tamaño.</string>
+
+    <!-- Add to dashboard -->
+    <string name="dash_add_to_dashboard">Añadir al panel</string>
+    <string name="dash_add_app">Añadir app</string>
+    <string name="dash_add_app_window">Añadir ventana de app (dentro de la tarjeta)</string>
+    <string name="dash_add_app_pair">Añadir par de apps (dividida)</string>
+    <string name="dash_add_widget">Añadir widget</string>
+
+    <!-- Split screen -->
+    <string name="dash_swap_split">Intercambiar apps izquierda/derecha</string>
+    <string name="dash_split_with">Pantalla dividida con…</string>
+    <string name="dash_pair_first">Par de apps: primera app (izquierda)</string>
+    <string name="dash_pair_second">Par de apps: segunda app (derecha)</string>
+    <string name="dash_enable_split_title">Activar pantalla dividida</string>
+    <string name="dash_enable_split_body">Esta ROM bloquea las API habituales de pantalla dividida, así que Dashwheel usa la del propio sistema, la misma que en Recientes. Activa «Dashwheel» una vez en Ajustes → Accesibilidad para permitirlo.</string>
+    <string name="dash_open_settings">Abrir ajustes</string>
+
+    <!-- System app install (root) -->
+    <string name="dash_system_app_title">App del sistema (avanzado)</string>
+    <string name="dash_system_app_body">Instala Dashwheel como app privilegiada del sistema para que pueda integrar la app real de Google Maps (con navegación) en la tarjeta Maps, como los launchers de fábrica. Con Magisk se instala sin modificar el sistema (un módulo de Magisk, funciona aunque /system esté lleno); si no, usa su o el ADB root interno (:%1$d). Reinicia después para activarlo.</string>
+    <string name="dash_root_checking">Comprobando root…</string>
+    <string name="dash_root_available">Root (su) disponible ✓: se usará el módulo de Magisk si existe</string>
+    <string name="dash_root_missing">Sin su: se intentará con el ADB root interno (:%1$d).</string>
+    <string name="dash_install_system_app">Instalar como app del sistema</string>
+    <string name="dash_reboot_now">Reiniciar ahora</string>
+    <string name="dash_system_installed">Instalado. Reinicia para activar Maps integrado.</string>
+    <string name="dash_system_failed">Error: %1$s</string>
+
+    <!-- System app-widget picker -->
+    <string name="dash_widget_unavailable">Widget no disponible</string>
+    <string name="dash_choose_widget">Elige un widget</string>
+    <string name="dash_no_widgets_found">No se han encontrado widgets.</string>
+
+    <!-- Theme picker -->
+    <string name="dash_theme_picker_title">Tema del panel</string>
+    <string name="dash_appearance_auto">Auto</string>
+    <string name="dash_appearance_dark">Oscuro</string>
+    <string name="dash_appearance_light">Claro</string>
+    <string name="dash_appearance_auto_hint">Cada tema sigue el modo día/noche del coche</string>
+    <string name="dash_appearance_dark_hint">Cada tema usa su versión oscura</string>
+    <string name="dash_appearance_light_hint">Cada tema usa su versión clara</string>
+
+    <!-- Theme names and descriptions (the enum names are what gets saved) -->
+    <string name="dash_theme_standard">Estándar</string>
+    <string name="dash_theme_standard_desc">Tarjetas sencillas con indicadores de brillo suave</string>
+    <string name="dash_theme_original">Original</string>
+    <string name="dash_theme_original_desc">El aspecto original: tarjetas planas, dos indicadores de aguja</string>
+    <string name="dash_theme_aurora">Cristal Aurora</string>
+    <string name="dash_theme_aurora_desc">Paneles de cristal, indicadores luminosos, controles con degradado</string>
+    <string name="dash_theme_neon">Neón</string>
+    <string name="dash_theme_neon_desc">Cabina futurista azul y violeta</string>
+    <string name="dash_theme_clean">Limpio</string>
+    <string name="dash_theme_clean_desc">Minimalista, de alto contraste y fácil de leer</string>
+    <string name="dash_theme_premium_glass">Cristal Premium</string>
+    <string name="dash_theme_premium_glass_desc">Cristal ahumado de noche, esmerilado de día</string>
+    <string name="dash_theme_sporty">Deportivo</string>
+    <string name="dash_theme_sporty_desc">Cabina deportiva roja</string>
+    <string name="dash_theme_floating">Flotante</string>
+    <string name="dash_theme_floating_desc">Sin fondo en las tarjetas: widgets e iconos sobre el fondo</string>
+    <string name="dash_theme_orbit">Órbita</string>
+    <string name="dash_theme_orbit_desc">Todo redondo: un disco girando, indicadores en anillo, burbujas</string>
+    <string name="dash_theme_cockpit">Cabina</string>
+    <string name="dash_theme_cockpit_desc">Esferas analógicas con aros cromados e interruptores sobre cuero pespunteado</string>
+    <string name="dash_theme_horizon">Horizonte</string>
+    <string name="dash_theme_horizon_desc">Sin widgets, solo el cielo y la carretera por delante</string>
+    <string name="dash_theme_tape_deck">Casete</string>
+    <string name="dash_theme_tape_deck_desc">Radio synthwave de los 80: casete, cuadrícula de neón, dígitos LED</string>
+
+    <!-- Screen layouts (the enum names are what gets saved) -->
+    <string name="dash_layout_grid">Solo paneles</string>
+    <string name="dash_layout_grid_desc">Páginas deslizables a pantalla completa</string>
+    <string name="dash_layout_maps_left">Mapa a la izquierda</string>
+    <string name="dash_layout_maps_left_desc">Google Maps fijo en la mitad izquierda, páginas deslizables a la derecha</string>
+    <string name="dash_layout_maps_right">Mapa a la derecha</string>
+    <string name="dash_layout_maps_right_desc">Google Maps fijo en la mitad derecha, páginas deslizables a la izquierda</string>
+</resources>

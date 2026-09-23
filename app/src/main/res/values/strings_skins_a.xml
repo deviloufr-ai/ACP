@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cockpit skin: top bar -->
+    <string name="cockpit_apps">APPS</string>
+    <string name="cockpit_layout">LAYOUT</string>
+    <string name="cockpit_screen_layout_desc">Screen layout: %1$s</string>
+    <string name="cockpit_more">More</string>
+    <string name="cockpit_time_desc">Time %1$s</string>
+    <string name="cockpit_out">OUT</string>
+    <string name="cockpit_connect_obd">Connect OBD</string>
+
+    <!-- Cockpit skin: dial faces (C/H = cold/hot coolant, E/F = empty/full tank) -->
+    <string name="cockpit_dial_rpm_title">×1000 r/min</string>
+    <string name="cockpit_dial_temp">TEMP</string>
+    <string name="cockpit_dial_fuel">FUEL</string>
+    <string name="cockpit_dial_volt">VOLT</string>
+    <string name="cockpit_dial_load">LOAD</string>
+    <string name="cockpit_dial_cold">C</string>
+    <string name="cockpit_dial_hot">H</string>
+    <string name="cockpit_dial_empty">E</string>
+    <string name="cockpit_dial_full">F</string>
+    <string name="cockpit_dial_fuel_title">FUEL</string>
+    <string name="cockpit_unit_rpm">rpm</string>
+    <string name="cockpit_rpm_line">%1$s RPM</string>
+
+    <!-- Cockpit skin: telemetry and speed -->
+    <string name="cockpit_speed_rpm_caption">KM/H · %1$d RPM</string>
+    <string name="cockpit_obd_off">OBD OFF</string>
+    <string name="cockpit_no_signal">NO SIGNAL</string>
+    <string name="cockpit_battery">Battery</string>
+    <string name="cockpit_coolant">Coolant</string>
+    <string name="cockpit_speed_warning">Speed warning</string>
+    <string name="cockpit_tap_to_connect">TAP TO\nCONNECT</string>
+
+    <!-- Cockpit skin: media -->
+    <string name="cockpit_media_access_needed">MEDIA ACCESS NEEDED · TAP TO ENABLE</string>
+    <string name="cockpit_nothing_playing">NOTHING PLAYING</string>
+    <string name="cockpit_tap_to_enable">TAP TO ENABLE</string>
+    <string name="cockpit_grant_media_access">Grant media access</string>
+    <string name="cockpit_previous">Previous</string>
+    <string name="cockpit_play">Play</string>
+    <string name="cockpit_pause">Pause</string>
+    <string name="cockpit_next">Next</string>
+    <string name="cockpit_vu_left">L</string>
+    <string name="cockpit_vu_right">R</string>
+
+    <!-- Cockpit skin: navigation, clock, weather, range -->
+    <string name="cockpit_open_navigation">Open navigation</string>
+    <string name="cockpit_no_access">NO ACCESS</string>
+    <string name="cockpit_no_route">NO ROUTE</string>
+    <string name="cockpit_tap_for_maps">TAP FOR MAPS</string>
+    <string name="cockpit_open_alarms">Open alarms</string>
+    <string name="cockpit_clock">Clock</string>
+    <string name="cockpit_loading">LOADING…</string>
+    <string name="cockpit_feels_wind">FEELS %1$d° · WIND %2$d KM/H</string>
+    <string name="cockpit_fuel_settings">Fuel signal settings</string>
+    <string name="cockpit_range">RANGE</string>
+
+    <!-- Cockpit skin: app toggles and launch bar -->
+    <string name="cockpit_open_app">Open %1$s</string>
+    <string name="cockpit_launch_bar_empty">LAUNCH BAR — TAP THE PENCIL TO ADD APPS</string>
+    <string name="cockpit_edit_launch_bar">Edit launch bar</string>
+
+    <!-- Orbit skin: top bar -->
+    <string name="orbit_all_apps">All apps</string>
+    <string name="orbit_screen_layout_desc">Screen layout: %1$s</string>
+    <string name="orbit_more">More</string>
+
+    <!-- Orbit skin: speed dial and satellite bubbles -->
+    <string name="orbit_sat_coolant">coolant</string>
+    <string name="orbit_sat_battery">battery</string>
+    <string name="orbit_sat_load">load</string>
+    <string name="orbit_rpm_value">%1$s rpm</string>
+    <string name="orbit_tap_to_connect">Tap to connect</string>
+    <string name="orbit_connecting">Connecting…</string>
+    <string name="orbit_connect_obd">Connect OBD</string>
+    <string name="orbit_no_signal">No signal</string>
+
+    <!-- Orbit skin: media -->
+    <string name="orbit_media_access_needed">Media access needed</string>
+    <string name="orbit_nothing_playing">Nothing playing</string>
+    <string name="orbit_tap_to_enable">Tap to enable</string>
+    <string name="orbit_start_music">Start music in any app</string>
+    <string name="orbit_previous_track">Previous track</string>
+    <string name="orbit_play">Play</string>
+    <string name="orbit_pause">Pause</string>
+    <string name="orbit_next_track">Next track</string>
+    <string name="orbit_grant_access">Grant access</string>
+
+    <!-- Orbit skin: navigation -->
+    <string name="orbit_no_route">No route</string>
+    <string name="orbit_directions_need_access">Directions need access</string>
+    <string name="orbit_tap_open_maps">Tap to open Google Maps</string>
+    <string name="orbit_tap_allow_notifications">Tap to allow notification access</string>
+
+    <!-- Orbit skin: clock and weather -->
+    <string name="orbit_open_alarms">Open alarms</string>
+    <string name="orbit_feels">Feels %1$d°</string>
+    <string name="orbit_wind">Wind %1$d km/h</string>
+    <string name="orbit_feels_wind">feels %1$d° · %2$d km/h</string>
+    <string name="orbit_offline">Offline</string>
+    <string name="orbit_loading">Loading…</string>
+
+    <!-- Orbit skin: fuel and range -->
+    <string name="orbit_to_empty">to empty</string>
+    <string name="orbit_liters_in_tank">≈ %1$.0f L in tank</string>
+    <string name="orbit_via_source">via %1$s</string>
+    <string name="orbit_tap_to_recalibrate">tap to recalibrate</string>
+    <string name="orbit_recalibrate_fuel">Recalibrate fuel</string>
+    <string name="orbit_fuel_percent">fuel %1$d%%</string>
+
+    <!-- Orbit skin: launch bar -->
+    <string name="orbit_launch_bar_empty">Launch bar — tap the pencil to add apps</string>
+    <string name="orbit_edit_launch_bar">Edit launch bar</string>
+</resources>

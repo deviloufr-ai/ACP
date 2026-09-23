@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OBD tiles: shared -->
+    <string name="vehicle_obd_not_connected">Brak połączenia z OBD</string>
+    <string name="vehicle_connect">Połącz</string>
+    <string name="vehicle_speed">Prędkość</string>
+    <string name="vehicle_rpm">obr/min</string>
+    <string name="vehicle_coolant">Płyn chłodn.</string>
+    <string name="vehicle_battery">Akumulator</string>
+    <string name="vehicle_fuel">Paliwo</string>
+    <string name="vehicle_close">Zamknij</string>
+    <string name="vehicle_cancel">Anuluj</string>
+    <string name="vehicle_reset">Resetuj</string>
+    <string name="vehicle_capture_a">Zapis A</string>
+    <string name="vehicle_capture_b">Zapis B</string>
+
+    <!-- Telemetry tile -->
+    <string name="vehicle_telemetry_title">TELEMETRIA</string>
+    <string name="vehicle_live">Na żywo</string>
+    <string name="vehicle_speed_caps">PRĘDKOŚĆ</string>
+    <string name="vehicle_rpm_caps">OBR/MIN</string>
+    <string name="vehicle_load">Obciążenie</string>
+
+    <!-- Fault codes tile -->
+    <string name="vehicle_fault_codes_title">KODY BŁĘDÓW</string>
+    <string name="vehicle_scan">Skanuj</string>
+    <string name="vehicle_clear">Wyczyść</string>
+
+    <!-- OBD data tile -->
+    <string name="vehicle_obd_data_title">DANE OBD</string>
+    <string name="vehicle_intake_air">Powietrze dolotowe</string>
+    <string name="vehicle_throttle">Przepustnica</string>
+    <string name="vehicle_engine_load">Obciążenie silnika</string>
+    <string name="vehicle_fuel_level">Poziom paliwa</string>
+
+    <!-- Fuel & range tile -->
+    <string name="vehicle_fuel_range_title">PALIWO I ZASIĘG</string>
+    <string name="vehicle_via_canbox">z CANbox</string>
+    <string name="vehicle_via_obd">z OBD</string>
+    <string name="vehicle_fuel_no_obd">OBD tego auta nie podaje poziomu paliwa. Można go odczytać z CANbox — wymaga roota.</string>
+    <string name="vehicle_find_fuel_signal">Znajdź sygnał paliwa</string>
+    <string name="vehicle_try_obd_fuel_pid">Spróbuj PID paliwa OBD</string>
+    <string name="vehicle_km_to_empty">POZOSTAŁE KM</string>
+    <string name="vehicle_range_approx">≈ zasięg</string>
+    <string name="vehicle_in_tank">W baku</string>
+    <string name="vehicle_avg_use">Śr. zużycie</string>
+    <string name="vehicle_learn_fuel">Odczytaj paliwo z CANbox</string>
+    <string name="vehicle_recalibrate_fuel">Ponownie skalibruj paliwo</string>
+
+    <!-- Fuel signal finder dialog -->
+    <string name="vehicle_finder_help">Ustaw poziom wskazywany na desce rozdzielczej i dotknij Zapis A — potem zamknij i używaj auta normalnie. Po kilku dniach, gdy wskazanie nieco spadnie, otwórz ponownie, ustaw nową wartość i dotknij Zapis B. Zapis A jest zachowywany po restarcie. Proponowane są tylko bajty, które zmieniały się razem z paliwem.</string>
+    <string name="vehicle_dash_reads">Wskazanie</string>
+    <string name="vehicle_waiting_canbox">Oczekiwanie na dane CANbox… (wymaga roota)</string>
+    <string name="vehicle_finder_step_a">Ustaw wskazywany poziom paliwa, a potem dotknij Zapis A.</string>
+    <string name="vehicle_finder_step_b">Zapis A przy %1$d%% (zachowany). Można zamknąć i jeździć normalnie — wróć, gdy wskazanie spadnie o kilka %%, ustaw nową wartość, a potem Zapis B.</string>
+    <string name="vehicle_finder_same">A i B mają ten sam poziom. Wykonaj Zapis B przy innym poziomie paliwa.</string>
+    <string name="vehicle_finder_none">Żaden bajt nie podążył za zmianą. Powtórz B po większym spadku.</string>
+    <string name="vehicle_finder_candidates">Bajty zmieniające się z paliwem</string>
+    <string name="vehicle_finder_frame">ramka %1$s · bajt %2$d</string>
+    <string name="vehicle_finder_raw">%1$d → %2$d · pełny≈%3$d</string>
+    <string name="vehicle_forget_current">Zapomnij bieżący</string>
+
+    <!-- OBD adapter picker -->
+    <string name="vehicle_select_adapter">Wybierz adapter OBD</string>
+    <string name="vehicle_no_paired">Brak sparowanych urządzeń Bluetooth. Najpierw sparuj adapter OBD w ustawieniach Bluetooth.</string>
+    <string name="vehicle_bt_settings">Ustawienia Bluetooth</string>
+
+    <!-- OBD adapter status messages -->
+    <string name="vehicle_unknown_device">Nieznane urządzenie</string>
+    <string name="vehicle_no_response">Brak odpowiedzi z adaptera</string>
+    <string name="vehicle_clear_rejected">Adapter odpowiedział „%1$s”. Włącz zapłon (silnik wyłączony) i spróbuj ponownie.</string>
+
+    <!-- Doors tile -->
+    <string name="vehicle_doors_title">DRZWI</string>
+    <string name="vehicle_waiting_mcu">Oczekiwanie na dane MCU… (wymaga roota)</string>
+    <string name="vehicle_door_front_left">Przednie lewe</string>
+    <string name="vehicle_door_front_right">Przednie prawe</string>
+    <string name="vehicle_door_rear_left">Tylne lewe</string>
+    <string name="vehicle_door_rear_right">Tylne prawe</string>
+    <string name="vehicle_door_tailgate">Klapa bagażnika</string>
+    <string name="vehicle_door_bonnet">Maska</string>
+    <string name="vehicle_door_any_open">Otwarte drzwi</string>
+    <string name="vehicle_doors_all_closed">Wszystko zamknięte</string>
+    <string name="vehicle_door_open_caps">OTWARTE</string>
+    <string name="vehicle_door_closed">zamknięte</string>
+
+    <!-- CAN monitor (debug tile) -->
+    <string name="vehicle_can_monitor_title">MONITOR CAN — znajdź sygnał</string>
+    <string name="vehicle_can_monitor_help">Drzwi ZAMKNIĘTE → Zapis A. Potem OTWÓRZ drzwi → Zapis B. Pokazywane są tylko różniące się sygnały dyskretne.</string>
+    <string name="vehicle_can_a_closed">A ✓ zamknięte</string>
+    <string name="vehicle_can_b_open">B ✓ otwarte</string>
+    <string name="vehicle_can_prompt">Zapis A (zamknięte), potem B (otwarte), aby porównać.</string>
+    <string name="vehicle_can_no_diff">Brak wyraźnej różnicy dyskretnej. Zrób to przy WYŁĄCZONYM silniku, aby czujniki nie dryfowały, i trzymaj drzwi otwarte podczas Zapisu B.</string>
+    <string name="vehicle_can_row_closed">zamknięte: %1$s</string>
+    <string name="vehicle_can_row_open">otwarte: %1$s</string>
+
+    <!-- Fault code (DTC) descriptions: title + what to check -->
+    <string name="vehicle_dtc_p0300_title">Losowe/wielokrotne wypadanie zapłonów</string>
+    <string name="vehicle_dtc_p0300_fix">Sprawdzić świece i cewki (THP: cewki to znany słaby punkt), wtryskiwacze oraz nieszczelności podciśnienia. Wymieniać świece/cewki kompletem.</string>
+    <string name="vehicle_dtc_p0301_title">Wypadanie zapłonów – cylinder 1</string>
+    <string name="vehicle_dtc_p0301_fix">Zamienić cewkę/świecę z cyl. 1 z innym cyl.; jeśli usterka się przenosi, wymienić tę cewkę/świecę. Sprawdzić też wtryskiwacz 1.</string>
+    <string name="vehicle_dtc_p0302_title">Wypadanie zapłonów – cylinder 2</string>
+    <string name="vehicle_dtc_p0302_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 2 i ciśnienie sprężania.</string>
+    <string name="vehicle_dtc_p0303_title">Wypadanie zapłonów – cylinder 3</string>
+    <string name="vehicle_dtc_p0303_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 3 i ciśnienie sprężania.</string>
+    <string name="vehicle_dtc_p0304_title">Wypadanie zapłonów – cylinder 4</string>
+    <string name="vehicle_dtc_p0304_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 4 i ciśnienie sprężania.</string>
+    <string name="vehicle_dtc_p0016_title">Korelacja wał korbowy/wałek rozrządu (bank 1 czujnik A)</string>
+    <string name="vehicle_dtc_p0016_fix">Typowe dla 1.6 THP: rozciągnięty łańcuch rozrządu. Sprawdzić łańcuch, napinacz oraz czujniki wałka rozrządu/wału korbowego. Często potrzebny zestaw łańcucha rozrządu.</string>
+    <string name="vehicle_dtc_p0017_title">Korelacja wał korbowy/wałek rozrządu (bank 1 czujnik B)</string>
+    <string name="vehicle_dtc_p0017_fix">Prawdopodobnie rozciągnięty łańcuch rozrządu / napinacz (1.6 THP). Sprawdzić łańcuch i koła zębate.</string>
+    <string name="vehicle_dtc_p0011_title">Wałek rozrządu dolotu – zbyt duże wyprzedzenie (bank 1)</string>
+    <string name="vehicle_dtc_p0011_fix">Zmiennik faz VVT lub zawór sterujący olejem. Sprawdzić poziom/jakość oleju, elektrozawór VVT i zużycie łańcucha rozrządu.</string>
+    <string name="vehicle_dtc_p0341_title">Czujnik położenia wałka rozrządu – zakres</string>
+    <string name="vehicle_dtc_p0341_fix">Sprawdzić czujnik wałka rozrządu i okablowanie; zweryfikować ustawienie rozrządu (łańcuch).</string>
+    <string name="vehicle_dtc_p0340_title">Czujnik położenia wałka rozrządu – obwód</string>
+    <string name="vehicle_dtc_p0340_fix">Przetestować/wymienić czujnik wałka rozrządu; sprawdzić złącze i okablowanie.</string>
+    <string name="vehicle_dtc_p0299_title">Zbyt niskie ciśnienie doładowania</string>
+    <string name="vehicle_dtc_p0299_fix">Częste w THP/HDi. Szukać nieszczelności doładowania (węże/intercooler), sprawdzić wastegate/siłownik turbo i zawór upustowy.</string>
+    <string name="vehicle_dtc_p0234_title">Zbyt wysokie ciśnienie doładowania</string>
+    <string name="vehicle_dtc_p0234_fix">Sprawdzić zacinający się siłownik wastegate, elektrozawór doładowania i zablokowaną zmienną geometrię VNT (HDi).</string>
+    <string name="vehicle_dtc_p0087_title">Zbyt niskie ciśnienie w listwie paliwowej</string>
+    <string name="vehicle_dtc_p0087_fix">HDi: sprawdzić filtr paliwa, zasilanie niskociśnieniowe, pompę wysokiego ciśnienia i regulator ciśnienia listwy; szukać powietrza/wycieków.</string>
+    <string name="vehicle_dtc_p0089_title">Działanie regulatora ciśnienia paliwa</string>
+    <string name="vehicle_dtc_p0089_fix">Sprawdzić regulator ciśnienia listwy/zawór dozujący i pompę; skontrolować filtr paliwa.</string>
+    <string name="vehicle_dtc_p0093_title">Wykryto duży wyciek paliwa</string>
+    <string name="vehicle_dtc_p0093_fix">HDi: sprawdzić przelewy wtryskiwaczy, przewody wysokiego ciśnienia i uszczelnienia pompy pod kątem wycieku oleju napędowego.</string>
+    <string name="vehicle_dtc_p0420_title">Sprawność katalizatora poniżej progu (bank 1)</string>
+    <string name="vehicle_dtc_p0420_fix">Często zużyty katalizator lub leniwa tylna sonda lambda. Najpierw wykluczyć nieszczelności wydechu i wypadanie zapłonów.</string>
+    <string name="vehicle_dtc_p0401_title">Niewystarczający przepływ EGR</string>
+    <string name="vehicle_dtc_p0401_fix">Wyczyścić lub wymienić zawór EGR; sprawdzić chłodnicę EGR i kanały pod kątem nagaru (częste w HDi).</string>
+    <string name="vehicle_dtc_p0402_title">Nadmierny przepływ EGR</string>
+    <string name="vehicle_dtc_p0402_fix">Sprawdzić, czy zawór EGR nie zawiesił się w pozycji otwartej, oraz jego sterowanie; usunąć nagar.</string>
+    <string name="vehicle_dtc_p2463_title">Zbyt duże nagromadzenie sadzy w DPF</string>
+    <string name="vehicle_dtc_p2463_fix">Diesel HDi: odbyć dłuższą jazdę trasą w celu regeneracji; sprawdzić czujnik ciśnienia DPF i poziom dodatku (Eolys). Może być potrzebna wymuszona regeneracja.</string>
+    <string name="vehicle_dtc_p242f_title">Zatkany DPF (nagromadzenie popiołu)</string>
+    <string name="vehicle_dtc_p242f_fix">DPF na końcu żywotności lub zatkany; może wymagać wymuszonej regeneracji albo czyszczenia/wymiany DPF.</string>
+    <string name="vehicle_dtc_p0113_title">Czujnik temperatury powietrza dolotowego – wysoki sygnał</string>
+    <string name="vehicle_dtc_p0113_fix">Sprawdzić czujnik IAT i okablowanie/złącze; wyczyścić lub wymienić czujnik (często w przepływomierzu/dolocie).</string>
+    <string name="vehicle_dtc_p0128_title">Płyn chłodn. poniżej temperatury termostatu</string>
+    <string name="vehicle_dtc_p0128_fix">Zwykle termostat zablokowany w pozycji otwartej. Wymienić termostat; sprawdzić poziom płynu i czujnik.</string>
+    <string name="vehicle_dtc_p0135_title">Grzałka sondy lambda (bank 1 czujnik 1)</string>
+    <string name="vehicle_dtc_p0135_fix">Sprawdzić obwód grzałki przedniej sondy lambda i bezpiecznik; wymienić sondę, jeśli grzałka jest przerwana.</string>
+    <string name="vehicle_dtc_p0130_title">Obwód sondy lambda (bank 1 czujnik 1)</string>
+    <string name="vehicle_dtc_p0130_fix">Sprawdzić przednią sondę lambda i okablowanie; wymienić, jeśli jest leniwa/uszkodzona.</string>
+    <string name="vehicle_dtc_p0171_title">Zbyt uboga mieszanka (bank 1)</string>
+    <string name="vehicle_dtc_p0171_fix">Szukać nieszczelności dolotu/podciśnienia (częste), zabrudzonego przepływomierza, słabej pompy paliwa/wtryskiwaczy.</string>
+    <string name="vehicle_dtc_p0172_title">Zbyt bogata mieszanka (bank 1)</string>
+    <string name="vehicle_dtc_p0172_fix">Szukać cieknących wtryskiwaczy, wysokiego ciśnienia paliwa, zabrudzonego przepływomierza lub uszkodzonej sondy lambda.</string>
+    <string name="vehicle_dtc_p0505_title">Układ regulacji biegu jałowego</string>
+    <string name="vehicle_dtc_p0505_fix">Wyczyścić przepustnicę; szukać nieszczelności dolotu i sprawdzić działanie silnika przepustnicy.</string>
+    <string name="vehicle_dtc_p2100_title">Obwód silnika siłownika przepustnicy</string>
+    <string name="vehicle_dtc_p2100_fix">Sprawdzić silnik przepustnicy i okablowanie; może być konieczna wymiana przepustnicy.</string>
+
+    <!-- Fault codes not in the table: described from the code's structure -->
+    <string name="vehicle_dtc_unknown_code">Nieznany kod</string>
+    <string name="vehicle_dtc_fallback_title">Usterka: %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_fix">Brak zapisanego opisu. Poszukać powiązanych kodów, sprawdzić czujnik/okablowanie danego obwodu i wyszukać „%1$s Citroën C4 Picasso”, aby znaleźć wskazówki dla tego modelu.</string>
+    <string name="vehicle_dtc_system_powertrain">układ napędowy</string>
+    <string name="vehicle_dtc_system_chassis">podwozie</string>
+    <string name="vehicle_dtc_system_body">nadwozie</string>
+    <string name="vehicle_dtc_system_network">sieć</string>
+    <string name="vehicle_dtc_system_unknown">nieznany układ</string>
+    <string name="vehicle_dtc_scope_generic">ogólna</string>
+    <string name="vehicle_dtc_scope_manufacturer">specyficzna dla producenta</string>
+    <string name="vehicle_dtc_area_fuel_air">dawkowanie paliwa i powietrza</string>
+    <string name="vehicle_dtc_area_ignition">zapłon / wypadanie zapłonów</string>
+    <string name="vehicle_dtc_area_emissions">emisja spalin / układy pomocnicze</string>
+    <string name="vehicle_dtc_area_idle">prędkość / regulacja biegu jałowego</string>
+    <string name="vehicle_dtc_area_computer">sterownik / wyjścia</string>
+    <string name="vehicle_dtc_area_transmission">skrzynia biegów</string>
+    <string name="vehicle_dtc_area_system">układ</string>
+</resources>
