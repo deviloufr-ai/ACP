@@ -36,4 +36,17 @@ class GeminiNetworkTest {
         assertEquals(R.string.ai_error_connect, res(ConnectException("failed to connect")))
         assertEquals(R.string.ai_error_offline, res(IOException("stream closed")))
     }
+
+    @Test
+    fun whenEveryModelFailsTheMostUsefulReasonIsShown() {
+        val busy = GeminiException("high demand", 503)
+        val retired = GeminiException("no longer available", 404)
+        val quota = GeminiException("quota", 429)
+        val badKey = GeminiException("API key not valid", 400)
+        val offline = UnknownHostException("generativelanguage.googleapis.com")
+        assertEquals(badKey, GeminiClient.mostTelling(listOf(busy, retired, badKey, quota)))
+        assertEquals(offline, GeminiClient.mostTelling(listOf(busy, offline, quota)))
+        assertEquals(busy, GeminiClient.mostTelling(listOf(retired, quota, busy)))
+        assertEquals(quota, GeminiClient.mostTelling(listOf(retired, quota)))
+    }
 }

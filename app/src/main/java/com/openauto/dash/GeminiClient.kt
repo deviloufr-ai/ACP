@@ -1,15 +1,28 @@
 package com.openauto.dash
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InterruptedIOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -37,18 +50,21 @@ internal object Ipv4First : Dns {
  * Google Gemini over plain REST (free key from aistudio.google.com). The key
  * travels in a header, never in the URL.
  *
- * Models are tried in order: the newest Flash, then Flash-Lite, which has its
- * own free quota. Only a spent quota, an overloaded or retired model moves on;
- * a bad key or no network fails straight away.
+ * All models are asked at once and the first good answer wins. On a busy free
+ * tier one model often answers while the others refuse ("high demand") or
+ * hang, so waiting on them in turn wasted the budget. Each model has its own
+ * free quota, and a car asks only a few times a day.
  */
 object GeminiClient {
 
-    // "-latest" aliases follow Google's newest release, so no version to bump.
-    val MODELS = listOf("gemini-flash-latest", "gemini-flash-lite-latest")
+    // "-latest" aliases follow Google's newest releases; the pinned versions
+    // are extra chances on a busy day, and simply drop out once retired (404).
+    val MODELS = listOf("gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.6-flash", "gemini-3.1-flash-lite")
 
     private const val BASE = "https://generativelanguage.googleapis.com/v1beta/models"
     private val JSON_TYPE = "application/json".toMediaType()
-    private val TRY_NEXT_MODEL = setOf(404, 429, 500, 503)
+    // Refusals that say nothing about the key or the request, only about the model.
+    private val MODEL_TROUBLE = setOf(404, 429, 500, 503)
 
     /** How long one [generate] may take in all, models and retries included, unless told otherwise. */
     const val BUDGET_MS = 90_000L
@@ -69,24 +85,46 @@ object GeminiClient {
         schema: JSONObject? = null,
         budgetMs: Long = BUDGET_MS
     ): Result<GeminiReply> =
-        withContext(Dispatchers.IO) {
-            val deadline = System.currentTimeMillis() + budgetMs
-            var failure: Throwable = IllegalStateException("No Gemini model configured")
-            for (model in MODELS) {
-                val left = deadline - System.currentTimeMillis()
-                if (left <= 0) break
+        withTimeoutOrNull(budgetMs) { race(apiKey, prompt, schema) }
+            ?: Result.failure(InterruptedIOException("No Gemini model answered within ${budgetMs / 1000} s"))
+
+    /** Every model at once; the first answer wins and the rest are cancelled. */
+    private suspend fun race(apiKey: String, prompt: String, schema: JSONObject?): Result<GeminiReply> = coroutineScope {
+        val pending: MutableList<Deferred<Result<GeminiReply>>> = MODELS.map { model ->
+            async {
                 try {
-                    return@withContext Result.success(GeminiReply(model, call(apiKey, model, prompt, schema, left)))
-                } catch (e: GeminiException) {
-                    failure = e
-                    if (e.status !in TRY_NEXT_MODEL) break
-                } catch (e: IOException) {
-                    failure = e
-                    break
+                    Result.success(GeminiReply(model, call(apiKey, model, prompt, schema)))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
                 }
             }
-            Result.failure(failure)
+        }.toMutableList()
+        val failures = mutableListOf<Throwable>()
+        while (pending.isNotEmpty()) {
+            val (done, result) = select { pending.forEach { d -> d.onAwait { d to it } } }
+            pending.remove(done)
+            if (result.isSuccess) {
+                pending.forEach { it.cancel() }
+                return@coroutineScope result
+            }
+            result.exceptionOrNull()?.let(failures::add)
         }
+        Result.failure(mostTelling(failures))
+    }
+
+    /**
+     * The failure worth showing when every model failed: a refused key or a
+     * broken link before "overloaded", "quota" or a retired model.
+     */
+    internal fun mostTelling(failures: List<Throwable>): Throwable =
+        failures.firstOrNull { it is GeminiException && it.status !in MODEL_TROUBLE }
+            ?: failures.firstOrNull { it is IOException }
+            ?: failures.firstOrNull { it is GeminiException && it.status == 503 }
+            ?: failures.firstOrNull { it is GeminiException && it.status == 429 }
+            ?: failures.firstOrNull()
+            ?: IllegalStateException("No Gemini model configured")
 
     /**
      * Whether the unit reaches Google at all, through Google's own tiny
@@ -100,7 +138,7 @@ object GeminiClient {
         }
     }
 
-    private fun call(apiKey: String, model: String, prompt: String, schema: JSONObject?, timeoutMs: Long): String {
+    private suspend fun call(apiKey: String, model: String, prompt: String, schema: JSONObject?): String {
         val body = JSONObject().put(
             "contents",
             JSONArray().put(
@@ -118,14 +156,22 @@ object GeminiClient {
             .header("x-goog-api-key", apiKey)
             .post(body.toString().toRequestBody(JSON_TYPE))
             .build()
-        val call = client.newCall(request)
-        // One limit for the whole exchange, name lookup and slow answer included.
-        call.timeout().timeout(timeoutMs, TimeUnit.MILLISECONDS)
-        call.execute().use { resp ->
-            val text = resp.body?.string().orEmpty()
+        client.newCall(request).await().use { resp ->
+            val text = withContext(Dispatchers.IO) { resp.body?.string().orEmpty() }
             if (!resp.isSuccessful) throw GeminiException(errorMessage(text) ?: "HTTP ${resp.code}", resp.code)
             return answerText(text) ?: throw GeminiException("Gemini gave an empty answer", resp.code)
         }
+    }
+
+    /** Runs the call without blocking a thread, and cancels it when the caller gives up (a lost race, the budget). */
+    private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+        cont.invokeOnCancellation { cancel() }
+        enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(e)
+            override fun onResponse(call: Call, response: Response) {
+                if (cont.isActive) cont.resume(response) else response.close()
+            }
+        })
     }
 
     /** The answer's text parts joined, skipping any "thought" parts; null when there is none. */

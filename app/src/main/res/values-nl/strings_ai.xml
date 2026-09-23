@@ -40,8 +40,19 @@
     <string name="ai_verdict_ok">Je kunt doorrijden</string>
     <string name="ai_verdict_soon">Laat het snel nakijken</string>
     <string name="ai_verdict_stop">Stop met rijden</string>
-    <string name="ai_likely">Waarschijnlijk: %1$s</string>
     <string name="ai_check_first">Eerst controleren: %1$s</string>
+    <string name="ai_details">Details</string>
+    <string name="ai_close">Sluiten</string>
+    <string name="ai_detail_overview">Overzicht</string>
+    <string name="ai_detail_meaning">Wat het betekent</string>
+    <string name="ai_detail_symptoms">Wat je kunt merken</string>
+    <string name="ai_detail_causes">Waarschijnlijke oorzaken</string>
+    <string name="ai_detail_check_first">Eerst controleren</string>
+    <string name="ai_detail_checks">Stap voor stap</string>
+    <string name="ai_detail_repair">Gebruikelijke reparatie</string>
+    <string name="ai_detail_cost">Geschatte kosten</string>
+    <string name="ai_detail_diy">Zelf te doen?</string>
+    <string name="ai_detail_driving">Kun je doorrijden?</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Geen foutcodes ✓</string>

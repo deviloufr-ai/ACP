@@ -68,16 +68,8 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Dispositivo desconhecido</string>
     <string name="vehicle_no_response">Sem resposta do adaptador</string>
-    <plurals name="vehicle_engine_lamp_on">
-        <item quantity="one">Luz do motor ACESA · a centralina do motor indica %1$d código</item>
-        <item quantity="many">Luz do motor ACESA · a centralina do motor indica %1$d códigos</item>
-        <item quantity="other">Luz do motor ACESA · a centralina do motor indica %1$d códigos</item>
-    </plurals>
-    <plurals name="vehicle_engine_lamp_off">
-        <item quantity="one">Luz do motor apagada · a centralina do motor indica %1$d código</item>
-        <item quantity="many">Luz do motor apagada · a centralina do motor indica %1$d códigos</item>
-        <item quantity="other">Luz do motor apagada · a centralina do motor indica %1$d códigos</item>
-    </plurals>
+    <string name="vehicle_lamp_on">Luz do motor acesa</string>
+    <string name="vehicle_lamp_off">Luz do motor apagada</string>
     <string name="vehicle_obd_scope">O OBD normal só vê avarias do motor e de emissões; ABS, airbag e carroçaria precisam da ferramenta de diagnóstico da Citroën.</string>
     <string name="vehicle_clear_rejected">O adaptador respondeu «%1$s». Ligue a ignição (motor desligado) e tente novamente.</string>
 

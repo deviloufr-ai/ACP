@@ -68,14 +68,8 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Unbekanntes Gerät</string>
     <string name="vehicle_no_response">Keine Antwort vom Adapter</string>
-    <plurals name="vehicle_engine_lamp_on">
-        <item quantity="one">Motorkontrollleuchte AN · Motorsteuergerät meldet %1$d Code</item>
-        <item quantity="other">Motorkontrollleuchte AN · Motorsteuergerät meldet %1$d Codes</item>
-    </plurals>
-    <plurals name="vehicle_engine_lamp_off">
-        <item quantity="one">Motorkontrollleuchte aus · Motorsteuergerät meldet %1$d Code</item>
-        <item quantity="other">Motorkontrollleuchte aus · Motorsteuergerät meldet %1$d Codes</item>
-    </plurals>
+    <string name="vehicle_lamp_on">Motorkontrollleuchte an</string>
+    <string name="vehicle_lamp_off">Motorkontrollleuchte aus</string>
     <string name="vehicle_obd_scope">Standard-OBD sieht nur Motor- und Abgasfehler; ABS, Airbag und Karosserie brauchen das Citroën-Diagnosegerät.</string>
     <string name="vehicle_clear_rejected">Adapter antwortete „%1$s“. Zündung EIN (Motor aus) und erneut versuchen.</string>
 

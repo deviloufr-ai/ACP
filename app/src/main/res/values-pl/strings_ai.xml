@@ -42,8 +42,19 @@
     <string name="ai_verdict_ok">Można jechać</string>
     <string name="ai_verdict_soon">Wkrótce sprawdzić</string>
     <string name="ai_verdict_stop">Zatrzymaj się</string>
-    <string name="ai_likely">Prawdopodobnie: %1$s</string>
     <string name="ai_check_first">Najpierw sprawdzić: %1$s</string>
+    <string name="ai_details">Szczegóły</string>
+    <string name="ai_close">Zamknij</string>
+    <string name="ai_detail_overview">Przegląd</string>
+    <string name="ai_detail_meaning">Co to znaczy</string>
+    <string name="ai_detail_symptoms">Co można zauważyć</string>
+    <string name="ai_detail_causes">Prawdopodobne przyczyny</string>
+    <string name="ai_detail_check_first">Najpierw sprawdź</string>
+    <string name="ai_detail_checks">Krok po kroku</string>
+    <string name="ai_detail_repair">Typowa naprawa</string>
+    <string name="ai_detail_cost">Szacowany koszt</string>
+    <string name="ai_detail_diy">Da się zrobić samemu?</string>
+    <string name="ai_detail_driving">Czy można dalej jechać?</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Brak kodów błędów ✓</string>

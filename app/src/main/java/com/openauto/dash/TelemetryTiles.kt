@@ -3,7 +3,6 @@
 package com.openauto.dash
 
 import android.Manifest
-import android.content.res.Resources
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -60,7 +59,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -79,7 +77,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -628,186 +625,6 @@ internal fun MeterChip(
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(Brush.horizontalGradient(listOf(color, lerp(color, Color.White, 0.3f))))
-            )
-        }
-    }
-}
-
-/**
- * Fault codes (OBD Diagnostic Trouble Codes). Scans run by themselves when the
- * adapter connects (see [AiMechanic]); Scan / Clear are here for doing it by
- * hand. With a Gemini key each code gets the AI mechanic's plain-language
- * advice, otherwise the built-in table's.
- */
-@Composable
-internal fun ObdDtcCard(
-    connection: ObdConnectionState,
-    onConnect: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val connected = connection == ObdConnectionState.CONNECTED
-    val ai by AiMechanic.state.collectAsState()
-    val codes = ai.codes
-    val lamp by ObdBluetoothManager.lamp.collectAsState()
-    // The AI's advice is written in the mechanic's language; its labels follow it.
-    val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
-    var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<DtcMessage?>(null) }
-    val scanFailed = stringResource(R.string.ai_scan_failed)
-    val clearFailed = stringResource(R.string.ai_clear_failed)
-    val clearedText = stringResource(R.string.ai_cleared)
-    val noCodes = stringResource(R.string.ai_no_codes)
-
-    Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text(stringResource(R.string.vehicle_fault_codes_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-            Spacer(Modifier.height(10.dp))
-
-            if (!connected) {
-                ObdNotConnected(onConnect)
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        enabled = !busy,
-                        onClick = {
-                            busy = true; message = null
-                            scope.launch {
-                                val r = ObdBluetoothManager.readTroubleCodes()
-                                busy = false
-                                r.onSuccess { AiMechanic.report(it, announce = false) }
-                                    .onFailure { message = DtcMessage(it.message ?: scanFailed, failed = true) }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                    ) { Text(stringResource(R.string.vehicle_scan)) }
-                    Button(
-                        enabled = !busy && codes?.isNotEmpty() == true,
-                        onClick = {
-                            busy = true; message = null
-                            scope.launch {
-                                val res = ObdBluetoothManager.clearTroubleCodes()
-                                busy = false
-                                res.onSuccess { message = DtcMessage(clearedText, failed = false); AiMechanic.cleared() }
-                                    .onFailure { message = DtcMessage(it.message ?: clearFailed, failed = true) }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
-                    ) { Text(stringResource(R.string.vehicle_clear)) }
-                }
-                Spacer(Modifier.height(10.dp))
-                if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DashColors.Accent)
-                (message ?: if (codes?.isEmpty() == true) DtcMessage(noCodes, failed = false) else null)?.let {
-                    Text(it.text, color = if (it.failed) DashColors.Warning else DashColors.Good)
-                    Spacer(Modifier.height(6.dp))
-                }
-                // The engine computer's own count, to check a failed or empty read against.
-                lamp?.let {
-                    Text(
-                        pluralStringResource(
-                            if (it.on) R.plurals.vehicle_engine_lamp_on else R.plurals.vehicle_engine_lamp_off,
-                            it.storedCodes,
-                            it.storedCodes
-                        ),
-                        color = if (it.on) DashColors.Warning else DashColors.TextSecondary,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        stringResource(R.string.vehicle_obd_scope),
-                        color = DashColors.Muted,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(Modifier.height(6.dp))
-                }
-                if (codes != null && codes.isNotEmpty()) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        ai.diagnosis?.let { MechanicVerdict(it, aiText) }
-                        if (ai.thinking) {
-                            Text(stringResource(R.string.ai_thinking), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
-                        }
-                        ai.note?.let { note ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(AiMechanic.noteText(context, note), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                if (ai.canRetry) {
-                                    TextButton(onClick = AiMechanic::refresh) { Text(stringResource(R.string.ai_retry), color = DashColors.Accent) }
-                                }
-                            }
-                        }
-                        codes.forEach { code ->
-                            val advice = ai.diagnosis?.codes?.firstOrNull { it.code == code }
-                            if (advice != null) {
-                                CodeAdviceRow(advice, aiText)
-                            } else {
-                                val dtc = ObdCodes.describe(code)
-                                Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                                    Text(
-                                        "${dtc.code} — ${dtc.localizedTitle()}",
-                                        color = DashColors.Warning,
-                                        fontWeight = FontWeight.SemiBold,
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
-                                    Text(
-                                        dtc.localizedFix(),
-                                        color = DashColors.TextSecondary,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** A Scan / Clear outcome; [failed] picks the colour, so it never depends on the wording. */
-private class DtcMessage(val text: String, val failed: Boolean)
-
-// The palette has no amber; "get it checked soon" needs one between Good and Warning.
-private val SoonAmber = Color(0xFFF5A623)
-
-/** The AI's overall call: a coloured dot, what to do, and the sentence it spoke. [aiText]: the mechanic's language. */
-@Composable
-private fun MechanicVerdict(d: Diagnosis, aiText: Resources) {
-    val (color, label) = when (d.severity) {
-        Severity.OK -> DashColors.Good to aiText.getString(R.string.ai_verdict_ok)
-        Severity.SOON -> SoonAmber to aiText.getString(R.string.ai_verdict_soon)
-        Severity.STOP -> DashColors.Warning to aiText.getString(R.string.ai_verdict_stop)
-    }
-    Column(modifier = Modifier.padding(bottom = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(8.dp))
-            Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-        }
-        Text(d.summary, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-/** One code as the AI mechanic explained it. [aiText]: the mechanic's language. */
-@Composable
-private fun CodeAdviceRow(advice: CodeAdvice, aiText: Resources) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text(
-            "${advice.code} — ${advice.meaning}",
-            color = DashColors.Warning,
-            fontWeight = FontWeight.SemiBold,
-            style = MaterialTheme.typography.titleSmall
-        )
-        if (advice.causes.isNotEmpty()) {
-            Text(
-                aiText.getString(R.string.ai_likely, advice.causes.joinToString(" · ")),
-                color = DashColors.TextSecondary,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-        if (advice.checkFirst.isNotEmpty()) {
-            Text(
-                aiText.getString(R.string.ai_check_first, advice.checkFirst),
-                color = DashColors.TextPrimary,
-                style = MaterialTheme.typography.bodySmall
             )
         }
     }

@@ -40,8 +40,19 @@
     <string name="ai_verdict_ok">Weiterfahrt möglich</string>
     <string name="ai_verdict_soon">Bald prüfen lassen</string>
     <string name="ai_verdict_stop">Anhalten</string>
-    <string name="ai_likely">Wahrscheinlich: %1$s</string>
     <string name="ai_check_first">Zuerst prüfen: %1$s</string>
+    <string name="ai_details">Details</string>
+    <string name="ai_close">Schließen</string>
+    <string name="ai_detail_overview">Überblick</string>
+    <string name="ai_detail_meaning">Was es bedeutet</string>
+    <string name="ai_detail_symptoms">Was auffallen kann</string>
+    <string name="ai_detail_causes">Wahrscheinliche Ursachen</string>
+    <string name="ai_detail_check_first">Zuerst prüfen</string>
+    <string name="ai_detail_checks">Schritt für Schritt</string>
+    <string name="ai_detail_repair">Übliche Reparatur</string>
+    <string name="ai_detail_cost">Geschätzte Kosten</string>
+    <string name="ai_detail_diy">Selbst machen?</string>
+    <string name="ai_detail_driving">Kann man weiterfahren?</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Keine Fehlercodes ✓</string>

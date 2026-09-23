@@ -41,8 +41,19 @@
     <string name="ai_verdict_ok">Puoi guidare</string>
     <string name="ai_verdict_soon">Fai controllare presto</string>
     <string name="ai_verdict_stop">Fermati</string>
-    <string name="ai_likely">Probabile: %1$s</string>
     <string name="ai_check_first">Controlla prima: %1$s</string>
+    <string name="ai_details">Dettagli</string>
+    <string name="ai_close">Chiudi</string>
+    <string name="ai_detail_overview">Panoramica</string>
+    <string name="ai_detail_meaning">Cosa significa</string>
+    <string name="ai_detail_symptoms">Cosa puoi notare</string>
+    <string name="ai_detail_causes">Cause probabili</string>
+    <string name="ai_detail_check_first">Controlla prima</string>
+    <string name="ai_detail_checks">Passo per passo</string>
+    <string name="ai_detail_repair">Riparazione abituale</string>
+    <string name="ai_detail_cost">Costo stimato</string>
+    <string name="ai_detail_diy">Si può fare da sé?</string>
+    <string name="ai_detail_driving">Si può continuare a guidare?</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Nessun codice guasto ✓</string>

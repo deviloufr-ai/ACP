@@ -68,16 +68,8 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Dispositivo sconosciuto</string>
     <string name="vehicle_no_response">Nessuna risposta dall\'adattatore</string>
-    <plurals name="vehicle_engine_lamp_on">
-        <item quantity="one">Spia motore ACCESA · la centralina motore segnala %1$d codice</item>
-        <item quantity="many">Spia motore ACCESA · la centralina motore segnala %1$d codici</item>
-        <item quantity="other">Spia motore ACCESA · la centralina motore segnala %1$d codici</item>
-    </plurals>
-    <plurals name="vehicle_engine_lamp_off">
-        <item quantity="one">Spia motore spenta · la centralina motore segnala %1$d codice</item>
-        <item quantity="many">Spia motore spenta · la centralina motore segnala %1$d codici</item>
-        <item quantity="other">Spia motore spenta · la centralina motore segnala %1$d codici</item>
-    </plurals>
+    <string name="vehicle_lamp_on">Spia motore accesa</string>
+    <string name="vehicle_lamp_off">Spia motore spenta</string>
     <string name="vehicle_obd_scope">L\'OBD standard vede solo i guasti di motore ed emissioni; ABS, airbag e carrozzeria richiedono lo strumento di diagnosi Citroën.</string>
     <string name="vehicle_clear_rejected">L\'adattatore ha risposto «%1$s». Inserisci il quadro (motore spento) e riprova.</string>
 

@@ -195,6 +195,64 @@ class AiMechanicTest {
     @Test
     fun promptAsksForTheChosenLanguageByItsEnglishName() {
         val prompt = MechanicPrompt.build(listOf("P0128"), CarEngine.HDI_16, AiLanguage.POLISH, null)
-        assertTrue(prompt.contains("Answer in Polish."))
+        assertTrue(prompt.contains("Answer in Polish, with correct spelling and all accents."))
+    }
+
+    @Test
+    fun promptAsksForTheDetailSheet() {
+        val prompt = MechanicPrompt.build(listOf("P1352"), CarEngine.HDI_16, AiLanguage.FRENCH, null)
+        listOf("overview:", "explanation:", "symptoms:", "checks:", "repair:", "cost:", "diy:", "driving:").forEach {
+            assertTrue(it, prompt.contains(it))
+        }
+        val required = MechanicPrompt.schema(listOf("P1352")).getJSONObject("properties").getJSONObject("codes")
+            .getJSONObject("items").getJSONArray("required")
+        assertEquals(11, required.length())
+    }
+
+    @Test
+    fun theAnswerMayOnlyCoverTheCodesAsked() {
+        val codes = MechanicPrompt.schema(listOf("P1352", "P0480")).getJSONObject("properties").getJSONObject("codes")
+        assertEquals(2, codes.getInt("minItems"))
+        assertEquals(2, codes.getInt("maxItems"))
+        val allowed = codes.getJSONObject("items").getJSONObject("properties").getJSONObject("code").getJSONArray("enum")
+        assertEquals(listOf("P1352", "P0480"), (0 until allowed.length()).map { allowed.getString(it) })
+        assertTrue(MechanicPrompt.build(listOf("P1352"), CarEngine.HDI_16, AiLanguage.FRENCH, null).contains("do not assume or add any other fault"))
+    }
+
+    @Test
+    fun theDetailSheetIsReadBack() {
+        val d = MechanicPrompt.parse(
+            """{"severity":"soon","summary":"Préchauffage à vérifier.","overview":"Le circuit de préchauffage est en défaut.",
+               "codes":[{"code":"P1352","meaning":"Circuit de préchauffage","explanation":"Les bougies chauffent la chambre.",
+               "symptoms":["Démarrage difficile à froid"],"causes":["Bougie grillée","Boîtier défectueux"],
+               "check_first":"Le fusible","checks":["Fusible","Résistance des bougies"],"repair":"Remplacer les bougies",
+               "cost":"80 à 250 €","diy":"Moyen, clé longue","driving":"On peut rouler"}]}"""
+        )!!
+        assertEquals("Le circuit de préchauffage est en défaut.", d.overview)
+        val c = d.codes.single()
+        assertEquals("Les bougies chauffent la chambre.", c.explanation)
+        assertEquals(listOf("Démarrage difficile à froid"), c.symptoms)
+        assertEquals(listOf("Fusible", "Résistance des bougies"), c.checks)
+        assertEquals("80 à 250 €", c.cost)
+        assertEquals("Moyen, clé longue", c.diy)
+        assertEquals("On peut rouler", c.driving)
+    }
+
+    @Test
+    fun anOlderShortAnswerStillReads() {
+        val d = MechanicPrompt.parse("""{"severity":"ok","summary":"Rien de grave.","codes":[{"code":"P0128","meaning":"Moteur froid","causes":[],"check_first":""}]}""")!!
+        assertEquals("", d.overview)
+        assertTrue(d.codes.single().checks.isEmpty())
+    }
+
+    @Test
+    fun adviceFollowsTheCarsCodeEvenWhenTheAiMistypesIt() {
+        val advice = CodeAdvice("P1351", "Préchauffage", emptyList(), "")
+        val d = Diagnosis(Severity.SOON, "…", listOf(advice))
+        // Asked about P1352, answered as P1351: same place, so it's that code's advice.
+        assertEquals(advice, adviceFor(d, listOf("P1352"), "P1352", 0))
+        // With a different number of answers, position can't be trusted.
+        assertNull(adviceFor(d, listOf("P1352", "P0480"), "P0480", 1))
+        assertNull(adviceFor(null, listOf("P1352"), "P1352", 0))
     }
 }

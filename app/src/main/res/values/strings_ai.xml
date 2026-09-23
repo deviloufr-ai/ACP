@@ -40,8 +40,19 @@
     <string name="ai_verdict_ok">OK to drive</string>
     <string name="ai_verdict_soon">Get it checked soon</string>
     <string name="ai_verdict_stop">Stop driving</string>
-    <string name="ai_likely">Likely: %1$s</string>
     <string name="ai_check_first">Check first: %1$s</string>
+    <string name="ai_details">Details</string>
+    <string name="ai_close">Close</string>
+    <string name="ai_detail_overview">Overview</string>
+    <string name="ai_detail_meaning">What it means</string>
+    <string name="ai_detail_symptoms">What you may notice</string>
+    <string name="ai_detail_causes">Likely causes</string>
+    <string name="ai_detail_check_first">Check first</string>
+    <string name="ai_detail_checks">Step by step</string>
+    <string name="ai_detail_repair">Usual repair</string>
+    <string name="ai_detail_cost">Estimated cost</string>
+    <string name="ai_detail_diy">Do it yourself?</string>
+    <string name="ai_detail_driving">Can I keep driving?</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">No fault codes ✓</string>

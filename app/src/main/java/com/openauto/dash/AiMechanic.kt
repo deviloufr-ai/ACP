@@ -108,34 +108,60 @@ object AiSettings {
 
 enum class Severity { OK, SOON, STOP }
 
-data class CodeAdvice(val code: String, val meaning: String, val causes: List<String>, val checkFirst: String)
+/**
+ * One fault code as the AI mechanic explains it: [meaning] is a short title,
+ * [checkFirst] the one thing to look at; the rest fills the detail sheet and is
+ * empty when the answer didn't include it.
+ */
+data class CodeAdvice(
+    val code: String,
+    val meaning: String,
+    val causes: List<String>,
+    val checkFirst: String,
+    val explanation: String = "",
+    val symptoms: List<String> = emptyList(),
+    val checks: List<String> = emptyList(),
+    val repair: String = "",
+    val cost: String = "",
+    val diy: String = "",
+    val driving: String = ""
+)
 
-/** The mechanic's verdict on a set of fault codes. */
-data class Diagnosis(val severity: Severity, val summary: String, val codes: List<CodeAdvice>)
+/** The mechanic's verdict on a set of fault codes: [summary] is spoken, [overview] ties the codes together. */
+data class Diagnosis(val severity: Severity, val summary: String, val codes: List<CodeAdvice>, val overview: String = "")
 
 /** Builds the question for Gemini and reads its answer back. Pure, so it's unit-tested. */
 object MechanicPrompt {
 
-    /** JSON shape Gemini must answer in (Gemini's OpenAPI-style schema). */
-    val SCHEMA: JSONObject
-        get() {
-            fun str() = JSONObject().put("type", "STRING")
-            val advice = JSONObject().put("type", "OBJECT").put(
-                "properties",
-                JSONObject()
-                    .put("code", str())
-                    .put("meaning", str())
-                    .put("causes", JSONObject().put("type", "ARRAY").put("items", str()))
-                    .put("check_first", str())
-            ).put("required", JSONArray(listOf("code", "meaning", "causes", "check_first")))
-            return JSONObject().put("type", "OBJECT").put(
-                "properties",
-                JSONObject()
-                    .put("severity", str().put("enum", JSONArray(listOf("ok", "soon", "stop"))))
-                    .put("summary", str())
-                    .put("codes", JSONObject().put("type", "ARRAY").put("items", advice))
-            ).put("required", JSONArray(listOf("severity", "summary", "codes")))
-        }
+    /**
+     * JSON shape Gemini must answer in (Gemini's OpenAPI-style schema): exactly
+     * one entry per code asked, and only those codes. Without that, a busy
+     * model once renamed P1352 to P1351 and invented a second fault.
+     */
+    fun schema(codes: List<String>): JSONObject {
+        fun str() = JSONObject().put("type", "STRING")
+        fun list() = JSONObject().put("type", "ARRAY").put("items", str())
+        val adviceFields = listOf(
+            "code" to str().put("enum", JSONArray(codes)), "meaning" to str(), "explanation" to str(), "symptoms" to list(),
+            "causes" to list(), "check_first" to str(), "checks" to list(), "repair" to str(),
+            "cost" to str(), "diy" to str(), "driving" to str()
+        )
+        val advice = JSONObject().put("type", "OBJECT")
+            .put("properties", JSONObject().apply { adviceFields.forEach { (k, v) -> put(k, v) } })
+            .put("required", JSONArray(adviceFields.map { it.first }))
+        return JSONObject().put("type", "OBJECT").put(
+            "properties",
+            JSONObject()
+                .put("severity", str().put("enum", JSONArray(listOf("ok", "soon", "stop"))))
+                .put("summary", str())
+                .put("overview", str())
+                .put(
+                    "codes",
+                    JSONObject().put("type", "ARRAY").put("items", advice)
+                        .put("minItems", codes.size).put("maxItems", codes.size)
+                )
+        ).put("required", JSONArray(listOf("severity", "summary", "overview", "codes")))
+    }
 
     fun build(codes: List<String>, engine: CarEngine, language: AiLanguage, data: ObdData?): String = buildString {
         appendLine("You are an experienced mechanic who knows Citroën / PSA cars well.")
@@ -143,11 +169,22 @@ object MechanicPrompt {
         appendLine("Its OBD scan reports these stored fault codes: ${codes.joinToString(", ")}.")
         readings(data)?.let { appendLine("Live readings at the time of the scan: $it.") }
         appendLine()
-        appendLine("Answer in ${language.promptName}. The driver reads this on a small car screen, so be concrete and brief.")
+        appendLine("Answer in ${language.promptName}, with correct spelling and all accents. The driver reads the details parked, on the car's screen: be concrete, practical and specific to this engine.")
         appendLine("- severity: \"ok\" = fine to keep driving normally; \"soon\" = drive gently and get it checked within days; \"stop\" = stop driving, risk of damage or danger.")
         appendLine("- summary: ONE short sentence that will be spoken aloud to the driver: the problem in plain words and what to do. No code numbers, no jargon.")
-        appendLine("- codes: one entry per code, same order. meaning = what it means on this engine; causes = the 2 or 3 most likely causes on this engine, most likely first; check_first = the cheapest, simplest thing to check first.")
-        append("Consider the codes together and with the readings: several codes often share one cause.")
+        appendLine("- overview: 2 or 3 sentences: what is going on overall and, with several codes, how they relate.")
+        appendLine("- codes: one entry per code, in the same order, each with:")
+        appendLine("  - meaning: a short title, at most 8 words.")
+        appendLine("  - explanation: 2 to 4 sentences: what this part or system does on this engine and what the fault means.")
+        appendLine("  - symptoms: 2 to 4 things the driver may notice.")
+        appendLine("  - causes: the 3 or 4 most likely causes on this engine, most likely first.")
+        appendLine("  - check_first: the single cheapest, simplest thing to check first.")
+        appendLine("  - checks: 3 to 5 diagnostic steps in order, cheapest and simplest first.")
+        appendLine("  - repair: the usual fix and the part involved.")
+        appendLine("  - cost: a rough range in euros at an independent garage, parts and labour, and what the part costs alone.")
+        appendLine("  - diy: whether a home mechanic can do it: how hard it is (easy, medium or hard, said in that language) and the tools needed.")
+        appendLine("  - driving: whether the car can still be driven, and what happens if the fault is ignored.")
+        append("Consider the codes together and with the readings: several codes often share one cause. Discuss only these codes, exactly as written: do not assume or add any other fault.")
     }
 
     /** Live values worth sending; zeros mean "not reported" and are left out. */
@@ -182,12 +219,25 @@ object MechanicPrompt {
             val o = list.optJSONObject(i) ?: return@mapNotNull null
             val code = o.optString("code").trim().uppercase()
             if (code.isEmpty()) return@mapNotNull null
-            val causes = o.optJSONArray("causes")
+            fun text(key: String) = o.optString(key).trim()
+            fun lines(key: String) = o.optJSONArray(key)
                 ?.let { a -> (0 until a.length()).map { a.optString(it).trim() }.filter { it.isNotEmpty() } }
                 .orEmpty()
-            CodeAdvice(code, o.optString("meaning").trim(), causes, o.optString("check_first").trim())
+            CodeAdvice(
+                code = code,
+                meaning = text("meaning"),
+                causes = lines("causes"),
+                checkFirst = text("check_first"),
+                explanation = text("explanation"),
+                symptoms = lines("symptoms"),
+                checks = lines("checks"),
+                repair = text("repair"),
+                cost = text("cost"),
+                diy = text("diy"),
+                driving = text("driving")
+            )
         }
-        return Diagnosis(severity, summary, codes)
+        return Diagnosis(severity, summary, codes, json.optString("overview").trim())
     }
 }
 
@@ -410,7 +460,8 @@ object AiMechanic {
         val config = AiSettings.load(context)
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
         val offline = MechanicLines.newCodes(fresh).text(config.language.resources(context))
-        val cacheKey = "diag_" + codes.sorted().joinToString(",") + "|" + config.engine.name + "|" + config.language.name
+        // "v2": answers with the detail sheet; older, shorter ones are asked again.
+        val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + config.engine.name + "|" + config.language.name
         val cache = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         cache.getString(cacheKey, null)?.let(MechanicPrompt::parse)?.let { cached ->
@@ -426,7 +477,7 @@ object AiMechanic {
 
         _state.value = State(codes = codes, thinking = true)
         val prompt = MechanicPrompt.build(codes, config.engine, config.language, ObdBluetoothManager.data.value)
-        GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.SCHEMA)
+        GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.schema(codes))
             .mapCatching { reply -> reply.text to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
             .onSuccess { (raw, diagnosis) ->
                 cache.edit().putString(cacheKey, raw).apply()
