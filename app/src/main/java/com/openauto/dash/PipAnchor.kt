@@ -370,24 +370,6 @@ object PipAnchor {
                 if (place != null || keep.raise) {
                     status.value = status.value.copy(lastResult = lastResult, error = if (placementFailed) status.value.error else null)
                 }
-                if (keep.raise) {
-                    // Arriving on its tile (this page came back, the window was
-                    // parked aside), or behind the dashboard: bring it in front,
-                    // once it is in place. Starting its task again is what shows
-                    // it on this head unit; moving the task to the front alone
-                    // could leave it invisible there.
-                    lastRaiseAt[packageName] = now
-                    Log.i(TAG, "raising $packageName above the dashboard")
-                    val relaunched = runGuarded { DockShell.relaunch(context, win) }
-                        .onFailure { Log.w(TAG, "relaunching $packageName failed", it) }
-                    if (relaunched.isSuccess || bringToFront(context, win.taskId)) {
-                        DockShell.forgetListing()
-                        relaunched.getOrNull()?.let { lastResult = it }
-                    } else {
-                        lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
-                    }
-                    status.value = status.value.copy(lastResult = lastResult)
-                }
             }
             delay(POLL_MS)
         }

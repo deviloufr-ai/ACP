@@ -69,27 +69,6 @@ object DockShell {
         error(last.trim().lines().firstOrNull().orEmpty().ifBlank { "resize refused" })
     }
 
-    /**
-     * Brings [win]'s own task in front by starting it again, the way the
-     * launcher does, but into that exact task (`--task`: an app can also have a
-     * fullscreen task of its own). The running activity is brought forward, not
-     * restarted, so Maps keeps guiding. On the head unit a window moved back
-     * onto its tile could stay invisible, while a started one always shows.
-     */
-    suspend fun relaunch(context: Context, win: FloatingWindow): String {
-        val taskId = win.taskId ?: error("no task id")
-        val component = context.packageManager.getLaunchIntentForPackage(win.packageName)?.component
-            ?: error("${win.packageName} has no launcher activity")
-        val out = shell(
-            context,
-            "am start --task $taskId -a android.intent.action.MAIN -c android.intent.category.LAUNCHER " +
-                "-f 0x10000000 -p ${win.packageName} -n ${component.flattenToShortString()}"
-        )
-        if (looksLikeError(out)) error(out.trim().lines().lastOrNull().orEmpty().ifBlank { "start refused" })
-        Log.d(TAG, "relaunched ${win.packageName} into task $taskId")
-        return "am start --task $taskId: ok"
-    }
-
     private fun looksLikeError(out: String): Boolean =
         out.contains("Error", ignoreCase = true) || out.contains("Exception") || out.contains("Unknown")
 
