@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Ø Verbrauch</string>
     <string name="vehicle_learn_fuel">Kraftstoff von CANbox lernen</string>
     <string name="vehicle_recalibrate_fuel">Kraftstoff neu kalibrieren</string>
+    <string name="vehicle_find_range_signal">Reichweite vom CANbox lesen</string>
+    <string name="vehicle_learn_range">Reichweite vom CANbox</string>
+    <string name="vehicle_change_range">Reichweitensignal ändern</string>
+    <string name="vehicle_range_from_car">Bordcomputer</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Den Stand der Tankanzeige einstellen, Aufnahme A tippen — dann schließen und das Auto normal nutzen. Tage später, wenn die Anzeige etwas gesunken ist, erneut öffnen, den neuen Wert einstellen und Aufnahme B tippen. Aufnahme A bleibt nach Neustarts gespeichert. Nur Bytes, die sich mit dem Kraftstoff bewegt haben, werden angeboten.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">Frame %1$s · Byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · voll≈%3$d</string>
     <string name="vehicle_forget_current">Aktuelles vergessen</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Öffne den Bordcomputer des Radios, gib die angezeigte Reichweite (km bis leer) ein und tippe auf Suchen. Wähle das Signal, dessen Live-Wert dem Bordcomputer folgt.</string>
+    <string name="vehicle_range_car_shows">Bordcomputer zeigt</string>
+    <string name="vehicle_range_search">Suchen</string>
+    <string name="vehicle_range_none">Kein Signal enthält diesen Wert. Prüfe die Zahl, lass den Bordcomputer ein paar Sekunden offen und suche erneut.</string>
+    <string name="vehicle_range_candidates">Signale mit diesem Wert — wähle das, das dem Bordcomputer folgt</string>
+    <string name="vehicle_range_frame">Frame %1$s · Bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">OBD-Adapter wählen</string>

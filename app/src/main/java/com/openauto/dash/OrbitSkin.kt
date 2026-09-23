@@ -1563,7 +1563,7 @@ private fun OrbitRange(item: DashboardItem, env: SkinTileEnv) {
                 OrbitFuelBubble(d, fuel, !env.editing, open)
                 Spacer(Modifier.width((14f + d * 0.06f).dp))
                 Column {
-                    val liters = fuel.percent / 100.0 * TANK_LITERS
+                    val liters = fuel.liters
                     OrbitText(
                         stringResource(R.string.orbit_to_empty), (d * 0.12f).coerceIn(13f, 26f), DashColors.TextPrimary,
                         weight = FontWeight.SemiBold, align = TextAlign.Start

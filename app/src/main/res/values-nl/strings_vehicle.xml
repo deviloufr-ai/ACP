@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Gem. verbruik</string>
     <string name="vehicle_learn_fuel">Brandstof leren van CANbox</string>
     <string name="vehicle_recalibrate_fuel">Brandstof herkalibreren</string>
+    <string name="vehicle_find_range_signal">Actieradius van CANbox lezen</string>
+    <string name="vehicle_learn_range">Actieradius van CANbox</string>
+    <string name="vehicle_change_range">Actieradiussignaal wijzigen</string>
+    <string name="vehicle_range_from_car">boordcomputer</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Stel het niveau van je brandstofmeter in en tik op Opname A — sluit dit daarna en gebruik de auto normaal. Dagen later, als de meter wat gezakt is, open je dit opnieuw, stel je de nieuwe waarde in en tik je op Opname B. Opname A blijft bewaard na herstarten. Alleen bytes die met de brandstof meebewogen worden aangeboden.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · vol≈%3$d</string>
     <string name="vehicle_forget_current">Huidige vergeten</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Open de boordcomputer van de radio, typ de getoonde actieradius (km tot leeg) en tik op Zoeken. Kies het signaal waarvan de live waarde de boordcomputer volgt.</string>
+    <string name="vehicle_range_car_shows">Boordcomputer toont</string>
+    <string name="vehicle_range_search">Zoeken</string>
+    <string name="vehicle_range_none">Geen signaal bevat die waarde. Controleer het getal, laat de boordcomputer een paar seconden open en zoek opnieuw.</string>
+    <string name="vehicle_range_candidates">Signalen met die waarde — kies het signaal dat de boordcomputer volgt</string>
+    <string name="vehicle_range_frame">frame %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">OBD-adapter kiezen</string>

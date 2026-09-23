@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -201,14 +202,22 @@ object StartupBriefing {
         return WeatherRepo.weather.value?.takeIf { System.currentTimeMillis() - it.fetchedAt < 3 * 3_600_000L }
     }
 
-    /** Fuel from the CANbox, when its signal has been learned (this car's OBD doesn't report fuel). */
+    /**
+     * Fuel and range from the CANbox, when their signals have been learned (this
+     * car's OBD doesn't report fuel). Waits for each learned one, and makes do
+     * with whichever arrived if the other stays silent.
+     */
     private suspend fun fuel(): FuelInfo? {
-        if (!McuReader.fuelConfigured) return null
+        val wantFuel = McuReader.fuelConfigured
+        val wantRange = McuReader.rangeConfigured
+        if (!wantFuel && !wantRange) return null
         McuReader.start()
         try {
-            val pct = withTimeoutOrNull(WAIT_MS) { McuReader.fuelPercent.filterNotNull().first() } ?: return null
-            val liters = pct / 100.0 * TANK_LITERS
-            return FuelInfo(pct, (liters / AVG_L_PER_100KM * 100).toInt(), "CANbox")
+            withTimeoutOrNull(WAIT_MS) {
+                combine(McuReader.fuelPercent, McuReader.rangeKm) { f, r -> (!wantFuel || f != null) && (!wantRange || r != null) }
+                    .first { it }
+            }
+            return fuelInfo(McuReader.fuelPercent.value, 0, McuReader.rangeKm.value)
         } finally {
             McuReader.stop()
         }

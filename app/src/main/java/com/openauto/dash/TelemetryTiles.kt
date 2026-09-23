@@ -37,8 +37,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -666,17 +671,12 @@ internal fun ObdAllCard(
     }
 }
 
-// Citroën C4 Picasso rough figures for the estimate (until the CANbox gives the
-// real distance-to-empty).
-internal const val TANK_LITERS = 60.0
-
-internal const val AVG_L_PER_100KM = 6.5
-
 /**
  * Fuel & range as a radial gauge. Fuel level comes from the **CANbox** (learned
  * via the finder) when available — the C4 Picasso's OBD doesn't report it — and
- * falls back to the OBD fuel PID if that ever works. Range is estimated from the
- * tank size and average consumption until the CANbox gives a real distance.
+ * falls back to the OBD fuel PID if that ever works. Range is the car's own
+ * trip-computer figure once its CANbox word is learned, else an estimate from
+ * the tank size and average consumption.
  */
 @Composable
 internal fun RangeCard(
@@ -686,21 +686,22 @@ internal fun RangeCard(
     modifier: Modifier = Modifier
 ) {
     // The CANbox stream (needs root) is the real fuel source; keep it running
-    // while this card is on screen so the learned byte decodes live.
+    // while this card is on screen so the learned signals decode live.
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
     }
     val canFuel by McuReader.fuelPercent.collectAsState()
+    val canRange by McuReader.rangeKm.collectAsState()
     val obdConnected = connection == ObdConnectionState.CONNECTED
     val obdFuel = if (obdConnected) obdData.fuelLevelPct else 0
-
-    // Prefer CANbox fuel; fall back to OBD; null when neither is available yet.
-    val fuelPct: Int? = canFuel ?: obdFuel.takeIf { it > 0 }
-    val source = if (canFuel != null) stringResource(R.string.vehicle_via_canbox)
+    val fuel = fuelInfo(canFuel, obdFuel, canRange)
+    val fromCan = canFuel != null || canRange != null
+    val source = if (fromCan) stringResource(R.string.vehicle_via_canbox)
         else if (obdFuel > 0) stringResource(R.string.vehicle_via_obd) else null
 
     var showFinder by remember { mutableStateOf(false) }
+    var showRangeFinder by remember { mutableStateOf(false) }
 
     Card(modifier = modifier) {
         Column(
@@ -714,12 +715,12 @@ internal fun RangeCard(
             ) {
                 Text(stringResource(R.string.vehicle_fuel_range_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 source?.let {
-                    Text(it, color = if (canFuel != null) DashColors.Good else DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    Text(it, color = if (fromCan) DashColors.Good else DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
             }
 
-            if (fuelPct == null) {
-                // Nothing yet: explain and offer the finder / OBD connect.
+            if (fuel == null) {
+                // Nothing yet: explain and offer the finders / OBD connect.
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Muted, modifier = Modifier.size(44.dp))
                 Spacer(Modifier.height(10.dp))
@@ -730,13 +731,18 @@ internal fun RangeCard(
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
+                // Reading the range is instant (the trip computer shows it); the
+                // fuel byte takes days of driving to learn, so range comes first.
                 Button(
-                    onClick = { showFinder = true },
+                    onClick = { showRangeFinder = true },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
                 ) {
-                    Icon(Icons.Filled.Sensors, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Speed, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.vehicle_find_fuel_signal))
+                    Text(stringResource(R.string.vehicle_find_range_signal))
+                }
+                TextButton(onClick = { showFinder = true }) {
+                    Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
                 if (!obdConnected) {
                     TextButton(onClick = onConnect) {
@@ -745,17 +751,17 @@ internal fun RangeCard(
                 }
                 Spacer(Modifier.weight(1f))
             } else {
-                val liters = fuelPct / 100.0 * TANK_LITERS
-                val rangeKm = (liters / AVG_L_PER_100KM * 100).toInt()
+                val fuelPct = fuel.percent
+                val approx = if (fuel.percentEstimated) "≈ " else ""
 
                 Spacer(Modifier.height(6.dp))
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     AnalogGauge(
                         value = fuelPct.toFloat(),
                         maxValue = 100f,
-                        valueText = "$rangeKm",
+                        valueText = "${fuel.rangeKm}",
                         label = stringResource(R.string.vehicle_km_to_empty),
-                        unit = stringResource(R.string.vehicle_range_approx),
+                        unit = stringResource(if (fuel.rangeFromCar) R.string.vehicle_range_from_car else R.string.vehicle_range_approx),
                         accent = if (fuelPct <= 12) DashColors.Warning else DashColors.Good,
                         // No redline band on fuel (more fill = more fuel); the whole
                         // sweep just turns amber when the tank drops into reserve.
@@ -769,17 +775,26 @@ internal fun RangeCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    MeterChip(stringResource(R.string.vehicle_fuel), "$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
-                    MeterChip(stringResource(R.string.vehicle_in_tank), "%.0f L".format(liters), (liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
-                    MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(AVG_L_PER_100KM), 0.5f, DashColors.Accent, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_fuel), "$approx$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(fuel.avgUse), (fuel.avgUse / (2 * AVG_L_PER_100KM)).toFloat().coerceIn(0f, 1f), DashColors.Accent, false, Modifier.weight(1f))
                 }
-                // Always reachable, so a learned mapping can be recalibrated or forgotten.
-                TextButton(onClick = { showFinder = true }) {
-                    Text(
-                        stringResource(if (canFuel == null) R.string.vehicle_learn_fuel else R.string.vehicle_recalibrate_fuel),
-                        color = DashColors.Muted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                // Always reachable, so a learned signal can be recalibrated or forgotten.
+                Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { showFinder = true }) {
+                        Text(
+                            stringResource(if (canFuel == null) R.string.vehicle_learn_fuel else R.string.vehicle_recalibrate_fuel),
+                            color = DashColors.Muted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    TextButton(onClick = { showRangeFinder = true }) {
+                        Text(
+                            stringResource(if (canRange == null) R.string.vehicle_learn_range else R.string.vehicle_change_range),
+                            color = DashColors.Muted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
             }
         }
@@ -788,6 +803,132 @@ internal fun RangeCard(
     if (showFinder) {
         FuelFinderDialog(onDismiss = { showFinder = false })
     }
+    if (showRangeFinder) {
+        RangeFinderDialog(onDismiss = { showRangeFinder = false })
+    }
+}
+
+/**
+ * Learns which CANbox/MCU word is the car's distance to empty. The head unit's
+ * trip computer already shows it, so the user just types that number and we
+ * list every 16-bit word holding it, each with its live value — the right one
+ * keeps matching the trip computer as the range changes.
+ */
+@Composable
+internal fun RangeFinderDialog(onDismiss: () -> Unit) {
+    DisposableEffect(Unit) {
+        McuReader.start()
+        onDispose { McuReader.stop() }
+    }
+    val entries by McuReader.entries.collectAsState()
+    var typed by remember { mutableStateOf("") }
+    var candidates by remember { mutableStateOf<List<RangeMapping>?>(null) }
+
+    fun search() {
+        val km = typed.trim().substringBefore('.').substringBefore(',').toIntOrNull() ?: return
+        candidates = RangeMapping.candidates(entries.associate { it.key to it.bytes }, km)
+    }
+
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text(stringResource(R.string.vehicle_find_range_signal), color = DashColors.TextPrimary) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.vehicle_range_finder_help),
+                    color = DashColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = typed,
+                        onValueChange = { v -> typed = v.filter { it.isDigit() || it == '.' || it == ',' }.take(7); candidates = null },
+                        label = { Text(stringResource(R.string.vehicle_range_car_shows)) },
+                        suffix = { Text("km") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { search() }),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = DashColors.TextPrimary,
+                            unfocusedTextColor = DashColors.TextPrimary,
+                            focusedBorderColor = DashColors.Accent,
+                            unfocusedBorderColor = DashColors.Line,
+                            focusedLabelColor = DashColors.Accent,
+                            unfocusedLabelColor = DashColors.Muted,
+                            cursorColor = DashColors.Accent
+                        )
+                    )
+                    Button(
+                        onClick = ::search,
+                        enabled = entries.isNotEmpty() && typed.any { it.isDigit() },
+                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                    ) { Text(stringResource(R.string.vehicle_range_search)) }
+                }
+                Spacer(Modifier.height(8.dp))
+                val found = candidates
+                when {
+                    entries.isEmpty() ->
+                        Text(stringResource(R.string.vehicle_waiting_canbox), color = DashColors.Muted)
+                    found == null -> Unit
+                    found.isEmpty() ->
+                        Text(stringResource(R.string.vehicle_range_none), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    else -> {
+                        Text(stringResource(R.string.vehicle_range_candidates), color = DashColors.Accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        val live = entries.associate { it.key to it.bytes }
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(210.dp)) {
+                            lazyColumnItems(found, key = { "${it.key}#${it.index}#${it.bigEndian}#${it.scale}" }) { c ->
+                                val now = live[c.key]?.let { c.decode(it) }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(DashColors.CardHi)
+                                        .clickable {
+                                            McuReader.saveRangeMapping(c)
+                                            onDismiss()
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(stringResource(R.string.vehicle_range_frame, c.key, c.index, c.index + 1), color = DashColors.TextPrimary, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                                        Text(
+                                            (if (c.bigEndian) "BE" else "LE") + (if (c.scale == 10) " · 0.1 km" else ""),
+                                            color = DashColors.Muted,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                    Text(
+                                        now?.let { "$it km" } ?: "—",
+                                        color = DashColors.Accent,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (McuReader.rangeConfigured) {
+                TextButton(onClick = { McuReader.clearRangeMapping(); onDismiss() }) {
+                    Text(stringResource(R.string.vehicle_forget_current), color = DashColors.Warning)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.vehicle_close), color = DashColors.Muted) }
+        }
+    )
 }
 
 /**

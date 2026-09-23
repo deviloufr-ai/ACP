@@ -2104,7 +2104,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                                 maxLines = 1
                             )
                             Text(
-                                "%.0f L · %s".format(fuel.percent / 100.0 * TANK_LITERS, fuel.source.uppercase()),
+                                "%.0f L · %s".format(fuel.liters, fuel.source.uppercase()),
                                 style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).textSize(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )

@@ -72,6 +72,19 @@ object McuReader {
     /** Live fuel level 0..100 decoded from the learned CANbox byte, or null. */
     val fuelPercent: StateFlow<Int?> = _fuelPercent.asStateFlow()
 
+    // --- Range (CANbox) -----------------------------------------------------
+    // The head unit's own trip computer shows the car's distance to empty, so
+    // it's in the MCU stream too. Learned the same way: the user types the km
+    // the trip computer shows and picks the word that holds it.
+
+    @Volatile
+    private var rangeMapping: RangeMapping? = null
+    val rangeConfigured: Boolean get() = rangeMapping != null
+
+    private val _rangeKm = MutableStateFlow<Int?>(null)
+    /** The car's own distance to empty in km, from the learned CANbox word, or null. */
+    val rangeKm: StateFlow<Int?> = _rangeKm.asStateFlow()
+
     private var appContext: Context? = null
     private const val PREFS = "mcu_prefs"
 
@@ -80,7 +93,36 @@ object McuReader {
         if (appContext == null) {
             appContext = context.applicationContext
             loadFuelMapping()
+            loadRangeMapping()
         }
+    }
+
+    private fun loadRangeMapping() {
+        val p = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return
+        val key = p.getString("range_key", null) ?: return
+        val idx = p.getInt("range_byte", -1)
+        val scale = p.getInt("range_scale", 1)
+        if (idx >= 0 && scale > 0) rangeMapping = RangeMapping(key, idx, p.getBoolean("range_be", true), scale)
+    }
+
+    /** Persist the learned range word; decodes from the frame already seen, else the next one. */
+    fun saveRangeMapping(m: RangeMapping) {
+        rangeMapping = m
+        _rangeKm.value = _entries.value.firstOrNull { it.key == m.key }?.let { m.decode(it.bytes) }
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.putString("range_key", m.key)
+            ?.putInt("range_byte", m.index)
+            ?.putBoolean("range_be", m.bigEndian)
+            ?.putInt("range_scale", m.scale)
+            ?.apply()
+    }
+
+    /** Forget the learned range word (e.g. to pick another one). */
+    fun clearRangeMapping() {
+        rangeMapping = null
+        _rangeKm.value = null
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
+            ?.remove("range_key")?.remove("range_byte")?.remove("range_be")?.remove("range_scale")?.apply()
     }
 
     private fun loadFuelMapping() {
@@ -208,6 +250,11 @@ object McuReader {
             if (key == fm.key && bytes.size > fm.byteIndex && fm.fullRaw > 0) {
                 _fuelPercent.value = (bytes[fm.byteIndex] * 100 / fm.fullRaw).coerceIn(0, 100)
             }
+        }
+
+        // Range: the learned 16-bit word → km, straight from the car's trip computer.
+        rangeMapping?.let { rm ->
+            if (key == rm.key) rm.decode(bytes)?.let { _rangeKm.value = it }
         }
 
         // Door bitfield: cmdId 65, [.. 0C 38 <bits> ..] → byte index 4.

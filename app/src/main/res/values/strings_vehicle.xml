@@ -46,6 +46,10 @@
     <string name="vehicle_avg_use">Avg use</string>
     <string name="vehicle_learn_fuel">Learn fuel from CANbox</string>
     <string name="vehicle_recalibrate_fuel">Recalibrate fuel</string>
+    <string name="vehicle_find_range_signal">Read range from CANbox</string>
+    <string name="vehicle_learn_range">Range from CANbox</string>
+    <string name="vehicle_change_range">Change range signal</string>
+    <string name="vehicle_range_from_car">trip computer</string>
 
     <!-- Fuel signal finder dialog -->
     <string name="vehicle_finder_help">Set the level your dash gauge shows, tap Capture A — then close this and use the car normally. Days later, once the gauge has dropped a little, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.</string>
@@ -59,6 +63,14 @@
     <string name="vehicle_finder_frame">frame %1$s · byte %2$d</string>
     <string name="vehicle_finder_raw">%1$d → %2$d · full≈%3$d</string>
     <string name="vehicle_forget_current">Forget current</string>
+
+    <!-- Range signal finder dialog -->
+    <string name="vehicle_range_finder_help">Open the head unit\'s trip computer and type the range (km to empty) it shows, then tap Search. Pick the signal whose live value keeps matching the trip computer.</string>
+    <string name="vehicle_range_car_shows">Trip computer shows</string>
+    <string name="vehicle_range_search">Search</string>
+    <string name="vehicle_range_none">No signal holds that value. Check the number, leave the trip computer open a few seconds and search again.</string>
+    <string name="vehicle_range_candidates">Signals holding that value — pick the one that follows the trip computer</string>
+    <string name="vehicle_range_frame">frame %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
     <string name="vehicle_select_adapter">Select OBD adapter</string>

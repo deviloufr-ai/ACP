@@ -101,13 +101,11 @@ internal fun rememberWeather(): Weather? {
     return weather
 }
 
-/** Fuel level and the range it gives, and where the level came from ("CANbox" or "OBD"). */
-internal class FuelInfo(val percent: Int, val rangeKm: Int, val source: String)
-
 /**
- * Fuel from the CANbox when learned, else the OBD fuel PID, else null (the
- * standard [RangeCard] explains how to learn it). Keeps the CANbox stream
- * running while on screen.
+ * Fuel from the CANbox when learned, else the OBD fuel PID, with the car's own
+ * distance to empty when its CANbox signal is known; null when none of them is
+ * (the standard [RangeCard] explains how to learn them). Keeps the CANbox
+ * stream running while on screen.
  */
 @Composable
 internal fun rememberFuel(obdData: ObdData, connection: ObdConnectionState): FuelInfo? {
@@ -116,10 +114,9 @@ internal fun rememberFuel(obdData: ObdData, connection: ObdConnectionState): Fue
         onDispose { McuReader.stop() }
     }
     val canFuel by McuReader.fuelPercent.collectAsState()
+    val canRange by McuReader.rangeKm.collectAsState()
     val obdFuel = if (connection == ObdConnectionState.CONNECTED) obdData.fuelLevelPct else 0
-    val pct = canFuel ?: obdFuel.takeIf { it > 0 } ?: return null
-    val liters = pct / 100.0 * TANK_LITERS
-    return FuelInfo(pct, (liters / AVG_L_PER_100KM * 100).toInt(), if (canFuel != null) "CANbox" else "OBD")
+    return fuelInfo(canFuel, obdFuel, canRange)
 }
 
 /** Playback progress 0..1, and 0 while the duration is unknown. */
