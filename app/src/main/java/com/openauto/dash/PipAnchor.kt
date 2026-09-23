@@ -211,99 +211,86 @@ object PipAnchor {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     suspend fun track(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
-        var attempts = 0
-        var lastStack: Int? = null
-        var lastResult: String? = null
         val status = statusFlow(packageName)
         managed.add(packageName)
-        var hadWindow = false
-        var openAttempts = 0
+        var mem = DockPolicy.Memory()
+        var lastResult: String? = null
         while (true) {
             val lookup = runGuarded { findFloatingWindow(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
             // hide() left behind (e.g. parked aside for a swipe) is closed here.
             lastListing?.let { runGuarded { closeStrays(context, it) } }
             val win = lookup.getOrNull()
+            val now = System.currentTimeMillis()
             if (lookup.isFailure) {
                 publishError(packageName, lookup.exceptionOrNull()!!)
-                attempts = 0; lastStack = null
+                mem = mem.copy(attempts = 0, lastStack = null)
             } else if (win == null) {
                 status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null)
-                attempts = 0; lastStack = null
                 noteFreeform(packageName, false)
                 if (freeformNow.isEmpty()) setDashboardFocusable(context, true)
-                if (hadWindow && !expectedGone.remove(packageName)) {
-                    // Gone, and not by our hand: the user closed it. Respect that.
-                    Log.i(TAG, "$packageName closed by the user; not reopening")
-                    setAutoOpen(context, false, packageName)
-                }
-                hadWindow = false
-                val now = System.currentTimeMillis()
-                if (autoOpen(context, packageName) && now - (lastReopenAt[packageName] ?: 0L) > REOPEN_COOLDOWN_MS) {
-                    if (openAttempts >= 2) {
+                val (step, next) = DockPolicy.onMissing(
+                    mem, expectedGone = expectedGone.remove(packageName),
+                    autoOpen = autoOpen(context, packageName),
+                    lastReopenAt = lastReopenAt[packageName] ?: 0L, now = now
+                )
+                mem = next
+                when (step) {
+                    DockPolicy.Step.UserClosed -> {
+                        // Gone, and not by our hand: the user closed it. Respect that.
+                        Log.i(TAG, "$packageName closed by the user; not reopening")
+                        setAutoOpen(context, false, packageName)
+                    }
+                    DockPolicy.Step.GiveUp -> {
                         // Launched twice and no window ever showed up: the app opened
                         // fullscreen or refused. Stop, or Home would be trapped.
                         Log.w(TAG, "$packageName never appeared as a window; giving up")
                         setAutoOpen(context, false, packageName)
                         status.value = status.value.copy(error = "Couldn't keep it open as a window")
-                        openAttempts = 0
-                    } else {
-                        openAttempts++
+                    }
+                    is DockPolicy.Step.Reopen -> {
                         lastReopenAt[packageName] = now
                         val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
-                        Log.i(TAG, "opening $packageName at $rect (attempt $openAttempts)")
+                        Log.i(TAG, "opening $packageName at $rect (attempt ${step.attempt})")
                         SplitLauncher.launchFreeform(context, packageName, bounds)
                     }
+                    else -> Unit
                 }
             } else {
-                hadWindow = true
-                openAttempts = 0
                 expectedGone.remove(packageName)
-                if (win.stackId != lastStack) { attempts = 0; lastStack = win.stackId }
-                val limit = allowedArea.value
-                val close = win.bounds?.let { WindowListing.isClose(it, rect) } == true
-                val inside = win.bounds?.let { WindowListing.withinArea(it, limit) } != false
-                val docked = close && inside
-                if (docked) attempts = 0
-                if (win.mode == "freeform") {
+                val (step, next) = DockPolicy.onPresent(
+                    mem, win, rect, allowedArea.value,
+                    lastRaiseAt = lastRaiseAt[packageName] ?: 0L, now = now
+                )
+                mem = next
+                val keep = step as DockPolicy.Step.Keep
+                if (keep.raise) {
                     // Behind the dashboard (we came back to this page, or the user
                     // touched the dashboard before focus was declined): raise it.
-                    val now = System.currentTimeMillis()
-                    if ((!win.visible || win.behindDashboard) && now - (lastRaiseAt[packageName] ?: 0L) > RAISE_COOLDOWN_MS) {
-                        lastRaiseAt[packageName] = now
-                        Log.i(TAG, "raising $packageName above the dashboard")
-                        if (!bringToFront(context, win.taskId)) {
-                            lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
-                        }
+                    lastRaiseAt[packageName] = now
+                    Log.i(TAG, "raising $packageName above the dashboard")
+                    if (!bringToFront(context, win.taskId)) {
+                        lastResult = "failed: could not raise ${win.packageName} (task ${win.taskId})"
                     }
+                }
+                if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
                     setDashboardFocusable(context, false)
                 } else {
                     noteFreeform(packageName, false)
                 }
                 status.value = Status(
-                    pipPackage = win.packageName, docked = docked, mode = win.mode, seen = lastSeen,
+                    pipPackage = win.packageName, docked = keep.docked, mode = win.mode, seen = lastSeen,
                     windowBounds = win.bounds, target = rect, lastResult = lastResult,
-                    gaveUp = attempts >= MAX_ATTEMPTS,
-                    oversizePx = win.bounds?.takeIf { b ->
-                        (b.right - b.left) > (rect.right - rect.left) * 1.08f ||
-                            (b.bottom - b.top) > (rect.bottom - rect.top) * 1.08f
-                    }?.let { b -> (b.right - b.left) to (b.bottom - b.top) }
+                    gaveUp = keep.gaveUp, oversizePx = keep.oversizePx
                 )
-                if (!docked && attempts < MAX_ATTEMPTS) {
-                    attempts++
-                    // Stack commands first; if the system keeps ignoring them,
-                    // drag the window the way a finger would.
-                    // Only when the system *refused* the commands: a swipe cannot
-                    // resize, and its initial touch makes the PiP expand.
-                    val useSwipe = attempts >= 3 && win.bounds != null && lastResult?.startsWith("failed") == true
-                    // The system gave the window its minimum size, larger than the
-                    // tile: keep that size but move it back above the bar.
-                    val wanted = if (close && !inside && win.bounds != null && limit != null) WindowListing.keepInside(win.bounds, limit) else rect
+                val place = keep.place
+                if (place != null) {
                     val result = runGuarded {
-                        if (useSwipe) DockShell.swipeTo(context, win.bounds!!, wanted) else DockShell.resize(context, win, wanted)
+                        if (keep.swipe) DockShell.swipeTo(context, win.bounds!!, place) else DockShell.resize(context, win, place)
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
+                    mem = mem.copy(lastPlacementFailed = result.isFailure)
                     result.onFailure { publishError(packageName, it) }
                     if (result.isSuccess) undoStatusBarPolicy(context)
                     status.value = status.value.copy(lastResult = lastResult, error = if (result.isSuccess) null else status.value.error)
@@ -313,8 +300,6 @@ object PipAnchor {
         }
     }
 
-    /** A window listed behind the dashboard is raised at most this often, so a wrong listing can't cause focus flicker. */
-    private const val RAISE_COOLDOWN_MS = 8_000L
 
     private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
@@ -407,8 +392,6 @@ object PipAnchor {
         return null
     }
 
-    /** Give up after this many placement attempts per window, so we never fight SystemUI forever. */
-    private const val MAX_ATTEMPTS = 6
 
     /**
      * "Close enough": the window's centre is inside the target and its width is
@@ -418,7 +401,6 @@ object PipAnchor {
 
     private const val PREFS = "pip_anchor"
 
-    private const val REOPEN_COOLDOWN_MS = 15_000L
 
     private val lastReopenAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 

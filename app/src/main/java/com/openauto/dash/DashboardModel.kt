@@ -205,18 +205,22 @@ object DashboardStore {
      * the half-width one beside a Maps dock cannot share tile positions. The
      * default variant is "", the docked layouts share "_half".
      */
+    /** Preference keys for a layout variant; pure so the naming is testable. */
+    internal fun pagesKey(variant: String) = KEY_PAGES + variant
+    internal fun backupKey(variant: String) = KEY_PAGES_BACKUP + variant
+
     fun exists(context: Context, variant: String = ""): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_PAGES + variant)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(pagesKey(variant))
 
     fun load(context: Context, variant: String = ""): List<List<DashboardItem>> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = prefs.getString(KEY_PAGES + variant, null) ?: run { retained.clear(); return defaultPages() }
+        val raw = prefs.getString(pagesKey(variant), null) ?: run { retained.clear(); return defaultPages() }
 
         // A corrupt primary value falls back to the last good layout rather
         // than to the defaults; only when both are unreadable does the user
         // lose their arrangement, and then it is logged.
         val parsed = parsePages(raw)
-            ?: prefs.getString(KEY_PAGES_BACKUP + variant, null)?.let { backup ->
+            ?: prefs.getString(backupKey(variant), null)?.let { backup ->
                 Log.w(TAG, "Saved layout unreadable, restoring the previous one")
                 parsePages(backup)
             }
@@ -279,14 +283,14 @@ object DashboardStore {
     fun save(context: Context, pages: List<List<DashboardItem>>, variant: String = "") {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val doc = serializePages(pages)
-        val previous = prefs.getString(KEY_PAGES + variant, null)
+        val previous = prefs.getString(pagesKey(variant), null)
         prefs.edit().apply {
             // Keep what was there as the fallback for the next load, unless it
             // is the same text (nothing to gain) or unreadable (nothing to keep).
             if (previous != null && previous != doc && parsePagesQuietly(previous)) {
-                putString(KEY_PAGES_BACKUP + variant, previous)
+                putString(backupKey(variant), previous)
             }
-            putString(KEY_PAGES + variant, doc)
+            putString(pagesKey(variant), doc)
         }.apply()
     }
 

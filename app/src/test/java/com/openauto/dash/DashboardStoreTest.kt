@@ -163,4 +163,26 @@ class DashboardStoreTest {
         assertNull(DashboardStore.parsePages("not json at all"))
         assertNull(DashboardStore.parsePages("{"))
     }
+
+    // --- layout variants -----------------------------------------------------
+
+    @Test
+    fun variantsGetTheirOwnKeysAndBackups() {
+        assertEquals("pages", DashboardStore.pagesKey(""))
+        assertEquals("pages_backup", DashboardStore.backupKey(""))
+        assertEquals("pages_half", DashboardStore.pagesKey("_half"))
+        assertEquals("pages_backup_half", DashboardStore.backupKey("_half"))
+        // A variant's backup must never collide with another variant's main key.
+        assertFalse(DashboardStore.backupKey("") == DashboardStore.pagesKey("_half"))
+    }
+
+    @Test
+    fun parsingOneVariantDoesNotLeakUnknownTilesIntoAnother() {
+        val withStranger = """{"v":1,"pages":[[{"t":"hologram","gx":0,"gy":0,"gw":3,"gh":2}],[],[]]}"""
+        DashboardStore.parsePages(withStranger)
+        // The next layout parsed (another variant) starts clean.
+        DashboardStore.parsePages("""{"v":1,"pages":[[],[],[]]}""")
+        val saved = DashboardStore.serializePages(List(DashboardStore.PAGE_COUNT) { emptyList() })
+        assertFalse(saved.contains("hologram"))
+    }
 }
