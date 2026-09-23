@@ -80,6 +80,10 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Onbekend apparaat</string>
     <string name="vehicle_no_response">Geen antwoord van adapter</string>
+    <string name="vehicle_no_dtc_answer">De motorcomputer gaf geen antwoord op de foutcode-aanvraag. De antwoorden van de adapter staan hieronder.</string>
+    <string name="vehicle_lamp_no_codes">Het motorstoringslampje brandt maar er kwam geen code door. Probeer opnieuw met draaiende motor; de antwoorden van de adapter staan hieronder.</string>
+    <string name="vehicle_pending">In afwachting</string>
+    <string name="vehicle_scan_log">Antwoorden van de adapter</string>
     <string name="vehicle_lamp_on">Motorstoringslampje aan</string>
     <string name="vehicle_lamp_off">Motorstoringslampje uit</string>
     <string name="vehicle_engine_off_hint">Motor uit: met het contact aan brandt het motorstoringslampje als zelftest en gaat uit zodra de motor draait. De uitlezing wordt vanzelf herhaald als de motor draait.</string>

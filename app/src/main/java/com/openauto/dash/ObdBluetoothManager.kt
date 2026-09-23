@@ -82,6 +82,14 @@ object ObdBluetoothManager {
     private val _lamp = MutableStateFlow<EngineLamp?>(null)
     val lamp: StateFlow<EngineLamp?> = _lamp.asStateFlow()
 
+    /** Codes of the last scan that are only pending (seen, not yet confirmed by the engine computer). */
+    private val _pending = MutableStateFlow<Set<String>>(emptySet())
+    val pending: StateFlow<Set<String>> = _pending.asStateFlow()
+
+    /** Each command of the last fault-code scan with the adapter's raw reply, to read a puzzling result. */
+    private val _scanLog = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    val scanLog: StateFlow<List<Pair<String, String>>> = _scanLog.asStateFlow()
+
     fun setContext(context: Context) {
         appContext = context.applicationContext
     }
@@ -231,13 +239,44 @@ object ObdBluetoothManager {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
-            // What the engine computer itself says: lamp on or off, and how many
-            // codes it holds, so an empty or failed read can be checked against it.
-            _lamp.value = sendCommand("0101")?.let { ObdParser.parseEngineLamp(it) }
-            // A busy adapter can miss the first request; ask twice before giving up.
-            val response = sendCommand("03", DTC_TIMEOUT_MS) ?: sendCommand("03", DTC_TIMEOUT_MS)
-                ?: return@withLock failure(R.string.vehicle_no_response)
-            Result.success(ObdParser.parseDtcs(response))
+            val log = mutableListOf<Pair<String, String>>()
+            fun ask(command: String, timeoutMs: Long = DTC_TIMEOUT_MS): String? =
+                sendCommand(command, timeoutMs).also { log += command to it.orEmpty() }
+            val stored = linkedSetOf<String>()
+            val pending = linkedSetOf<String>()
+            var answered = false
+            fun collect(reply: String?, mode: Int) {
+                val codes = reply?.let { ObdParser.parseDtcReply(it, mode) } ?: return
+                if (mode == 0x43) answered = true
+                (if (mode == 0x43) stored else pending) += codes
+            }
+            try {
+                // Give slow computers time: adaptive timing can cut the wait short,
+                // and a busy running engine then reads as "NO DATA".
+                ask("ATAT0", READ_TIMEOUT_MS)
+                ask("ATSTFF", READ_TIMEOUT_MS)
+                // What the engine computer itself says: lamp on or off, so an
+                // empty read can be checked against it.
+                _lamp.value = ask("0101")?.let { ObdParser.parseEngineLamp(it) }
+                collect(ask("03"), 0x43)
+                collect(ask("07"), 0x47)
+                // On CAN, also ask the engine computer on its own address: with
+                // everyone answering at once, its reply can be the one lost.
+                if (ask("ATDPN", READ_TIMEOUT_MS)?.let(ObdParser::isCan11Bit) == true &&
+                    ask("ATSH7E0", READ_TIMEOUT_MS)?.contains("OK") == true
+                ) {
+                    collect(ask("03"), 0x43)
+                    collect(ask("07"), 0x47)
+                    ask("ATSH7DF", READ_TIMEOUT_MS)
+                }
+            } finally {
+                ask("ATAT1", READ_TIMEOUT_MS)
+                ask("ATST32", READ_TIMEOUT_MS)
+                _scanLog.value = log
+            }
+            if (!answered) return@withLock failure(R.string.vehicle_no_dtc_answer)
+            _pending.value = pending - stored
+            Result.success((stored + pending).toList())
         }
     }
 

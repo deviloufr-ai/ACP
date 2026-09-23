@@ -80,6 +80,10 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Appareil inconnu</string>
     <string name="vehicle_no_response">Pas de réponse de l\'adaptateur</string>
+    <string name="vehicle_no_dtc_answer">Le calculateur moteur n\'a pas répondu à la demande de codes défaut. Les réponses de l\'adaptateur sont ci-dessous.</string>
+    <string name="vehicle_lamp_no_codes">Le voyant moteur est allumé mais aucun code n\'a été transmis. Réessayez moteur tournant ; les réponses de l\'adaptateur sont ci-dessous.</string>
+    <string name="vehicle_pending">En attente</string>
+    <string name="vehicle_scan_log">Réponses de l\'adaptateur</string>
     <string name="vehicle_lamp_on">Voyant moteur allumé</string>
     <string name="vehicle_lamp_off">Voyant moteur éteint</string>
     <string name="vehicle_engine_off_hint">Moteur à l\'arrêt : contact mis, le voyant moteur s\'allume pour se tester et s\'éteint une fois le moteur démarré. La lecture sera refaite d\'elle-même moteur tournant.</string>

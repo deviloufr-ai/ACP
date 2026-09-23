@@ -1,6 +1,8 @@
 package com.openauto.dash
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -81,6 +83,36 @@ class ObdParserTest {
         assertEquals(EngineLamp(on = true, storedCodes = 3), ObdParser.parseEngineLamp("41 01 83 07 E5 00"))
         assertEquals(EngineLamp(on = false, storedCodes = 0), ObdParser.parseEngineLamp("SEARCHING...\r41 01 00 07 E5 00"))
         assertEquals(null, ObdParser.parseEngineLamp("NO DATA"))
+    }
+
+    @Test
+    fun noAnswerIsNotTheSameAsNoFault() {
+        assertEquals(null, ObdParser.parseDtcReply("NO DATA"))
+        assertEquals(null, ObdParser.parseDtcReply("SEARCHING...\rSTOPPED"))
+        assertEquals(emptyList<String>(), ObdParser.parseDtcReply("43 00"))
+        assertEquals(listOf("P1352"), ObdParser.parseDtcReply("43 00\r43 01 13 52"))
+    }
+
+    @Test
+    fun pendingCodesComeFromMode07() {
+        assertEquals(listOf("P0401"), ObdParser.parseDtcReply("47 01 04 01", mode = 0x47))
+        assertEquals(null, ObdParser.parseDtcReply("43 01 04 01", mode = 0x47))
+    }
+
+    @Test
+    fun theLampIsOnWhenAnyComputerSaysSo() {
+        // Gearbox first (lamp off), engine second (lamp on, one code).
+        assertEquals(EngineLamp(on = true, storedCodes = 1), ObdParser.parseEngineLamp("41 01 00 04 00 00\r41 01 81 07 65 04"))
+    }
+
+    @Test
+    fun canProtocolsAreRecognisedFromDescribeProtocolNumber() {
+        assertTrue(ObdParser.isCan11Bit("A6"))
+        assertTrue(ObdParser.isCan11Bit("6"))
+        assertTrue(ObdParser.isCan11Bit("8"))
+        assertFalse(ObdParser.isCan11Bit("A7"))
+        assertFalse(ObdParser.isCan11Bit("3"))
+        assertFalse(ObdParser.isCan11Bit("?"))
     }
 
     @Test

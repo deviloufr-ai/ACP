@@ -58,9 +58,15 @@ object ObdParser {
      * the other seven bits the number of stored emission-related codes.
      */
     internal fun parseEngineLamp(response: String): EngineLamp? {
-        val a = dataBytes(response, "4101")?.firstOrNull() ?: return null
-        return EngineLamp(on = a and 0x80 != 0, storedCodes = a and 0x7F)
+        // Several computers answer (engine, gearbox): the lamp is on if any says so.
+        val bytes = dtcMessages(response).filter { it.size >= 3 && it[0] == 0x41 && it[1] == 0x01 }.map { it[2] }
+        if (bytes.isEmpty()) return null
+        return EngineLamp(on = bytes.any { it and 0x80 != 0 }, storedCodes = bytes.sumOf { it and 0x7F })
     }
+
+    /** Whether an `ATDPN` reply ("A6", "6") names an 11-bit CAN protocol, where the engine computer is 7E0. */
+    internal fun isCan11Bit(reply: String): Boolean =
+        reply.trim().uppercase().removePrefix("A").firstOrNull() in setOf('6', '8')
 
     /**
      * Decodes a mode-03 reply into DTC strings like "P0133".
@@ -73,17 +79,26 @@ object ObdParser {
      *    a byte-count line and numbered lines: `00A` / `0: 43 04 ..` / `1: ..`.
      * Reading a CAN reply the old way turns the count byte into a bogus code.
      */
-    internal fun parseDtcs(response: String): List<String> {
+    internal fun parseDtcs(response: String): List<String> = parseDtcReply(response).orEmpty()
+
+    /**
+     * Codes from a mode 03 (stored) or, with [mode] 0x47, mode 07 (pending)
+     * reply; null when no computer answered at all ("NO DATA"), which must
+     * not read as "no fault".
+     */
+    internal fun parseDtcReply(response: String, mode: Int = 0x43): List<String>? {
         val codes = mutableListOf<String>()
+        var answered = false
         dtcMessages(response).forEach { bytes ->
-            if (bytes.size < 2 || bytes[0] != 0x43) return@forEach
+            if (bytes.size < 2 || bytes[0] != mode) return@forEach
+            answered = true
             val can = bytes.size % 2 == 0
             val payload = if (can) bytes.drop(2).take(bytes[1] * 2) else bytes.drop(1)
             payload.chunked(2).forEach { pair ->
                 if (pair.size == 2 && (pair[0] != 0 || pair[1] != 0)) codes.add(decodeDtc(pair[0], pair[1]))
             }
         }
-        return codes.distinct()
+        return if (answered) codes.distinct() else null
     }
 
     /** Splits a reply into per-message byte lists, joining CAN multi-frame parts and dropping status lines. */

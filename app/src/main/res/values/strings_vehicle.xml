@@ -80,6 +80,10 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Unknown device</string>
     <string name="vehicle_no_response">No response from adapter</string>
+    <string name="vehicle_no_dtc_answer">The engine computer didn\'t answer the fault-code request. The adapter\'s replies are below.</string>
+    <string name="vehicle_lamp_no_codes">The engine lamp is on but no code came through. Try again with the engine running; the adapter\'s replies are below.</string>
+    <string name="vehicle_pending">Pending</string>
+    <string name="vehicle_scan_log">Adapter replies</string>
     <string name="vehicle_lamp_on">Engine lamp on</string>
     <string name="vehicle_lamp_off">Engine lamp off</string>
     <string name="vehicle_engine_off_hint">Engine off: with the ignition on, the engine lamp lights up as a self-test and goes out once the engine runs. The scan repeats by itself once the engine is running.</string>

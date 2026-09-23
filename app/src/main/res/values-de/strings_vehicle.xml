@@ -80,6 +80,10 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Unbekanntes Gerät</string>
     <string name="vehicle_no_response">Keine Antwort vom Adapter</string>
+    <string name="vehicle_no_dtc_answer">Das Motorsteuergerät hat auf die Fehlercode-Abfrage nicht geantwortet. Die Antworten des Adapters stehen unten.</string>
+    <string name="vehicle_lamp_no_codes">Die Motorkontrollleuchte ist an, aber es kam kein Code an. Bei laufendem Motor erneut versuchen; die Antworten des Adapters stehen unten.</string>
+    <string name="vehicle_pending">Ausstehend</string>
+    <string name="vehicle_scan_log">Antworten des Adapters</string>
     <string name="vehicle_lamp_on">Motorkontrollleuchte an</string>
     <string name="vehicle_lamp_off">Motorkontrollleuchte aus</string>
     <string name="vehicle_engine_off_hint">Motor aus: Bei eingeschalteter Zündung leuchtet die Motorkontrollleuchte zum Selbsttest und erlischt, sobald der Motor läuft. Die Abfrage wird bei laufendem Motor automatisch wiederholt.</string>
