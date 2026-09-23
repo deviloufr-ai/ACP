@@ -53,6 +53,16 @@
     <string name="ai_detail_cost">Geschatte kosten</string>
     <string name="ai_detail_diy">Zelf te doen?</string>
     <string name="ai_detail_driving">Kun je doorrijden?</string>
+    <string name="ai_ask">Stel een vraag</string>
+    <string name="ai_ask_send">Versturen</string>
+    <string name="ai_ask_listening">Ik luister… stel je vraag; hij gaat vanzelf weg als je stopt.</string>
+    <string name="ai_ask_thinking">De monteur denkt na…</string>
+    <string name="ai_ask_you_asked">Je vroeg: %1$s</string>
+    <string name="ai_ask_nothing_heard">Ik hoorde geen vraag. Tik en vraag het opnieuw.</string>
+    <string name="ai_ask_mic_denied">Sta de microfoon toe om met je stem te vragen.</string>
+    <string name="ai_ask_mic_error">De microfoon kon niet starten.</string>
+    <string name="ai_ask_failed">Geen antwoord: %1$s</string>
+    <string name="ai_ask_replay">Opnieuw beluisteren</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Geen foutcodes ✓</string>

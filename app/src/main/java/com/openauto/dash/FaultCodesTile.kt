@@ -1,6 +1,10 @@
 package com.openauto.dash
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Resources
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
@@ -33,6 +39,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Euro
 import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Visibility
@@ -49,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 
 /**
@@ -223,7 +233,7 @@ internal fun ObdDtcCard(
         val index = codes?.indexOf(code) ?: -1
         val advice = if (codes != null && index >= 0) adviceFor(diagnosis, codes, code, index) else null
         // A new scan can take the code away while the sheet is open: then it just closes.
-        if (advice != null) FaultDetailSheet(code, advice, diagnosis, aiText) { opened = null }
+        if (advice != null) FaultDetailSheet(code, advice, diagnosis, codes.orEmpty(), aiText) { opened = null }
     }
 }
 
@@ -378,7 +388,28 @@ private fun CodeCard(code: String, advice: CodeAdvice?, severity: Severity?, pen
  * wide head-unit screen so lines stay short.
  */
 @Composable
-private fun FaultDetailSheet(code: String, advice: CodeAdvice, diagnosis: Diagnosis?, aiText: Resources, onClose: () -> Unit) {
+private fun FaultDetailSheet(
+    code: String,
+    advice: CodeAdvice,
+    diagnosis: Diagnosis?,
+    codes: List<String>,
+    aiText: Resources,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val ask by AskMechanic.state.collectAsState()
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) AskMechanic.listen(context, code, codes, diagnosis) else AskMechanic.micDenied(context)
+    }
+    val askQuestion = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            AskMechanic.listen(context, code, codes, diagnosis)
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    // Leaving the sheet stops listening, and the answer shown goes with it.
+    DisposableEffect(Unit) { onDispose { AskMechanic.cancel() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -397,11 +428,17 @@ private fun FaultDetailSheet(code: String, advice: CodeAdvice, diagnosis: Diagno
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.weight(1f)
                     )
+                    AskButton(ask, aiText, onClick = askQuestion)
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = onClose) {
                         Icon(Icons.Filled.Close, contentDescription = aiText.getString(R.string.ai_close), tint = DashColors.TextSecondary)
                     }
                 }
                 HorizontalDivider(color = DashColors.Line)
+                if (ask != AskMechanic.State.Idle) {
+                    AskPanel(ask, aiText, onReplay = { AskMechanic.replay(context) })
+                    HorizontalDivider(color = DashColors.Line)
+                }
 
                 // What it is and what to look for on the left; what to do about it on the right.
                 val understand: @Composable () -> Unit = {
@@ -453,6 +490,74 @@ private fun FaultDetailSheet(code: String, advice: CodeAdvice, diagnosis: Diagno
                     }
                 }
             }
+        }
+    }
+}
+
+/** Ask the mechanic out loud; while listening it becomes Send. */
+@Composable
+private fun AskButton(state: AskMechanic.State, aiText: Resources, onClick: () -> Unit) {
+    val listening = state == AskMechanic.State.Listening
+    Button(
+        onClick = onClick,
+        enabled = state != AskMechanic.State.Thinking,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (listening) DashColors.Warning else DashColors.Accent,
+            contentColor = if (listening) Color.White else DashColors.OnAccent,
+            disabledContainerColor = DashColors.CardHi,
+            disabledContentColor = DashColors.Muted
+        )
+    ) {
+        Icon(if (listening) Icons.AutoMirrored.Filled.Send else Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(aiText.getString(if (listening) R.string.ai_ask_send else R.string.ai_ask))
+    }
+}
+
+/** Under the title: listening, thinking, or the question as heard and the answer (which is also spoken). */
+@Composable
+private fun AskPanel(state: AskMechanic.State, aiText: Resources, onReplay: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(DashColors.Accent.copy(alpha = 0.08f))
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        when (state) {
+            AskMechanic.State.Listening -> {
+                Icon(Icons.Filled.Mic, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(aiText.getString(R.string.ai_ask_listening), color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+            }
+            AskMechanic.State.Thinking -> {
+                CircularProgressIndicator(color = DashColors.Accent, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(aiText.getString(R.string.ai_ask_thinking), color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+            }
+            is AskMechanic.State.Answered -> {
+                Icon(Icons.Filled.QuestionAnswer, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    if (state.exchange.heard.isNotBlank()) {
+                        Text(
+                            aiText.getString(R.string.ai_ask_you_asked, state.exchange.heard),
+                            color = DashColors.TextSecondary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    Text(state.exchange.answer, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                }
+                IconButton(onClick = onReplay) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = aiText.getString(R.string.ai_ask_replay), tint = DashColors.Accent)
+                }
+            }
+            AskMechanic.State.NothingHeard ->
+                Text(aiText.getString(R.string.ai_ask_nothing_heard), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
+            is AskMechanic.State.Failed ->
+                Text(state.reason, color = DashColors.Warning, style = MaterialTheme.typography.bodyLarge)
+            AskMechanic.State.Idle -> Unit
         }
     }
 }

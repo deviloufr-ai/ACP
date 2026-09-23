@@ -25,6 +25,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /** What Gemini answered, and which model did. */
@@ -76,24 +77,27 @@ object GeminiClient {
         .build()
 
     /**
-     * Asks [prompt]; with a [schema], the answer is JSON matching it. Gives up
+     * Asks [prompt]; with a [schema], the answer is JSON matching it, and with
+     * [audio] a recording goes along (Gemini hears speech itself). Gives up
      * once [budgetMs] is spent, whatever the link, so nothing waits forever.
      */
     suspend fun generate(
         apiKey: String,
         prompt: String,
         schema: JSONObject? = null,
-        budgetMs: Long = BUDGET_MS
+        budgetMs: Long = BUDGET_MS,
+        audio: ByteArray? = null,
+        audioMime: String = "audio/aac"
     ): Result<GeminiReply> =
-        withTimeoutOrNull(budgetMs) { race(apiKey, prompt, schema) }
+        withTimeoutOrNull(budgetMs) { race(apiKey, requestBody(prompt, schema, audio, audioMime)) }
             ?: Result.failure(InterruptedIOException("No Gemini model answered within ${budgetMs / 1000} s"))
 
     /** Every model at once; the first answer wins and the rest are cancelled. */
-    private suspend fun race(apiKey: String, prompt: String, schema: JSONObject?): Result<GeminiReply> = coroutineScope {
+    private suspend fun race(apiKey: String, body: String): Result<GeminiReply> = coroutineScope {
         val pending: MutableList<Deferred<Result<GeminiReply>>> = MODELS.map { model ->
             async {
                 try {
-                    Result.success(GeminiReply(model, call(apiKey, model, prompt, schema)))
+                    Result.success(GeminiReply(model, call(apiKey, model, body)))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -138,23 +142,32 @@ object GeminiClient {
         }
     }
 
-    private suspend fun call(apiKey: String, model: String, prompt: String, schema: JSONObject?): String {
-        val body = JSONObject().put(
-            "contents",
-            JSONArray().put(
-                JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+    /** The request, built once and sent to every model in the race. */
+    internal fun requestBody(prompt: String, schema: JSONObject?, audio: ByteArray?, audioMime: String): String {
+        val parts = JSONArray().put(JSONObject().put("text", prompt))
+        if (audio != null) {
+            parts.put(
+                JSONObject().put(
+                    "inlineData",
+                    JSONObject().put("mimeType", audioMime).put("data", Base64.getEncoder().encodeToString(audio))
+                )
             )
-        )
+        }
+        val body = JSONObject().put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
         if (schema != null) {
             body.put(
                 "generationConfig",
                 JSONObject().put("responseMimeType", "application/json").put("responseSchema", schema)
             )
         }
+        return body.toString()
+    }
+
+    private suspend fun call(apiKey: String, model: String, body: String): String {
         val request = Request.Builder()
             .url("$BASE/$model:generateContent")
             .header("x-goog-api-key", apiKey)
-            .post(body.toString().toRequestBody(JSON_TYPE))
+            .post(body.toRequestBody(JSON_TYPE))
             .build()
         client.newCall(request).await().use { resp ->
             val text = withContext(Dispatchers.IO) { resp.body?.string().orEmpty() }

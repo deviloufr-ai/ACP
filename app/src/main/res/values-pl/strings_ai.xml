@@ -55,6 +55,16 @@
     <string name="ai_detail_cost">Szacowany koszt</string>
     <string name="ai_detail_diy">Da się zrobić samemu?</string>
     <string name="ai_detail_driving">Czy można dalej jechać?</string>
+    <string name="ai_ask">Zadaj pytanie</string>
+    <string name="ai_ask_send">Wyślij</string>
+    <string name="ai_ask_listening">Słucham… zadaj pytanie; wyśle się samo, gdy skończysz.</string>
+    <string name="ai_ask_thinking">Mechanik się zastanawia…</string>
+    <string name="ai_ask_you_asked">Twoje pytanie: %1$s</string>
+    <string name="ai_ask_nothing_heard">Nie usłyszałem pytania. Dotknij i zapytaj ponownie.</string>
+    <string name="ai_ask_mic_denied">Zezwól na mikrofon, aby pytać głosem.</string>
+    <string name="ai_ask_mic_error">Nie udało się uruchomić mikrofonu.</string>
+    <string name="ai_ask_failed">Brak odpowiedzi: %1$s</string>
+    <string name="ai_ask_replay">Odsłuchaj ponownie</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Brak kodów błędów ✓</string>

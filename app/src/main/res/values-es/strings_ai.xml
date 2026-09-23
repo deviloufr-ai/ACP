@@ -54,6 +54,16 @@
     <string name="ai_detail_cost">Coste estimado</string>
     <string name="ai_detail_diy">¿Lo puedes hacer tú?</string>
     <string name="ai_detail_driving">¿Se puede seguir conduciendo?</string>
+    <string name="ai_ask">Hacer una pregunta</string>
+    <string name="ai_ask_send">Enviar</string>
+    <string name="ai_ask_listening">Te escucho… haz tu pregunta; se envía sola cuando termines.</string>
+    <string name="ai_ask_thinking">El mecánico está pensando…</string>
+    <string name="ai_ask_you_asked">Has preguntado: %1$s</string>
+    <string name="ai_ask_nothing_heard">No he oído ninguna pregunta. Toca y vuelve a preguntar.</string>
+    <string name="ai_ask_mic_denied">Permite el micrófono para preguntar por voz.</string>
+    <string name="ai_ask_mic_error">El micrófono no pudo arrancar.</string>
+    <string name="ai_ask_failed">Sin respuesta: %1$s</string>
+    <string name="ai_ask_replay">Volver a escuchar</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Sin códigos de avería ✓</string>

@@ -53,6 +53,16 @@
     <string name="ai_detail_cost">Geschätzte Kosten</string>
     <string name="ai_detail_diy">Selbst machen?</string>
     <string name="ai_detail_driving">Kann man weiterfahren?</string>
+    <string name="ai_ask">Frage stellen</string>
+    <string name="ai_ask_send">Senden</string>
+    <string name="ai_ask_listening">Ich höre zu… stellen Sie Ihre Frage; sie wird gesendet, sobald Sie aufhören.</string>
+    <string name="ai_ask_thinking">Der Mechaniker überlegt…</string>
+    <string name="ai_ask_you_asked">Ihre Frage: %1$s</string>
+    <string name="ai_ask_nothing_heard">Ich habe keine Frage gehört. Tippen und noch einmal fragen.</string>
+    <string name="ai_ask_mic_denied">Mikrofon erlauben, um per Sprache zu fragen.</string>
+    <string name="ai_ask_mic_error">Das Mikrofon konnte nicht starten.</string>
+    <string name="ai_ask_failed">Keine Antwort: %1$s</string>
+    <string name="ai_ask_replay">Nochmal anhören</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">Keine Fehlercodes ✓</string>

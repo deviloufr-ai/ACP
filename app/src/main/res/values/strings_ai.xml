@@ -53,6 +53,16 @@
     <string name="ai_detail_cost">Estimated cost</string>
     <string name="ai_detail_diy">Do it yourself?</string>
     <string name="ai_detail_driving">Can I keep driving?</string>
+    <string name="ai_ask">Ask a question</string>
+    <string name="ai_ask_send">Send</string>
+    <string name="ai_ask_listening">Listening… ask your question; it sends by itself when you stop.</string>
+    <string name="ai_ask_thinking">The mechanic is thinking…</string>
+    <string name="ai_ask_you_asked">You asked: %1$s</string>
+    <string name="ai_ask_nothing_heard">I didn\'t hear a question. Tap and ask again.</string>
+    <string name="ai_ask_mic_denied">Allow the microphone to ask by voice.</string>
+    <string name="ai_ask_mic_error">The microphone couldn\'t start.</string>
+    <string name="ai_ask_failed">No answer: %1$s</string>
+    <string name="ai_ask_replay">Listen again</string>
 
     <!-- Fault codes tile: status -->
     <string name="ai_no_codes">No fault codes ✓</string>
