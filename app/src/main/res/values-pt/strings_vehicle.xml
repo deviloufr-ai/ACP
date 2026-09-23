@@ -80,10 +80,9 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Dispositivo desconhecido</string>
     <string name="vehicle_no_response">Sem resposta do adaptador</string>
-    <string name="vehicle_no_dtc_answer">A centralina do motor não respondeu ao pedido de códigos de avaria. As respostas do adaptador estão abaixo.</string>
-    <string name="vehicle_lamp_no_codes">A luz do motor está acesa mas não chegou nenhum código. Tente de novo com o motor a trabalhar; as respostas do adaptador estão abaixo.</string>
+    <string name="vehicle_no_dtc_answer">A centralina do motor não respondeu ao pedido de códigos de avaria. Tente de novo daqui a pouco.</string>
+    <string name="vehicle_lamp_no_codes">A luz do motor está acesa mas não chegou nenhum código. Tente de novo com o motor a trabalhar.</string>
     <string name="vehicle_pending">Pendente</string>
-    <string name="vehicle_scan_log">Respostas do adaptador</string>
     <string name="vehicle_lamp_on">Luz do motor acesa</string>
     <string name="vehicle_lamp_off">Luz do motor apagada</string>
     <string name="vehicle_engine_off_hint">Motor desligado: com a ignição ligada, a luz do motor acende para se testar e apaga quando o motor arranca. A leitura repete-se sozinha com o motor a trabalhar.</string>

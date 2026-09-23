@@ -80,10 +80,9 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Nieznane urządzenie</string>
     <string name="vehicle_no_response">Brak odpowiedzi z adaptera</string>
-    <string name="vehicle_no_dtc_answer">Sterownik silnika nie odpowiedział na zapytanie o kody błędów. Odpowiedzi adaptera są poniżej.</string>
-    <string name="vehicle_lamp_no_codes">Kontrolka silnika świeci, ale nie przyszedł żaden kod. Spróbuj ponownie przy pracującym silniku; odpowiedzi adaptera są poniżej.</string>
+    <string name="vehicle_no_dtc_answer">Sterownik silnika nie odpowiedział na zapytanie o kody błędów. Spróbuj ponownie za chwilę.</string>
+    <string name="vehicle_lamp_no_codes">Kontrolka silnika świeci, ale nie przyszedł żaden kod. Spróbuj ponownie przy pracującym silniku.</string>
     <string name="vehicle_pending">Oczekujący</string>
-    <string name="vehicle_scan_log">Odpowiedzi adaptera</string>
     <string name="vehicle_lamp_on">Kontrolka silnika włączona</string>
     <string name="vehicle_lamp_off">Kontrolka silnika wyłączona</string>
     <string name="vehicle_engine_off_hint">Silnik wyłączony: przy włączonym zapłonie kontrolka silnika zapala się w ramach testu i gaśnie po uruchomieniu. Odczyt powtórzy się sam, gdy silnik będzie pracował.</string>

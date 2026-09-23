@@ -92,8 +92,6 @@ internal fun ObdDtcCard(
     val lamp by ObdBluetoothManager.lamp.collectAsState()
     val obdData by ObdBluetoothManager.data.collectAsState()
     val pending by ObdBluetoothManager.pending.collectAsState()
-    val scanLog by ObdBluetoothManager.scanLog.collectAsState()
-    var showLog by remember { mutableStateOf(false) }
     // The AI's advice is written in the mechanic's language; its labels follow it.
     val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
     var busy by remember { mutableStateOf(false) }
@@ -170,15 +168,13 @@ internal fun ObdDtcCard(
             }
 
             // Results stay readable after the adapter drops (engine off, parked).
-            if (codes != null || scanLog.isNotEmpty()) {
+            if (codes != null) {
                 Spacer(Modifier.height(12.dp))
                 Column(
                     modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (codes == null) {
-                        // Only the adapter's replies to show (the scan failed).
-                    } else if (codes.isEmpty() && lamp?.on == true) {
+                    if (codes.isEmpty() && lamp?.on == true) {
                         // Never a green "no fault" while the engine computer says its lamp is on.
                         Text(stringResource(R.string.vehicle_lamp_no_codes), color = DashColors.Warning, style = MaterialTheme.typography.bodyLarge)
                     } else if (codes.isEmpty()) {
@@ -218,7 +214,6 @@ internal fun ObdDtcCard(
                             )
                         }
                     }
-                    if (scanLog.isNotEmpty()) ScanLog(scanLog, showLog) { showLog = !showLog }
                 }
             }
         }
@@ -374,27 +369,6 @@ private fun CodeCard(code: String, advice: CodeAdvice?, severity: Severity?, pen
         Surface(onClick = onOpen, shape = shape, color = color, modifier = Modifier.fillMaxWidth()) { content() }
     } else {
         Surface(shape = shape, color = color, modifier = Modifier.fillMaxWidth()) { content() }
-    }
-}
-
-/**
- * The adapter's raw replies to the last scan, folded away: one photo of them
- * shows what the car actually answered when a result makes no sense.
- */
-@Composable
-private fun ScanLog(log: List<Pair<String, String>>, open: Boolean, onToggle: () -> Unit) {
-    Column {
-        TextButton(onClick = onToggle) {
-            Text(stringResource(R.string.vehicle_scan_log) + if (open) "  ▴" else "  ▾", color = DashColors.Accent)
-        }
-        if (open) {
-            Text(
-                log.joinToString("\n") { (command, reply) -> "$command → " + reply.lines().filter { it.isNotBlank() }.joinToString(" / ").ifEmpty { "—" } },
-                color = DashColors.TextSecondary,
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
     }
 }
 

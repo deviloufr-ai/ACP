@@ -86,10 +86,6 @@ object ObdBluetoothManager {
     private val _pending = MutableStateFlow<Set<String>>(emptySet())
     val pending: StateFlow<Set<String>> = _pending.asStateFlow()
 
-    /** Each command of the last fault-code scan with the adapter's raw reply, to read a puzzling result. */
-    private val _scanLog = MutableStateFlow<List<Pair<String, String>>>(emptyList())
-    val scanLog: StateFlow<List<Pair<String, String>>> = _scanLog.asStateFlow()
-
     fun setContext(context: Context) {
         appContext = context.applicationContext
     }
@@ -239,9 +235,7 @@ object ObdBluetoothManager {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
-            val log = mutableListOf<Pair<String, String>>()
-            fun ask(command: String, timeoutMs: Long = DTC_TIMEOUT_MS): String? =
-                sendCommand(command, timeoutMs).also { log += command to it.orEmpty() }
+            fun ask(command: String, timeoutMs: Long = DTC_TIMEOUT_MS): String? = sendCommand(command, timeoutMs)
             val stored = linkedSetOf<String>()
             val pending = linkedSetOf<String>()
             var answered = false
@@ -272,7 +266,6 @@ object ObdBluetoothManager {
             } finally {
                 ask("ATAT1", READ_TIMEOUT_MS)
                 ask("ATST32", READ_TIMEOUT_MS)
-                _scanLog.value = log
             }
             if (!answered) return@withLock failure(R.string.vehicle_no_dtc_answer)
             _pending.value = pending - stored

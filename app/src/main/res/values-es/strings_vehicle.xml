@@ -80,10 +80,9 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Dispositivo desconocido</string>
     <string name="vehicle_no_response">Sin respuesta del adaptador</string>
-    <string name="vehicle_no_dtc_answer">La centralita del motor no respondió a la petición de códigos de avería. Las respuestas del adaptador están abajo.</string>
-    <string name="vehicle_lamp_no_codes">El testigo del motor está encendido pero no llegó ningún código. Vuelve a intentarlo con el motor en marcha; las respuestas del adaptador están abajo.</string>
+    <string name="vehicle_no_dtc_answer">La centralita del motor no respondió a la petición de códigos de avería. Vuelve a intentarlo en un momento.</string>
+    <string name="vehicle_lamp_no_codes">El testigo del motor está encendido pero no llegó ningún código. Vuelve a intentarlo con el motor en marcha.</string>
     <string name="vehicle_pending">Pendiente</string>
-    <string name="vehicle_scan_log">Respuestas del adaptador</string>
     <string name="vehicle_lamp_on">Testigo de motor encendido</string>
     <string name="vehicle_lamp_off">Testigo de motor apagado</string>
     <string name="vehicle_engine_off_hint">Motor apagado: con el contacto puesto, el testigo del motor se enciende para comprobarse y se apaga al arrancar. La lectura se repetirá sola con el motor en marcha.</string>

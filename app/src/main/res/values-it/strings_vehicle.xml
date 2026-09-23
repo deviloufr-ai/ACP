@@ -80,10 +80,9 @@
     <!-- OBD adapter status messages -->
     <string name="vehicle_unknown_device">Dispositivo sconosciuto</string>
     <string name="vehicle_no_response">Nessuna risposta dall\'adattatore</string>
-    <string name="vehicle_no_dtc_answer">La centralina motore non ha risposto alla richiesta dei codici guasto. Le risposte dell\'adattatore sono qui sotto.</string>
-    <string name="vehicle_lamp_no_codes">La spia motore è accesa ma non è arrivato alcun codice. Riprova a motore acceso; le risposte dell\'adattatore sono qui sotto.</string>
+    <string name="vehicle_no_dtc_answer">La centralina motore non ha risposto alla richiesta dei codici guasto. Riprova tra un attimo.</string>
+    <string name="vehicle_lamp_no_codes">La spia motore è accesa ma non è arrivato alcun codice. Riprova a motore acceso.</string>
     <string name="vehicle_pending">In sospeso</string>
-    <string name="vehicle_scan_log">Risposte dell\'adattatore</string>
     <string name="vehicle_lamp_on">Spia motore accesa</string>
     <string name="vehicle_lamp_off">Spia motore spenta</string>
     <string name="vehicle_engine_off_hint">Motore spento: con il quadro acceso la spia motore si accende per un autotest e si spegne all\'avviamento. La lettura verrà ripetuta da sola a motore acceso.</string>
