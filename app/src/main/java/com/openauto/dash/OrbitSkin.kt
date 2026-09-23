@@ -307,7 +307,13 @@ internal fun OrbitTopBar(m: TopBarModel) {
             .height(56.dp)
             .ownLayer()
     ) {
-        val pillWidth = if (maxWidth > 424.dp) 400.dp else maxWidth - 24.dp
+        // With the OS bar up, its strip shows the time and status: the island
+        // shrinks to its three buttons.
+        val pillWidth = when {
+            m.merged -> 168.dp
+            maxWidth > 424.dp -> 400.dp
+            else -> maxWidth - 24.dp
+        }
         Row(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -336,28 +342,30 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = m.clock,
-                    modifier = Modifier.alignByBaseline(),
-                    color = DashColors.TextPrimary,
-                    fontSize = fsp(24f),
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.02).em,
-                    maxLines = 1
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = dateFmt.format(now),
-                    modifier = Modifier.alignByBaseline(),
-                    color = DashColors.Muted,
-                    fontSize = fsp(13f),
-                    fontFamily = FontFamily.SansSerif,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (!m.merged) {
+                    Text(
+                        text = m.clock,
+                        modifier = Modifier.alignByBaseline(),
+                        color = DashColors.TextPrimary,
+                        fontSize = fsp(24f),
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.02).em,
+                        maxLines = 1
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = dateFmt.format(now),
+                        modifier = Modifier.alignByBaseline(),
+                        color = DashColors.Muted,
+                        fontSize = fsp(13f),
+                        fontFamily = FontFamily.SansSerif,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            ObdDot(m.obdConnection, m.onConnectObd)
+            if (!m.merged) ObdDot(m.obdConnection, m.onConnectObd)
             MorePicker(m) { open ->
                 OrbitBarButton(onClick = open) {
                     Icon(Icons.Filled.MoreVert, stringResource(R.string.orbit_more), tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
@@ -370,7 +378,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 .padding(start = (maxWidth + pillWidth) / 2 + 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            VehicleAlerts(m.obdConnection, m.obdData)
+            if (!m.merged) VehicleAlerts(m.obdConnection, m.obdData)
         }
     }
 }

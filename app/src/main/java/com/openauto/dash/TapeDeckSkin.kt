@@ -384,12 +384,16 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
             }
         }
 
-        VfdClock(m.clock)
+        // With the OS bar up, its strip shows the time and the readouts: the
+        // strip keeps the logo and its pills.
+        if (!m.merged) VfdClock(m.clock)
 
         Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-            ObdLed(m.obdConnection, m.onConnectObd)
-            OutsideTemp()
-            VehicleAlerts(m.obdConnection, m.obdData)
+            if (!m.merged) {
+                ObdLed(m.obdConnection, m.onConnectObd)
+                OutsideTemp()
+                VehicleAlerts(m.obdConnection, m.obdData)
+            }
             MorePicker(m) { open ->
                 NeonPill(null, stringResource(R.string.tape_cd_more), open) {
                     Icon(Icons.Filled.MoreVert, contentDescription = null, tint = legend, modifier = Modifier.size(20.dp))

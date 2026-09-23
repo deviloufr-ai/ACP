@@ -735,12 +735,16 @@ internal fun HorizonTopBar(m: TopBarModel) {
             .padding(start = 22.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // With the OS bar up, its strip shows the time and status: only the
+        // buttons stay here.
         Row(modifier = Modifier.weight(1f)) {
-            SceneText(m.clock, display(40f), Modifier.alignByBaseline(), overflow = TextOverflow.Clip)
-            Spacer(Modifier.width(14.dp))
-            SceneText(date, ui(15f, soft), Modifier.alignByBaseline())
+            if (!m.merged) {
+                SceneText(m.clock, display(40f), Modifier.alignByBaseline(), overflow = TextOverflow.Clip)
+                Spacer(Modifier.width(14.dp))
+                SceneText(date, ui(15f, soft), Modifier.alignByBaseline())
+            }
         }
-        VehicleAlerts(m.obdConnection, m.obdData)
+        if (!m.merged) VehicleAlerts(m.obdConnection, m.obdData)
         IconButton(onClick = m.onApps) {
             Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.horizon_cd_all_apps), tint = ink)
         }
@@ -749,7 +753,7 @@ internal fun HorizonTopBar(m: TopBarModel) {
                 LayoutIcon(m.layout, stringResource(R.string.horizon_cd_screen_layout, m.layout.title), soft)
             }
         }
-        HorizonObdDot(m.obdConnection, m.onConnectObd)
+        if (!m.merged) HorizonObdDot(m.obdConnection, m.onConnectObd)
         MorePicker(m) { open ->
             IconButton(onClick = open) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.horizon_cd_more), tint = soft)
