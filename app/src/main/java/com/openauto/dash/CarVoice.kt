@@ -34,6 +34,9 @@ object CarVoice {
     private var nextId = 0
     // Utterances handed to the engine and not finished yet (main thread).
     private var talking = 0
+    // What was asked to be said lately, newest last, so one feature doesn't repeat another.
+    private val recent = ArrayDeque<Pair<Long, String>>()
+    private const val RECENT_MS = 10 * 60_000L
 
     fun setContext(context: Context) {
         appContext = context.applicationContext
@@ -41,6 +44,12 @@ object CarVoice {
 
     /** Says [text] in [locale]; silently skipped when the unit has no voice for that language. */
     fun speak(text: String, locale: Locale) {
+        // Noted when asked, not when spoken, so a check right after already sees it.
+        val now = System.currentTimeMillis()
+        synchronized(recent) {
+            recent.addLast(now to text)
+            while (recent.first().first < now - RECENT_MS) recent.removeFirst()
+        }
         main.post {
             if (text.isBlank()) return@post
             val engine = engine() ?: return@post
@@ -51,6 +60,10 @@ object CarVoice {
             say(engine, text, locale)
         }
     }
+
+    /** What was asked to be said since [time] (the last ten minutes at most). */
+    fun saidSince(time: Long): List<String> =
+        synchronized(recent) { recent.filter { it.first >= time }.map { it.second } }
 
     /**
      * Whether the unit can speak [locale]: true / false, or null while the

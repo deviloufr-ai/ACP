@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AI mechanic settings: the start-up briefing switch -->
+    <string name="briefing_setting">Briefing au démarrage</string>
+    <string name="briefing_setting_detail">Au démarrage : météo, autonomie, moteur et votre prochain rendez-vous</string>
+
+    <!-- Spoken when the car starts, in the mechanic's language -->
+    <string name="briefing_morning">Bonjour.</string>
+    <string name="briefing_afternoon">Bonjour.</string>
+    <string name="briefing_evening">Bonsoir.</string>
+    <plurals name="briefing_weather">
+        <item quantity="one">%1$d degré, %2$s.</item>
+        <item quantity="many">%1$d degrés, %2$s.</item>
+        <item quantity="other">%1$d degrés, %2$s.</item>
+    </plurals>
+    <string name="briefing_ice">Attention au verglas.</string>
+    <string name="briefing_fuel">Environ %1$d kilomètres d\'autonomie.</string>
+    <string name="briefing_fuel_low">Réservoir presque vide : environ %1$d kilomètres, prévoyez un plein.</string>
+    <string name="briefing_no_faults">Aucun défaut moteur.</string>
+    <plurals name="briefing_faults">
+        <item quantity="one">%1$d code défaut moteur enregistré, détails à l\'écran.</item>
+        <item quantity="many">%1$d codes défaut moteur enregistrés, détails à l\'écran.</item>
+        <item quantity="other">%1$d codes défaut moteur enregistrés, détails à l\'écran.</item>
+    </plurals>
+    <string name="briefing_event">Prochain rendez-vous : %1$s à %2$s.</string>
+</resources>

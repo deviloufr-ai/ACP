@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AI mechanic settings: the start-up briefing switch -->
+    <string name="briefing_setting">Startansage</string>
+    <string name="briefing_setting_detail">Beim Start: Wetter, Reichweite, Motor und nächster Termin</string>
+
+    <!-- Spoken when the car starts, in the mechanic's language -->
+    <string name="briefing_morning">Guten Morgen.</string>
+    <string name="briefing_afternoon">Guten Tag.</string>
+    <string name="briefing_evening">Guten Abend.</string>
+    <plurals name="briefing_weather">
+        <item quantity="one">%1$d Grad, %2$s.</item>
+        <item quantity="other">%1$d Grad, %2$s.</item>
+    </plurals>
+    <string name="briefing_ice">Vorsicht, Glättegefahr.</string>
+    <string name="briefing_fuel">Reichweite etwa %1$d Kilometer.</string>
+    <string name="briefing_fuel_low">Wenig Kraftstoff: noch etwa %1$d Kilometer, bald tanken.</string>
+    <string name="briefing_no_faults">Keine Motorfehler.</string>
+    <plurals name="briefing_faults">
+        <item quantity="one">%1$d Motorfehlercode gespeichert, Details auf dem Bildschirm.</item>
+        <item quantity="other">%1$d Motorfehlercodes gespeichert, Details auf dem Bildschirm.</item>
+    </plurals>
+    <string name="briefing_event">Als Nächstes: %1$s um %2$s.</string>
+</resources>

@@ -362,6 +362,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
         AiMechanic.setContext(context)
+        StartupBriefing.start(context)
         mediaController.start()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {

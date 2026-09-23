@@ -167,24 +167,14 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                     perRow = 3
                 ) { config = config.copy(languageChoice = it) }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.ai_speak), color = DashColors.TextPrimary)
-                        Text(
-                            stringResource(R.string.ai_speak_detail),
-                            color = DashColors.TextSecondary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Switch(
-                        checked = config.speak,
-                        onCheckedChange = { config = config.copy(speak = it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = DashColors.OnAccent,
-                            checkedTrackColor = DashColors.Accent
-                        )
-                    )
+                SwitchRow(stringResource(R.string.ai_speak), stringResource(R.string.ai_speak_detail), config.speak) {
+                    config = config.copy(speak = it)
                 }
+                SwitchRow(
+                    stringResource(R.string.briefing_setting),
+                    stringResource(R.string.briefing_setting_detail),
+                    config.briefing
+                ) { config = config.copy(briefing = it) }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
@@ -229,6 +219,25 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 @Composable
 private fun Label(text: String) {
     Text(text, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+}
+
+/** An on/off setting: title and explanation on the left, the switch on the right. */
+@Composable
+private fun SwitchRow(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = DashColors.TextPrimary)
+            Text(detail, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = DashColors.OnAccent,
+                checkedTrackColor = DashColors.Accent
+            )
+        )
+    }
 }
 
 /**

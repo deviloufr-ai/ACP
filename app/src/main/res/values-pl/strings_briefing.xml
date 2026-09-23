@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AI mechanic settings: the start-up briefing switch -->
+    <string name="briefing_setting">Podsumowanie przy starcie</string>
+    <string name="briefing_setting_detail">Przy uruchomieniu: pogoda, zasięg, silnik i najbliższe spotkanie</string>
+
+    <!-- Spoken when the car starts, in the mechanic's language -->
+    <string name="briefing_morning">Dzień dobry.</string>
+    <string name="briefing_afternoon">Dzień dobry.</string>
+    <string name="briefing_evening">Dobry wieczór.</string>
+    <plurals name="briefing_weather">
+        <item quantity="one">%1$d stopień, %2$s.</item>
+        <item quantity="few">%1$d stopnie, %2$s.</item>
+        <item quantity="many">%1$d stopni, %2$s.</item>
+        <item quantity="other">%1$d stopnia, %2$s.</item>
+    </plurals>
+    <string name="briefing_ice">Uwaga na gołoledź.</string>
+    <string name="briefing_fuel">Zasięg około %1$d kilometrów.</string>
+    <string name="briefing_fuel_low">Mało paliwa: około %1$d kilometrów, warto zatankować.</string>
+    <string name="briefing_no_faults">Brak usterek silnika.</string>
+    <plurals name="briefing_faults">
+        <item quantity="one">%1$d kod błędu silnika zapisany, szczegóły na ekranie.</item>
+        <item quantity="few">%1$d kody błędów silnika zapisane, szczegóły na ekranie.</item>
+        <item quantity="many">%1$d kodów błędów silnika zapisanych, szczegóły na ekranie.</item>
+        <item quantity="other">%1$d kodu błędu silnika zapisanego, szczegóły na ekranie.</item>
+    </plurals>
+    <string name="briefing_event">Następne spotkanie: %1$s o %2$s.</string>
+</resources>

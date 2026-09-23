@@ -42,11 +42,15 @@ enum class AiLanguage(val label: String, val promptName: String, val locale: Loc
 
     /**
      * The app's strings in this language, whatever the launcher's own: spoken
-     * lines must match the voice. A blank Configuration is a delta, so only
-     * the locale changes.
+     * lines must match the voice. Inside `Configuration().apply {}` a bare
+     * `locale` is the Configuration's own (deprecated) field, which left the
+     * strings in the app's language: English words read by a French voice.
      */
-    fun resources(context: Context): Resources =
-        context.createConfigurationContext(Configuration().apply { setLocale(locale) }).resources
+    fun resources(context: Context): Resources {
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(locale)
+        return context.createConfigurationContext(config).resources
+    }
 
     companion object {
         /** The language matching [locale], English when the mechanic doesn't speak it. */
@@ -61,7 +65,9 @@ data class AiConfig(
     val engine: CarEngine = CarEngine.HDI_16,
     /** The driver's pick; null follows the launcher's language. */
     val languageChoice: AiLanguage? = null,
-    val speak: Boolean = true
+    val speak: Boolean = true,
+    /** Say the start-up briefing when the car starts. */
+    val briefing: Boolean = true
 ) {
     /** The language actually used: the pick, else the launcher's current one. */
     val language: AiLanguage get() = languageChoice ?: AiLanguage.of(Locale.getDefault())
@@ -78,7 +84,8 @@ object AiSettings {
             engine = p.getString("engine", null)?.let { runCatching { CarEngine.valueOf(it) }.getOrNull() }
                 ?: CarEngine.HDI_16,
             languageChoice = p.getString("language", null)?.let { runCatching { AiLanguage.valueOf(it) }.getOrNull() },
-            speak = p.getBoolean("speak", true)
+            speak = p.getBoolean("speak", true),
+            briefing = p.getBoolean("briefing", true)
         )
     }
 
@@ -89,6 +96,7 @@ object AiSettings {
             .putString("engine", config.engine.name)
             .apply { config.languageChoice?.let { putString("language", it.name) } ?: remove("language") }
             .putBoolean("speak", config.speak)
+            .putBoolean("briefing", config.briefing)
             .apply()
     }
 }
@@ -265,7 +273,8 @@ internal class LiveWatch {
  */
 internal data class SpokenLine(val res: Int, val args: List<Any>, val quantity: Int? = null) {
     fun text(resources: Resources): String {
-        val a = args.toTypedArray()
+        // An argument can be a line itself (a weather condition), said in the same language.
+        val a = args.map { if (it is SpokenLine) it.text(resources) else it }.toTypedArray()
         return if (quantity != null) resources.getQuantityString(res, quantity, *a) else resources.getString(res, *a)
     }
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AI mechanic settings: the start-up briefing switch -->
+    <string name="briefing_setting">Start-up briefing</string>
+    <string name="briefing_setting_detail">When the car starts: weather, fuel range, engine and your next appointment</string>
+
+    <!-- Spoken when the car starts, in the mechanic's language -->
+    <string name="briefing_morning">Good morning.</string>
+    <string name="briefing_afternoon">Good afternoon.</string>
+    <string name="briefing_evening">Good evening.</string>
+    <plurals name="briefing_weather">
+        <item quantity="one">%1$d degree, %2$s.</item>
+        <item quantity="other">%1$d degrees, %2$s.</item>
+    </plurals>
+    <string name="briefing_ice">Watch out for ice on the road.</string>
+    <string name="briefing_fuel">About %1$d kilometres of range.</string>
+    <string name="briefing_fuel_low">Fuel is low: about %1$d kilometres left, plan a stop.</string>
+    <string name="briefing_no_faults">No engine faults.</string>
+    <plurals name="briefing_faults">
+        <item quantity="one">%1$d engine fault code stored, details on screen.</item>
+        <item quantity="other">%1$d engine fault codes stored, details on screen.</item>
+    </plurals>
+    <string name="briefing_event">Next: %1$s at %2$s.</string>
+    <!-- A sentence the AI mechanic already wrote in the right language -->
+    <string name="briefing_verbatim" translatable="false">%1$s</string>
+</resources>
