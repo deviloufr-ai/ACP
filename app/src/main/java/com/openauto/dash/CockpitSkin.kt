@@ -131,7 +131,10 @@ import kotlin.math.sin
  * Cockpit skin: a real instrument cluster on stitched leather. Chrome-ringed
  * analog dials with orange backlit numerals and red-orange needles, amber
  * dot-matrix LCDs, aircraft toggle switches for apps and a round instrument
- * screen framing a docked Google Maps window.
+ * screen framing a docked Google Maps window. By day (DashColors.Light) it is
+ * a tan leather interior: ivory dial faces printed in black, reflective
+ * grey-green LCDs with dark segments and pale switch plates; the chrome, the
+ * red zones and the red-orange needles stay.
  *
  * Performance on the Mali head unit: textures are small tiled bitmaps drawn
  * with one shader call, static artwork is cached (drawWithCache on its own
@@ -141,28 +144,44 @@ import kotlin.math.sin
 
 // --- Materials ------------------------------------------------------------------
 
-private val Leather = Color(0xFF231C16)
-private val CowlTop = Color(0xFF1D1915)
-private val CowlBottom = Color(0xFF0B0A09)
-private val StitchBrown = Color(0xFF8A6040)
+// Getters pick the night or day version of a material, so anything that bakes
+// one in must read it inside its cache block or key on DashColors.Light.
+// Chrome, the red zone and the engraving on chrome are the same day and night.
+
+private val Leather get() = if (DashColors.Light) Color(0xFFD2B792) else Color(0xFF231C16)
+private val CowlTop get() = if (DashColors.Light) Color(0xFFEADFCD) else Color(0xFF1D1915)
+private val CowlBottom get() = if (DashColors.Light) Color(0xFFD6C3A7) else Color(0xFF0B0A09)
+private val StitchBrown get() = if (DashColors.Light) Color(0xFF6B4527) else Color(0xFF8A6040)
 private val Chrome0 = Color(0xFFF7F6F2)
 private val Chrome1 = Color(0xFF8E8B86)
 private val Chrome2 = Color(0xFFEFEDE8)
 private val Chrome3 = Color(0xFF46433F)
 private val ChromeShade = Color(0xFF6E6B66)
-private val BezelBlack = Color(0xFF050404)
-private val FaceCentre = Color(0xFF1C1A18)
-private val FaceEdge = Color(0xFF070606)
-private val SubFace = Color(0xFF121110)
-private val TickInk = Color(0xFFEDE6DA)
+private val BezelBlack get() = if (DashColors.Light) Color(0xFF3A2E24) else Color(0xFF050404)
+private val Ledge get() = if (DashColors.Light) Color(0xFF4B3C2F) else Color(0xFF0A0908)
+private val FaceCentre get() = if (DashColors.Light) Color(0xFFF4EFE4) else Color(0xFF1C1A18)
+private val FaceEdge get() = if (DashColors.Light) Color(0xFFDCD4C4) else Color(0xFF070606)
+private val SubFace get() = if (DashColors.Light) Color(0xFFE2DBCC) else Color(0xFF121110)
+private val PodFace get() = if (DashColors.Light) Color(0xFFF2EDE2) else Color(0xFF0B0A09)
+private val TickInk get() = if (DashColors.Light) Color(0xFF1A1714) else Color(0xFFEDE6DA)
+private val SubPin get() = if (DashColors.Light) Color(0xFF2E2A26) else Color(0xFFD9D6D0)
 private val RedZone = Color(0xFFD8261C)
-private val LcdBack = Color(0xFF1C1206)
-private val LcdRim = Color(0xFF3A2A18)
+private val LcdBack get() = if (DashColors.Light) Color(0xFFBAC0A2) else Color(0xFF1C1206)
+private val LcdRim get() = if (DashColors.Light) Color(0xFF6E6150) else Color(0xFF3A2A18)
 private val EngraveInk = Color(0xFF1E1B18)
-private val PlateBlack = Color(0xFF0E0C0A)
+private val Plate get() = if (DashColors.Light) Color(0xFFE6E2D9) else Color(0xFF0E0C0A)
 private val Bushing = Color(0xFF2A2723)
 private val HubPin = Color(0xFF1A1816)
-private val LampOff = Color(0xFF3A332C)
+private val LampOff get() = if (DashColors.Light) Color(0xFFAE9E87) else Color(0xFF3A332C)
+
+/** LCD segment ink: backlit amber at night, dark segments on the reflective day LCD. */
+private val LcdInk get() = if (DashColors.Light) Color(0xFF1F251A) else DashColors.Rpm
+
+/** Halo strength of lamps and LEDs: full at night, half by day, where a glow reads as a stain. */
+private val Halo get() = if (DashColors.Light) 0.5f else 1f
+
+/** Black for a cast shadow; a bit softer by day on the light leather. */
+private fun castShadow(alpha: Float): Color = Color.Black.copy(alpha = if (DashColors.Light) alpha * 0.6f else alpha)
 
 /** Diagonal turned-chrome: bright, dark band, bright again, dark edge. */
 private fun chromeBrush(from: Offset, to: Offset): Brush = Brush.linearGradient(
@@ -185,8 +204,12 @@ private fun polar(c: Offset, r: Float, deg: Float): Offset {
     return Offset(c.x + r * sin(a).toFloat(), c.y - r * cos(a).toFloat())
 }
 
-/** Leather grain: soft light and dark specks on a 64 px tile, wrapped so it repeats without seams. */
-private val grainBrush: ShaderBrush by lazy {
+/**
+ * Leather grain: soft light and dark specks on a 64 px tile, wrapped so it
+ * repeats without seams. By [day] the dark specks turn a fainter brown and the
+ * light ones brighter, so tan leather reads as grain rather than dirt.
+ */
+private fun grainTile(day: Boolean): ShaderBrush {
     val n = 64
     val bmp = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bmp)
@@ -199,43 +222,58 @@ private val grainBrush: ShaderBrush by lazy {
         val r = 0.6f + rnd.nextFloat() * 0.9f
         for (dx in intArrayOf(-n, 0, n)) for (dy in intArrayOf(-n, 0, n)) canvas.drawCircle(x + dx, y + dy, r, paint)
     }
-    repeat(170) { speck(android.graphics.Color.argb(40 + rnd.nextInt(45), 0, 0, 0)) }
-    repeat(120) { speck(android.graphics.Color.argb(8 + rnd.nextInt(10), 255, 255, 255)) }
-    ShaderBrush(ImageShader(bmp.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
+    repeat(170) {
+        speck(
+            if (day) android.graphics.Color.argb(16 + rnd.nextInt(24), 70, 40, 16)
+            else android.graphics.Color.argb(40 + rnd.nextInt(45), 0, 0, 0)
+        )
+    }
+    repeat(120) {
+        speck(android.graphics.Color.argb(if (day) 28 + rnd.nextInt(30) else 8 + rnd.nextInt(10), 255, 255, 255))
+    }
+    return ShaderBrush(ImageShader(bmp.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
 }
 
-/** One repeating tile: a dark dot per LCD pixel, or a dark line per scanline. */
-private fun patternTile(pitch: Int, scanline: Boolean): ImageBitmap {
+private val nightGrain by lazy { grainTile(day = false) }
+private val dayGrain by lazy { grainTile(day = true) }
+
+/** The grain tile for the current appearance; each is built once, on first use. */
+private val grainBrush: ShaderBrush get() = if (DashColors.Light) dayGrain else nightGrain
+
+/** One repeating tile: a dark dot per LCD pixel, or a dark line per scanline; fainter by [day]. */
+private fun patternTile(pitch: Int, scanline: Boolean, day: Boolean): ImageBitmap {
     val bmp = Bitmap.createBitmap(pitch, pitch, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bmp)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
     if (scanline) {
-        paint.color = android.graphics.Color.argb(52, 0, 0, 0)
+        paint.color = android.graphics.Color.argb(if (day) 26 else 52, 0, 0, 0)
         canvas.drawRect(0f, 0f, pitch.toFloat(), 1f, paint)
     } else {
-        paint.color = android.graphics.Color.argb(90, 0, 0, 0)
+        paint.color = android.graphics.Color.argb(if (day) 34 else 90, 0, 0, 0)
         canvas.drawCircle(pitch / 2f, pitch / 2f, pitch * 0.3f, paint)
     }
     return bmp.asImageBitmap()
 }
 
-/** Dot-matrix overlay for LCDs (3 dp pitch), one tile per density. */
+/** Dot-matrix overlay for LCDs (3 dp pitch), one tile per density and appearance. */
 @Composable
 private fun rememberDotMatrix(): ShaderBrush {
     val density = LocalDensity.current.density
-    return remember(density) {
+    val day = DashColors.Light
+    return remember(density, day) {
         val pitch = (3f * density).roundToInt().coerceAtLeast(2)
-        ShaderBrush(ImageShader(patternTile(pitch, scanline = false), TileMode.Repeated, TileMode.Repeated))
+        ShaderBrush(ImageShader(patternTile(pitch, scanline = false, day = day), TileMode.Repeated, TileMode.Repeated))
     }
 }
 
-/** Scanlines for the instrument screen: a 1 px dark line every 3 dp. */
+/** Scanlines for the instrument screen: a 1 px dark line every 3 dp, one tile per density and appearance. */
 @Composable
 private fun rememberScanlines(): ShaderBrush {
     val density = LocalDensity.current.density
-    return remember(density) {
+    val day = DashColors.Light
+    return remember(density, day) {
         val pitch = (3f * density).roundToInt().coerceAtLeast(2)
-        ShaderBrush(ImageShader(patternTile(pitch, scanline = true), TileMode.Repeated, TileMode.Repeated))
+        ShaderBrush(ImageShader(patternTile(pitch, scanline = true, day = day), TileMode.Repeated, TileMode.Repeated))
     }
 }
 
@@ -245,22 +283,34 @@ private fun rememberScanlines(): ShaderBrush {
 @Composable
 private fun Dp.textSize(): TextUnit = with(LocalDensity.current) { this@textSize.toSp() }
 
-/** Engraved caps: condensed, letter-spaced, sunk into the dash. */
+/** Engraved caps: condensed, letter-spaced, sunk into the dash (a dark lip at night, a lit one by day). */
 private fun engraved(size: TextUnit, color: Color = DashColors.TextSecondary): TextStyle = TextStyle(
     color = color,
     fontFamily = CondensedFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = size,
     letterSpacing = 0.18.em,
-    shadow = Shadow(Color.Black.copy(alpha = 0.85f), Offset(0f, 1.5f), 1f)
+    shadow = if (DashColors.Light) {
+        Shadow(Color.White.copy(alpha = 0.55f), Offset(0f, 1.5f), 1f)
+    } else {
+        Shadow(Color.Black.copy(alpha = 0.85f), Offset(0f, 1.5f), 1f)
+    }
 )
 
-/** Backlit LCD text: monospace with a soft glow of its own colour. */
+/**
+ * LCD text in monospace: backlit with a soft glow of its own colour at night;
+ * by day dark segments casting a faint shadow on the reflector behind them.
+ */
 private fun lcd(size: TextUnit, color: Color): TextStyle = TextStyle(
     color = color,
     fontFamily = FontFamily.Monospace,
     fontSize = size,
-    shadow = Shadow(color.copy(alpha = 0.6f * color.alpha), blurRadius = (size.value * 0.45f).coerceAtLeast(3f))
+    shadow = if (DashColors.Light) {
+        val d = (size.value * 0.06f).coerceAtLeast(1f)
+        Shadow(color.copy(alpha = 0.22f * color.alpha), Offset(d, d * 1.3f), d)
+    } else {
+        Shadow(color.copy(alpha = 0.6f * color.alpha), blurRadius = (size.value * 0.45f).coerceAtLeast(3f))
+    }
 )
 
 // --- Clocks & motion ----------------------------------------------------------------
@@ -286,7 +336,11 @@ private fun parseClock(clock: String): Pair<Int, Int> {
 
 // --- Page background ----------------------------------------------------------------
 
-/** Cached geometry of the leather page for one screen size: the cowl hood, its edge and stitching. */
+/**
+ * Cached geometry and materials of the leather page for one screen size and
+ * appearance: the cowl hood, its edge and stitching. Build it inside a cache
+ * block, which then rebuilds when day/night switches.
+ */
 private class Backdrop(val size: Size, private val density: Float) {
     private fun dp(v: Float) = v * density
     private fun curve(dy: Float): Path {
@@ -305,29 +359,35 @@ private class Backdrop(val size: Size, private val density: Float) {
         lineTo(0f, size.height)
         close()
     }
+    private val light = DashColors.Light
+    val leather = Leather
+    val grain = grainBrush
     val cowlBrush = Brush.verticalGradient(listOf(CowlTop, CowlBottom), startY = dp(60f), endY = size.height)
     val edgeStroke = Stroke(dp(2f))
+    val edgeLight = Color.White.copy(alpha = if (light) 0.3f else 0.08f)
     val stitchStroke = Stroke(dp(2f), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dp(9f), dp(7f))))
+    val stitchColor = StitchBrown
+    val stitchShade = castShadow(0.5f)
     val shadeOffset = dp(1.2f)
     val vignette = Brush.radialGradient(
-        0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.38f),
+        0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = if (light) 0.14f else 0.38f),
         center = Offset(size.width / 2f, size.height * 0.45f),
         radius = max(size.width, size.height) * 0.72f
     )
 }
 
-/** Leather, the darker cowl with its highlight and stitching, grain over all, a soft vignette. */
+/** Leather, the cowl (darker at night, lighter by day) with its highlight and stitching, grain over all, a soft vignette. */
 private fun DrawScope.drawBackdrop(b: Backdrop) {
-    drawRect(Leather, size = b.size)
+    drawRect(b.leather, size = b.size)
     drawPath(b.cowl, b.cowlBrush)
-    drawRect(grainBrush, size = b.size)
-    drawPath(b.edge, Color.White.copy(alpha = 0.08f), style = b.edgeStroke)
-    translate(top = b.shadeOffset) { drawPath(b.stitch, Color.Black.copy(alpha = 0.5f), style = b.stitchStroke) }
-    drawPath(b.stitch, StitchBrown, style = b.stitchStroke)
+    drawRect(b.grain, size = b.size)
+    drawPath(b.edge, b.edgeLight, style = b.edgeStroke)
+    translate(top = b.shadeOffset) { drawPath(b.stitch, b.stitchShade, style = b.stitchStroke) }
+    drawPath(b.stitch, b.stitchColor, style = b.stitchStroke)
     drawRect(b.vignette, size = b.size)
 }
 
-/** The whole-screen page: stitched leather with the instrument cowl. Static and cached per size. */
+/** The whole-screen page: stitched leather with the instrument cowl. Static and cached per size and appearance. */
 @Composable
 internal fun cockpitBackground(): Modifier = Modifier.drawWithCache {
     val backdrop = Backdrop(size, density)
@@ -426,9 +486,10 @@ private fun ChromePill(
                 val corner = CornerRadius(12.dp.toPx())
                 val body = pillBrush(bodyH)
                 val line = 1.dp.toPx()
+                val ledge = Ledge
                 onDrawBehind {
                     val sink = if (pressed) drop * 0.7f else 0f
-                    drawRoundRect(Color(0xFF0A0908), Offset(0f, drop), Size(size.width, bodyH), corner)
+                    drawRoundRect(ledge, Offset(0f, drop), Size(size.width, bodyH), corner)
                     drawRoundRect(body, Offset(0f, sink), Size(size.width, bodyH), corner)
                     drawRoundRect(
                         Color.Black.copy(alpha = 0.35f), Offset(line / 2f, sink + line / 2f),
@@ -450,7 +511,10 @@ private fun ChromePill(
     ) { content() }
 }
 
-/** Chrome clock pod: hour and minute hands from [clock] ("HH:mm") and a sweeping orange second hand. */
+/**
+ * Chrome clock pod: hour and minute hands from [clock] ("HH:mm") and a
+ * sweeping orange second hand, on a black face at night and an ivory one by day.
+ */
 @Composable
 private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
     val (hh, mm) = remember(clock) { parseClock(clock) }
@@ -466,8 +530,9 @@ private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
                 val c = center
                 val ring = chromeBrush(Offset(c.x - r, c.y - r), Offset(c.x + r, c.y + r))
                 val faceR = r - 4.dp.toPx()
+                val face = PodFace
                 val shadow = Brush.radialGradient(
-                    listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
+                    listOf(castShadow(0.6f), Color.Transparent),
                     center = c + Offset(0f, 3.dp.toPx()), radius = r + 7.dp.toPx()
                 )
                 val hourDeg = (hh % 12 + mm / 60f) * 30f
@@ -483,7 +548,7 @@ private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
                 onDrawBehind {
                     drawCircle(shadow, r + 7.dp.toPx(), c + Offset(0f, 3.dp.toPx()))
                     drawCircle(ring, r, c)
-                    drawCircle(Color(0xFF0B0A09), faceR, c)
+                    drawCircle(face, faceR, c)
                     for (i in 0 until 60) {
                         val major = i % 5 == 0
                         val quarter = i % 15 == 0
@@ -516,11 +581,11 @@ private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** Amber "OUT 20°C" LCD from the weather feed; the value stays dashed until the first fetch. */
+/** "OUT 20°C" LCD from the weather feed; the value stays dashed until the first fetch. */
 @Composable
 private fun OutsideTempLcd() {
     val weather = rememberWeather()
-    val amber = DashColors.Rpm
+    val ink = LcdInk
     LcdPanel(Modifier.height(40.dp).widthIn(min = 124.dp), corner = 8.dp) {
         Row(
             modifier = Modifier
@@ -528,11 +593,11 @@ private fun OutsideTempLcd() {
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("OUT", style = lcd(12.sp, amber.copy(alpha = 0.7f)), maxLines = 1)
+            Text("OUT", style = lcd(12.sp, ink.copy(alpha = 0.7f)), maxLines = 1)
             Spacer(Modifier.width(8.dp))
             Text(
                 weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--",
-                style = lcd(20.sp, if (weather == null) amber.copy(alpha = 0.4f) else amber),
+                style = lcd(20.sp, if (weather == null) ink.copy(alpha = 0.4f) else ink),
                 maxLines = 1
             )
         }
@@ -567,7 +632,7 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
                     val a = pulse?.let { 0.35f + 0.65f * it.value } ?: 1f
                     if (lit) {
                         drawCircle(
-                            Brush.radialGradient(listOf(color.copy(alpha = 0.55f * a), Color.Transparent), center, r * 2.2f),
+                            Brush.radialGradient(listOf(color.copy(alpha = 0.55f * a * Halo), Color.Transparent), center, r * 2.2f),
                             r * 2.2f
                         )
                     }
@@ -589,8 +654,10 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
 // --- Shared parts -------------------------------------------------------------------
 
 /**
- * Amber LCD window sunk into the dash: dark brown glass with a warm backlight,
- * a dot-matrix grid over whatever [content] draws and a faint reflection.
+ * LCD window sunk into the dash, with a dot-matrix grid over whatever
+ * [content] draws and a faint reflection. At night dark brown glass with a
+ * warm amber backlight; by day a reflective grey-green positive LCD, lit only
+ * by the daylight on it.
  */
 @Composable
 private fun LcdPanel(
@@ -600,30 +667,33 @@ private fun LcdPanel(
 ) {
     val dots = rememberDotMatrix()
     val amber = DashColors.Rpm
+    val light = DashColors.Light
     Box(
         modifier = modifier.drawWithCache {
             val r = CornerRadius(corner.toPx())
             val rim = 2.dp.toPx()
+            val back = LcdBack
+            val rimColor = LcdRim
             val inset = Brush.verticalGradient(
-                listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent), startY = 0f, endY = 12.dp.toPx()
+                listOf(Color.Black.copy(alpha = if (light) 0.22f else 0.6f), Color.Transparent), startY = 0f, endY = 12.dp.toPx()
             )
             val backlight = Brush.radialGradient(
-                listOf(amber.copy(alpha = 0.08f), Color.Transparent),
+                listOf(if (light) Color.White.copy(alpha = 0.16f) else amber.copy(alpha = 0.08f), Color.Transparent),
                 center = center, radius = max(size.width, size.height) * 0.6f
             )
             val sheen = Brush.linearGradient(
-                listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
+                listOf(Color.White.copy(alpha = if (light) 0.22f else 0.05f), Color.Transparent),
                 start = Offset.Zero, end = Offset(size.width * 0.3f, size.height)
             )
             onDrawWithContent {
-                drawRoundRect(LcdBack, cornerRadius = r)
+                drawRoundRect(back, cornerRadius = r)
                 drawRoundRect(backlight, cornerRadius = r)
                 drawRoundRect(inset, cornerRadius = r)
                 drawContent()
                 drawRoundRect(dots, cornerRadius = r)
                 drawRoundRect(sheen, cornerRadius = r)
                 drawRoundRect(
-                    LcdRim, Offset(rim / 2f, rim / 2f), Size(size.width - rim, size.height - rim), r, style = Stroke(rim)
+                    rimColor, Offset(rim / 2f, rim / 2f), Size(size.width - rim, size.height - rim), r, style = Stroke(rim)
                 )
             }
         },
@@ -634,16 +704,16 @@ private fun LcdPanel(
 /** Two dim lines centred on an LCD: a state ("NO ROUTE") and what a tap does. */
 @Composable
 private fun BoxScope.LcdMessage(title: String, hint: String, height: Dp) {
-    val amber = DashColors.Rpm
+    val ink = LcdInk
     Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             title,
-            style = lcd((height * 0.2f).coerceIn(14.dp, 40.dp).textSize(), amber.copy(alpha = 0.45f)),
+            style = lcd((height * 0.2f).coerceIn(14.dp, 40.dp).textSize(), ink.copy(alpha = 0.45f)),
             maxLines = 1
         )
         if (height >= 70.dp) {
             Spacer(Modifier.height(4.dp))
-            Text(hint, style = lcd((height * 0.1f).coerceIn(10.dp, 18.dp).textSize(), amber.copy(alpha = 0.75f)), maxLines = 1)
+            Text(hint, style = lcd((height * 0.1f).coerceIn(10.dp, 18.dp).textSize(), ink.copy(alpha = 0.75f)), maxLines = 1)
         }
     }
 }
@@ -680,11 +750,12 @@ private fun ChromeRoundButton(
                 )
                 val shadowC = c + Offset(0f, r * 0.14f)
                 val shadow = Brush.radialGradient(
-                    listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent), center = shadowC, radius = r * 1.22f
+                    listOf(castShadow(0.6f), Color.Transparent), center = shadowC, radius = r * 1.22f
                 )
+                val ledge = Ledge
                 onDrawBehind {
                     drawCircle(shadow, r * 1.22f, shadowC)
-                    drawCircle(Color(0xFF0A0908), r + 1.5.dp.toPx(), c)
+                    drawCircle(ledge, r + 1.5.dp.toPx(), c)
                     drawCircle(outer, r, c)
                     drawCircle(inner, innerR, c)
                     if (pressed) drawCircle(Color.Black.copy(alpha = 0.22f), innerR, c)
@@ -716,7 +787,7 @@ private fun TellTale(icon: ImageVector, lit: Color?, description: String, iconSi
             .drawBehind {
                 if (lit != null) {
                     drawCircle(
-                        Brush.radialGradient(listOf(lit.copy(alpha = 0.35f), Color.Transparent), center, size.minDimension),
+                        Brush.radialGradient(listOf(lit.copy(alpha = 0.35f * Halo), Color.Transparent), center, size.minDimension),
                         size.minDimension
                     )
                 }
@@ -797,20 +868,32 @@ private val FuelFace = DialFace(
     titleY = 284f
 )
 
-/** The dial's static face: bezel, face, red zone, ticks, glowing numerals, title, sub-dials, LCD window. */
-private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Color, cream: Color, amber: Color): Modifier =
+/**
+ * The dial's static face: bezel, face, red zone, ticks, numerals, title,
+ * sub-dials, LCD window. At night a black face with glowing orange numerals;
+ * by day an ivory face printed in black, like a classic white-face instrument.
+ */
+private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Color, cream: Color, lcdInk: Color): Modifier =
     drawWithCache {
+        val light = DashColors.Light
         val u = size.minDimension / 380f
         val c = center
         val bezel = chromeBrush(Offset(c.x - 183f * u, c.y - 183f * u), Offset(c.x + 183f * u, c.y + 183f * u))
         val faceBrush = Brush.radialGradient(listOf(FaceCentre, FaceEdge), center = Offset(c.x, c.y - 30f * u), radius = 205f * u)
         val shadow = Brush.radialGradient(
-            listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent), center = c + Offset(0f, 10f * u), radius = 205f * u
+            listOf(castShadow(0.7f), Color.Transparent), center = c + Offset(0f, 10f * u), radius = 205f * u
         )
+        val seam = BezelBlack
+        val rimShade = castShadow(0.7f)
+        val tick = TickInk
+        val subFace = SubFace
+        val subRing = if (light) Color.Black.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.10f)
+        val lcdBack = LcdBack
+        val numeral = if (light) tick else accent
         val intervals = (face.labels.size - 1) * face.minor
         val numStyle = TextStyle(
-            color = accent, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
-            fontSize = (face.numeral * u).toSp(), shadow = Shadow(accent.copy(alpha = 0.7f), blurRadius = 6f * u)
+            color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
+            fontSize = (face.numeral * u).toSp(), shadow = if (light) null else Shadow(accent.copy(alpha = 0.7f), blurRadius = 6f * u)
         )
         val numerals = face.labels.mapIndexed { i, label ->
             measurer.measure(label, numStyle) to polar(c, 117f * u, face.start + face.sweep * i / (face.labels.size - 1))
@@ -823,7 +906,7 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
             )
         )
         val subLabelStyle = TextStyle(
-            color = accent, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold, fontSize = (10f * u).toSp()
+            color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold, fontSize = (10f * u).toSp()
         )
         val captionStyle = TextStyle(
             color = cream.copy(alpha = 0.6f), fontFamily = CondensedFamily,
@@ -837,9 +920,9 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
             fun text(layout: TextLayoutResult, at: Offset) =
                 drawText(layout, topLeft = Offset(at.x - layout.size.width / 2f, at.y - layout.size.height / 2f))
             drawCircle(shadow, 205f * u, c + Offset(0f, 10f * u))
-            drawCircle(BezelBlack, 188f * u, c)
+            drawCircle(seam, 188f * u, c)
             drawCircle(bezel, 183f * u, c)
-            drawCircle(Color.Black.copy(alpha = 0.7f), 172.5f * u, c, style = Stroke(2f * u))
+            drawCircle(rimShade, 172.5f * u, c, style = Stroke(2f * u))
             drawCircle(faceBrush, 171f * u, c)
             face.red?.let { red ->
                 val r = 153f * u
@@ -852,7 +935,7 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
                 val a = face.start + face.sweep * i / intervals
                 val major = i % face.minor == 0
                 drawLine(
-                    if (major) TickInk else TickInk.copy(alpha = 0.55f),
+                    if (major) tick else tick.copy(alpha = 0.55f),
                     polar(c, 162f * u, a), polar(c, (if (major) 142f else 152f) * u, a),
                     (if (major) 3.5f else 2f) * u
                 )
@@ -862,8 +945,8 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
             face.subs.forEachIndexed { i, s ->
                 val sc = Offset(c.x + (s.cx - 190f) * u, c.y + (s.cy - 190f) * u)
                 val sr = s.r * u
-                drawCircle(SubFace, sr, sc)
-                drawCircle(Color.White.copy(alpha = 0.10f), sr, sc, style = Stroke(1.5f * u))
+                drawCircle(subFace, sr, sc)
+                drawCircle(subRing, sr, sc, style = Stroke(1.5f * u))
                 for (k in 0..4) {
                     val a = -60f + 30f * k
                     drawLine(cream.copy(alpha = 0.7f), polar(sc, sr * 0.89f, a), polar(sc, sr * 0.71f, a), 1.5f * u)
@@ -874,10 +957,10 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
                 text(caption, Offset(sc.x, sc.y + sr * 0.56f))
             }
             drawRoundRect(
-                LcdBack, lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u)
+                lcdBack, lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u)
             )
             drawRoundRect(
-                amber.copy(alpha = 0.3f), lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u),
+                lcdInk.copy(alpha = 0.3f), lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u),
                 style = Stroke(1f * u)
             )
         }
@@ -905,8 +988,9 @@ private fun ChromeDial(
     val measurer = rememberTextMeasurer()
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
-    val amber = DashColors.Rpm
+    val ink = LcdInk
     val needleColor = DashColors.Warning
+    val light = DashColors.Light
     val target = face.start + face.sweep * (fraction ?: 0f).coerceIn(0f, 1f)
     val angle = animateFloatAsState(target, spring(dampingRatio = 0.72f, stiffness = 90f), label = "needle")
     val wobble = if (live) rememberWobble() else null
@@ -917,7 +1001,7 @@ private fun ChromeDial(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { }
-                .dialFace(face, measurer, accent, cream, amber)
+                .dialFace(face, measurer, accent, cream, ink)
         )
         extra(du)
         if (face.subs.isNotEmpty()) {
@@ -930,7 +1014,7 @@ private fun ChromeDial(
                             val sc = Offset(center.x + (s.cx - 190f) * u, center.y + (s.cy - 190f) * u)
                             val f = subFractions.getOrNull(i)?.coerceIn(0f, 1f) ?: 0f
                             drawLine(needleColor, sc, polar(sc, s.r * u * 0.79f, -60f + 120f * f), 2.5f * u, StrokeCap.Round)
-                            drawCircle(Color(0xFFD9D6D0), 4f * u, sc)
+                            drawCircle(SubPin, 4f * u, sc)
                         }
                     }
             )
@@ -958,8 +1042,13 @@ private fun ChromeDial(
                     val from = Offset(c.x, c.y + 10f * u)
                     val to = Offset(c.x, c.y - 132f * u)
                     onDrawBehind {
-                        drawLine(needleColor.copy(alpha = 0.10f), from, to, 14f * u, StrokeCap.Round)
-                        drawLine(needleColor.copy(alpha = 0.18f), from, to, 7f * u, StrokeCap.Round)
+                        // A glow off the needle at night; by day only a soft shadow under it on the ivory.
+                        if (light) {
+                            drawLine(Color.Black.copy(alpha = 0.10f), from, to, 7f * u, StrokeCap.Round)
+                        } else {
+                            drawLine(needleColor.copy(alpha = 0.10f), from, to, 14f * u, StrokeCap.Round)
+                            drawLine(needleColor.copy(alpha = 0.18f), from, to, 7f * u, StrokeCap.Round)
+                        }
                         drawPath(needle, needleColor)
                         drawPath(tail, needleColor)
                         drawLine(Color.White.copy(alpha = 0.25f), Offset(c.x - 1f * u, c.y), Offset(c.x, c.y - 130f * u), 0.8f * u)
@@ -974,11 +1063,12 @@ private fun ChromeDial(
                     val c = center
                     val hub = chromeBrush(Offset(c.x - 17f * u, c.y - 17f * u), Offset(c.x + 17f * u, c.y + 17f * u))
                     val glass = Brush.linearGradient(
-                        listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                        listOf(Color.White.copy(alpha = if (light) 0.2f else 0.07f), Color.Transparent),
                         start = Offset(c.x - 120f * u, c.y - 150f * u), end = Offset(c.x, c.y - 20f * u)
                     )
+                    val hubShadow = castShadow(0.4f)
                     onDrawBehind {
-                        drawCircle(Color.Black.copy(alpha = 0.4f), 19f * u, c + Offset(0f, 2f * u))
+                        drawCircle(hubShadow, 19f * u, c + Offset(0f, 2f * u))
                         drawCircle(hub, 17f * u, c)
                         drawCircle(HubPin, 6f * u, c)
                         drawCircle(glass, 171f * u, c)
@@ -1007,20 +1097,20 @@ private fun ChromeDial(
                 softWrap = false
             )
             if (second != null) {
-                Text(second, style = lcd((du * 12f).textSize(), amber.copy(alpha = 0.8f)), maxLines = 1, softWrap = false)
+                Text(second, style = lcd((du * 12f).textSize(), ink.copy(alpha = 0.8f)), maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-/** Big amber speed readout for when a dial would be too small, or beside a dial in a wide tile. */
+/** Big LCD speed readout for when a dial would be too small, or beside a dial in a wide tile. */
 @Composable
 private fun SpeedLcd(speed: Int?, caption: String, modifier: Modifier) {
-    val amber = DashColors.Rpm
+    val ink = LcdInk
     val color = when {
-        speed == null -> amber.copy(alpha = 0.4f)
+        speed == null -> ink.copy(alpha = 0.4f)
         speed >= SPEED_WARNING_KMH -> DashColors.Warning
-        else -> amber
+        else -> ink
     }
     BoxWithConstraints(modifier) {
         val h = maxHeight
@@ -1034,7 +1124,7 @@ private fun SpeedLcd(speed: Int?, caption: String, modifier: Modifier) {
                 )
                 Text(
                     caption,
-                    style = lcd((h * 0.11f).coerceIn(10.dp, 18.dp).textSize(), amber.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.11f).coerceIn(10.dp, 18.dp).textSize(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,
@@ -1062,8 +1152,8 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
     val fuel = rememberFuel(d, state)
     val speed = if (connected) d.speedKmh else null
     val rpm = if (connected) d.rpm else null
-    val amber = DashColors.Rpm
-    val speedColor = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else amber
+    val ink = LcdInk
+    val speedColor = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else ink
     val coolant = if (connected && d.coolantTempC > 0) ((d.coolantTempC - 50f) / 80f) else null
     val fuelFrac = fuel?.let { it.percent / 100f }
     val volts = if (connected && d.voltage > 0.0) ((d.voltage - 8.0) / 8.0).toFloat() else null
@@ -1092,7 +1182,7 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
                 live = connected,
                 readout = rpm?.toString() ?: "--",
                 unit = "rpm",
-                lcdColor = amber,
+                lcdColor = ink,
                 side = side
             )
         }
@@ -1189,7 +1279,7 @@ private fun CockpitSpeedHud(env: SkinTileEnv) {
         speed != null -> "GPS"
         else -> "NO SIGNAL"
     }
-    val color = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else DashColors.Rpm
+    val color = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else LcdInk
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
         val w = maxWidth
         val h = maxHeight
@@ -1233,7 +1323,7 @@ private fun CockpitSpeedHud(env: SkinTileEnv) {
 // --- Media --------------------------------------------------------------------------
 
 /**
- * Amber dot-matrix strip with the scrolling "ARTIST · TITLE" and elapsed time,
+ * Dot-matrix LCD strip with the scrolling "ARTIST · TITLE" and elapsed time,
  * chrome push buttons, and two analog VU meters whose needles bounce while
  * playing when the tile has room.
  */
@@ -1320,8 +1410,7 @@ private fun CockpitMedia(env: SkinTileEnv) {
 /** The media LCD strip: status glyph, marquee text, elapsed time. */
 @Composable
 private fun MediaLcd(text: String, time: String, glyph: ImageVector, dim: Boolean, modifier: Modifier) {
-    val amber = DashColors.Rpm
-    val ink = if (dim) amber.copy(alpha = 0.5f) else amber
+    val ink = if (dim) LcdInk.copy(alpha = 0.5f) else LcdInk
     LcdPanel(modifier, corner = 12.dp) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
             val fs = (maxHeight * 0.36f).coerceIn(14.dp, 26.dp)
@@ -1369,6 +1458,7 @@ private fun VuMeter(level: () -> Float, channel: String, modifier: Modifier) {
     val cream = DashColors.TextPrimary
     val accent = DashColors.Accent
     val needleColor = DashColors.Warning
+    val light = DashColors.Light
     val pivotY = 0.9f
     Box(modifier) {
         Box(
@@ -1426,8 +1516,9 @@ private fun VuMeter(level: () -> Float, channel: String, modifier: Modifier) {
                 .drawWithCache {
                     val pivot = Offset(size.width / 2f, size.height * pivotY)
                     val r = min(size.height * 0.72f, size.width * 0.6f)
+                    val halo = if (light) Color.Black.copy(alpha = 0.10f) else needleColor.copy(alpha = 0.2f)
                     onDrawBehind {
-                        drawLine(needleColor.copy(alpha = 0.2f), pivot, Offset(pivot.x, pivot.y - r * 0.98f), 5f * density, StrokeCap.Round)
+                        drawLine(halo, pivot, Offset(pivot.x, pivot.y - r * 0.98f), 5f * density, StrokeCap.Round)
                         drawLine(needleColor, pivot, Offset(pivot.x, pivot.y - r * 0.98f), 1.8f * density, StrokeCap.Round)
                     }
                 }
@@ -1474,7 +1565,7 @@ private fun metresTo(nav: NavState): Float? {
 }
 
 /**
- * Next turn on an amber LCD: the manoeuvre glyph, the distance in big digits,
+ * Next turn on an LCD: the manoeuvre glyph, the distance in big digits,
  * the street in caps and the ETA, plus a green turn-signal tell-tale that
  * blinks inside 300 m. No route: a calm "NO ROUTE" that opens Maps on tap.
  */
@@ -1506,7 +1597,8 @@ private fun CockpitNavigation(env: SkinTileEnv) {
 /** The active-route layout inside the navigation LCD. */
 @Composable
 private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
-    val amber = DashColors.Rpm
+    val ink = LcdInk
+    val backlit = !DashColors.Light
     val bitmap = remember(nav.icon) { nav.icon?.asImageBitmap() }
     val metres = metresTo(nav)
     val (value, unit) = nav.distanceParts
@@ -1523,10 +1615,12 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
             modifier = Modifier
                 .size(glyph)
                 .drawBehind {
-                    drawCircle(
-                        Brush.radialGradient(listOf(amber.copy(alpha = 0.22f), Color.Transparent), center, size.minDimension * 0.7f),
-                        size.minDimension * 0.7f
-                    )
+                    if (backlit) {
+                        drawCircle(
+                            Brush.radialGradient(listOf(ink.copy(alpha = 0.22f), Color.Transparent), center, size.minDimension * 0.7f),
+                            size.minDimension * 0.7f
+                        )
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
@@ -1534,11 +1628,11 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
                 Image(
                     bitmap = bitmap,
                     contentDescription = nav.instruction,
-                    colorFilter = ColorFilter.tint(amber),
+                    colorFilter = ColorFilter.tint(ink),
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                Icon(Icons.Filled.Directions, contentDescription = nav.instruction, tint = amber, modifier = Modifier.fillMaxSize())
+                Icon(Icons.Filled.Directions, contentDescription = nav.instruction, tint = ink, modifier = Modifier.fillMaxSize())
             }
         }
         Spacer(Modifier.width(14.dp))
@@ -1551,13 +1645,13 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
                             withStyle(SpanStyle(fontSize = (distSize * 0.5f).textSize())) { append(" ${unit.uppercase()}") }
                         }
                     },
-                    style = lcd(distSize.textSize(), amber),
+                    style = lcd(distSize.textSize(), ink),
                     maxLines = 1
                 )
             }
             Text(
                 nav.instruction.uppercase(),
-                style = lcd(lineSize.textSize(), amber.copy(alpha = 0.9f)),
+                style = lcd(lineSize.textSize(), ink.copy(alpha = 0.9f)),
                 maxLines = if (h >= 150.dp) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1565,7 +1659,7 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     nav.etaParts.joinToString(" · ").uppercase(),
-                    style = lcd((lineSize * 0.85f).textSize(), amber.copy(alpha = 0.7f)),
+                    style = lcd((lineSize * 0.85f).textSize(), ink.copy(alpha = 0.7f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1597,7 +1691,7 @@ private fun TurnSignal(side: Int, blinking: Boolean, diameter: Dp) {
                     lineTo(0.08f * s, 0.62f * s)
                     close()
                 }
-                val glow = Brush.radialGradient(listOf(green.copy(alpha = 0.35f), Color.Transparent), center, s * 0.6f)
+                val glow = Brush.radialGradient(listOf(green.copy(alpha = 0.35f * Halo), Color.Transparent), center, s * 0.6f)
                 val turn = when (side) {
                     -1 -> 180f
                     1 -> 0f
@@ -1639,7 +1733,11 @@ private fun CockpitClock(env: SkinTileEnv) {
     }
 }
 
-/** Chrome-bezel clock: black face, cream hands, orange 12/3/6/9, orange sweeping second hand. */
+/**
+ * Chrome-bezel clock with an orange sweeping second hand: a black face with
+ * cream hands and orange 12/3/6/9 at night, an ivory face printed and handed
+ * in black by day.
+ */
 @Composable
 private fun AnalogClock(side: Dp) {
     val wall = rememberWallClock(if (side >= 160.dp) 50L else 100L)
@@ -1650,6 +1748,7 @@ private fun AnalogClock(side: Dp) {
     val measurer = rememberTextMeasurer()
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
+    val light = DashColors.Light
     fun local(): Long {
         val t = wall.longValue
         return t + zone.getOffset(t)
@@ -1670,11 +1769,14 @@ private fun AnalogClock(side: Dp) {
                     val faceR = r * 0.9f
                     val face = Brush.radialGradient(listOf(FaceCentre, FaceEdge), center = Offset(c.x, c.y - r * 0.15f), radius = r * 1.1f)
                     val shadow = Brush.radialGradient(
-                        listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent), center = c + Offset(0f, r * 0.05f), radius = r * 1.08f
+                        listOf(castShadow(0.65f), Color.Transparent), center = c + Offset(0f, r * 0.05f), radius = r * 1.08f
                     )
+                    val seam = BezelBlack
+                    val rimShade = castShadow(0.7f)
+                    val paper = if (light) Color.White else cream
                     val numStyle = TextStyle(
-                        color = accent, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
-                        fontSize = (r * 0.2f).toSp(), shadow = Shadow(accent.copy(alpha = 0.7f), blurRadius = r * 0.04f)
+                        color = if (light) TickInk else accent, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
+                        fontSize = (r * 0.2f).toSp(), shadow = if (light) null else Shadow(accent.copy(alpha = 0.7f), blurRadius = r * 0.04f)
                     )
                     val numerals = listOf("12" to 0f, "3" to 90f, "6" to 180f, "9" to 270f).map { (n, a) ->
                         measurer.measure(n, numStyle) to polar(c, faceR * 0.72f, a)
@@ -1691,9 +1793,9 @@ private fun AnalogClock(side: Dp) {
                     val winTop = Offset(c.x - winW / 2f, c.y + faceR * 0.38f)
                     onDrawBehind {
                         drawCircle(shadow, r * 1.08f, c + Offset(0f, r * 0.05f))
-                        drawCircle(BezelBlack, r, c)
+                        drawCircle(seam, r, c)
                         drawCircle(bezel, r * 0.97f, c)
-                        drawCircle(Color.Black.copy(alpha = 0.7f), faceR + r * 0.006f, c, style = Stroke(r * 0.012f))
+                        drawCircle(rimShade, faceR + r * 0.006f, c, style = Stroke(r * 0.012f))
                         drawCircle(face, faceR, c)
                         for (i in 0 until 60) {
                             val major = i % 5 == 0
@@ -1710,7 +1812,7 @@ private fun AnalogClock(side: Dp) {
                             Color.Black, winTop - Offset(r * 0.012f, r * 0.012f),
                             Size(winW + r * 0.024f, winH + r * 0.024f), CornerRadius(r * 0.02f)
                         )
-                        drawRoundRect(cream, winTop, Size(winW, winH), CornerRadius(r * 0.015f))
+                        drawRoundRect(paper, winTop, Size(winW, winH), CornerRadius(r * 0.015f))
                         drawText(date, topLeft = Offset(c.x - date.size.width / 2f, winTop.y + (winH - date.size.height) / 2f))
                     }
                 }
@@ -1739,7 +1841,7 @@ private fun AnalogClock(side: Dp) {
                     val c = center
                     val cap = chromeBrush(Offset(c.x - r * 0.04f, c.y - r * 0.04f), Offset(c.x + r * 0.04f, c.y + r * 0.04f))
                     val glass = Brush.linearGradient(
-                        listOf(Color.White.copy(alpha = 0.07f), Color.Transparent),
+                        listOf(Color.White.copy(alpha = if (light) 0.2f else 0.07f), Color.Transparent),
                         start = Offset(c.x - r * 0.6f, c.y - r * 0.8f), end = Offset(c.x, c.y - r * 0.1f)
                     )
                     onDrawBehind {
@@ -1751,7 +1853,7 @@ private fun AnalogClock(side: Dp) {
     }
 }
 
-/** One tapered cream hand turned by layer rotation; [length] and [width] are fractions of the face radius. */
+/** One tapered hand in [color] turned by layer rotation; [length] and [width] are fractions of the face radius. */
 @Composable
 private fun ClockHand(rotation: () -> Float, length: Float, width: Float, color: Color) {
     Box(
@@ -1770,8 +1872,9 @@ private fun ClockHand(rotation: () -> Float, length: Float, width: Float, color:
                     lineTo(c.x + hw, c.y + r * 0.1f)
                     close()
                 }
+                val shade = castShadow(0.45f)
                 onDrawBehind {
-                    translate(r * 0.012f, r * 0.02f) { drawPath(hand, Color.Black.copy(alpha = 0.45f)) }
+                    translate(r * 0.012f, r * 0.02f) { drawPath(hand, shade) }
                     drawPath(hand, color)
                     drawPath(hand, Color.Black.copy(alpha = 0.35f), style = Stroke(r * 0.006f))
                 }
@@ -1786,16 +1889,16 @@ private fun DateLcd(modifier: Modifier) {
     val locale = Locale.getDefault()
     val time = remember(now, locale) { SimpleDateFormat("HH:mm", locale).format(now) }
     val date = remember(now, locale) { SimpleDateFormat("EEEE d MMMM", locale).format(now).uppercase(locale) }
-    val amber = DashColors.Rpm
+    val ink = LcdInk
     BoxWithConstraints(modifier) {
         val h = maxHeight
         val w = maxWidth
         LcdPanel(Modifier.fillMaxSize()) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(time, style = lcd(min(h * 0.44f, w * 0.22f).textSize(), amber), maxLines = 1)
+                Text(time, style = lcd(min(h * 0.44f, w * 0.22f).textSize(), ink), maxLines = 1)
                 Text(
                     date,
-                    style = lcd((h * 0.12f).coerceIn(10.dp, 20.dp).textSize(), amber.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.12f).coerceIn(10.dp, 20.dp).textSize(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 10.dp)
@@ -1807,11 +1910,12 @@ private fun DateLcd(modifier: Modifier) {
 
 // --- Weather ------------------------------------------------------------------------
 
-/** "OUT 20°C" on an amber LCD with the condition and feels-like / wind line. */
+/** "OUT 20°C" on an LCD with the condition and feels-like / wind line. */
 @Composable
 private fun CockpitWeather() {
     val weather = rememberWeather()
-    val amber = DashColors.Rpm
+    val ink = LcdInk
+    val backlit = !DashColors.Light
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val h = maxHeight
         val w = maxWidth
@@ -1828,36 +1932,38 @@ private fun CockpitWeather() {
                     Icon(
                         weatherIcon(weather.code),
                         contentDescription = weather.condition,
-                        tint = amber,
+                        tint = ink,
                         modifier = Modifier
                             .size(big * 1.1f)
                             .drawBehind {
-                                val glowR = size.minDimension * 0.7f
-                                drawCircle(Brush.radialGradient(listOf(amber.copy(alpha = 0.22f), Color.Transparent), center, glowR), glowR)
+                                if (backlit) {
+                                    val glowR = size.minDimension * 0.7f
+                                    drawCircle(Brush.radialGradient(listOf(ink.copy(alpha = 0.22f), Color.Transparent), center, glowR), glowR)
+                                }
                             }
                     )
                     Spacer(Modifier.width(16.dp))
                 }
                 Column {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("OUT", style = lcd((big * 0.36f).textSize(), amber.copy(alpha = 0.7f)), maxLines = 1)
+                        Text("OUT", style = lcd((big * 0.36f).textSize(), ink.copy(alpha = 0.7f)), maxLines = 1)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--°C",
-                            style = lcd(big.textSize(), if (weather == null) amber.copy(alpha = 0.4f) else amber),
+                            style = lcd(big.textSize(), if (weather == null) ink.copy(alpha = 0.4f) else ink),
                             maxLines = 1
                         )
                     }
                     Text(
                         weather?.condition?.uppercase() ?: "LOADING…",
-                        style = lcd(line.textSize(), amber.copy(alpha = 0.9f)),
+                        style = lcd(line.textSize(), ink.copy(alpha = 0.9f)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (weather != null && h >= 110.dp) {
                         Text(
                             "FEELS ${weather.feelsC.roundToInt()}° · WIND ${weather.windKmh.roundToInt()} KM/H",
-                            style = lcd((line * 0.85f).textSize(), amber.copy(alpha = 0.7f)),
+                            style = lcd((line * 0.85f).textSize(), ink.copy(alpha = 0.7f)),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1884,8 +1990,8 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
     }
     var finder by remember { mutableStateOf(false) }
     val low = fuel.percent <= 12
-    val amber = DashColors.Rpm
-    val ink = if (low) DashColors.Warning else amber
+    val segment = LcdInk
+    val ink = if (low) DashColors.Warning else segment
     val cream = DashColors.TextPrimary
     BoxWithConstraints(
         modifier = Modifier
@@ -1930,7 +2036,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "RANGE",
-                                style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).textSize(), amber.copy(alpha = 0.7f)),
+                                style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).textSize(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
                             Text(
@@ -1940,7 +2046,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                             )
                             Text(
                                 "%.0f L · %s".format(fuel.percent / 100.0 * TANK_LITERS, fuel.source.uppercase()),
-                                style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).textSize(), amber.copy(alpha = 0.7f)),
+                                style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).textSize(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
                         }
@@ -1956,7 +2062,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
 
 // --- App toggles --------------------------------------------------------------------
 
-/** An app shortcut as an aircraft toggle on its own dark plate. */
+/** An app shortcut as an aircraft toggle on its own plate. */
 @Composable
 private fun CockpitToggleTile(packageName: String, env: SkinTileEnv) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(2.dp), contentAlignment = Alignment.Center) {
@@ -2032,19 +2138,28 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
     }
 }
 
-/** The toggle's dark plate: a rounded black panel with a faint bevel and two screws. */
+/**
+ * The toggle's plate: a rounded panel with a faint bevel and two screws;
+ * black at night, pale aluminium by day with a hairline dark edge.
+ */
 private fun Modifier.togglePlate(): Modifier = drawWithCache {
+    val light = DashColors.Light
     val corner = CornerRadius(10.dp.toPx())
-    val bevel = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), 0f, size.height * 0.4f)
+    val bevel = Brush.verticalGradient(
+        listOf(Color.White.copy(alpha = if (light) 0.5f else 0.05f), Color.Transparent), 0f, size.height * 0.4f
+    )
+    val drop = castShadow(0.45f)
+    val plate = Plate
+    val edge = if (light) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.06f)
     val line = 1.dp.toPx()
     val screwR = 2.5.dp.toPx()
     val inset = 7.dp.toPx()
     onDrawBehind {
-        drawRoundRect(Color.Black.copy(alpha = 0.45f), Offset(0f, 2.dp.toPx()), size, corner)
-        drawRoundRect(PlateBlack, cornerRadius = corner)
+        drawRoundRect(drop, Offset(0f, 2.dp.toPx()), size, corner)
+        drawRoundRect(plate, cornerRadius = corner)
         drawRoundRect(bevel, cornerRadius = corner)
         drawRoundRect(
-            Color.White.copy(alpha = 0.06f), Offset(line / 2f, line / 2f),
+            edge, Offset(line / 2f, line / 2f),
             Size(size.width - line, size.height - line), corner, style = Stroke(line)
         )
         if (size.width > 60.dp.toPx() && size.height > 60.dp.toPx()) {
@@ -2077,7 +2192,7 @@ private fun ToggleLabel(label: String, ledOn: Boolean, labelSize: Dp) {
                 .drawBehind {
                     if (ledOn) {
                         val glowR = size.minDimension * 1.6f
-                        drawCircle(Brush.radialGradient(listOf(amber.copy(alpha = 0.6f), Color.Transparent), center, glowR), glowR)
+                        drawCircle(Brush.radialGradient(listOf(amber.copy(alpha = 0.6f * Halo), Color.Transparent), center, glowR), glowR)
                     }
                     drawCircle(if (ledOn) amber else LampOff)
                 }
@@ -2112,6 +2227,8 @@ private fun ToggleLever(position: () -> Float, modifier: Modifier) {
                 startX = c.x - 5f * u, endX = c.x + 5f * u
             )
             val corner = CornerRadius(5f * u)
+            val nutShadow = castShadow(0.4f)
+            val leverShadow = castShadow(0.3f)
             onDrawBehind {
                 val p = position().coerceIn(-1.2f, 1.2f)
                 val tipY = c.y - p * 32f * u
@@ -2119,12 +2236,12 @@ private fun ToggleLever(position: () -> Float, modifier: Modifier) {
                 val len = abs(tipY - c.y)
                 val ball = 8f * u * (1f + 0.22f * (1f - abs(p).coerceAtMost(1f)))
                 val shade = Offset(3f * u, 4f * u)
-                drawCircle(Color.Black.copy(alpha = 0.4f), 18f * u, c + shade)
+                drawCircle(nutShadow, 18f * u, c + shade)
                 drawPath(hex, nut)
                 drawPath(hex, Color.Black.copy(alpha = 0.5f), style = Stroke(1f * u))
                 drawCircle(Bushing, 9f * u, c)
-                drawRoundRect(Color.Black.copy(alpha = 0.3f), Offset(c.x - 5f * u, top) + shade, Size(10f * u, len), corner)
-                drawCircle(Color.Black.copy(alpha = 0.3f), ball, Offset(c.x, tipY) + shade)
+                drawRoundRect(leverShadow, Offset(c.x - 5f * u, top) + shade, Size(10f * u, len), corner)
+                drawCircle(leverShadow, ball, Offset(c.x, tipY) + shade)
                 drawRoundRect(rod, Offset(c.x - 5f * u, top), Size(10f * u, len), corner)
                 drawCircle(Chrome2, ball, Offset(c.x, tipY))
                 drawCircle(Color.White, ball * 0.38f, Offset(c.x - ball * 0.3f, tipY - ball * 0.32f), alpha = 0.9f)
@@ -2134,7 +2251,7 @@ private fun ToggleLever(position: () -> Float, modifier: Modifier) {
     )
 }
 
-/** A dark rail of app toggles with a small chrome pencil at the end that edits the bar. */
+/** A rail of app toggles on one switch plate, with a small chrome pencil at the end that edits the bar. */
 @Composable
 private fun CockpitLaunchRail(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
     Row(
@@ -2203,7 +2320,8 @@ internal fun CockpitTile(item: DashboardItem, env: SkinTileEnv) {
  * A round instrument screen over the docked Maps window: outside the largest
  * centred circle the page itself (leather, cowl and stitching, lined up with
  * the real background), a thick chrome bezel, and inside faint scanlines, a
- * vignette and a glass sheen. The middle stays clear; static, drawn once.
+ * vignette and a glass sheen (softer by day, over a daylight map). The middle
+ * stays clear; static, drawn once per size and appearance.
  */
 @Composable
 internal fun CockpitWindowFrame(modifier: Modifier) {
@@ -2224,6 +2342,7 @@ internal fun CockpitWindowFrame(modifier: Modifier) {
             }
             .drawWithCache {
                 val o = origin
+                val light = DashColors.Light
                 val backdrop = Backdrop(screen, density)
                 val r = size.minDimension / 2f
                 val c = center
@@ -2237,18 +2356,20 @@ internal fun CockpitWindowFrame(modifier: Modifier) {
                 val chrome = chromeBrush(Offset(c.x - r, c.y - r), Offset(c.x + r, c.y + r))
                 val ringW = bezelW - 4.dp.toPx()
                 val vignette = Brush.radialGradient(
-                    0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.7f),
+                    0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = if (light) 0.4f else 0.7f),
                     center = c, radius = inner
                 )
                 val sheen = Brush.linearGradient(
-                    listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                    listOf(Color.White.copy(alpha = if (light) 0.14f else 0.06f), Color.Transparent),
                     start = Offset(c.x - inner, c.y - inner), end = Offset(c.x, c.y)
                 )
                 val shadowW = 16.dp.toPx()
                 val shadow = Brush.radialGradient(
-                    0f to Color.Transparent, r / (r + shadowW) to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent,
+                    0f to Color.Transparent, r / (r + shadowW) to castShadow(0.55f), 1f to Color.Transparent,
                     center = c + Offset(0f, 4.dp.toPx()), radius = r + shadowW
                 )
+                val seam = BezelBlack
+                val screwShadow = castShadow(0.5f)
                 val screwR = 6.dp.toPx()
                 val screwInset = 18.dp.toPx()
                 val screws = listOf(
@@ -2263,7 +2384,7 @@ internal fun CockpitWindowFrame(modifier: Modifier) {
                         translate(-o.x, -o.y) { drawBackdrop(backdrop) }
                         drawCircle(shadow, r + shadowW, c + Offset(0f, 4.dp.toPx()))
                         screws.forEach { s ->
-                            drawCircle(Color.Black.copy(alpha = 0.5f), screwR, s + Offset(1.dp.toPx(), 2.dp.toPx()))
+                            drawCircle(screwShadow, screwR, s + Offset(1.dp.toPx(), 2.dp.toPx()))
                             drawCircle(chromeBrush(s - Offset(screwR, screwR), s + Offset(screwR, screwR)), screwR, s)
                             drawLine(
                                 Bushing, s + Offset(-screwR * 0.7f, screwR * 0.35f), s + Offset(screwR * 0.7f, -screwR * 0.35f),
@@ -2271,7 +2392,7 @@ internal fun CockpitWindowFrame(modifier: Modifier) {
                             )
                         }
                     }
-                    drawCircle(BezelBlack, r - 1.dp.toPx(), c, style = Stroke(2.dp.toPx()))
+                    drawCircle(seam, r - 1.dp.toPx(), c, style = Stroke(2.dp.toPx()))
                     drawCircle(chrome, r - 2.dp.toPx() - ringW / 2f, c, style = Stroke(ringW))
                     drawCircle(Color.White.copy(alpha = 0.35f), inner + 2.dp.toPx(), c, style = Stroke(1.dp.toPx()))
                     drawCircle(Color.Black.copy(alpha = 0.85f), inner + 1.dp.toPx(), c, style = Stroke(2.dp.toPx()))

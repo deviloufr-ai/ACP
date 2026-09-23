@@ -99,20 +99,22 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /*
- * Horizon skin: no widgets and no boxes. The page is a living evening scene
- * (a sky that follows the time of day, stars, a skyline that pulses like an
- * equalizer, a road running to the horizon) and every tile is typography set
- * straight on it: serif display numbers, italic serif units, small sans lines
- * and letter-spaced caps, all with a soft shadow so they read over bright sky.
+ * Horizon skin: no widgets and no boxes. The page is a living scene (in dark
+ * mode an evening whose sky follows the clock from night to dusk, with stars;
+ * in light mode a bright noon), a skyline that pulses like an equalizer and a
+ * road running to the horizon, and every tile is typography set straight on
+ * it: serif display numbers, italic serif units, small sans lines and
+ * letter-spaced caps, all with a soft shadow (a pale halo by day) so they read
+ * over every part of the scene.
  */
 
 // --- Shared look ------------------------------------------------------------------
 
-/** Deep indigo used for text shadows and the soft halos behind icons. */
-private val Shade = Color(0xFF07091C)
+/** Text shadows and the soft halos behind icons: deep indigo in the evening, warm white by day. */
+private val Shade get() = if (DashColors.Light) Color(0xFFFFFAF0) else Color(0xFF07091C)
 
 /** Ink on the warm filled play button. */
-private val PlayInk = Color(0xFF2A1530)
+private val PlayInk get() = if (DashColors.Light) DashColors.OnAccent else Color(0xFF2A1530)
 
 private val TileShape = RoundedCornerShape(20.dp)
 private val TilePad = 12.dp
@@ -139,13 +141,17 @@ private fun sideOf(item: DashboardItem): Side {
 
 private val DisplayLineHeight = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
-/** Soft drop shadow scaled to the text size, so type stays legible over the bright horizon. */
+/**
+ * Soft shadow scaled to the text size, so type stays legible over the whole scene:
+ * a dark drop shadow in the evening, a pale halo centred on the ink by day.
+ */
 @Composable
 private fun softShadow(sizeSp: Float): Shadow {
     val d = LocalDensity.current.density
+    val light = DashColors.Light
     return Shadow(
-        color = Shade.copy(alpha = 0.6f),
-        offset = Offset(0f, (1f + sizeSp * 0.015f) * d),
+        color = Shade.copy(alpha = if (light) 0.7f else 0.6f),
+        offset = if (light) Offset.Zero else Offset(0f, (1f + sizeSp * 0.015f) * d),
         blurRadius = (sizeSp * 0.22f).coerceIn(5f, 26f) * d
     )
 }
@@ -309,21 +315,25 @@ private val DuskLook = SkyLook(
     lane = Color(0x9EF9D9A0), roadEdge = Color(0x59FFECD2)
 )
 
-private val DayLook = SkyLook(
-    sky = listOf(Color(0xFF2F6FBF), Color(0xFF4F8CD4), Color(0xFF8EC3F2), Color(0xFFCFE0EC), Color(0xFFF4E9D8)),
-    glow = Color(0xFFFFF6E4), glowOuter = Color(0xFFBFD8F0), glowAlpha = 0.55f,
+/**
+ * Light mode's fixed noon, made for dark ink: a pale sky with a soft sun, hazy
+ * hills and a blue-grey skyline, a meadow fading to sand and light asphalt
+ * with white markings, so text reads everywhere, below the horizon too.
+ */
+private val NoonLook = SkyLook(
+    sky = listOf(Color(0xFF8FC1EE), Color(0xFFA9D0F3), Color(0xFFCFE4F5), Color(0xFFF0F1EA), Color(0xFFFFF6E8)),
+    glow = Color(0xFFFFF8E8), glowOuter = Color(0xFFFFE6C2), glowAlpha = 0.7f,
     stars = 0f, extraStars = 0f, moon = 0f, sun = 1f,
-    hillFar = Color(0x997A98BA), hillNear = Color(0xF0475F7C),
-    building = Color(0xFF2B3244), buildingEdge = Color(0x66F4E9D8),
-    groundTop = Color(0xFF363B46), groundBottom = Color(0xFF14161B),
-    roadTop = Color(0xFF3C3F49), roadBottom = Color(0xFF18191F),
-    lane = Color(0x99F4E9D8), roadEdge = Color(0x59F4E9D8)
+    hillFar = Color(0xA6A9BFD6), hillNear = Color(0xFFC5D3AE),
+    building = Color(0xFF97A9C2), buildingEdge = Color(0xB3FFFFFF),
+    groundTop = Color(0xFFDCE3C2), groundBottom = Color(0xFFEADFC2),
+    roadTop = Color(0xFFC3C6CB), roadBottom = Color(0xFFA0A4AB),
+    lane = Color(0xF2FFFFFF), roadEdge = Color(0xCCFFFFFF)
 )
 
-/** Hour of day → look; night 21:00–05:00, dawn and dusk around them, day in between. */
+/** Hour of day → evening look (dark mode): night 21:00–05:00, dusk light in between and never brighter. */
 private val SkyKeys: List<Pair<Float, SkyLook>> = listOf(
-    0f to NightLook, 5f to NightLook, 5.75f to DuskLook, 7f to DuskLook, 8.25f to DayLook,
-    17.75f to DayLook, 19f to DuskLook, 20.5f to DuskLook, 21f to NightLook, 24f to NightLook
+    0f to NightLook, 5f to NightLook, 5.75f to DuskLook, 20.5f to DuskLook, 21f to NightLook, 24f to NightLook
 )
 
 private fun mixF(a: Float, b: Float, f: Float): Float = a + (b - a) * f
@@ -341,7 +351,9 @@ private fun mixLook(a: SkyLook, b: SkyLook, f: Float): SkyLook = SkyLook(
     lane = lerp(a.lane, b.lane, f), roadEdge = lerp(a.roadEdge, b.roadEdge, f)
 )
 
-private fun skyLookAt(date: Date): SkyLook {
+/** The scene at [date]: the clock-driven evening, or the fixed noon when [light]. */
+private fun skyLookAt(date: Date, light: Boolean): SkyLook {
+    if (light) return NoonLook
     val cal = Calendar.getInstance().apply { time = date }
     val hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
     for (i in 1 until SkyKeys.size) {
@@ -474,16 +486,18 @@ private fun rememberSceneTime(): FloatState {
 }
 
 /**
- * The whole page as a living scene: a sky that follows the real time of day
- * (indigo night with stars and a crescent moon, the warm dusk / dawn gradient,
- * blue day with a soft sun), hills, a skyline whose buildings pulse like an
- * equalizer, the ground and a road running to a vanishing point with centre
- * dashes moving toward the viewer. Animated values are read only while drawing.
+ * The whole page as a living scene: in dark mode a sky that follows the real
+ * time of day (indigo night with stars and a crescent moon, the warm dusk /
+ * dawn gradient the rest of the day), in light mode a pale noon sky with a soft
+ * sun; then hills, a skyline whose buildings pulse like an equalizer, the
+ * ground and a road running to a vanishing point with centre dashes moving
+ * toward the viewer. Animated values are read only while drawing.
  */
 @Composable
 internal fun horizonBackground(): Modifier {
     val now = rememberNow(60_000L)
-    val look = remember(now) { skyLookAt(now) }
+    val light = DashColors.Light
+    val look = remember(now, light) { skyLookAt(now, light) }
     val scene = remember { HorizonScene() }
     val time = rememberSceneTime()
     return remember(look, scene, time) { sceneModifier(look, scene, time) }
@@ -519,7 +533,7 @@ private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState):
         *Array(SKY_STOPS.size) { SKY_STOPS[it] to look.sky[it] }, startY = 0f, endY = hy
     )
 
-    // A soft sun: no hard disc, so big numerals over it stay readable.
+    // A soft sun (noon only): no hard disc, so big numerals over it stay readable.
     val sunC = Offset(w * 0.8f, h * 0.2f)
     val sunHaloR = 260f * s
     val sunHalo = Brush.radialGradient(
@@ -700,8 +714,8 @@ private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState):
 
 /**
  * Transparent bar: a serif clock with the date beside it on the left; on the
- * right any vehicle alerts, then bare cream icon buttons (all apps, layout,
- * the OBD dot and the ⋮ menu).
+ * right any vehicle alerts, then bare icon buttons in the text colour (all
+ * apps, layout, the OBD dot and the ⋮ menu).
  */
 @Composable
 internal fun HorizonTopBar(m: TopBarModel) {
@@ -709,7 +723,7 @@ internal fun HorizonTopBar(m: TopBarModel) {
     val locale = Locale.getDefault()
     val dateFmt = remember(locale) { SimpleDateFormat("EEEE d MMMM", locale) }
     val date = dateFmt.format(now).replaceFirstChar { it.titlecase(locale) }
-    val cream = DashColors.TextPrimary
+    val ink = DashColors.TextPrimary
     val soft = DashColors.TextSecondary
     Row(
         modifier = Modifier
@@ -726,7 +740,7 @@ internal fun HorizonTopBar(m: TopBarModel) {
         }
         VehicleAlerts(m.obdConnection, m.obdData)
         IconButton(onClick = m.onApps) {
-            Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = cream)
+            Icon(Icons.Filled.Apps, contentDescription = "All apps", tint = ink)
         }
         LayoutPicker(m) { open ->
             IconButton(onClick = open) {
@@ -897,45 +911,47 @@ private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
     }
 }
 
-/** Thin progress / gauge line with an optional cream dot at the playhead. */
+/** Thin progress / gauge line over a soft shade, with an optional dot in the text colour at the playhead. */
 @Composable
 private fun ThinLine(fraction: Float, fill: Color, fromEnd: Boolean, dot: Boolean, modifier: Modifier) {
     val track = DashColors.TextPrimary.copy(alpha = 0.2f)
-    val cream = DashColors.TextPrimary
+    val ink = DashColors.TextPrimary
+    val shade = Shade.copy(alpha = 0.3f)
     Canvas(modifier.height(12.dp)) {
         val y = size.height / 2f
         val sw = 2.dp.toPx()
-        drawLine(Shade.copy(alpha = 0.3f), Offset(0f, y + sw), Offset(size.width, y + sw), sw)
+        drawLine(shade, Offset(0f, y + sw), Offset(size.width, y + sw), sw)
         drawLine(track, Offset(0f, y), Offset(size.width, y), sw)
         val fw = size.width * fraction.coerceIn(0f, 1f)
         val a = if (fromEnd) size.width - fw else 0f
         val b = if (fromEnd) size.width else fw
         if (fw > 0f) drawLine(fill, Offset(a, y), Offset(b, y), sw)
-        if (dot) drawCircle(cream, radius = 5.dp.toPx(), center = Offset(if (fromEnd) a else b, y))
+        if (dot) drawCircle(ink, radius = 5.dp.toPx(), center = Offset(if (fromEnd) a else b, y))
     }
 }
 
-/** Minimal round transport button: 1 dp cream outline, or filled warm for play / pause. */
+/** Minimal round transport button over a soft halo: 1 dp outline in the text colour, or filled warm for play / pause. */
 @Composable
 private fun RoundControl(icon: ImageVector, label: String, size: Dp, filled: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val cream = DashColors.TextPrimary
+    val ink = DashColors.TextPrimary
+    val shade = Shade.copy(alpha = 0.3f)
     Box(
         modifier = Modifier
             .size(size)
             .drawWithCache {
                 val r = this.size.minDimension * 0.75f
-                val halo = Brush.radialGradient(listOf(Shade.copy(alpha = 0.3f), Color.Transparent), this.size.center, r)
+                val halo = Brush.radialGradient(listOf(shade, Color.Transparent), this.size.center, r)
                 onDrawBehind { drawCircle(halo, radius = r) }
             }
             .clip(CircleShape)
             .then(
                 if (filled) Modifier.background(DashColors.Accent)
-                else Modifier.border(1.dp, cream.copy(alpha = 0.45f), CircleShape)
+                else Modifier.border(1.dp, ink.copy(alpha = 0.45f), CircleShape)
             )
             .clickable(enabled = enabled, onClickLabel = label, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = label, tint = if (filled) PlayInk else cream, modifier = Modifier.size(size * 0.48f))
+        Icon(icon, contentDescription = label, tint = if (filled) PlayInk else ink, modifier = Modifier.size(size * 0.48f))
     }
 }
 
@@ -1347,15 +1363,16 @@ private fun HorizonApp(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
     }
 }
 
-/** An app's own launcher icon (no disc) over a soft dark halo that lifts it off bright sky. */
+/** An app's own launcher icon (no disc) over a soft halo (dark in the evening, pale by day) that lifts it off the scene. */
 @Composable
 private fun AppGlyph(app: AppEntry?, size: Dp) {
+    val shade = Shade.copy(alpha = 0.32f)
     Box(
         modifier = Modifier
             .size(size)
             .drawWithCache {
                 val r = this.size.minDimension * 0.85f
-                val halo = Brush.radialGradient(listOf(Shade.copy(alpha = 0.32f), Color.Transparent), this.size.center, r)
+                val halo = Brush.radialGradient(listOf(shade, Color.Transparent), this.size.center, r)
                 onDrawBehind { drawCircle(halo, radius = r) }
             },
         contentAlignment = Alignment.Center
@@ -1481,18 +1498,20 @@ private fun LaunchEntry(
 
 /**
  * Soft frame over a docked Maps window: its corners rounded off in the colour
- * of the scene behind them, a thin cream rim that fades out downward, a light
- * fade at the top and a deeper one along the bottom so the map melts into the
- * ground. The middle stays clear.
+ * of the scene behind them (evening or noon, as the page shows), a thin rim in
+ * the text colour that fades out downward, a light fade at the top and a
+ * deeper one along the bottom so the map melts into the ground. The middle
+ * stays clear.
  */
 @Composable
 internal fun HorizonWindowFrame(modifier: Modifier) {
     val now = rememberNow(60_000L)
-    val look = remember(now) { skyLookAt(now) }
+    val light = DashColors.Light
+    val look = remember(now, light) { skyLookAt(now, light) }
     val view = LocalView.current
     val screenH = view.resources.displayMetrics.heightPixels.toFloat().coerceAtLeast(1f)
     val topOnScreen = remember { mutableFloatStateOf(Float.NaN) }
-    val cream = DashColors.TextPrimary
+    val ink = DashColors.TextPrimary
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1526,7 +1545,7 @@ internal fun HorizonWindowFrame(modifier: Modifier) {
                     listOf(cTop.copy(alpha = 0.4f), cTop.copy(alpha = 0f)), startY = 0f, endY = h * 0.08f
                 )
                 val rim = Brush.verticalGradient(
-                    0f to cream.copy(alpha = 0.2f), 0.7f to cream.copy(alpha = 0.12f), 1f to cream.copy(alpha = 0f),
+                    0f to ink.copy(alpha = 0.2f), 0.7f to ink.copy(alpha = 0.12f), 1f to ink.copy(alpha = 0f),
                     startY = 0f, endY = h
                 )
                 val rimStroke = Stroke(1.dp.toPx())

@@ -122,7 +122,7 @@ internal fun HeroNumber(text: String, size: Int, modifier: Modifier = Modifier, 
         letterSpacing = (-0.06).em,
         maxLines = 1,
         style = TextStyle(
-            brush = if (lit) Brush.verticalGradient(listOf(Color.White, lerp(Color.White, accent, 0.45f))) else null,
+            brush = if (lit) Brush.verticalGradient(listOf(DashColors.Bright, lerp(DashColors.Bright, accent, 0.45f))) else null,
             shadow = if (lit) Shadow(accent.copy(alpha = 0.8f * glow), blurRadius = size * 0.6f) else null
         )
     )

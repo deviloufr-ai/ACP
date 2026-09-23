@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -69,6 +70,7 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -76,6 +78,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -107,15 +110,23 @@ import kotlin.math.sqrt
  * record with a tonearm, a coral next-turn bubble, a ring clock, weather and
  * liquid-fuel bubbles, and app icons as bubbles on a gentle arc. Tiles are
  * bare: each widget draws its own shapes straight on the page background.
+ * By day the page turns pale lavender, rings and hairlines take an ink tint,
+ * and bubbles become frosted white discs with a soft drop shadow; the record
+ * stays black vinyl.
  */
 
 // Orbit colours beyond the palette (DashColors carries coral, teal, violet, text and muted).
-private val OrbitPink = Color(0xFFFF4F8B)
-private val OrbitSun = Color(0xFFFFC867)
-private val OrbitInk = Color(0xFF2A0F07)
+// By day pink and sun deepen to hold on the pale page, the ink on coral turns
+// white, and the tonearm takes a darker chrome on a pale base.
+private val OrbitPink: Color get() = if (DashColors.Light) Color(0xFFEC3F7C) else Color(0xFFFF4F8B)
+private val OrbitSun: Color get() = if (DashColors.Light) Color(0xFFEB920C) else Color(0xFFFFC867)
+private val OrbitInk: Color get() = if (DashColors.Light) Color.White else Color(0xFF2A0F07)
 private val OrbitVinyl = Color(0xFF0C0C11)
-private val OrbitArm = Color(0xFFC9CEE0)
-private val OrbitArmBase = Color(0xFF252A40)
+private val OrbitArm: Color get() = if (DashColors.Light) Color(0xFFA9AFC6) else Color(0xFFC9CEE0)
+private val OrbitArmBase: Color get() = if (DashColors.Light) Color(0xFFE7E9F1) else Color(0xFF252A40)
+
+/** Day only: the frosted white of bubbles, pills and the island. */
+private val OrbitFrost = Color.White.copy(alpha = 0.92f)
 
 private const val DIAL_MAX_KMH = 200f
 private const val DIAL_MAX_RPM = 7000f
@@ -123,7 +134,50 @@ private const val DIAL_START = 135f
 private const val DIAL_SWEEP = 270f
 private const val TAU = (2 * PI).toFloat()
 
+/** Pure white at [alpha], for sheen that stays white by day (the record stays black). */
 private fun white(alpha: Float): Color = Color.White.copy(alpha = alpha)
+
+/**
+ * Rings, hairlines, tracks and faint discs over the page: white at [alpha] at
+ * night; by day the ink, a little fainter since ink reads stronger on the pale page.
+ */
+private fun mist(alpha: Float): Color =
+    if (DashColors.Light) DashColors.TextPrimary.copy(alpha = alpha * 0.8f) else white(alpha)
+
+/** A bubble's fill: a faint white haze at [alpha] at night, frosted white by day. */
+private fun frost(alpha: Float): Color = if (DashColors.Light) OrbitFrost else white(alpha)
+
+/**
+ * By day, a soft ink drop shadow under a bubble; put it before any clip. The
+ * bubble is the circle inscribed in the bounds or, for one inside a clipped
+ * item, a circle [diameter] dp across centred horizontally [top] dp below the
+ * top edge. At night bubbles cast none and this adds nothing.
+ */
+private fun Modifier.orbitShadow(diameter: Float = 0f, top: Float = 0f): Modifier = if (!DashColors.Light) this else drawWithCache {
+    val r = if (diameter > 0f) diameter.dp.toPx() / 2f else size.minDimension / 2f
+    val cy = if (diameter > 0f) top.dp.toPx() + r else size.height / 2f
+    val blur = min(r * 0.2f, 10.dp.toPx())
+    val reach = r + blur
+    val c = Offset(size.width / 2f, cy + blur * 0.4f)
+    val ink = DashColors.TextPrimary
+    // Full strength up to the disc's lower edge, then an eased fade over the blur.
+    val edge = (r - blur * 0.4f) / reach
+    val brush = Brush.radialGradient(
+        0f to ink.copy(alpha = 0.14f),
+        edge to ink.copy(alpha = 0.14f),
+        (edge + 1f) / 2f to ink.copy(alpha = 0.05f),
+        1f to ink.copy(alpha = 0f),
+        center = c,
+        radius = reach
+    )
+    onDrawBehind { drawCircle(brush, reach, c) }
+}
+
+/** Day only: a bubble's frosted white face [r] px round, with a faint [rimColor] hairline drawn in [rim]. */
+private fun DrawScope.frostedFace(r: Float, rim: Stroke, rimColor: Color) {
+    drawCircle(OrbitFrost, r)
+    drawCircle(rimColor, r - rim.width / 2f, style = rim)
+}
 
 /**
  * A render layer of the tile's own. The page background animates every frame;
@@ -169,11 +223,11 @@ private fun groupThousands(n: Int): String =
 // --- Page background -----------------------------------------------------------------
 
 /**
- * Navy page with a coral glow near the middle and a violet one towards the
- * right, faint dashed orbit rings, and a teal and a coral dot circling two of
- * them in opposite directions (26 s and 44 s a lap). The still part is
- * rendered once into an offscreen layer; each frame only composites it and
- * draws the two dots, whose angles are read inside the draw lambda.
+ * Navy page (pale lavender by day) with a coral glow near the middle and a
+ * violet one towards the right, faint dashed orbit rings, and a teal and a
+ * coral dot circling two of them in opposite directions (26 s and 44 s a lap).
+ * The still part is rendered once into an offscreen layer; each frame only
+ * composites it and draws the two dots, whose angles are read inside the draw lambda.
  */
 @Composable
 internal fun orbitBackground(): Modifier {
@@ -181,6 +235,11 @@ internal fun orbitBackground(): Modifier {
     val coral = DashColors.Accent
     val violet = DashColors.Accent2
     val teal = DashColors.Rpm
+    // By day the glows and halos soften so the colour tints the pale page rather than stains it.
+    val light = DashColors.Light
+    val coralGlow = if (light) 0.12f else 0.14f
+    val violetGlow = if (light) 0.13f else 0.15f
+    val halo = if (light) 0.32f else 0.5f
     val inner = rememberLoop(26_000)
     val outer = rememberLoop(44_000)
     return Modifier.drawWithCache {
@@ -191,22 +250,22 @@ internal fun orbitBackground(): Modifier {
         val outerR = h * 0.375f
         val tealDot = 5.dp.toPx()
         val coralDot = 4.dp.toPx()
-        val tealHalo = Brush.radialGradient(listOf(teal.copy(alpha = 0.5f), Color.Transparent), Offset.Zero, tealDot * 3.4f)
-        val coralHalo = Brush.radialGradient(listOf(coral.copy(alpha = 0.5f), Color.Transparent), Offset.Zero, coralDot * 3.4f)
+        val tealHalo = Brush.radialGradient(listOf(teal.copy(alpha = halo), Color.Transparent), Offset.Zero, tealDot * 3.4f)
+        val coralHalo = Brush.radialGradient(listOf(coral.copy(alpha = halo), Color.Transparent), Offset.Zero, coralDot * 3.4f)
         val still = obtainGraphicsLayer().apply { compositingStrategy = CompositingStrategy.Offscreen }
         still.record {
             drawRect(bg)
             // Radii follow the CSS mock: a share of the distance to the farthest corner.
             val coralR = hypot(hub.x, hub.y) * 0.32f
-            drawCircle(Brush.radialGradient(listOf(coral.copy(alpha = 0.14f), Color.Transparent), hub, coralR), coralR, hub)
+            drawCircle(Brush.radialGradient(listOf(coral.copy(alpha = coralGlow), Color.Transparent), hub, coralR), coralR, hub)
             val violetC = Offset(w * 0.84f, h * 0.44f)
             val violetR = hypot(violetC.x, h - violetC.y) * 0.28f
-            drawCircle(Brush.radialGradient(listOf(violet.copy(alpha = 0.15f), Color.Transparent), violetC, violetR), violetR, violetC)
+            drawCircle(Brush.radialGradient(listOf(violet.copy(alpha = violetGlow), Color.Transparent), violetC, violetR), violetR, violetC)
             val fine = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 8.dp.toPx()))
             val sparse = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 14.dp.toPx()))
-            drawCircle(white(0.09f), innerR, hub, style = Stroke(1.5.dp.toPx(), pathEffect = fine))
-            drawCircle(white(0.045f), outerR, hub, style = Stroke(1.dp.toPx()))
-            drawCircle(white(0.035f), h * 0.62f, hub, style = Stroke(1.dp.toPx(), pathEffect = sparse))
+            drawCircle(mist(0.09f), innerR, hub, style = Stroke(1.5.dp.toPx(), pathEffect = fine))
+            drawCircle(mist(0.045f), outerR, hub, style = Stroke(1.dp.toPx()))
+            drawCircle(mist(0.035f), h * 0.62f, hub, style = Stroke(1.dp.toPx(), pathEffect = sparse))
         }
         onDrawBehind {
             drawLayer(still)
@@ -229,7 +288,8 @@ internal fun orbitBackground(): Modifier {
 /**
  * A centred floating pill ("dynamic island") holding Apps, the layout picker,
  * the clock with a short date, the OBD dot and the ⋮ menu. Vehicle alert chips
- * sit just right of the pill, and only when something needs attention.
+ * sit just right of the pill, and only when something needs attention. By day
+ * the pill is frosted white, lifted off the page by a soft ink shadow.
  */
 @Composable
 internal fun OrbitTopBar(m: TopBarModel) {
@@ -237,6 +297,8 @@ internal fun OrbitTopBar(m: TopBarModel) {
     val locale = Locale.getDefault()
     val dateFmt = remember(locale) { SimpleDateFormat("EEE d MMM", locale) }
     val shape = RoundedCornerShape(28.dp)
+    val light = DashColors.Light
+    val ink = DashColors.TextPrimary
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -250,9 +312,10 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 .align(Alignment.Center)
                 .width(pillWidth)
                 .fillMaxHeight()
+                .then(if (light) Modifier.shadow(6.dp, shape, ambientColor = ink, spotColor = ink) else Modifier)
                 .clip(shape)
-                .background(white(0.06f))
-                .border(1.dp, white(0.10f), shape)
+                .background(frost(0.06f))
+                .border(1.dp, mist(0.10f), shape)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -308,14 +371,14 @@ internal fun OrbitTopBar(m: TopBarModel) {
     }
 }
 
-/** 48 dp round button inside the island; [filled] gives it the faint white disc of the Apps button. */
+/** 48 dp round button inside the island; [filled] gives it the faint disc of the Apps button (white at night, ink by day). */
 @Composable
 private fun OrbitBarButton(onClick: () -> Unit, filled: Boolean = false, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(if (filled) white(0.08f) else Color.Transparent)
+            .background(if (filled) mist(0.08f) else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) { content() }
@@ -496,6 +559,7 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
 @Composable
 private fun OrbitPathThrough(layout: DialLayout) {
     val teal = DashColors.Rpm
+    val line = mist(0.10f)
     Spacer(
         Modifier
             .fillMaxSize()
@@ -516,7 +580,7 @@ private fun OrbitPathThrough(layout: DialLayout) {
                 }
                 onDrawBehind {
                     clipPath(holes, ClipOp.Difference) {
-                        drawArc(white(0.10f), start, sweep, false, Offset(c.x - r, c.y - r), Size(r * 2, r * 2), style = dash)
+                        drawArc(line, start, sweep, false, Offset(c.x - r, c.y - r), Size(r * 2, r * 2), style = dash)
                     }
                     drawCircle(teal.copy(alpha = 0.25f), 6.dp.toPx(), dot)
                     drawCircle(teal, 2.5.dp.toPx(), dot)
@@ -529,7 +593,8 @@ private fun OrbitPathThrough(layout: DialLayout) {
  * The Orbit speed dial, [diameter] dp across: a thick 270° track with a
  * coral→pink value arc and a soft glow, fine ticks inside, a knob at the arc
  * end, and a thin outer arc (RPM in teal, or a plain dashed orbit when
- * [outerFraction] is null). [content] is centred on it.
+ * [outerFraction] is null). By day it sits on a frosted white face with a
+ * light ink track and a white knob. [content] is centred on it.
  */
 @Composable
 private fun OrbitDial(
@@ -545,7 +610,8 @@ private fun OrbitDial(
     val coral = DashColors.Accent
     val warning = DashColors.Warning
     val teal = DashColors.Rpm
-    val knobFill = DashColors.TextPrimary
+    val light = DashColors.Light
+    val knobFill = if (light) Color.White else DashColors.TextPrimary
     val muted = DashColors.Muted
     val value = animateFloatAsState(speedFraction.coerceIn(0f, 1f), tween(500), label = "dial speed")
     val outer = animateFloatAsState((outerFraction ?: 0f).coerceIn(0f, 1f), tween(500), label = "dial rpm")
@@ -553,6 +619,7 @@ private fun OrbitDial(
     Box(
         modifier = modifier
             .size(diameter.dp)
+            .orbitShadow()
             .then(
                 if (onClick != null) {
                     Modifier.clip(CircleShape).clickable(onClickLabel = "Connect OBD", role = Role.Button, onClick = onClick)
@@ -587,15 +654,22 @@ private fun OrbitDial(
                     ticks[i * 4 + 2] = c.x + (cos(a) * r2).toFloat()
                     ticks[i * 4 + 3] = c.y + (sin(a) * r2).toFloat()
                 }
+                val rim = Stroke(1.dp.toPx())
+                val hairline = mist(0.10f)
+                val outerTrack = mist(0.07f)
+                val track = mist(0.08f)
+                val majorTick = mist(0.35f)
+                val minorTick = mist(0.15f)
                 onDrawBehind {
+                    if (light) frostedFace(size.minDimension / 2f, rim, hairline)
                     if (showOuter) {
-                        drawArc(white(0.07f), DIAL_START, DIAL_SWEEP, false, outTopLeft, outSize, style = thin)
+                        drawArc(outerTrack, DIAL_START, DIAL_SWEEP, false, outTopLeft, outSize, style = thin)
                         val o = outer.value
                         if (active && o > 0.003f) drawArc(teal, DIAL_START, DIAL_SWEEP * o, false, outTopLeft, outSize, style = thin)
                     } else {
-                        drawCircle(white(0.10f), rOut, c, style = orbitDash)
+                        drawCircle(hairline, rOut, c, style = orbitDash)
                     }
-                    drawArc(white(0.08f), DIAL_START, DIAL_SWEEP, false, trackTopLeft, trackSize, style = thick)
+                    drawArc(track, DIAL_START, DIAL_SWEEP, false, trackTopLeft, trackSize, style = thick)
                     val f = if (active) value.value else 0f
                     val arcColor = if (warn) warning else coral
                     if (f > 0.003f) {
@@ -614,7 +688,7 @@ private fun OrbitDial(
                     for (i in 0..40) {
                         val major = i % 5 == 0
                         drawLine(
-                            color = white(if (major) 0.35f else 0.15f),
+                            color = if (major) majorTick else minorTick,
                             start = Offset(ticks[i * 4], ticks[i * 4 + 1]),
                             end = Offset(ticks[i * 4 + 2], ticks[i * 4 + 3]),
                             strokeWidth = (if (major) 2f else 1.5f) * s,
@@ -638,7 +712,10 @@ private fun OrbitDial(
     }
 }
 
-/** Small ring gauge: a faint disc, a [fraction] arc from the top in [color], the value and a label inside. */
+/**
+ * Small ring gauge: a faint disc (frosted white by day), a [fraction] arc from
+ * the top in [color], the value and a label inside.
+ */
 @Composable
 private fun OrbitGaugeBubble(
     size: Float,
@@ -650,9 +727,11 @@ private fun OrbitGaugeBubble(
     modifier: Modifier = Modifier
 ) {
     val level = animateFloatAsState(fraction.coerceIn(0f, 1f), tween(600), label = "satellite")
+    val light = DashColors.Light
     Box(
         modifier = modifier
             .size(size.dp)
+            .orbitShadow()
             .drawWithCache {
                 val d = this.size.minDimension
                 val stroke = d * 4f / 84f
@@ -660,9 +739,12 @@ private fun OrbitGaugeBubble(
                 val topLeft = this.size.center.let { Offset(it.x - r, it.y - r) }
                 val arcSize = Size(r * 2, r * 2)
                 val ring = Stroke(stroke, cap = StrokeCap.Round)
+                val rim = Stroke(1.dp.toPx())
+                val hairline = mist(0.10f)
+                val track = mist(0.08f)
                 onDrawBehind {
-                    drawCircle(white(0.03f), d / 2f)
-                    drawCircle(white(0.08f), r, style = ring)
+                    if (light) frostedFace(d / 2f, rim, hairline) else drawCircle(white(0.03f), d / 2f)
+                    drawCircle(track, r, style = ring)
                     val f = level.value
                     if (!dimmed && f > 0.003f) drawArc(color, -90f, 360f * f, false, topLeft, arcSize, style = ring)
                 }
@@ -773,7 +855,8 @@ private fun OrbitMedia(env: SkinTileEnv) {
  * The record deck in a [size] dp square: a near-black disc with grooves and
  * two sheen wedges that spins while playing (album art as its label), a static
  * coral progress ring hugging it, and a tonearm that rests on the record while
- * playing and swings off it when paused.
+ * playing and swings off it when paused. By day the record stays black and the
+ * tonearm turns on a pale base.
  */
 @Composable
 private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMediaController) {
@@ -785,6 +868,9 @@ private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMedia
     val cy = size * 0.53f
     val art = remember(state.artwork) { state.artwork?.asImageBitmap() }
     val labelBrush = Brush.linearGradient(listOf(DashColors.Accent, DashColors.Accent2))
+    val base = OrbitArmBase
+    val baseRimColor = mist(0.18f)
+    val chrome = OrbitArm
     Box(Modifier.size(size.dp)) {
         OrbitProgressRing(state, controller, Offset(cx, cy), r, Modifier.fillMaxSize())
         Box(
@@ -826,7 +912,7 @@ private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMedia
                 Modifier
                     .size(max(3f, r * 0.074f).dp)
                     .clip(CircleShape)
-                    .background(DashColors.TextPrimary)
+                    .background(if (DashColors.Light) Color.White else DashColors.TextPrimary)
             )
         }
         Spacer(
@@ -851,13 +937,13 @@ private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMedia
                     val armStroke = Stroke(5f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
                     val baseRim = Stroke(2f * u)
                     onDrawBehind {
-                        drawCircle(OrbitArmBase, 15f * u, pivot)
-                        drawCircle(white(0.18f), 15f * u, pivot, style = baseRim)
+                        drawCircle(base, 15f * u, pivot)
+                        drawCircle(baseRimColor, 15f * u, pivot, style = baseRim)
                         rotate(arm.value, pivot) {
-                            drawPath(armPath, OrbitArm, style = armStroke)
-                            drawPath(head, OrbitArm)
+                            drawPath(armPath, chrome, style = armStroke)
+                            drawPath(head, chrome)
                         }
-                        drawCircle(OrbitArm, 5f * u, pivot)
+                        drawCircle(chrome, 5f * u, pivot)
                     }
                 }
         )
@@ -865,13 +951,16 @@ private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMedia
 }
 
 /**
- * Soft shadow under the record and the static coral progress ring around it
- * ([center] and [r] in dp). Kept apart so only it follows the playback position.
+ * Soft shadow under the record (ink and lighter by day) and the static coral
+ * progress ring around it ([center] and [r] in dp). Kept apart so only it
+ * follows the playback position.
  */
 @Composable
 private fun OrbitProgressRing(state: MediaState, controller: CarMediaController, center: Offset, r: Float, modifier: Modifier) {
     val fraction = rememberMediaFraction(state, controller)
     val coral = DashColors.Accent
+    val shadow = if (DashColors.Light) DashColors.TextPrimary.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.55f)
+    val track = mist(0.06f)
     Canvas(modifier) {
         val c = Offset(center.x.dp.toPx(), center.y.dp.toPx())
         val rec = r.dp.toPx()
@@ -879,11 +968,11 @@ private fun OrbitProgressRing(state: MediaState, controller: CarMediaController,
         val width = max(2.dp.toPx(), rec * 0.028f)
         val shadowCenter = Offset(c.x, c.y + rec * 0.12f)
         drawCircle(
-            Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), shadowCenter, rec * 1.2f),
+            Brush.radialGradient(listOf(shadow, Color.Transparent), shadowCenter, rec * 1.2f),
             rec * 1.2f,
             shadowCenter
         )
-        drawCircle(white(0.06f), ring, c, style = Stroke(width))
+        drawCircle(track, ring, c, style = Stroke(width))
         if (fraction > 0f) {
             drawArc(
                 coral, -90f, 360f * fraction, false,
@@ -933,7 +1022,7 @@ private fun OrbitMediaInfo(env: SkinTileEnv, k: Float, onGrant: () -> Unit, modi
             ) {
                 OrbitRoundButton(
                     Icons.Filled.SkipPrevious, "Previous track", 48f * k, 22f * k,
-                    white(0.07f), DashColors.TextPrimary, !env.editing
+                    frost(0.07f), DashColors.TextPrimary, !env.editing, bubble = true
                 ) { controller.previous() }
                 OrbitRoundButton(
                     if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (playing) "Pause" else "Play",
@@ -941,7 +1030,7 @@ private fun OrbitMediaInfo(env: SkinTileEnv, k: Float, onGrant: () -> Unit, modi
                 ) { controller.playPause() }
                 OrbitRoundButton(
                     Icons.Filled.SkipNext, "Next track", 48f * k, 22f * k,
-                    white(0.07f), DashColors.TextPrimary, !env.editing
+                    frost(0.07f), DashColors.TextPrimary, !env.editing, bubble = true
                 ) { controller.next() }
             }
         } else {
@@ -968,7 +1057,11 @@ private fun OrbitTrackTime(state: MediaState, controller: CarMediaController, si
     OrbitText("${formatTrackTime(positionMs)} / ${formatTrackTime(state.durationMs)}", size, DashColors.Muted)
 }
 
-/** Round control, at least 48 dp: [fill] disc, centred icon, and an optional soft [glow] around it. */
+/**
+ * Round control, at least 48 dp: [fill] disc, centred icon, and an optional
+ * soft [glow] around it (fainter by day). A neutral [bubble] gains an ink
+ * hairline and a drop shadow by day.
+ */
 @Composable
 private fun OrbitRoundButton(
     icon: ImageVector,
@@ -979,8 +1072,11 @@ private fun OrbitRoundButton(
     tint: Color,
     enabled: Boolean,
     glow: Color? = null,
+    bubble: Boolean = false,
     onClick: () -> Unit
 ) {
+    val light = DashColors.Light
+    val glowAlpha = if (light) 0.32f else 0.5f
     Box(
         modifier = Modifier
             .size(max(size, 48f).dp)
@@ -988,13 +1084,15 @@ private fun OrbitRoundButton(
                 if (glow != null) {
                     Modifier.drawWithCache {
                         val r = this.size.minDimension * 0.85f
-                        val halo = Brush.radialGradient(listOf(glow.copy(alpha = 0.5f), Color.Transparent), this.size.center, r)
+                        val halo = Brush.radialGradient(listOf(glow.copy(alpha = glowAlpha), Color.Transparent), this.size.center, r)
                         onDrawBehind { drawCircle(halo, r) }
                     }
                 } else Modifier
             )
+            .then(if (bubble) Modifier.orbitShadow() else Modifier)
             .clip(CircleShape)
             .background(fill)
+            .then(if (bubble && light) Modifier.border(1.dp, mist(0.10f), CircleShape) else Modifier)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -1087,10 +1185,14 @@ private fun OrbitRoute(nav: NavState, wide: Boolean, bubble: Float, width: Float
     }
 }
 
-/** Coral bubble [d] dp across with a halo and glow: the manoeuvre glyph tinted dark over the distance. */
+/**
+ * Coral bubble [d] dp across with a halo and glow (softer by day): the
+ * manoeuvre glyph over the distance, in dark ink at night and white by day.
+ */
 @Composable
 private fun OrbitTurnBubble(nav: NavState, d: Float) {
     val coral = DashColors.Accent
+    val glowAlpha = if (DashColors.Light) 0.3f else 0.42f
     val glyph = remember(nav.icon) { nav.icon?.asImageBitmap() }
     val hasDistance = nav.distance.isNotEmpty()
     val glyphSize = d * if (hasDistance) 0.3f else 0.46f
@@ -1099,7 +1201,7 @@ private fun OrbitTurnBubble(nav: NavState, d: Float) {
             .size(d.dp)
             .drawWithCache {
                 val r = size.minDimension / 2f
-                val glow = Brush.radialGradient(listOf(coral.copy(alpha = 0.42f), Color.Transparent), size.center, r * 1.45f)
+                val glow = Brush.radialGradient(listOf(coral.copy(alpha = glowAlpha), Color.Transparent), size.center, r * 1.45f)
                 onDrawBehind {
                     drawCircle(glow, r * 1.45f)
                     drawCircle(coral.copy(alpha = 0.14f), r * 1.13f)
@@ -1139,26 +1241,31 @@ private fun fittingChips(chips: List<String>, size: Float, width: Float): List<S
     }.ifEmpty { chips.take(1) }
 }
 
-/** Round-ended ETA pill ("12 min", "6.4 km", "20:58"). */
+/** Round-ended ETA pill ("12 min", "6.4 km", "20:58"); frosted white with an ink hairline by day. */
 @Composable
 private fun OrbitPill(text: String, size: Float, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(50)
     Box(
         modifier = modifier
             .clip(shape)
-            .background(white(0.06f))
-            .border(1.dp, white(0.10f), shape)
+            .background(frost(0.06f))
+            .border(1.dp, mist(0.10f), shape)
             .padding(horizontal = (size * 0.85f).dp, vertical = (size * 0.4f).dp)
     ) {
         OrbitText(text, size, DashColors.TextPrimary, weight = FontWeight.Medium)
     }
 }
 
-/** Calm idle state: a dim dashed circle with a navigation icon, and what a tap will do. */
+/**
+ * Calm idle state: a dim dashed circle (a faint frosted disc by day, with no
+ * shadow) with a navigation icon, and what a tap will do.
+ */
 @Composable
 private fun OrbitNoRoute(access: Boolean, wide: Boolean, bubble: Float) {
     val muted = DashColors.Muted
     val ink = DashColors.TextPrimary.copy(alpha = 0.8f)
+    val disc = if (DashColors.Light) OrbitFrost.copy(alpha = 0.5f) else white(0.03f)
+    val dashColor = mist(0.18f)
     val title = if (access) "No route" else "Directions need access"
     val hint = if (access) "Tap to open Google Maps" else "Tap to allow notification access"
     val d = bubble * 0.8f
@@ -1173,8 +1280,8 @@ private fun OrbitNoRoute(access: Boolean, wide: Boolean, bubble: Float) {
                     val dash = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 6.dp.toPx())))
                     val dot = size.center.let { Offset(it.x + r * 0.7071f, it.y - r * 0.7071f) }
                     onDrawBehind {
-                        drawCircle(white(0.03f), r)
-                        drawCircle(white(0.18f), r, style = dash)
+                        drawCircle(disc, r)
+                        drawCircle(dashColor, r, style = dash)
                         drawCircle(muted, 3.dp.toPx(), dot)
                     }
                 },
@@ -1251,7 +1358,11 @@ private fun OrbitClock(env: SkinTileEnv) {
     }
 }
 
-/** The ring [d] dp across with hour dots, the seconds arc and its glowing head, time (and [date]) inside. */
+/**
+ * The ring [d] dp across with hour dots, the seconds arc and its glowing head,
+ * time (and [date]) inside. By day it sits on a frosted white face filling the
+ * bubble, with ink hour dots.
+ */
 @Composable
 private fun OrbitClockRing(
     d: Float,
@@ -1262,9 +1373,11 @@ private fun OrbitClockRing(
     onClick: () -> Unit
 ) {
     val teal = DashColors.Rpm
+    val light = DashColors.Light
     Box(
         modifier = Modifier
             .size(d.dp)
+            .orbitShadow()
             .clip(CircleShape)
             .clickable(enabled = enabled, onClickLabel = "Open alarms", role = Role.Button, onClick = onClick)
             .drawWithCache {
@@ -1282,14 +1395,20 @@ private fun OrbitClockRing(
                     marks[i * 2 + 1] = mid.y - cos(a) * r * 0.87f
                 }
                 val markR = thin.width * 0.9f
-                val halo = Brush.radialGradient(listOf(teal.copy(alpha = 0.55f), Color.Transparent), Offset.Zero, dotR * 2.6f)
+                val halo = Brush.radialGradient(
+                    listOf(teal.copy(alpha = if (light) 0.35f else 0.55f), Color.Transparent), Offset.Zero, dotR * 2.6f
+                )
+                val rim = Stroke(1.dp.toPx())
+                val hairline = mist(0.10f)
+                val quarterMark = mist(0.35f)
+                val hourMark = mist(0.18f)
                 onDrawBehind {
-                    drawCircle(white(0.03f), r)
-                    drawCircle(white(0.10f), r, style = thin)
+                    if (light) frostedFace(size.minDimension / 2f, rim, hairline) else drawCircle(white(0.03f), r)
+                    drawCircle(hairline, r, style = thin)
                     for (i in 0 until 12) {
                         val quarter = i % 3 == 0
                         val at = Offset(marks[i * 2], marks[i * 2 + 1])
-                        drawCircle(white(if (quarter) 0.35f else 0.18f), markR * if (quarter) 1.4f else 1f, at)
+                        drawCircle(if (quarter) quarterMark else hourMark, markR * if (quarter) 1.4f else 1f, at)
                     }
                     val f = progress()
                     drawArc(teal, -90f, 360f * f, false, topLeft, arcSize, style = arc)
@@ -1346,22 +1465,26 @@ private fun OrbitWeather() {
     }
 }
 
-/** The bubble itself, [d] dp across; a muted cloud says "Loading…" (or "Offline") until the first fetch. */
+/**
+ * The bubble itself, [d] dp across (frosted white by day, with a warmer sun
+ * glow); a muted cloud says "Loading…" (or "Offline") until the first fetch.
+ */
 @Composable
 private fun OrbitWeatherBubble(d: Float, weather: Weather?, offline: Boolean, feels: Boolean) {
-    val warm = if (weather != null) OrbitSun.copy(alpha = 0.10f) else Color.Transparent
+    val warm = if (weather != null) OrbitSun.copy(alpha = if (DashColors.Light) 0.16f else 0.10f) else Color.Transparent
     Box(
         modifier = Modifier
             .size(d.dp)
+            .orbitShadow()
             .clip(CircleShape)
-            .background(white(0.05f))
+            .background(frost(0.05f))
             .drawWithCache {
                 val r = size.minDimension / 2f
                 val c = Offset(size.width / 2f, size.height / 2f - r * 0.35f)
                 val glow = Brush.radialGradient(listOf(warm, Color.Transparent), c, r * 0.8f)
                 onDrawBehind { drawCircle(glow, r * 0.8f, c) }
             }
-            .border(1.dp, white(0.10f), CircleShape),
+            .border(1.dp, mist(0.10f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1434,16 +1557,23 @@ private fun OrbitRange(item: DashboardItem, env: SkinTileEnv) {
     if (finder) FuelFinderDialog(onDismiss = { finder = false })
 }
 
-/** The liquid bubble [d] dp across: teal fluid (amber-red in reserve) with two drifting wave layers. */
+/**
+ * The liquid bubble [d] dp across: teal fluid (amber-red in reserve) with two
+ * drifting wave layers; by day in a frosted white disc, the fuel line in a
+ * deeper shade of the fluid so it holds over the pale liquid.
+ */
 @Composable
 private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick: () -> Unit) {
     val low = fuel.percent <= 12
     val fluid = if (low) DashColors.Warning else DashColors.Rpm
+    val light = DashColors.Light
+    val fluidInk = if (light) lerp(fluid, DashColors.TextPrimary, 0.3f) else fluid
     val level = animateFloatAsState(fuel.percent.coerceIn(0, 100) / 100f, tween(900), label = "fuel level")
     val wave = rememberLoop(3_000)
     Box(
         modifier = Modifier
             .size(d.dp)
+            .orbitShadow()
             .clip(CircleShape)
             .clickable(enabled = enabled, onClickLabel = "Recalibrate fuel", role = Role.Button, onClick = onClick)
             .drawWithCache {
@@ -1466,6 +1596,7 @@ private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick:
                     close()
                 }
                 onDrawBehind {
+                    if (light) drawRect(OrbitFrost)
                     drawRect(fluid.copy(alpha = 0.05f))
                     val top = dd * (1f - level.value)
                     val p = wave.value
@@ -1478,7 +1609,7 @@ private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick:
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             OrbitText("${fuel.rangeKm} km", d * 0.17f, DashColors.TextPrimary, weight = FontWeight.SemiBold, tight = true)
-            OrbitText("fuel ${fuel.percent}%", max(11f, d * 0.1f), fluid, weight = FontWeight.Medium)
+            OrbitText("fuel ${fuel.percent}%", max(11f, d * 0.1f), fluidInk, weight = FontWeight.Medium)
         }
     }
 }
@@ -1496,6 +1627,7 @@ private fun OrbitAppBubble(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
         val bubble = min(w - 8f, h - 8f - if (showLabel) 20f else 0f).coerceIn(32f, 88f)
         Column(
             modifier = Modifier
+                .orbitShadow(bubble, top = 4f)
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(enabled = !env.editing, role = Role.Button) { env.onLaunchApp(item.packageName) }
                 .padding(4.dp),
@@ -1510,15 +1642,19 @@ private fun OrbitAppBubble(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
     }
 }
 
-/** The bubble behind an app icon: white 6 % fill with a white 10 % hairline ring. */
+/**
+ * The bubble behind an app icon: white 6 % fill with a white 10 % hairline ring
+ * at night; by day frosted white with an ink hairline. Its drop shadow is drawn
+ * by the caller, outside the item's clip.
+ */
 @Composable
 private fun OrbitAppIcon(app: AppEntry?, bubble: Float) {
     Box(
         modifier = Modifier
             .size(bubble.dp)
             .clip(CircleShape)
-            .background(white(0.06f))
-            .border(1.dp, white(0.10f), CircleShape),
+            .background(frost(0.06f))
+            .border(1.dp, mist(0.10f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (app != null) AppIcon(icon = app.icon, size = (bubble * 0.72f).dp)
@@ -1533,6 +1669,7 @@ private fun OrbitAppIcon(app: AppEntry?, bubble: Float) {
  */
 @Composable
 private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
+    val line = mist(0.10f)
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         if (item.packages.isEmpty()) {
             OrbitText(
@@ -1576,7 +1713,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                                 val dashes = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 7.dp.toPx()))
                                 val dash = Stroke(1.5.dp.toPx(), pathEffect = dashes)
                                 onDrawBehind {
-                                    clipPath(holes, ClipOp.Difference) { drawPath(path, white(0.10f), style = dash) }
+                                    clipPath(holes, ClipOp.Difference) { drawPath(path, line, style = dash) }
                                 }
                             }
                     )
@@ -1588,6 +1725,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                         modifier = Modifier
                             .offset(x = (slot * i).dp, y = (top + depth * u * u).dp)
                             .width(slot.dp)
+                            .orbitShadow(bubble)
                             .clip(RoundedCornerShape(16.dp))
                             .clickable(enabled = !env.editing, role = Role.Button) { env.onLaunchApp(pkg) },
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -1605,7 +1743,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .border(1.dp, white(0.08f), CircleShape)
+                .border(1.dp, mist(0.08f), CircleShape)
                 .clickable(role = Role.Button, onClick = env.onEditLaunchBar),
             contentAlignment = Alignment.Center
         ) {
@@ -1620,12 +1758,16 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
  * Porthole over a docked Maps window: everything outside the largest centred
  * circle is masked in the page colour, a soft vignette darkens the inside of
  * the rim, and a hairline ring with a faint halo and a dashed outer orbit
- * finish the edge. The middle stays clear so the map shows through.
+ * finish the edge. The middle stays clear so the map shows through. By day the
+ * mask and vignette take the lavender page and the rings an ink tint.
  */
 @Composable
 internal fun OrbitWindowFrame(modifier: Modifier) {
     val bg = DashColors.Background
     val teal = DashColors.Rpm
+    val haloColor = mist(0.025f)
+    val orbitColor = mist(0.06f)
+    val rimColor = mist(0.10f)
     Spacer(
         modifier
             .fillMaxSize()
@@ -1652,11 +1794,11 @@ internal fun OrbitWindowFrame(modifier: Modifier) {
                 onDrawBehind {
                     drawCircle(vignette, r, c)
                     drawPath(mask, bg)
-                    drawCircle(white(0.025f), r + 6.dp.toPx(), c, style = halo)
-                    drawCircle(white(0.06f), orbitR, c, style = orbitDash)
+                    drawCircle(haloColor, r + 6.dp.toPx(), c, style = halo)
+                    drawCircle(orbitColor, orbitR, c, style = orbitDash)
                     drawCircle(teal.copy(alpha = 0.25f), 6.dp.toPx(), dot)
                     drawCircle(teal, 2.5.dp.toPx(), dot)
-                    drawCircle(white(0.10f), r - 1.dp.toPx(), c, style = ring)
+                    drawCircle(rimColor, r - 1.dp.toPx(), c, style = ring)
                 }
             }
     )

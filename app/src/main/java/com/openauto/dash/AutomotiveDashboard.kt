@@ -103,13 +103,14 @@ internal const val MAX_UNDO = 30
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
+    var appearance by remember { mutableStateOf(DashThemeStore.loadAppearance(context)) }
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
     var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     val variant = variantOf(layout)
     var showThemePicker by remember { mutableStateOf(false) }
-    DashColors.Sync(themeMode)
+    DashColors.Sync(themeMode, appearance)
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
@@ -711,9 +712,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     if (showThemePicker) {
         DashThemePickerDialog(
             selected = themeMode,
+            appearance = appearance,
             onSelect = {
                 themeMode = it
                 DashThemeStore.save(context, it)
+            },
+            onAppearance = {
+                appearance = it
+                DashThemeStore.saveAppearance(context, it)
             },
             onDismiss = { showThemePicker = false }
         )

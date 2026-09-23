@@ -52,7 +52,9 @@ internal fun GlassRoundButton(
     onClick: () -> Unit
 ) {
     val fill: Brush = if (DashColors.Glass) {
-        Brush.linearGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.05f)))
+        // By day the frost has to be dense to stand off the pale page.
+        val (top, bottom) = if (DashColors.Light) 0.9f to 0.6f else 0.16f to 0.05f
+        Brush.linearGradient(listOf(Color.White.copy(alpha = top), Color.White.copy(alpha = bottom)))
     } else SolidColor(DashColors.CardHi)
     Box(
         modifier = Modifier
@@ -154,18 +156,20 @@ internal fun Modifier.itemFill(fill: Color, shape: Shape, rim: Color? = DashColo
  * Glass surface: translucent white->accent gradient fill, hairline border and a
  * specular highlight along the top edge. The head unit is Android 10, so there
  * is no RenderEffect backdrop blur; the layered translucency carries the look.
+ * Light themes use frosted glass: the same layers, but a dense white fill.
  */
 @Composable
 internal fun glassPanel(shape: RoundedCornerShape): Modifier {
     val line = DashColors.Line
     val accent = DashColors.Accent
+    val (top, bottom) = if (DashColors.Light) 0.78f to 0.52f else 0.10f to 0.035f
     return Modifier
         .clip(shape)
         .background(
             Brush.linearGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.10f),
-                    Color.White.copy(alpha = 0.035f),
+                    Color.White.copy(alpha = top),
+                    Color.White.copy(alpha = bottom),
                     accent.copy(alpha = 0.06f)
                 )
             )

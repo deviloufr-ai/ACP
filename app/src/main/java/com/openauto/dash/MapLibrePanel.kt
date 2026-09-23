@@ -94,9 +94,10 @@ import org.maplibre.navigation.core.models.DirectionsRoute
 import java.net.URLEncoder
 import java.util.Locale
 
-// Free, no-key services: CARTO dark-matter basemap (dark vector style + tiles,
-// free with attribution), Nominatim geocoding, Valhalla routing.
-private const val MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+// Free, no-key services: CARTO dark-matter / positron basemaps (vector styles +
+// tiles, free with attribution), Nominatim geocoding, Valhalla routing.
+private const val MAP_STYLE_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+private const val MAP_STYLE_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 private const val VALHALLA_URL = "https://valhalla1.openstreetmap.de/route"
 private const val NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 private const val USER_AGENT = "OpenAutoDash/1.0 (car launcher)"
@@ -230,21 +231,30 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
     var styleReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         mapView.getMapAsync { map ->
-            mapRef = map
             // No MapLibre wordmark on the dashboard. The attribution (i)
             // stays: the CARTO / OpenStreetMap tile terms require it.
             map.uiSettings.isLogoEnabled = false
-            map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
-                add3dBuildings(style)
-                if (navRoute == null) navRoute = NavigationMapRoute(mapView, map)
+            mapRef = map
+        }
+    }
+    // The basemap follows the dashboard's dark or light version. Only the
+    // style swaps on a change; the route line and click listener are set up
+    // on the first load, and the location puck carries over by itself.
+    val lightMap = DashColors.Light
+    LaunchedEffect(mapRef, lightMap) {
+        val map = mapRef ?: return@LaunchedEffect
+        map.setStyle(Style.Builder().fromUri(if (lightMap) MAP_STYLE_LIGHT else MAP_STYLE_DARK)) { style ->
+            add3dBuildings(style, lightMap)
+            if (navRoute == null) {
+                navRoute = NavigationMapRoute(mapView, map)
                 map.addOnMapClickListener { latLng ->
                     clearRoute()
                     mapRef?.addMarker(MarkerOptions().position(latLng))
                     routeTo(Point.fromLngLat(latLng.longitude, latLng.latitude))
                     true
                 }
-                styleReady = true
             }
+            styleReady = true
         }
     }
     // Location puck: enabled once the style is up, and again if the permission
@@ -419,19 +429,20 @@ private fun followVehicle(lc: LocationComponent) {
 }
 
 /**
- * Adds extruded 3D buildings to a dark vector basemap. The building geometry lives
- * in the style's vector source under the OpenMapTiles `building` source-layer with
- * `render_height` / `render_min_height`. We detect the source id at runtime so this
- * works regardless of what the style names it, and skip silently if unavailable.
+ * Adds extruded 3D buildings to the vector basemap, tinted for its [light] or dark
+ * version. The building geometry lives in the style's vector source under the
+ * OpenMapTiles `building` source-layer with `render_height` / `render_min_height`.
+ * We detect the source id at runtime so this works regardless of what the style
+ * names it, and skip silently if unavailable.
  */
-private fun add3dBuildings(style: Style) {
+private fun add3dBuildings(style: Style, light: Boolean) {
     runCatching {
         val sourceId = style.sources.firstOrNull { it is VectorSource }?.id ?: return
         if (style.getLayer("3d-buildings") != null) return
         val layer = FillExtrusionLayer("3d-buildings", sourceId).apply {
             sourceLayer = "building"
             setProperties(
-                PropertyFactory.fillExtrusionColor(android.graphics.Color.parseColor("#2B2F36")),
+                PropertyFactory.fillExtrusionColor(android.graphics.Color.parseColor(if (light) "#D5D8DE" else "#2B2F36")),
                 PropertyFactory.fillExtrusionHeight(Expression.get("render_height")),
                 PropertyFactory.fillExtrusionBase(Expression.get("render_min_height")),
                 PropertyFactory.fillExtrusionOpacity(0.85f)

@@ -162,7 +162,7 @@ internal fun DirectionsCard(
                                         maxLines = 1,
                                         style = TextStyle(
                                             brush = if (glow > 0f) Brush.verticalGradient(
-                                                listOf(Color.White, lerp(Color.White, accent, 0.45f))
+                                                listOf(DashColors.Bright, lerp(DashColors.Bright, accent, 0.45f))
                                             ) else null,
                                             shadow = if (glow > 0f) Shadow(accent.copy(alpha = 0.8f * glow), blurRadius = 30f) else null
                                         )
@@ -295,7 +295,7 @@ internal fun InfoPill(text: String) {
         style = MaterialTheme.typography.labelMedium,
         modifier = Modifier
             .clip(shape)
-            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi, shape)
+            .itemFill(if (DashColors.Glass) DashColors.haze(0.08f) else DashColors.CardHi, shape)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     )
 }

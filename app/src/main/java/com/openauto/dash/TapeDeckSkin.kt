@@ -105,43 +105,80 @@ import kotlin.random.Random
  * on a cassette with spinning reels and piano-key transport; directions glow on
  * a green phosphor CRT; weather is a neon sign; apps are radio preset buttons.
  * Everything is drawn on canvases with system fonts: no images, no resources.
+ *
+ * The light version is a Miami morning: a pastel sky with no stars, a pale
+ * lilac ground, and silver hi-fi hardware with dark ink legends. The VFD clock
+ * and the CRT are screens, so they stay dark in both.
  */
 
 // ---------------------------------------------------------------- palette
 
 // The core inks come from DashColors (Accent cyan, Accent2 magenta, Good green);
-// these are the extra hardware colours of the mockup.
-private val TdInk = Color(0xFF0D0221)
-private val TdSkyMid = Color(0xFF261447)
-private val TdSkyLow = Color(0xFF541F63)
-private val TdGround = Color(0xFF2A0845)
-private val TdMountain = Color(0xFF1A0B2E)
-private val TdYellow = Color(0xFFFFD319)
-private val TdOrange = Color(0xFFFF8A3D)
+// these are the extra hardware colours of the mockup, as night / day pairs.
+// DashColors.Light is snapshot state, so every read redraws on a switch.
+private fun tone(night: Color, day: Color): Color = if (DashColors.Light) day else night
+
+private val TdInk get() = tone(Color(0xFF0D0221), Color(0xFFE6DAF6))
+private val TdSkyMid get() = tone(Color(0xFF261447), Color(0xFFFFDDEC))
+private val TdSkyLow get() = tone(Color(0xFF541F63), Color(0xFFFFD4BA))
+private val TdGround get() = tone(Color(0xFF2A0845), Color(0xFFF7ECFA))
+private val TdMountain get() = tone(Color(0xFF1A0B2E), Color(0xFFD3BDEF))
+private val TdYellow get() = tone(Color(0xFFFFD319), Color(0xFFFFB81F))
+private val TdOrange get() = tone(Color(0xFFFF8A3D), Color(0xFFFF7D8C))
 private val TdVfd = Color(0xFF05040A)
-private val TdVfdRim = Color(0xFF3B3A48)
-private val TdChromeTop = Color(0xFF2B2A35)
-private val TdChromeBottom = Color(0xFF121118)
-private val TdPresetTop = Color(0xFF34333F)
-private val TdPresetBottom = Color(0xFF1B1A22)
-private val TdPresetSide = Color(0xFF0A0910)
-private val TdShell = Color(0xFF1D1C24)
-private val TdHeadBlock = Color(0xFF2A2933)
-private val TdWindow = Color(0xFF0B0A10)
-private val TdWindowRim = Color(0xFF555468)
+private val TdVfdRim get() = tone(Color(0xFF3B3A48), Color(0xFF9A9CAB))
+private val TdChromeTop get() = tone(Color(0xFF2B2A35), Color(0xFFF5F6F9))
+private val TdChromeBottom get() = tone(Color(0xFF121118), Color(0xFFC7CAD4))
+private val TdPresetTop get() = tone(Color(0xFF34333F), Color(0xFFF8F9FB))
+private val TdPresetBottom get() = tone(Color(0xFF1B1A22), Color(0xFFCDD0D9))
+private val TdPresetSide get() = tone(Color(0xFF0A0910), Color(0xFFA2A5B3))
+private val TdShell get() = tone(Color(0xFF1D1C24), Color(0xFFDADCE3))
+private val TdHeadBlock get() = tone(Color(0xFF2A2933), Color(0xFFC2C5CF))
+private val TdWindow get() = tone(Color(0xFF0B0A10), Color(0xFF2C2936))
+private val TdWindowRim get() = tone(Color(0xFF555468), Color(0xFF8C8E9D))
 private val TdLabel = Color(0xFFF2E8D5)
 private val TdPurple = Color(0xFF7B2CBF)
 private val TdTape = Color(0xFF4A3426)
 private val TdHub = Color(0xFFEDEDED)
-private val TdKeyTop = Color(0xFFF1F1F4)
-private val TdKeyBottom = Color(0xFFA9A9B6)
-private val TdKeySide = Color(0xFF5B5B6B)
+private val TdKeyTop get() = tone(Color(0xFFF1F1F4), Color(0xFFFAFAFC))
+private val TdKeyBottom get() = tone(Color(0xFFA9A9B6), Color(0xFFCACBD5))
+private val TdKeySide get() = tone(Color(0xFF5B5B6B), Color(0xFF9B9DAC))
 private val TdPhosphor = Color(0xFF33FF99)
 private val TdCrtCentre = Color(0xFF06281C)
 private val TdCrtEdge = Color(0xFF021009)
-private val TdBezel = Color(0xFF15121C)
-private val TdBezelRim = Color(0xFF2E2940)
-private val TdBezelOuter = Color(0xFF0A0812)
+private val TdBezelTop get() = tone(Color(0xFF221C2C), Color(0xFFF1F2F6))
+private val TdBezel get() = tone(Color(0xFF15121C), Color(0xFFD5D7DF))
+private val TdBezelBottom get() = tone(Color(0xFF0F0C15), Color(0xFFB6B9C5))
+private val TdBezelRim get() = tone(Color(0xFF2E2940), Color(0xFFA4A7B5))
+private val TdBezelOuter get() = tone(Color(0xFF0A0812), Color(0xFF8E91A0))
+
+/** Behind the LED readouts: the black VFD glass at night, a pearl panel by day. */
+private val TdPanel get() = tone(TdVfd, Color(0xFFFFFBFD))
+
+/** Ink printed on the cassette label and the white keys: the shell colour at night, deep purple by day. */
+private val TdPrint get() = if (DashColors.Light) DashColors.TextPrimary else TdShell
+
+/** Legends on the top bar pills and presets: neon cyan at night, dark ink on the silver by day. */
+private val TdLegend get() = if (DashColors.Light) DashColors.TextPrimary else DashColors.Accent
+
+/** Cyan lit on the dark VFD clock: the accent at night; by day that accent is deepened for pale panels, so a brighter tube. */
+private val TdVfdCyan get() = if (DashColors.Light) Color(0xFF2BE3F0) else DashColors.Accent
+
+/** Yellow lettering: the LED yellow at night, a deeper amber that reads on the pearl panels by day. */
+private val TdYellowText get() = if (DashColors.Light) Color(0xFFBF7200) else TdYellow
+
+/** Day only: the morning sun's creamy halo. */
+private val TdSunGlow = Color(0xD9FFF0C0)
+
+/** Day only: the purple-grey of soft shadows under the silver hardware. */
+private val TdShade = Color(0xFF3B2A5C)
+
+/** Drop shadow under hardware at [alpha]: black at night, a softer purple-grey by day. */
+private fun tdShadow(alpha: Float): Color =
+    if (DashColors.Light) TdShade.copy(alpha = alpha * 0.45f) else Color.Black.copy(alpha = alpha)
+
+/** Gradient end fading [c] out: transparent black at night; [c] at zero alpha by day, as a fade to black greys a pale page. */
+private fun fadeOf(c: Color): Color = if (DashColors.Light) c.copy(alpha = 0f) else Color.Transparent
 
 private val TOP_BAR_HEIGHT = 60.dp
 private val KEY_DEPTH = 8.dp
@@ -161,14 +198,18 @@ private const val SPECTRUM_LOOP_MS = 4_000
 /**
  * Whole-screen synthwave backdrop: starry gradient sky, a striped sun on the
  * horizon, wireframe mountains, a dark ground and a perspective grid whose
- * cross lines roll towards the viewer. Paths and brushes are cached per size;
- * only the grid and the star twinkle read the animation, inside the draw.
+ * cross lines roll towards the viewer. By day: a starless pastel sky, lilac
+ * hills and a pale ground with cyan rails. Paths and brushes are cached per
+ * size and appearance; only the grid and the star twinkle read the animation,
+ * inside the draw.
  */
 @Composable
 internal fun tapeDeckBackground(): Modifier {
     val loop = rememberLoop(BG_LOOP_MS)
+    val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
-    return remember(magenta, loop) {
+    val light = DashColors.Light
+    return remember(cyan, magenta, light, loop) {
         Modifier.drawWithCache {
             val w = size.width
             val h = size.height
@@ -181,6 +222,12 @@ internal fun tapeDeckBackground(): Modifier {
                 for (i in 2 until c.size step 2) lineTo(c[i] * sx, horizon + (c[i + 1] - 400f) * sy)
                 if (close) close()
             }
+
+            // Day: blooms at half strength (they barely show on a pale page), lines a
+            // little lighter, and cyan rails under the magenta cross lines.
+            val glow = if (light) 0.5f else 1f
+            val ink = if (light) 0.75f else 1f
+            val rail = if (light) cyan else magenta
 
             val sky = Brush.verticalGradient(0f to TdInk, 0.6f to TdSkyMid, 1f to TdSkyLow, startY = 0f, endY = horizon)
             val stars = STARS.map { group -> group.map { Offset(it.x * w, it.y * horizon) } }
@@ -200,10 +247,14 @@ internal fun tapeDeckBackground(): Modifier {
                 0f to TdYellow, 0.5f to TdOrange, 1f to magenta, startY = sunC.y - sunR, endY = horizon
             )
             val haloR = sunR * 1.8f
+            val haloInk = if (light) TdSunGlow else magenta.copy(alpha = 0.45f)
             val halo = Brush.radialGradient(
-                0.45f to magenta.copy(alpha = 0.45f), 1f to Color.Transparent, center = sunC, radius = haloR
+                0.45f to haloInk, 1f to fadeOf(haloInk), center = sunC, radius = haloR
             )
 
+            val mountain = TdMountain
+            val hillGlowInk = magenta.copy(alpha = 0.22f * glow)
+            val ridgeInk = magenta.copy(alpha = 0.45f * ink)
             val hillFill = Path().apply { HILLS.forEach { addPath(poly(it, close = true)) } }
             val hillEdge = Path().apply { HILLS.forEach { addPath(poly(it, close = false)) } }
             val ridges = Path().apply {
@@ -224,30 +275,34 @@ internal fun tapeDeckBackground(): Modifier {
                 }
             }
             val verticalInk = Brush.verticalGradient(
-                0f to magenta.copy(alpha = 0.12f), 1f to magenta.copy(alpha = 0.75f), startY = horizon, endY = h
+                0f to rail.copy(alpha = 0.12f * ink), 1f to rail.copy(alpha = 0.75f * ink), startY = horizon, endY = h
             )
             val gridStroke = Stroke(1.5.dp.toPx())
             val thin = 1.5.dp.toPx()
             val wide = 5.dp.toPx()
+            val crossGlow = 0.22f * glow
+            val crossInk = 0.8f * ink
             val bloomH = 14.dp.toPx()
             val bloom = Brush.verticalGradient(
-                0f to Color.Transparent, 0.5f to magenta.copy(alpha = 0.55f), 1f to Color.Transparent,
+                0f to fadeOf(magenta), 0.5f to magenta.copy(alpha = 0.55f * glow), 1f to fadeOf(magenta),
                 startY = horizon - bloomH, endY = horizon + bloomH
             )
 
             onDrawBehind {
                 val t = loop.value
                 drawRect(sky, size = Size(w, horizon))
-                stars.forEachIndexed { k, group ->
-                    val a = 0.3f + 0.55f * (0.5f + 0.5f * sin((t * 6f + k / 3f) * 2f * PI.toFloat()))
-                    drawPoints(group, PointMode.Points, Color.White.copy(alpha = a), starWidths[k], StrokeCap.Round)
+                if (!light) {
+                    stars.forEachIndexed { k, group ->
+                        val a = 0.3f + 0.55f * (0.5f + 0.5f * sin((t * 6f + k / 3f) * 2f * PI.toFloat()))
+                        drawPoints(group, PointMode.Points, Color.White.copy(alpha = a), starWidths[k], StrokeCap.Round)
+                    }
                 }
                 drawCircle(halo, radius = haloR, center = sunC)
                 drawPath(sun, sunFill)
-                drawPath(hillFill, TdMountain)
-                drawPath(hillEdge, magenta.copy(alpha = 0.22f), style = hillGlow)
+                drawPath(hillFill, mountain)
+                drawPath(hillEdge, hillGlowInk, style = hillGlow)
                 drawPath(hillEdge, magenta, style = hillStroke)
-                drawPath(ridges, magenta.copy(alpha = 0.45f), style = ridgeStroke)
+                drawPath(ridges, ridgeInk, style = ridgeStroke)
                 drawRect(groundFill, topLeft = Offset(0f, horizon), size = Size(w, ground))
                 drawPath(verticals, verticalInk, style = gridStroke)
                 // Cross lines sit at depths 1, 2, 3... that slide towards the
@@ -257,8 +312,8 @@ internal fun tapeDeckBackground(): Modifier {
                     val y = horizon + ground / (i + 1f - roll)
                     if (y > h) continue
                     val fade = ((y - horizon) / (ground * 0.35f)).coerceIn(0.08f, 1f)
-                    drawLine(magenta.copy(alpha = 0.22f * fade), Offset(0f, y), Offset(w, y), wide)
-                    drawLine(magenta.copy(alpha = 0.8f * fade), Offset(0f, y), Offset(w, y), thin)
+                    drawLine(magenta.copy(alpha = crossGlow * fade), Offset(0f, y), Offset(w, y), wide)
+                    drawLine(magenta.copy(alpha = crossInk * fade), Offset(0f, y), Offset(w, y), thin)
                 }
                 drawRect(bloom, topLeft = Offset(0f, horizon - bloomH), size = Size(w, bloomH * 2f))
                 drawRect(magenta, topLeft = Offset(0f, horizon - thin), size = Size(w, thin * 2f))
@@ -270,12 +325,14 @@ internal fun tapeDeckBackground(): Modifier {
 /**
  * Chrome strip top bar: the gradient DASHWHEEL logo, APPS and LAYOUT pills on
  * the left, a VFD clock in the centre, the OBD LED, outside temperature, alert
- * chips and the ⋮ pill on the right, over a glowing magenta rule.
+ * chips and the ⋮ pill on the right, over a glowing magenta rule. By day the
+ * strip is brushed aluminium with dark ink legends.
  */
 @Composable
 internal fun TapeDeckTopBar(m: TopBarModel) {
-    val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
+    val legend = TdLegend
+    val light = DashColors.Light
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -288,13 +345,16 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
                 val rule = 2.dp.toPx()
                 val glowH = 16.dp.toPx()
                 val glow = Brush.verticalGradient(
-                    listOf(magenta.copy(alpha = 0.45f), Color.Transparent),
+                    listOf(magenta.copy(alpha = if (light) 0.28f else 0.45f), fadeOf(magenta)),
                     startY = size.height, endY = size.height + glowH
                 )
+                val grain = if (light) brushedGrain(size) else null
+                val edge = Color.White.copy(alpha = if (light) 0.9f else 0.10f)
                 onDrawBehind {
                     drawRect(glow, topLeft = Offset(0f, size.height), size = Size(size.width, glowH))
                     drawRect(chrome)
-                    drawLine(Color.White.copy(alpha = 0.10f), Offset(0f, 0.5f), Offset(size.width, 0.5f), 1f)
+                    if (grain != null) drawPath(grain, Color.White.copy(alpha = 0.4f))
+                    drawLine(edge, Offset(0f, 0.5f), Offset(size.width, 0.5f), 1f)
                     drawRect(magenta, topLeft = Offset(0f, size.height - rule), size = Size(size.width, rule))
                 }
             }
@@ -309,12 +369,12 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
                 Spacer(Modifier.width(18.dp))
             }
             NeonPill("APPS", "All apps", m.onApps) {
-                Icon(Icons.Filled.Apps, contentDescription = null, tint = cyan, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Apps, contentDescription = null, tint = legend, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(6.dp))
             LayoutPicker(m) { open ->
                 NeonPill("LAYOUT", "Screen layout: ${m.layout.title}", open) {
-                    LayoutIcon(m.layout, null, cyan, Modifier.size(16.dp))
+                    LayoutIcon(m.layout, null, legend, Modifier.size(16.dp))
                 }
             }
         }
@@ -327,7 +387,7 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
             VehicleAlerts(m.obdConnection, m.obdData)
             MorePicker(m) { open ->
                 NeonPill(null, "More", open) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = cyan, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = legend, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -357,12 +417,15 @@ internal fun TapeDeckTile(item: DashboardItem, env: SkinTileEnv) {
 /**
  * A CRT monitor around a docked Maps window: page-coloured masks outside the
  * rounded plastic bezel, the bezel itself, a bulged elliptical screen edge,
- * scanlines and a vignette. The middle stays see-through; nothing animates.
+ * scanlines and a vignette. By day the bezel is silver-grey and the scanlines
+ * and vignette lighter, so a daytime map stays readable. The middle stays
+ * see-through; nothing animates.
  */
 @Composable
 internal fun TapeDeckWindowFrame(modifier: Modifier) {
     val mask = DashColors.Background
     val led = DashColors.Good
+    val light = DashColors.Light
     Spacer(
         modifier = modifier
             .fillMaxSize()
@@ -380,30 +443,34 @@ internal fun TapeDeckWindowFrame(modifier: Modifier) {
                 val corners = difference(Path().apply { addRect(Rect(0f, 0f, w, h)) }, outer, fallback = Path())
                 val plastic = difference(outer, screen, fallback = Path())
                 val plasticShade = Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = 0.07f), 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.25f)
+                    0f to Color.White.copy(alpha = if (light) 0.5f else 0.07f), 0.5f to fadeOf(Color.White), 1f to tdShadow(0.25f)
                 )
+                val scanInk = Color.Black.copy(alpha = if (light) 0.12f else 0.25f)
                 val scan = scanlines(screenRect)
                 val vignetteR = screenRect.height * 0.75f
                 val vignette = Brush.radialGradient(
-                    0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.5f),
+                    0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = if (light) 0.3f else 0.5f),
                     center = screenRect.center, radius = vignetteR
                 )
                 val lip = Stroke(2.dp.toPx())
                 val edge = Stroke(2.dp.toPx())
                 val ledC = Offset(w - bezel - rx * 0.4f, h - bezel / 2f)
                 val ledR = 2.5.dp.toPx()
+                val body = TdBezel
+                val lipInk = TdBezelRim
+                val edgeInk = TdBezelOuter
                 onDrawBehind {
                     clipPath(screen) {
-                        drawPath(scan, Color.Black.copy(alpha = 0.25f))
+                        drawPath(scan, scanInk)
                         scale(scaleX = screenRect.width / screenRect.height, scaleY = 1f, pivot = screenRect.center) {
                             drawCircle(vignette, radius = vignetteR, center = screenRect.center)
                         }
                     }
                     drawPath(corners, mask)
-                    drawPath(plastic, TdBezel)
+                    drawPath(plastic, body)
                     drawPath(plastic, plasticShade)
-                    drawPath(screen, TdBezelRim, style = lip)
-                    drawRoundRect(TdBezelOuter, cornerRadius = outerR, style = edge)
+                    drawPath(screen, lipInk, style = lip)
+                    drawRoundRect(edgeInk, cornerRadius = outerR, style = edge)
                     drawCircle(led.copy(alpha = 0.35f), radius = ledR * 2.4f, center = ledC)
                     drawCircle(led, radius = ledR, center = ledC)
                 }
@@ -440,17 +507,31 @@ private val STARS: List<List<Offset>> = Random(11).let { rnd ->
 
 // ---------------------------------------------------------------- shared bits
 
-/** VFD / terminal lettering: monospace glowing in its own colour. */
-private fun vfdText(color: Color, size: TextUnit, glow: Boolean = true, weight: FontWeight = FontWeight.Normal) = TextStyle(
+/**
+ * VFD / terminal lettering: monospace glowing in its own colour. On the light
+ * page the glow is tight and faint (a bloom washes out on pastel), unless the
+ * text sits [onScreen], a display that stays dark in both modes.
+ */
+private fun vfdText(
+    color: Color,
+    size: TextUnit,
+    glow: Boolean = true,
+    weight: FontWeight = FontWeight.Normal,
+    onScreen: Boolean = false
+) = TextStyle(
     color = color,
     fontSize = size,
     lineHeight = size * 1.15f,
     fontFamily = FontFamily.Monospace,
     fontWeight = weight,
-    shadow = if (glow) Shadow(color.copy(alpha = 0.75f), blurRadius = size.value * 0.9f) else null
+    shadow = when {
+        !glow -> null
+        onScreen || !DashColors.Light -> Shadow(color.copy(alpha = 0.75f), blurRadius = size.value * 0.9f)
+        else -> Shadow(color.copy(alpha = 0.3f), blurRadius = size.value * 0.4f)
+    }
 )
 
-/** Chrome lettering: bold, wide-spaced sans. */
+/** Chrome lettering: bold, wide-spaced sans; its optional glow is tight and faint by day. */
 private fun chromeText(color: Color, size: TextUnit, glow: Boolean = false) = TextStyle(
     color = color,
     fontSize = size,
@@ -458,7 +539,11 @@ private fun chromeText(color: Color, size: TextUnit, glow: Boolean = false) = Te
     fontFamily = FontFamily.SansSerif,
     fontWeight = FontWeight.Bold,
     letterSpacing = 0.16.em,
-    shadow = if (glow) Shadow(color.copy(alpha = 0.7f), blurRadius = size.value) else null
+    shadow = when {
+        !glow -> null
+        DashColors.Light -> Shadow(color.copy(alpha = 0.3f), blurRadius = size.value * 0.4f)
+        else -> Shadow(color.copy(alpha = 0.7f), blurRadius = size.value)
+    }
 )
 
 /** True for half of every [halfPeriodMs] x 2, aligned to the wall clock (so colons tick with the seconds). */
@@ -495,24 +580,35 @@ private fun BlinkingText(text: String, style: TextStyle, periodMs: Long = 600L, 
     )
 }
 
-/** A black VFD window with a neon rim that glows outward in falling-alpha strokes. */
+/**
+ * A VFD window with a neon rim that glows outward in falling-alpha strokes:
+ * black glass with a faint sheen at night, a flat pearl panel by day.
+ */
 private fun Modifier.vfdPanel(rim: Color, corner: Dp = 14.dp): Modifier = drawBehind {
     val r = CornerRadius(corner.toPx())
     val line = 1.5.dp.toPx()
     for (i in 3 downTo 1) {
         drawRoundRect(rim.copy(alpha = 0.07f), cornerRadius = r, style = Stroke(line + i * 4.dp.toPx()))
     }
-    drawRoundRect(TdVfd, cornerRadius = r)
-    drawRoundRect(
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), endY = size.height * 0.4f),
-        cornerRadius = r
-    )
+    drawRoundRect(TdPanel, cornerRadius = r)
+    if (!DashColors.Light) {
+        drawRoundRect(
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), endY = size.height * 0.4f),
+            cornerRadius = r
+        )
+    }
     drawRoundRect(rim, cornerRadius = r, style = Stroke(line))
 }
 
-/** Recessed black display window (the top bar clock). */
+/**
+ * Recessed black display window (the top bar clock), dark in both modes; by
+ * day a white bevel under its lower edge sinks it into the silver strip.
+ */
 private fun Modifier.vfdInset(): Modifier = drawBehind {
     val r = CornerRadius(8.dp.toPx())
+    if (DashColors.Light) {
+        drawRoundRect(Color.White.copy(alpha = 0.85f), topLeft = Offset(0f, 1.dp.toPx()), size = size, cornerRadius = r)
+    }
     drawRoundRect(TdVfd, cornerRadius = r)
     drawRoundRect(
         Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.06f)), startY = size.height * 0.6f),
@@ -534,9 +630,21 @@ private fun scanlines(area: Rect): Path = Path().apply {
     }
 }
 
+/** Brushed-aluminium grain across [area]: 1 px streaks of random length and spacing (fixed seed, so it never shimmers). */
+private fun brushedGrain(area: Size): Path = Path().apply {
+    val rnd = Random(5)
+    var y = 1f
+    while (y < area.height) {
+        val x = rnd.nextFloat() * area.width * 0.6f
+        addRect(Rect(x, y, min(area.width, x + area.width * (0.2f + rnd.nextFloat() * 0.6f)), y + 1f))
+        y += 2f + rnd.nextFloat() * 3f
+    }
+}
+
 /** A row of LED segments, the first [lit] of [count] on (with a halo), the rest as dim ghosts. */
 @Composable
 private fun LedBar(lit: Int, count: Int, modifier: Modifier, colorAt: (Int) -> Color) {
+    val ghost = DashColors.haze(0.08f)
     Spacer(
         modifier.drawBehind {
             val gap = min(3.dp.toPx(), size.width / count * 0.3f)
@@ -553,10 +661,7 @@ private fun LedBar(lit: Int, count: Int, modifier: Modifier, colorAt: (Int) -> C
                     )
                     drawRoundRect(c, topLeft = Offset(x, 0f), size = Size(segW, size.height), cornerRadius = r)
                 } else {
-                    drawRoundRect(
-                        Color.White.copy(alpha = 0.08f), topLeft = Offset(x, 0f),
-                        size = Size(segW, size.height), cornerRadius = r
-                    )
+                    drawRoundRect(ghost, topLeft = Offset(x, 0f), size = Size(segW, size.height), cornerRadius = r)
                 }
             }
         }
@@ -636,9 +741,9 @@ private fun colonPaths(s: Float): List<Path> = listOf(0.32f, 0.70f).map { fy ->
     segPoly(s, cx - r, cy - r, cx + r, cy - r, cx + r, cy + r, cx - r, cy + r)
 }
 
-private fun DrawScope.drawSegment(path: Path, lit: Boolean, color: Color, ghost: Color, glow: Stroke) {
+private fun DrawScope.drawSegment(path: Path, lit: Boolean, color: Color, ghost: Color, glow: Stroke, glowAlpha: Float) {
     if (lit) {
-        drawPath(path, color.copy(alpha = 0.28f), style = glow)
+        drawPath(path, color.copy(alpha = glowAlpha), style = glow)
         drawPath(path, color)
     } else {
         drawPath(path, ghost)
@@ -648,9 +753,10 @@ private fun DrawScope.drawSegment(path: Path, lit: Boolean, color: Color, ghost:
 /**
  * Seven-segment LED digits, [height] tall, drawn on a canvas: digits, ' ' (a
  * blank showing all-ghost segments), '-' and ':'. Unlit segments stay as faint
- * ghosts; lit ones get a wide low-alpha glow pass under the solid pass. The
- * colon lights while [colonOn] returns true (read at draw time, so a blinking
- * colon only redraws).
+ * ghosts; lit ones get a wide low-alpha glow pass under the solid pass, fainter
+ * on the light page unless the digits sit [onScreen] (a display dark in both
+ * modes). The colon lights while [colonOn] returns true (read at draw time, so
+ * a blinking colon only redraws).
  */
 @Composable
 private fun SevenSegment(
@@ -659,8 +765,10 @@ private fun SevenSegment(
     color: Color,
     modifier: Modifier = Modifier,
     ghost: Color = color.copy(alpha = 0.08f),
+    onScreen: Boolean = false,
     colonOn: () -> Boolean = { true }
 ) {
+    val glowAlpha = if (onScreen || !DashColors.Light) 0.28f else 0.12f
     Spacer(
         modifier
             .size(height * (segUnits(text) / SEG_H), height)
@@ -675,12 +783,14 @@ private fun SevenSegment(
                         if (i > 0) x += segGap(text, i) * s
                         if (c == ':') {
                             val lit = colonOn()
-                            translate(left = x) { dots.forEach { drawSegment(it, lit, color, ghost, glow) } }
+                            translate(left = x) { dots.forEach { drawSegment(it, lit, color, ghost, glow, glowAlpha) } }
                             x += SEG_COLON_W * s
                         } else {
                             val mask = segMask(c)
                             translate(left = x) {
-                                segs.forEachIndexed { k, p -> drawSegment(p, mask and (1 shl k) != 0, color, ghost, glow) }
+                                segs.forEachIndexed { k, p ->
+                                    drawSegment(p, mask and (1 shl k) != 0, color, ghost, glow, glowAlpha)
+                                }
                             }
                             x += SEG_W * s
                         }
@@ -730,7 +840,7 @@ private fun SegValue(
 
 // ---------------------------------------------------------------- top bar parts
 
-/** DASHWHEEL in bold wide letters with a cyan to magenta gradient. */
+/** DASHWHEEL in bold wide letters with a cyan to magenta gradient: glowing at night, stamped into the silver by day. */
 @Composable
 private fun TapeLogo() {
     val cyan = DashColors.Accent
@@ -744,15 +854,25 @@ private fun TapeLogo() {
             fontFamily = FontFamily.SansSerif,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.18.em,
-            shadow = Shadow(magenta.copy(alpha = 0.55f), blurRadius = 14f)
+            shadow = if (DashColors.Light) {
+                Shadow(Color.White.copy(alpha = 0.9f), offset = Offset(0f, 1.5f), blurRadius = 1f)
+            } else {
+                Shadow(magenta.copy(alpha = 0.55f), blurRadius = 14f)
+            }
         )
     )
 }
 
-/** Cyan-outlined pill button (icon, optional label) in a 48 dp touch target; lights up while pressed. */
+/**
+ * Cyan-outlined pill button (icon, optional label) in a 48 dp touch target;
+ * lights up while pressed. Dark inside at night, a raised pale pill with an
+ * ink legend on the silver strip by day.
+ */
 @Composable
 private fun NeonPill(label: String?, description: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
     val cyan = DashColors.Accent
+    val legend = TdLegend
+    val idle = if (DashColors.Light) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.3f)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
@@ -773,7 +893,7 @@ private fun NeonPill(label: String?, description: String, onClick: () -> Unit, i
                         cyan.copy(alpha = if (pressed) 0.3f else 0.12f), cornerRadius = r,
                         style = Stroke(line + 6.dp.toPx())
                     )
-                    drawRoundRect(if (pressed) cyan.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f), cornerRadius = r)
+                    drawRoundRect(if (pressed) cyan.copy(alpha = 0.25f) else idle, cornerRadius = r)
                     drawRoundRect(cyan, cornerRadius = r, style = Stroke(line))
                 }
                 .padding(horizontal = if (label != null) 14.dp else 11.dp),
@@ -782,16 +902,19 @@ private fun NeonPill(label: String?, description: String, onClick: () -> Unit, i
             icon()
             if (label != null) {
                 Spacer(Modifier.width(8.dp))
-                Text(label, style = chromeText(cyan, 12.sp), maxLines = 1)
+                Text(label, style = chromeText(legend, 12.sp), maxLines = 1)
             }
         }
     }
 }
 
-/** The bar's clock: [clock] in cyan seven-segment digits on a recessed VFD, colon blinking each second. */
+/**
+ * The bar's clock: [clock] in cyan seven-segment digits on a recessed VFD,
+ * colon blinking each second. The window is a screen, dark in both modes.
+ */
 @Composable
 private fun VfdClock(clock: String) {
-    val cyan = DashColors.Accent
+    val cyan = TdVfdCyan
     val blink = rememberBlink()
     val digits = clock.filter { it.isDigit() || it == ':' }
     val suffix = clock.filter { it.isLetter() }.uppercase()
@@ -802,10 +925,10 @@ private fun VfdClock(clock: String) {
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SevenSegment(digits, 28.dp, cyan, colonOn = { blink.value })
+        SevenSegment(digits, 28.dp, cyan, onScreen = true, colonOn = { blink.value })
         if (suffix.isNotEmpty()) {
             Spacer(Modifier.width(6.dp))
-            Text(suffix, style = vfdText(cyan, 12.sp), maxLines = 1)
+            Text(suffix, style = vfdText(cyan, 12.sp, onScreen = true), maxLines = 1)
         }
     }
 }
@@ -813,7 +936,7 @@ private fun VfdClock(clock: String) {
 /** OBD status LED and label; tapping connects while the link is idle. */
 @Composable
 private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
-    val cyan = DashColors.Accent
+    val legend = TdLegend
     val color = obdStatusColor(state)
     val label = obdStatusLabel(state)
     val idle = state.isIdle
@@ -835,7 +958,7 @@ private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
                     if (on && state != ObdConnectionState.DISCONNECTED) {
                         val r = size.minDimension * 1.3f
                         drawCircle(
-                            Brush.radialGradient(listOf(color.copy(alpha = 0.6f), Color.Transparent), center = center, radius = r),
+                            Brush.radialGradient(listOf(color.copy(alpha = 0.6f), fadeOf(color)), center = center, radius = r),
                             radius = r
                         )
                     }
@@ -843,7 +966,7 @@ private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
                 }
         )
         Spacer(Modifier.width(8.dp))
-        Text("OBD", style = chromeText(cyan, 12.sp), maxLines = 1)
+        Text("OBD", style = chromeText(legend, 12.sp), maxLines = 1)
     }
 }
 
@@ -1097,7 +1220,7 @@ private fun TapeMedia(env: SkinTileEnv) {
                     TransportKeys(env, state, iconSize, Modifier.width(colW).height(keysH))
                 } else {
                     PianoKey("Grant media access", !env.editing, openAccess, Modifier.width(colW).height(keysH)) {
-                        Text("GRANT ACCESS", style = chromeText(TdShell, 12.sp), maxLines = 1)
+                        Text("GRANT ACCESS", style = chromeText(TdPrint, 12.sp), maxLines = 1)
                     }
                 }
                 if (deckBelow) {
@@ -1113,13 +1236,15 @@ private fun TapeMedia(env: SkinTileEnv) {
 /**
  * A compact cassette, [modifier] sized at the 410:256 aspect: shell, screws,
  * cream label with stripes, [title], [artist] and side A, the tape window and
- * the head block. The reels live on their own layer, so spinning them only
- * re-records that layer.
+ * the head block. The shell is dark at night and silver with a bright sheen by
+ * day. The reels live on their own layer, so spinning them only re-records
+ * that layer.
  */
 @Composable
 private fun Cassette(title: String, artist: String, fraction: Float, spin: State<Float>, modifier: Modifier) {
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
+    val light = DashColors.Light
     val measurer = rememberTextMeasurer()
     Box(modifier) {
         Spacer(
@@ -1131,7 +1256,7 @@ private fun Cassette(title: String, artist: String, fraction: Float, spin: State
                     val titleLayout = measurer.measure(
                         title,
                         TextStyle(
-                            color = TdShell, fontSize = maxOf(20f * s, minText).toSp(), fontFamily = FontFamily.SansSerif,
+                            color = TdPrint, fontSize = maxOf(20f * s, minText).toSp(), fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.Bold, letterSpacing = 0.06.em
                         ),
                         overflow = TextOverflow.Ellipsis, softWrap = false, maxLines = 1,
@@ -1158,15 +1283,17 @@ private fun Cassette(title: String, artist: String, fraction: Float, spin: State
                         close()
                     }
                     val sheen = Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.08f), Color.Transparent), startY = 0f, endY = 110f * s
+                        listOf(Color.White.copy(alpha = if (light) 0.55f else 0.08f), fadeOf(Color.White)),
+                        startY = 0f, endY = 110f * s
                     )
+                    val shade = tdShadow(0.35f)
                     val rim = Stroke(2f * s)
                     // Cassette units (the mockup's 410 x 256 frame) to pixels.
                     fun at(x: Float, y: Float) = Offset(x * s, y * s)
                     fun box(w: Float, h: Float) = Size(w * s, h * s)
                     fun round(r: Float) = CornerRadius(r * s)
                     onDrawBehind {
-                        drawRoundRect(Color.Black.copy(alpha = 0.35f), at(8f, 12f), box(398f, 250f), round(16f))
+                        drawRoundRect(shade, at(8f, 12f), box(398f, 250f), round(16f))
                         drawRoundRect(TdShell, at(2f, 2f), box(406f, 252f), round(16f))
                         drawRoundRect(sheen, at(2f, 2f), box(406f, 252f), round(16f))
                         drawRoundRect(TdVfdRim, at(2f, 2f), box(406f, 252f), round(16f), style = rim)
@@ -1209,12 +1336,14 @@ private fun Cassette(title: String, artist: String, fraction: Float, spin: State
                     val right = sqrt(PACK_MIN * PACK_MIN + span * f) * s
                     val leftC = Offset(152f * s, 123f * s)
                     val rightC = Offset(258f * s, 123f * s)
+                    val hole = TdWindow
+                    val windowInk = TdWindowRim
                     onDrawBehind {
                         val angle = spin.value
-                        drawReel(leftC, left, 13f * s, angle, teeth)
-                        drawReel(rightC, right, 13f * s, angle, teeth)
+                        drawReel(leftC, left, 13f * s, angle, teeth, hole)
+                        drawReel(rightC, right, 13f * s, angle, teeth, hole)
                         drawRoundRect(
-                            TdWindowRim, topLeft = Offset(110f * s, 92f * s), size = Size(190f * s, 62f * s),
+                            windowInk, topLeft = Offset(110f * s, 92f * s), size = Size(190f * s, 62f * s),
                             cornerRadius = CornerRadius(31f * s), style = windowRim
                         )
                         drawLine(
@@ -1250,15 +1379,15 @@ private fun hubTeeth(s: Float): Path = Path().apply {
     }
 }
 
-/** A tape pack of [packR] around a white toothed hub turned by [angle] degrees. */
-private fun DrawScope.drawReel(c: Offset, packR: Float, hubR: Float, angle: Float, teeth: Path) {
+/** A tape pack of [packR] around a white toothed hub turned by [angle] degrees; [hole] colours the notches and spindle hole. */
+private fun DrawScope.drawReel(c: Offset, packR: Float, hubR: Float, angle: Float, teeth: Path, hole: Color) {
     drawCircle(TdTape, radius = packR, center = c)
     drawCircle(Color.Black.copy(alpha = 0.18f), radius = (packR + hubR) / 2f, center = c, style = HAIRLINE)
     drawCircle(TdHub, radius = hubR, center = c)
     translate(c.x, c.y) {
-        rotate(angle, pivot = Offset.Zero) { drawPath(teeth, TdWindow) }
+        rotate(angle, pivot = Offset.Zero) { drawPath(teeth, hole) }
     }
-    drawCircle(TdWindow, radius = hubR * 0.3f, center = c)
+    drawCircle(hole, radius = hubR * 0.3f, center = c)
 }
 
 /** Previous / play-pause / next piano keys, plus eject (opens the music app) when there is room. */
@@ -1293,7 +1422,7 @@ private fun TransportKeys(env: SkinTileEnv, state: MediaState, iconSize: Dp, mod
 
 @Composable
 private fun KeyIcon(icon: ImageVector, size: Dp) {
-    Icon(icon, contentDescription = null, tint = TdShell, modifier = Modifier.size(size))
+    Icon(icon, contentDescription = null, tint = TdPrint, modifier = Modifier.size(size))
 }
 
 /**
@@ -1326,6 +1455,9 @@ private fun PianoKey(
                     addRoundRect(RoundRect(Rect(0f, 0f, size.width, faceH), top, top, bottom, bottom))
                 }
                 val silver = Brush.verticalGradient(listOf(TdKeyTop, TdKeyBottom), startY = 0f, endY = faceH)
+                val side = TdKeySide
+                val shadeUp = tdShadow(0.45f)
+                val shadeDown = tdShadow(0.2f)
                 val ledW = min(34.dp.toPx(), size.width * 0.42f)
                 val ledH = 4.dp.toPx()
                 val ledTopLeft = Offset((size.width - ledW) / 2f, 6.dp.toPx())
@@ -1333,9 +1465,9 @@ private fun PianoKey(
                 onDrawBehind {
                     val travel = if (down) KEY_TRAVEL.toPx() else 0f
                     translate(top = depth + 4.dp.toPx()) {
-                        drawPath(face, Color.Black.copy(alpha = if (down) 0.2f else 0.45f))
+                        drawPath(face, if (down) shadeDown else shadeUp)
                     }
-                    translate(top = depth) { drawPath(face, TdKeySide) }
+                    translate(top = depth) { drawPath(face, side) }
                     translate(top = travel) {
                         drawPath(face, silver)
                         drawLine(Color.White.copy(alpha = 0.8f), Offset(top.x, 1f), Offset(size.width - top.x, 1f), 1f)
@@ -1368,7 +1500,7 @@ private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modi
     val (status, statusColor) = when {
         !access -> "NO ACCESS" to magenta
         state.isPlaying -> "PLAY" to DashColors.Good
-        state.hasMedia -> "PAUSE" to TdYellow
+        state.hasMedia -> "PAUSE" to TdYellowText
         else -> "STOP" to DashColors.Muted
     }
     BoxWithConstraints(modifier.vfdPanel(cyan.copy(alpha = 0.8f), 12.dp).padding(horizontal = 10.dp, vertical = 8.dp)) {
@@ -1424,6 +1556,7 @@ private fun Spectrum(playing: Boolean, modifier: Modifier) {
                 }
             }
             val halo = 2.dp.toPx()
+            val slot = TdPanel
             onDrawBehind {
                 val phase = (loop?.value ?: 0f) * 2f * PI.toFloat()
                 for (i in 0 until bars) {
@@ -1436,7 +1569,7 @@ private fun Spectrum(playing: Boolean, modifier: Modifier) {
                     )
                     drawRect(fill, topLeft = Offset(x, top), size = Size(barW, size.height - top))
                 }
-                drawPath(grille, TdVfd)
+                drawPath(grille, slot)
             }
         }
     )
@@ -1453,9 +1586,9 @@ private fun spectrumLevel(i: Int, bars: Int, phase: Float): Float {
 
 // ---------------------------------------------------------------- navigation: phosphor CRT
 
-/** Phosphor-green terminal text with its glow. */
+/** Phosphor-green terminal text with its full glow (the CRT stays dark in both modes). */
 private fun phosphorText(size: TextUnit, alpha: Float = 1f, weight: FontWeight = FontWeight.Normal) =
-    vfdText(TdPhosphor.copy(alpha = alpha), size, weight = weight)
+    vfdText(TdPhosphor.copy(alpha = alpha), size, weight = weight, onScreen = true)
 
 /**
  * Directions on a green phosphor CRT in a plastic bezel: turn glyph, distance
@@ -1519,16 +1652,16 @@ private fun TapeNavigation(env: SkinTileEnv) {
     }
 }
 
-/** Dark plastic monitor housing with a small power LED of [led] colour. */
+/** Plastic monitor housing (dark at night, silver-grey by day) with a small power LED of [led] colour. */
 private fun Modifier.crtBezel(led: Color): Modifier = drawBehind {
     val r = CornerRadius(22.dp.toPx())
     drawRoundRect(
-        Color.Black.copy(alpha = 0.45f), topLeft = Offset(0f, 6.dp.toPx()), size = size, cornerRadius = r
+        tdShadow(0.45f), topLeft = Offset(0f, 6.dp.toPx()), size = size, cornerRadius = r
     )
     drawRoundRect(TdBezelOuter, cornerRadius = r)
     val inset = 2.dp.toPx()
     drawRoundRect(
-        Brush.verticalGradient(listOf(Color(0xFF221C2C), TdBezel, Color(0xFF0F0C15))),
+        Brush.verticalGradient(listOf(TdBezelTop, TdBezel, TdBezelBottom)),
         topLeft = Offset(inset, inset), size = Size(size.width - inset * 2f, size.height - inset * 2f),
         cornerRadius = CornerRadius(r.x - inset)
     )
@@ -1733,14 +1866,19 @@ private fun TapeClock(env: SkinTileEnv) {
     }
 }
 
-/** Neon-sign frame: a dark backing plate inside a glowing [tube], hung on two small brackets. */
+/**
+ * Neon-sign frame: a backing plate inside a glowing [tube], hung on two small
+ * brackets. The plate is dark at night; by day it is pale acrylic and the
+ * tube's core stays closer to its colour (a white-hot core vanishes on it).
+ */
 private fun Modifier.neonSign(tube: Color): Modifier = drawBehind {
+    val light = DashColors.Light
     val r = CornerRadius(18.dp.toPx())
-    drawRoundRect(TdInk.copy(alpha = 0.72f), cornerRadius = r)
+    drawRoundRect(if (light) Color.White.copy(alpha = 0.6f) else TdInk.copy(alpha = 0.72f), cornerRadius = r)
     for (i in NEON_WIDTHS.indices) {
         drawRoundRect(tube.copy(alpha = NEON_ALPHAS[i]), cornerRadius = r, style = Stroke(NEON_WIDTHS[i].dp.toPx()))
     }
-    drawRoundRect(lerp(tube, Color.White, 0.7f), cornerRadius = r, style = Stroke(0.8.dp.toPx()))
+    drawRoundRect(lerp(tube, Color.White, if (light) 0.35f else 0.7f), cornerRadius = r, style = Stroke(0.8.dp.toPx()))
     val bw = 6.dp.toPx()
     val bh = 9.dp.toPx()
     for (fx in floatArrayOf(0.25f, 0.75f)) {
@@ -1751,41 +1889,55 @@ private fun Modifier.neonSign(tube: Color): Modifier = drawBehind {
 private val NEON_WIDTHS = floatArrayOf(10f, 6f, 3.5f, 2f)
 private val NEON_ALPHAS = floatArrayOf(0.06f, 0.14f, 0.35f, 1f)
 
-/** Letters bent from neon tube: a wide faint halo stroke, the coloured tube and its hot pale core. */
+/**
+ * Letters bent from neon tube: a wide faint halo stroke, the coloured tube and
+ * its hot pale core. By day the halo and bloom are fainter and the core keeps
+ * more colour, so the tube reads as saturated glass on the pale plate.
+ */
 @Composable
 private fun NeonTubeText(text: String, color: Color, size: TextUnit, modifier: Modifier = Modifier) {
     val px = with(LocalDensity.current) { size.toPx() }
+    val light = DashColors.Light
+    val bloom = if (light) Shadow(color.copy(alpha = 0.4f), blurRadius = px * 0.1f) else Shadow(color, blurRadius = px * 0.2f)
     val base = TextStyle(fontSize = size, lineHeight = size, fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal)
     Box(modifier) {
         Text(
             text, maxLines = 1, softWrap = false,
-            style = base.copy(color = color.copy(alpha = 0.22f), drawStyle = Stroke(px * 0.12f, join = StrokeJoin.Round))
+            style = base.copy(
+                color = color.copy(alpha = if (light) 0.14f else 0.22f),
+                drawStyle = Stroke(px * 0.12f, join = StrokeJoin.Round)
+            )
         )
         Text(
             text, maxLines = 1, softWrap = false,
             style = base.copy(
                 color = color,
                 drawStyle = Stroke(px * 0.05f, join = StrokeJoin.Round),
-                shadow = Shadow(color, blurRadius = px * 0.2f)
+                shadow = bloom
             )
         )
         Text(
             text, maxLines = 1, softWrap = false,
-            style = base.copy(color = lerp(color, Color.White, 0.6f), drawStyle = Stroke(px * 0.016f, join = StrokeJoin.Round))
+            style = base.copy(
+                color = lerp(color, Color.White, if (light) 0.3f else 0.6f),
+                drawStyle = Stroke(px * 0.016f, join = StrokeJoin.Round)
+            )
         )
     }
 }
 
-/** An icon in [color] over a soft radial glow. */
+/** An icon in [color] over a soft radial glow (fainter by day). */
 @Composable
 private fun NeonIcon(icon: ImageVector, color: Color, size: Dp) {
+    val glow = color.copy(alpha = if (DashColors.Light) 0.2f else 0.35f)
+    val clear = fadeOf(color)
     Box(
         Modifier
             .size(size)
             .drawBehind {
                 val r = this.size.minDimension * 0.7f
                 drawCircle(
-                    Brush.radialGradient(listOf(color.copy(alpha = 0.35f), Color.Transparent), center = center, radius = r),
+                    Brush.radialGradient(listOf(glow, clear), center = center, radius = r),
                     radius = r
                 )
             },
@@ -1942,7 +2094,8 @@ private fun TapeRange(item: DashboardItem, env: SkinTileEnv) {
 
 /**
  * Radio preset button: dark chrome face with a cyan rim over a 3D edge; it
- * sinks while touched. [active] keeps the rim lit and glowing.
+ * sinks while touched. [active] keeps the rim lit and glowing. By day the face
+ * is brushed silver with a silver edge; the cyan rim shows only when lit.
  */
 @Composable
 private fun PresetButton(
@@ -1954,6 +2107,7 @@ private fun PresetButton(
     content: @Composable () -> Unit
 ) {
     val cyan = DashColors.Accent
+    val light = DashColors.Light
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
@@ -1966,18 +2120,24 @@ private fun PresetButton(
                 val faceSize = Size(size.width, faceH)
                 val r = CornerRadius(10.dp.toPx())
                 val face = Brush.verticalGradient(listOf(TdPresetTop, TdPresetBottom), startY = 0f, endY = faceH)
+                val side = TdPresetSide
+                val shade = tdShadow(0.4f)
+                val highlight = Color.White.copy(alpha = if (light) 0.9f else 0.15f)
                 val rim = Stroke(1.dp.toPx())
                 val halo = Stroke(5.dp.toPx())
                 onDrawBehind {
                     val lit = pressed || active
                     val travel = if (pressed) PRESET_TRAVEL.toPx() else 0f
-                    drawRoundRect(Color.Black.copy(alpha = 0.4f), Offset(0f, depth + 3.dp.toPx()), faceSize, r)
-                    drawRoundRect(TdPresetSide, topLeft = Offset(0f, depth), size = faceSize, cornerRadius = r)
+                    drawRoundRect(shade, Offset(0f, depth + 3.dp.toPx()), faceSize, r)
+                    drawRoundRect(side, topLeft = Offset(0f, depth), size = faceSize, cornerRadius = r)
                     translate(top = travel) {
                         if (lit) drawRoundRect(cyan.copy(alpha = 0.22f), size = faceSize, cornerRadius = r, style = halo)
                         drawRoundRect(face, size = faceSize, cornerRadius = r)
-                        drawLine(Color.White.copy(alpha = 0.15f), Offset(r.x, 1.5f), Offset(size.width - r.x, 1.5f), 1.dp.toPx())
-                        drawRoundRect(cyan.copy(alpha = if (lit) 1f else 0.7f), size = faceSize, cornerRadius = r, style = rim)
+                        drawLine(highlight, Offset(r.x, 1.5f), Offset(size.width - r.x, 1.5f), 1.dp.toPx())
+                        drawRoundRect(
+                            if (light && !lit) side else cyan.copy(alpha = if (lit) 1f else 0.7f),
+                            size = faceSize, cornerRadius = r, style = rim
+                        )
                     }
                 }
             }
@@ -2047,7 +2207,7 @@ private fun TapePreset(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
  */
 @Composable
 private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
-    val cyan = DashColors.Accent
+    val legend = TdLegend
     val magenta = DashColors.Accent2
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val n = item.packages.size
@@ -2110,7 +2270,7 @@ private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
                 }
             }
             PresetButton("Edit launch bar", true, env.onEditLaunchBar, Modifier.width(pencilW).fillMaxHeight()) {
-                Icon(Icons.Filled.Edit, contentDescription = null, tint = cyan, modifier = Modifier.size(22.dp))
+                Icon(Icons.Filled.Edit, contentDescription = null, tint = legend, modifier = Modifier.size(22.dp))
             }
         }
     }

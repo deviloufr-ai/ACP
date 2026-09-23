@@ -268,7 +268,7 @@ internal fun MediaProgress(fraction: Float, modifier: Modifier = Modifier) {
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
     val glow = DashColors.Glow
-    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else DashColors.CardHi
+    val track = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi
     Canvas(
         modifier = modifier
             .fillMaxWidth()

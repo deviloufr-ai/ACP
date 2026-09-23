@@ -373,7 +373,7 @@ private fun AgendaRow(e: AgendaEvent) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
+            .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -534,7 +534,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
+                                .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
                                 .clickable { runCatching { n.contentIntent?.send() } }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -620,8 +620,8 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                     valueRange = 0f..max.toFloat(),
                     steps = (max - 1).coerceAtLeast(0),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.White, activeTrackColor = DashColors.Accent,
-                        inactiveTrackColor = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else DashColors.CardHi,
+                        thumbColor = if (DashColors.Light) DashColors.Accent else Color.White, activeTrackColor = DashColors.Accent,
+                        inactiveTrackColor = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi,
                         activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent
                     ),
                     modifier = Modifier.weight(1f)
@@ -641,7 +641,7 @@ private fun SmallAction(label: String, icon: ImageVector? = null, onClick: () ->
     Row(
         modifier = Modifier
             .clip(shape)
-            .itemFill(if (DashColors.Glass) Color.White.copy(alpha = 0.08f) else DashColors.CardHi, shape)
+            .itemFill(if (DashColors.Glass) DashColors.haze(0.08f) else DashColors.CardHi, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically

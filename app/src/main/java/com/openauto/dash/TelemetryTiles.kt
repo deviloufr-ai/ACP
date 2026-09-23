@@ -272,7 +272,7 @@ internal fun RpmBar(
     val warning = DashColors.Warning
     val glow = DashColors.Glow
     // Bare themes have no card behind the bar, so a background-coloured track would vanish.
-    val track = if (DashColors.Glass) Color.Black.copy(alpha = 0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background
+    val track = if (DashColors.Glass) DashColors.well(0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background
     val overRedline = frac >= redlineFraction
 
     Column(modifier = modifier) {
@@ -396,7 +396,7 @@ internal fun AnalogGauge(
 
             // Base track.
             drawArc(
-                color = if (glass) Color.White.copy(alpha = 0.07f) else DashColors.CardHi,
+                color = if (glass) DashColors.haze(0.07f) else DashColors.CardHi,
                 startAngle = startAngle,
                 sweepAngle = sweepTotal,
                 useCenter = false,
@@ -538,7 +538,7 @@ internal fun AnalogGauge(
         val lit = glow > 0f && !dimmed
         // Hero numerals fade from white into the accent, like the mockup.
         val numeralBrush: Brush? = if (hero && lit) {
-            Brush.verticalGradient(listOf(Color.White, lerp(Color.White, accent, 0.45f)))
+            Brush.verticalGradient(listOf(DashColors.Bright, lerp(DashColors.Bright, accent, 0.45f)))
         } else null
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -593,7 +593,7 @@ internal fun MeterChip(
     Column(
         modifier = modifier
             .clip(chipShape)
-            .itemFill(if (glass) Color.White.copy(alpha = 0.06f) else DashColors.CardHi, chipShape)
+            .itemFill(if (glass) DashColors.haze(0.06f) else DashColors.CardHi, chipShape)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(
@@ -616,7 +616,7 @@ internal fun MeterChip(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(CircleShape)
-                .background(if (glass) Color.Black.copy(alpha = 0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background)
+                .background(if (glass) DashColors.well(0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background)
         ) {
             Box(
                 modifier = Modifier
