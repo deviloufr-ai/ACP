@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fuel prices nearby (FuelPrices.kt, FuelPricesTile.kt) -->
+    <string name="fuel_kind">Ceny paliwa</string>
+    <string name="fuel_kind_blurb">Najtańsze stacje w pobliżu, dotknij, aby nawigować</string>
+    <string name="fuel_title">PALIWO W POBLIŻU</string>
+    <string name="fuel_loading">Szukanie stacji…</string>
+    <string name="fuel_none">Brak stacji z tym paliwem w promieniu %1$d km. Ceny obejmują tylko Francję.</string>
+    <string name="fuel_error">Ceny obecnie niedostępne</string>
+    <string name="fuel_cheapest">Najtańsze %1$s</string>
+    <string name="fuel_navigate">dotknij, aby nawigować</string>
+    <string name="fuel_allow_location">Zezwól na lokalizację</string>
+    <plurals name="fuel_stations">
+        <item quantity="one">%1$d stacja w promieniu %2$d km</item>
+        <item quantity="few">%1$d stacje w promieniu %2$d km</item>
+        <item quantity="many">%1$d stacji w promieniu %2$d km</item>
+        <item quantity="other">%1$d stacji w promieniu %2$d km</item>
+    </plurals>
+</resources>

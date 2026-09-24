@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Geavanceerde metingen</string>
+    <string name="explore_settings_detail">Experimenteel: roetbelading en meer, voorgesteld door AI en bevestigd door de auto</string>
+    <string name="explore_soot_load">Roetbelading</string>
+    <string name="explore_dpf_temp">Filtertemperatuur</string>
+    <string name="explore_dpf_pressure">Filterdruk</string>
+    <string name="explore_regen">Regeneratie</string>
+    <string name="explore_km_since_regen">Sinds laatste regeneratie</string>
+    <string name="explore_additive">Additiefniveau</string>
+    <string name="explore_oil_temp">Olietemperatuur</string>
+    <string name="explore_explanation">Experimenteel. Generiek OBD leest het roetfilter niet. AI stelt de eigen diagnoseverzoeken van deze auto voor; elk wordt op de adapter geprobeerd en alleen bewaard als de auto een plausibele, stabiele waarde geeft. Een bewaarde meting kan alsnog fout zijn.</string>
+    <string name="explore_search">Zoeken met AI</string>
+    <string name="explore_searching">Verzoeken proberen… %1$d s</string>
+    <string name="explore_verified">Bevestigde metingen</string>
+    <string name="explore_none_verified">Nog geen. Verbind de adapter met draaiende motor en zoek.</string>
+    <string name="explore_results">Geprobeerd</string>
+    <string name="explore_forget">Alles vergeten</string>
+    <string name="explore_v_no_answer">geen antwoord</string>
+    <string name="explore_v_refused">geweigerd</string>
+    <string name="explore_v_unreadable">onleesbaar</string>
+    <string name="explore_v_implausible">onwaarschijnlijk</string>
+    <string name="explore_v_unstable">instabiel</string>
+    <string name="explore_v_ok">bevestigd</string>
+    <string name="explore_not_in_demo">Niet beschikbaar in demomodus</string>
+    <string name="explore_nothing_found">Niets bevestigd. Deze auto geeft ze misschien alleen aan een werkplaatstester.</string>
+    <string name="explore_source_standard">standaard</string>
+    <string name="explore_source_ai">AI</string>
+    <string name="explore_regen_yes">Regenereert</string>
+    <string name="explore_regen_no">Geen regeneratie</string>
+    <string name="explore_soot_status">Roetbelading %1$d %%</string>
+</resources>

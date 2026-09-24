@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Servicing planner (Maintenance.kt, MaintenanceTiles.kt) -->
+    <string name="upkeep_kind">Onderhoud</string>
+    <string name="upkeep_kind_blurb">Olie, riem, vloeistoffen: wat wanneer moet</string>
+    <string name="upkeep_oil">Olie verversen</string>
+    <string name="upkeep_air_filter">Luchtfilter</string>
+    <string name="upkeep_fuel_filter">Brandstoffilter</string>
+    <string name="upkeep_cabin_filter">Interieurfilter</string>
+    <string name="upkeep_brake_fluid">Remvloeistof</string>
+    <string name="upkeep_coolant">Koelvloeistof</string>
+    <string name="upkeep_timing_belt">Distributieriem</string>
+    <string name="upkeep_additive">Filteradditief</string>
+    <string name="upkeep_gearbox_oil">Versnellingsbakolie</string>
+    <string name="upkeep_spark_plugs">Bougies</string>
+    <string name="upkeep_title">ONDERHOUD</string>
+    <string name="upkeep_no_odometer">Tik om de kilometerstand in te voeren</string>
+    <string name="upkeep_needs_dates">Geef aan wanneer elk punt voor het laatst is gedaan</string>
+    <string name="upkeep_all_good">Niets nodig</string>
+    <string name="upkeep_next_km">%1$s over %2$s km</string>
+    <string name="upkeep_next_days">%1$s over %2$d dagen</string>
+    <string name="upkeep_overdue_km">%1$s %2$s km te laat</string>
+    <string name="upkeep_overdue_days">%1$s %2$d dagen te laat</string>
+    <string name="upkeep_row_km">%1$s km</string>
+    <string name="upkeep_row_days">%1$d d</string>
+    <string name="upkeep_not_set">Niet ingesteld</string>
+    <string name="upkeep_dialog_title">Onderhoud</string>
+    <string name="upkeep_settings_detail">Kilometerstand, onderhoudsplan en gesproken herinneringen</string>
+    <string name="upkeep_explanation">Voer de kilometerstand één keer in: je ritten tellen erbij op. Geef aan wanneer elk punt is gedaan. Wat aan de beurt is, wordt bij de start gezegd.</string>
+    <string name="upkeep_odometer">Kilometerstand (km)</string>
+    <string name="upkeep_odometer_as_of">Ingevoerd %1$s, plus %2$d km gereden sindsdien</string>
+    <string name="upkeep_fetch">Onderhoudsplan ophalen met AI</string>
+    <string name="upkeep_fetch_ok">Intervallen ingevuld door AI: controleer ze</string>
+    <string name="upkeep_fetch_failed">Plan niet opgehaald: %1$s</string>
+    <string name="upkeep_plan_ai">Intervallen van AI</string>
+    <string name="upkeep_plan_default">Intervallen nog niet bevestigd</string>
+    <string name="upkeep_section_items">Punten</string>
+    <string name="upkeep_every_km">Elke (km)</string>
+    <string name="upkeep_every_months">Elke (maanden)</string>
+    <string name="upkeep_last_km">Gedaan bij (km)</string>
+    <string name="upkeep_last_date">Gedaan op (JJJJ-MM)</string>
+    <string name="upkeep_done_today">Vandaag gedaan</string>
+    <string name="upkeep_say_soon_km">%1$s over %2$d kilometer.</string>
+    <string name="upkeep_say_soon_days">%1$s over %2$d dagen.</string>
+    <string name="upkeep_say_overdue_km">%1$s is %2$d kilometer te laat.</string>
+    <string name="upkeep_say_overdue_days">%1$s is %2$d dagen te laat.</string>
+</resources>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Advanced readings</string>
+    <string name="explore_settings_detail">Experimental: soot load and more, proposed by AI and confirmed by the car</string>
+    <string name="explore_soot_load">Soot load</string>
+    <string name="explore_dpf_temp">Filter temperature</string>
+    <string name="explore_dpf_pressure">Filter pressure</string>
+    <string name="explore_regen">Regeneration</string>
+    <string name="explore_km_since_regen">Since last regeneration</string>
+    <string name="explore_additive">Additive level</string>
+    <string name="explore_oil_temp">Oil temperature</string>
+    <string name="explore_explanation">Experimental. Generic OBD can\'t read the particle filter. AI proposes this car\'s own diagnostic requests; each is tried on the adapter and kept only if the car answers with a sensible, steady value. A kept reading can still be wrong.</string>
+    <string name="explore_search">Search with AI</string>
+    <string name="explore_searching">Trying the requests… %1$d s</string>
+    <string name="explore_verified">Confirmed readings</string>
+    <string name="explore_none_verified">None yet. Connect the adapter with the engine running and search.</string>
+    <string name="explore_results">Tried</string>
+    <string name="explore_forget">Forget all</string>
+    <string name="explore_v_no_answer">no answer</string>
+    <string name="explore_v_refused">refused</string>
+    <string name="explore_v_unreadable">unreadable</string>
+    <string name="explore_v_implausible">implausible</string>
+    <string name="explore_v_unstable">unsteady</string>
+    <string name="explore_v_ok">confirmed</string>
+    <string name="explore_not_in_demo">Not available in demo mode</string>
+    <string name="explore_nothing_found">Nothing confirmed. This car may only give these to a workshop tool.</string>
+    <string name="explore_source_standard">standard</string>
+    <string name="explore_source_ai">AI</string>
+    <string name="explore_regen_yes">Regenerating</string>
+    <string name="explore_regen_no">Not regenerating</string>
+    <string name="explore_soot_status">Soot load %1$d %%</string>
+</resources>

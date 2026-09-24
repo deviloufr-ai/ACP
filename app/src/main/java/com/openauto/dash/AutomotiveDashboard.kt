@@ -368,6 +368,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         McuReader.setContext(context)
         CarProfileStore.setContext(context)
         CarCare.setContext(context)
+        Maintenance.setContext(context)
+        PidExplorer.setContext(context)
         AiMechanic.setContext(context)
         StartupBriefing.start(context)
         mediaController.start()

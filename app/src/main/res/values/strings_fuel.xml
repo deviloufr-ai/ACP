@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fuel prices nearby (FuelPrices.kt, FuelPricesTile.kt) -->
+    <string name="fuel_kind">Fuel prices</string>
+    <string name="fuel_kind_blurb">Cheapest stations nearby, tap to navigate</string>
+    <string name="fuel_title">FUEL NEARBY</string>
+    <string name="fuel_loading">Looking for stations…</string>
+    <string name="fuel_none">No station selling this fuel within %1$d km. Prices cover France only.</string>
+    <string name="fuel_error">Prices unavailable right now</string>
+    <string name="fuel_cheapest">Cheapest %1$s</string>
+    <string name="fuel_navigate">tap to navigate</string>
+    <string name="fuel_allow_location">Allow location</string>
+    <plurals name="fuel_stations">
+        <item quantity="one">%1$d station within %2$d km</item>
+        <item quantity="other">%1$d stations within %2$d km</item>
+    </plurals>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fuel prices nearby (FuelPrices.kt, FuelPricesTile.kt) -->
+    <string name="fuel_kind">Spritpreise</string>
+    <string name="fuel_kind_blurb">Günstigste Tankstellen in der Nähe, tippen zum Navigieren</string>
+    <string name="fuel_title">TANKEN IN DER NÄHE</string>
+    <string name="fuel_loading">Tankstellen werden gesucht…</string>
+    <string name="fuel_none">Keine Tankstelle mit diesem Kraftstoff im Umkreis von %1$d km. Preise gibt es nur für Frankreich.</string>
+    <string name="fuel_error">Preise gerade nicht verfügbar</string>
+    <string name="fuel_cheapest">Günstigstes %1$s</string>
+    <string name="fuel_navigate">tippen zum Navigieren</string>
+    <string name="fuel_allow_location">Standort erlauben</string>
+    <plurals name="fuel_stations">
+        <item quantity="one">%1$d Tankstelle im Umkreis von %2$d km</item>
+        <item quantity="other">%1$d Tankstellen im Umkreis von %2$d km</item>
+    </plurals>
+</resources>

@@ -549,6 +549,8 @@ internal fun TileContent(
             BuiltinKind.ECO_DRIVE -> EcoDriveCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.BREAK_TIMER -> BreakCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.FUEL_TO_DEST -> FuelToDestCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.SERVICE -> ServiceCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.FUEL_PRICES -> FuelPricesCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAR3D -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
             } else if (isEmulator) {

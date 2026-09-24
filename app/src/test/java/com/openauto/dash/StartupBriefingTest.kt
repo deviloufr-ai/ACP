@@ -110,4 +110,14 @@ class StartupBriefingTest {
         )
         assertEquals(SpokenLine(R.string.briefing_event, listOf("Dentist", "10:30")), lines.last())
     }
+
+    @Test
+    fun servicingComingDueIsSaidBeforeTheAppointment() {
+        val due = UpkeepDue(UpkeepKind.OIL, kmLeft = 800, daysLeft = null, stage = UpkeepStage.SOON)
+        val lines = BriefingLines.compose(BriefingFacts(hour = 8, upkeep = listOf(due), event = UpcomingEvent("Dentist", "10:30")))
+        assertEquals(listOf(R.string.briefing_morning, R.string.upkeep_say_soon_km, R.string.briefing_event), lines.map { it.res })
+        assertEquals(800, lines[1].args[1])
+        // Nothing due: nothing said.
+        assertTrue(BriefingLines.compose(BriefingFacts(hour = 8, upkeep = emptyList())).isEmpty())
+    }
 }

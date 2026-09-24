@@ -105,6 +105,8 @@ internal fun rememberWidgetFace(kind: BuiltinKind, env: SkinTileEnv): WidgetFace
     BuiltinKind.ECO_DRIVE -> ecoFace()
     BuiltinKind.FUEL_TO_DEST -> fuelToDestFace()
     BuiltinKind.BREAK_TIMER -> breakFace()
+    BuiltinKind.SERVICE -> serviceFace()
+    BuiltinKind.FUEL_PRICES -> fuelPricesFace()
     // Live views and the spec sheet: they keep their content and get the design's frame (DesignFrame).
     BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D, BuiltinKind.MY_CAR -> null
 }
@@ -808,11 +810,19 @@ private fun filterFace(): WidgetFace {
     val drive = care.drive
     val last = care.filter.lastLongAt
     val now = System.currentTimeMillis()
+    // The real soot load, when the experimental reading finder got the car to give it up.
+    val extra by PidExplorer.readings.collectAsState()
+    val soot = extra[ExtraReading.SOOT_LOAD]?.value
     return WidgetFace(
         icon = kindIcon(BuiltinKind.FILTER_CARE),
         title = BuiltinKind.FILTER_CARE.label,
         value = streak.toString(),
         unit = stringResource(R.string.car_filter_short_unit),
+        stats = listOfNotNull(
+            soot?.let { FaceStat(stringResource(R.string.explore_soot_load), extraValueText(ExtraReading.SOOT_LOAD, it)) },
+            extra[ExtraReading.DPF_TEMP]?.let { FaceStat(stringResource(R.string.explore_dpf_temp), extraValueText(ExtraReading.DPF_TEMP, it.value)) },
+            extra[ExtraReading.REGEN_ACTIVE]?.let { FaceStat(stringResource(R.string.explore_regen), extraValueText(ExtraReading.REGEN_ACTIVE, it.value)) }
+        ),
         caption = stringResource(
             when {
                 streak >= 6 -> R.string.car_filter_needs_drive_now
@@ -1000,5 +1010,84 @@ private fun breakFace(): WidgetFace {
         sign = SignKind.REST,
         fraction = driving.toFloat() / due,
         rows = listOf(FaceRow(stringResource(R.string.car_break_hint), ""))
+    )
+}
+
+// --- Servicing and fuel prices ------------------------------------------------------------------
+
+@Composable
+private fun serviceFace(): WidgetFace {
+    val state by Maintenance.state.collectAsState()
+    var editing by remember { mutableStateOf(false) }
+    if (editing) UpkeepDialog(onDismiss = { editing = false })
+    val now = System.currentTimeMillis()
+    val dues = remember(state) { state.statuses(now) }
+    val first = dues.firstOrNull { it.stage != UpkeepStage.UNKNOWN }
+    val odo = state.odometer
+    val caption = when {
+        odo == null -> stringResource(R.string.upkeep_no_odometer)
+        first == null -> stringResource(R.string.upkeep_needs_dates)
+        first.stage == UpkeepStage.OK -> stringResource(R.string.upkeep_all_good)
+        else -> upkeepLine(first)
+    }
+    // How far into its interval the next item is.
+    val fraction = first?.let { d ->
+        val interval = state.plan.firstOrNull { it.kind == d.kind }
+        when {
+            d.kmLeft != null && interval?.everyKm != null -> 1f - (d.kmLeft.toFloat() / interval.everyKm)
+            d.daysLeft != null && interval?.everyMonths != null -> 1f - (d.daysLeft.toFloat() / (interval.everyMonths * 30f))
+            else -> null
+        }?.coerceIn(0f, 1f)
+    }
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.SERVICE),
+        title = BuiltinKind.SERVICE.label,
+        value = odo?.let { formatKm(it.nowKm) } ?: "--", unit = "km",
+        caption = caption,
+        fraction = fraction,
+        alert = first?.stage == UpkeepStage.DUE || first?.stage == UpkeepStage.SOON,
+        rows = dues.map { FaceRow(stringResource(it.kind.labelRes), upkeepLeft(it), alert = it.stage == UpkeepStage.DUE) },
+        onClick = { editing = true }
+    )
+}
+
+@Composable
+private fun fuelPricesFace(): WidgetFace {
+    val context = LocalContext.current
+    val icon = kindIcon(BuiltinKind.FUEL_PRICES)
+    val title = BuiltinKind.FUEL_PRICES.label
+    val perm = rememberPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    if (!perm.granted) {
+        return idleFace(icon, title, stringResource(R.string.fuel_allow_location), "€/L",
+            FaceAction(Icons.Filled.LockOpen, stringResource(R.string.fuel_allow_location), primary = true, onClick = perm.request))
+    }
+    val error by FuelPriceRepo.error.collectAsState()
+    val location by LocationFeed.location.collectAsState()
+    val nearby = rememberFuelNearby()
+        ?: return idleFace(icon, title, stringResource(
+            when {
+                error != null -> R.string.fuel_error
+                location == null -> R.string.info_waiting_gps
+                else -> R.string.fuel_loading
+            }
+        ), "€/L")
+    if (nearby.ranked.isEmpty()) return idleFace(icon, title, stringResource(R.string.fuel_none, FuelPrices.RADIUS_KM), "€/L")
+    val best = nearby.ranked.first()
+    return WidgetFace(
+        icon = icon, title = title,
+        value = FuelPrices.formatPrice(best.price), unit = "€/L",
+        caption = stringResource(R.string.fuel_cheapest, nearby.grade.label) + " · " + FuelPrices.formatDistance(best.distanceKm),
+        stats = listOf(
+            FaceStat(nearby.grade.label, FuelPrices.formatPrice(best.price)),
+            FaceStat(stringResource(R.string.fuel_navigate), FuelPrices.formatDistance(best.distanceKm))
+        ),
+        rows = nearby.ranked.take(6).map { r ->
+            FaceRow(
+                FuelPrices.formatPrice(r.price) + " · " + FuelPrices.formatDistance(r.distanceKm),
+                r.station.address + ", " + r.station.town,
+                onClick = { navigateTo(context, r.station.lat, r.station.lng, r.station.address) }
+            )
+        },
+        onClick = { navigateTo(context, best.station.lat, best.station.lng, best.station.address) }
     )
 }

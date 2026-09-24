@@ -40,7 +40,9 @@ internal data class BriefingFacts(
     val faultSummary: String? = null,
     /** The mechanic already announced these faults moments ago. */
     val faultsJustSaid: Boolean = false,
-    val event: UpcomingEvent? = null
+    val event: UpcomingEvent? = null,
+    /** Servicing coming due (or overdue) that hasn't been announced at that stage yet. */
+    val upkeep: List<UpkeepDue> = emptyList()
 )
 
 /** Picks the briefing's sentences. Pure, so it's unit-tested. */
@@ -70,6 +72,7 @@ internal object BriefingLines {
                     else -> add(SpokenLine(R.plurals.briefing_faults, listOf(codes.size), quantity = codes.size))
                 }
             }
+            f.upkeep.forEach { add(UpkeepRules.line(it)) }
             f.event?.let { add(SpokenLine(R.string.briefing_event, listOf(it.title, it.time))) }
         }
         return if (body.isEmpty()) emptyList() else listOf(greeting(f.hour)) + body
@@ -169,6 +172,7 @@ object StartupBriefing {
         if (lines.isEmpty()) return
         val resources = config.language.resources(context)
         CarVoice.speak(lines.joinToString(" ") { it.text(resources) }, config.language.locale)
+        Maintenance.markSpoken(facts.upkeep)
     }
 
     private suspend fun gather(context: Context, language: AiLanguage, startedAt: Long): BriefingFacts = coroutineScope {
@@ -184,7 +188,8 @@ object StartupBriefing {
             faults = codes,
             faultSummary = state?.diagnosis?.summary,
             faultsJustSaid = codes != null && justSaid(codes, state.diagnosis?.summary, startedAt),
-            event = withContext(Dispatchers.IO) { nextEvent(context, language) }
+            event = withContext(Dispatchers.IO) { nextEvent(context, language) },
+            upkeep = Maintenance.dueForBriefing(startedAt)
         )
     }
 

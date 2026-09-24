@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Mesures avancées</string>
+    <string name="explore_settings_detail">Expérimental : charge en suies et plus, proposées par l\'IA et confirmées par la voiture</string>
+    <string name="explore_soot_load">Charge en suies</string>
+    <string name="explore_dpf_temp">Température du filtre</string>
+    <string name="explore_dpf_pressure">Pression du filtre</string>
+    <string name="explore_regen">Régénération</string>
+    <string name="explore_km_since_regen">Depuis la dernière régénération</string>
+    <string name="explore_additive">Niveau d\'additif</string>
+    <string name="explore_oil_temp">Température d\'huile</string>
+    <string name="explore_explanation">Expérimental. L\'OBD générique ne lit pas le filtre à particules. L\'IA propose les requêtes de diagnostic propres à cette voiture ; chacune est essayée sur l\'adaptateur et gardée seulement si la voiture répond une valeur plausible et stable. Une mesure gardée peut quand même être fausse.</string>
+    <string name="explore_search">Chercher avec l\'IA</string>
+    <string name="explore_searching">Essai des requêtes… %1$d s</string>
+    <string name="explore_verified">Mesures confirmées</string>
+    <string name="explore_none_verified">Aucune pour l\'instant. Connectez l\'adaptateur moteur tournant et lancez la recherche.</string>
+    <string name="explore_results">Essayées</string>
+    <string name="explore_forget">Tout oublier</string>
+    <string name="explore_v_no_answer">pas de réponse</string>
+    <string name="explore_v_refused">refusée</string>
+    <string name="explore_v_unreadable">illisible</string>
+    <string name="explore_v_implausible">invraisemblable</string>
+    <string name="explore_v_unstable">instable</string>
+    <string name="explore_v_ok">confirmée</string>
+    <string name="explore_not_in_demo">Indisponible en mode démo</string>
+    <string name="explore_nothing_found">Rien de confirmé. Cette voiture ne les donne peut-être qu\'à une valise d\'atelier.</string>
+    <string name="explore_source_standard">standard</string>
+    <string name="explore_source_ai">IA</string>
+    <string name="explore_regen_yes">En régénération</string>
+    <string name="explore_regen_no">Pas de régénération</string>
+    <string name="explore_soot_status">Charge en suies %1$d %%</string>
+</resources>

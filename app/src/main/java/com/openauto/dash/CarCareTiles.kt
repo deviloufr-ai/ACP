@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /*
  * Car-care tiles, tailored by the car profile: particle filter, warm-up,
@@ -147,6 +148,12 @@ internal fun FilterCareCard(modifier: Modifier = Modifier) {
         }
         Reading(streak.toString(), stringResource(R.string.car_filter_short_unit))
         Status(status, tone)
+        // The real soot load, when the experimental reading finder got the car to give it up.
+        val extra by PidExplorer.readings.collectAsState()
+        extra[ExtraReading.SOOT_LOAD]?.let { soot ->
+            Meter((soot.value / 100).toFloat(), if (soot.value >= 80) DashColors.Warning else DashColors.Accent)
+            Hint(stringResource(R.string.explore_soot_status, soot.value.roundToInt()))
+        }
         care.drive?.let { d ->
             val minutes = (d.hotFastMs / 60_000).toInt()
             Meter(d.hotFastMs.toFloat() / CareRules.LONG_DRIVE_MS, if (d.filterFriendly) DashColors.Good else DashColors.Accent)

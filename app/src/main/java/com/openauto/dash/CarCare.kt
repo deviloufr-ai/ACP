@@ -278,6 +278,12 @@ object CarCare {
         val (next, events) = CareRules.step(before, data, now, CarProfileStore.current)
         _state.value = next
         if (next.filter != before.filter || now - savedAt >= SAVE_EVERY_MS) save(next, now)
+        // The servicing planner's mileage advances with the kilometres of this drive.
+        val drive = next.drive
+        val previous = before.drive
+        if (drive != null && previous != null && drive.startedAt == previous.startedAt) {
+            Maintenance.drove(drive.distanceKm - previous.distanceKm)
+        }
         events.forEach { say(line(it, CarProfileStore.current)) }
         checkFuel()
     }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fuel prices nearby (FuelPrices.kt, FuelPricesTile.kt) -->
+    <string name="fuel_kind">Precios del combustible</string>
+    <string name="fuel_kind_blurb">Gasolineras más baratas cerca, toca para ir</string>
+    <string name="fuel_title">COMBUSTIBLE CERCA</string>
+    <string name="fuel_loading">Buscando gasolineras…</string>
+    <string name="fuel_none">Ninguna gasolinera con este combustible a menos de %1$d km. Los precios solo cubren Francia.</string>
+    <string name="fuel_error">Precios no disponibles ahora</string>
+    <string name="fuel_cheapest">%1$s más barato</string>
+    <string name="fuel_navigate">toca para ir</string>
+    <string name="fuel_allow_location">Permitir ubicación</string>
+    <plurals name="fuel_stations">
+        <item quantity="one">%1$d gasolinera a menos de %2$d km</item>
+        <item quantity="many">%1$d gasolineras a menos de %2$d km</item>
+        <item quantity="other">%1$d gasolineras a menos de %2$d km</item>
+    </plurals>
+</resources>

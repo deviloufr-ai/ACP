@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Lecturas avanzadas</string>
+    <string name="explore_settings_detail">Experimental: carga de hollín y más, propuestas por la IA y confirmadas por el coche</string>
+    <string name="explore_soot_load">Carga de hollín</string>
+    <string name="explore_dpf_temp">Temperatura del filtro</string>
+    <string name="explore_dpf_pressure">Presión del filtro</string>
+    <string name="explore_regen">Regeneración</string>
+    <string name="explore_km_since_regen">Desde la última regeneración</string>
+    <string name="explore_additive">Nivel de aditivo</string>
+    <string name="explore_oil_temp">Temperatura del aceite</string>
+    <string name="explore_explanation">Experimental. El OBD genérico no lee el filtro de partículas. La IA propone las peticiones de diagnóstico propias de este coche; cada una se prueba en el adaptador y solo se conserva si el coche responde con un valor plausible y estable. Una lectura conservada aún puede ser errónea.</string>
+    <string name="explore_search">Buscar con IA</string>
+    <string name="explore_searching">Probando las peticiones… %1$d s</string>
+    <string name="explore_verified">Lecturas confirmadas</string>
+    <string name="explore_none_verified">Ninguna todavía. Conecta el adaptador con el motor en marcha y busca.</string>
+    <string name="explore_results">Probadas</string>
+    <string name="explore_forget">Olvidar todo</string>
+    <string name="explore_v_no_answer">sin respuesta</string>
+    <string name="explore_v_refused">rechazada</string>
+    <string name="explore_v_unreadable">ilegible</string>
+    <string name="explore_v_implausible">inverosímil</string>
+    <string name="explore_v_unstable">inestable</string>
+    <string name="explore_v_ok">confirmada</string>
+    <string name="explore_not_in_demo">No disponible en modo demo</string>
+    <string name="explore_nothing_found">Nada confirmado. Puede que este coche solo las dé a un equipo de taller.</string>
+    <string name="explore_source_standard">estándar</string>
+    <string name="explore_source_ai">IA</string>
+    <string name="explore_regen_yes">Regenerando</string>
+    <string name="explore_regen_no">Sin regenerar</string>
+    <string name="explore_soot_status">Carga de hollín %1$d %%</string>
+</resources>

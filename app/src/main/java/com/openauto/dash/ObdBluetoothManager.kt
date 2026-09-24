@@ -357,6 +357,25 @@ object ObdBluetoothManager {
         }
     }
 
+    /**
+     * One read request for the experimental reading finder: [request] bytes
+     * ("221A5B"), addressed to [header] (a CAN address such as 7E0) or to
+     * everyone when null. The functional address is put back afterwards so the
+     * regular polling is unaffected. Null when not connected or unanswered.
+     */
+    suspend fun query(header: String?, request: String, timeoutMs: Long = READ_TIMEOUT_MS): String? = withContext(Dispatchers.IO) {
+        if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext null
+        commandMutex.withLock {
+            if (_connectionState.value != ObdConnectionState.CONNECTED) return@withLock null
+            try {
+                if (header != null) sendCommand("ATSH$header", READ_TIMEOUT_MS)
+                sendCommand(request, timeoutMs)
+            } finally {
+                if (header != null) sendCommand("ATSH7DF", READ_TIMEOUT_MS)
+            }
+        }
+    }
+
     /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
     suspend fun clearTroubleCodes(): Result<Unit> = withContext(Dispatchers.IO) {
         if (_connectionState.value != ObdConnectionState.CONNECTED) {

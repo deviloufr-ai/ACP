@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Odczyty zaawansowane</string>
+    <string name="explore_settings_detail">Eksperymentalne: zapełnienie sadzą i więcej, zaproponowane przez AI i potwierdzone przez auto</string>
+    <string name="explore_soot_load">Zapełnienie sadzą</string>
+    <string name="explore_dpf_temp">Temperatura filtra</string>
+    <string name="explore_dpf_pressure">Ciśnienie filtra</string>
+    <string name="explore_regen">Regeneracja</string>
+    <string name="explore_km_since_regen">Od ostatniej regeneracji</string>
+    <string name="explore_additive">Poziom dodatku</string>
+    <string name="explore_oil_temp">Temperatura oleju</string>
+    <string name="explore_explanation">Eksperymentalne. Zwykłe OBD nie odczytuje filtra cząstek. AI proponuje własne zapytania diagnostyczne tego auta; każde jest próbowane na adapterze i zachowane tylko wtedy, gdy auto odpowie sensowną, stabilną wartością. Zachowany odczyt i tak może być błędny.</string>
+    <string name="explore_search">Szukaj z AI</string>
+    <string name="explore_searching">Próbowanie zapytań… %1$d s</string>
+    <string name="explore_verified">Potwierdzone odczyty</string>
+    <string name="explore_none_verified">Jeszcze żadnych. Podłącz adapter przy pracującym silniku i szukaj.</string>
+    <string name="explore_results">Wypróbowane</string>
+    <string name="explore_forget">Zapomnij wszystko</string>
+    <string name="explore_v_no_answer">brak odpowiedzi</string>
+    <string name="explore_v_refused">odrzucone</string>
+    <string name="explore_v_unreadable">nieczytelne</string>
+    <string name="explore_v_implausible">niewiarygodne</string>
+    <string name="explore_v_unstable">niestabilne</string>
+    <string name="explore_v_ok">potwierdzone</string>
+    <string name="explore_not_in_demo">Niedostępne w trybie demo</string>
+    <string name="explore_nothing_found">Nic nie potwierdzono. To auto może podawać je tylko testerowi warsztatowemu.</string>
+    <string name="explore_source_standard">standard</string>
+    <string name="explore_source_ai">AI</string>
+    <string name="explore_regen_yes">Regeneruje</string>
+    <string name="explore_regen_no">Bez regeneracji</string>
+    <string name="explore_soot_status">Zapełnienie sadzą %1$d %%</string>
+</resources>

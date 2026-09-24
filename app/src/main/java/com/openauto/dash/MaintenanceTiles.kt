@@ -1,0 +1,277 @@
+package com.openauto.dash
+
+import android.text.format.DateUtils
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+/*
+ * The servicing tile (mileage, what's due next, every item's count-down) and
+ * the dialog behind it: the mileage, the maker's intervals fetched by AI or
+ * typed, and when each item was last done.
+ */
+
+internal fun formatKm(km: Int): String = String.format(Locale.getDefault(), "%,d", km)
+
+private val UpkeepStage.color: Color
+    @Composable get() = when (this) {
+        UpkeepStage.DUE -> DashColors.Warning
+        UpkeepStage.SOON -> if (DashColors.Light) Color(0xFFB45F06) else Color(0xFFFFB347)
+        UpkeepStage.OK -> DashColors.Good
+        UpkeepStage.UNKNOWN -> DashColors.Muted
+    }
+
+/** "Oil change in 800 km" / "Brake fluid overdue by 12 days" / the item's name when nothing is known. */
+@Composable
+internal fun upkeepLine(d: UpkeepDue): String {
+    val name = stringResource(d.kind.labelRes)
+    val km = d.kmLeft
+    val days = d.daysLeft
+    return when {
+        d.stage == UpkeepStage.DUE && km != null && km <= 0 -> stringResource(R.string.upkeep_overdue_km, name, formatKm(-km))
+        d.stage == UpkeepStage.DUE -> stringResource(R.string.upkeep_overdue_days, name, -(days ?: 0))
+        d.stage == UpkeepStage.UNKNOWN -> name
+        km != null && (days == null || km / 50 <= days) -> stringResource(R.string.upkeep_next_km, name, formatKm(km))
+        else -> stringResource(R.string.upkeep_next_days, name, days ?: 0)
+    }
+}
+
+/** What's left on one item, short, for a list: "800 km", "12 d", "Not set". */
+@Composable
+internal fun upkeepLeft(d: UpkeepDue): String {
+    val km = d.kmLeft
+    val days = d.daysLeft
+    return when {
+        d.stage == UpkeepStage.UNKNOWN -> stringResource(R.string.upkeep_not_set)
+        km != null && (days == null || km / 50 <= days) -> stringResource(R.string.upkeep_row_km, formatKm(km))
+        else -> stringResource(R.string.upkeep_row_days, days ?: 0)
+    }
+}
+
+@Composable
+internal fun ServiceCard(modifier: Modifier = Modifier) {
+    val state by Maintenance.state.collectAsState()
+    var editing by remember { mutableStateOf(false) }
+    val now = System.currentTimeMillis()
+    val dues = remember(state) { state.statuses(now) }
+    val first = dues.firstOrNull { it.stage != UpkeepStage.UNKNOWN }
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            TileHeader(stringResource(R.string.upkeep_title))
+            val odo = state.odometer
+            Row(verticalAlignment = Alignment.Bottom) {
+                HeroNumber(text = odo?.let { formatKm(it.nowKm) } ?: "--", size = 34, dimmed = odo == null)
+                Spacer(Modifier.width(6.dp))
+                Text("km", color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 5.dp))
+            }
+            val (status, color) = when {
+                odo == null -> stringResource(R.string.upkeep_no_odometer) to DashColors.Accent
+                first == null -> stringResource(R.string.upkeep_needs_dates) to DashColors.Muted
+                first.stage == UpkeepStage.OK -> stringResource(R.string.upkeep_all_good) to DashColors.Good
+                else -> upkeepLine(first) to first.stage.color
+            }
+            Text(status, color = color, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium)
+            dues.take(4).forEach { d ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(stringResource(d.kind.labelRes), color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(8.dp))
+                    Text(upkeepLeft(d), color = if (d.stage == UpkeepStage.UNKNOWN) DashColors.Muted else d.stage.color,
+                        fontWeight = FontWeight.Bold, maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
+    if (editing) UpkeepDialog(onDismiss = { editing = false })
+}
+
+/** Mileage, the plan's intervals (AI or typed) and the last time each item was done. */
+@Composable
+internal fun UpkeepDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val state by Maintenance.state.collectAsState()
+    var odoText by remember { mutableStateOf(state.odometer?.nowKm?.toString().orEmpty()) }
+    var fetchResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    val now = System.currentTimeMillis()
+    val dues = remember(state) { state.statuses(now) }
+    val monthFmt = remember { SimpleDateFormat("yyyy-MM", Locale.US) }
+
+    fun commitOdometer() {
+        val km = odoText.trim().replace(" ", "").replace(",", "").replace(".", "").toIntOrNull() ?: return
+        if (km > 0 && km != state.odometer?.nowKm) Maintenance.setOdometer(km)
+    }
+
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = { commitOdometer(); onDismiss() },
+        containerColor = DashColors.Card,
+        title = { Text(stringResource(R.string.upkeep_dialog_title), color = DashColors.TextPrimary) },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(stringResource(R.string.upkeep_explanation), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+
+                Label(stringResource(R.string.upkeep_odometer))
+                OutlinedTextField(
+                    value = odoText,
+                    onValueChange = { odoText = it },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = fieldColors()
+                )
+                state.odometer?.let { odo ->
+                    Text(
+                        stringResource(
+                            R.string.upkeep_odometer_as_of,
+                            DateUtils.getRelativeTimeSpanString(odo.readAt, now, DateUtils.MINUTE_IN_MILLIS).toString(),
+                            odo.drivenSince.toInt()
+                        ),
+                        color = DashColors.Muted, style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        enabled = !state.fetching,
+                        onClick = {
+                            fetchResult = null
+                            scope.launch {
+                                Maintenance.fetchPlan()
+                                    .onSuccess { fetchResult = true to context.getString(R.string.upkeep_fetch_ok) }
+                                    .onFailure { fetchResult = false to context.getString(R.string.upkeep_fetch_failed, it.message.orEmpty()) }
+                            }
+                        },
+                        colors = buttonColors()
+                    ) { Text(stringResource(R.string.upkeep_fetch)) }
+                    Spacer(Modifier.size(12.dp))
+                    if (state.fetching) {
+                        CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(22.dp))
+                    } else {
+                        val (ok, message) = fetchResult
+                            ?: (state.planFromAi to stringResource(if (state.planFromAi) R.string.upkeep_plan_ai else R.string.upkeep_plan_default))
+                        Text(message, color = if (ok) DashColors.Good else DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                Label(stringResource(R.string.upkeep_section_items))
+                dues.forEach { d ->
+                    val interval = state.plan.first { it.kind == d.kind }
+                    val done = state.done[d.kind]
+                    HorizontalDivider(color = DashColors.Line)
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(d.kind.labelRes), color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f))
+                        Text(upkeepLeft(d), color = d.stage.color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        NumField(stringResource(R.string.upkeep_every_km), interval.everyKm, Modifier.weight(1f)) {
+                            Maintenance.setInterval(interval.copy(everyKm = it))
+                        }
+                        NumField(stringResource(R.string.upkeep_every_months), interval.everyMonths, Modifier.weight(1f)) {
+                            Maintenance.setInterval(interval.copy(everyMonths = it))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        NumField(stringResource(R.string.upkeep_last_km), done?.km, Modifier.weight(1f)) {
+                            Maintenance.setDone(d.kind, UpkeepDone(km = it, at = done?.at))
+                        }
+                        MonthField(stringResource(R.string.upkeep_last_date), done?.at?.let { monthFmt.format(it) }.orEmpty(), Modifier.weight(1f)) { text ->
+                            val at = runCatching { monthFmt.parse(text)?.time }.getOrNull()
+                            if (text.isBlank() || at != null) Maintenance.setDone(d.kind, UpkeepDone(km = done?.km, at = at))
+                        }
+                        TextButton(onClick = {
+                            commitOdometer()
+                            Maintenance.setDone(d.kind, UpkeepDone(km = Maintenance.state.value.odometer?.nowKm, at = Calendar.getInstance().timeInMillis))
+                        }) { Text(stringResource(R.string.upkeep_done_today), color = DashColors.Accent, maxLines = 2) }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { commitOdometer(); onDismiss() }) { Text(stringResource(R.string.ai_done), color = DashColors.Accent) }
+        }
+    )
+}
+
+/** A whole-number field that reports on every valid change; blank = not known. */
+@Composable
+private fun NumField(label: String, value: Int?, modifier: Modifier = Modifier, onChange: (Int?) -> Unit) {
+    var text by remember(value) { mutableStateOf(value?.toString().orEmpty()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            text = typed
+            val cleaned = typed.trim().replace(" ", "")
+            if (cleaned.isEmpty()) onChange(null) else cleaned.toIntOrNull()?.let { if (it > 0) onChange(it) }
+        },
+        label = { Text(label, maxLines = 1) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier,
+        colors = fieldColors()
+    )
+}
+
+@Composable
+private fun MonthField(label: String, value: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
+    var text by remember(value) { mutableStateOf(value) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            text = typed
+            if (typed.isBlank() || Regex("\\d{4}-\\d{2}").matches(typed.trim())) onChange(typed.trim())
+        },
+        label = { Text(label, maxLines = 1) },
+        singleLine = true,
+        modifier = modifier,
+        colors = fieldColors()
+    )
+}

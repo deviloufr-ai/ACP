@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CarRepair
 import androidx.compose.material.icons.filled.Coffee
@@ -105,6 +106,8 @@ internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.ECO_DRIVE -> Icons.Filled.Eco
     BuiltinKind.BREAK_TIMER -> Icons.Filled.Coffee
     BuiltinKind.FUEL_TO_DEST -> Icons.Filled.EvStation
+    BuiltinKind.SERVICE -> Icons.Filled.Build
+    BuiltinKind.FUEL_PRICES -> Icons.Filled.LocalGasStation
 }
 
 /** Picker for a new tile: built-ins by category, then the launch bar and system widgets. */

@@ -1,0 +1,354 @@
+package com.openauto.dash
+
+import android.content.Context
+import androidx.annotation.StringRes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.Calendar
+import kotlin.math.roundToInt
+
+/*
+ * Servicing planner: what the car needs done every N km or N months, when
+ * each was last done, and the mileage, which the driver types once and the
+ * drive monitor then advances from the OBD speed. The rules are pure; the AI
+ * only fills in the maker's intervals, once per car, so the reminders work
+ * offline and in every language.
+ */
+
+/** What gets serviced. Names are persisted, so never rename an entry. */
+enum class UpkeepKind(@StringRes val labelRes: Int) {
+    OIL(R.string.upkeep_oil),
+    AIR_FILTER(R.string.upkeep_air_filter),
+    FUEL_FILTER(R.string.upkeep_fuel_filter),
+    CABIN_FILTER(R.string.upkeep_cabin_filter),
+    BRAKE_FLUID(R.string.upkeep_brake_fluid),
+    COOLANT(R.string.upkeep_coolant),
+    TIMING_BELT(R.string.upkeep_timing_belt),
+    ADDITIVE(R.string.upkeep_additive),
+    GEARBOX_OIL(R.string.upkeep_gearbox_oil),
+    SPARK_PLUGS(R.string.upkeep_spark_plugs)
+}
+
+/** How often [kind] is due; null = not known (no reminder on that count). */
+data class UpkeepInterval(val kind: UpkeepKind, val everyKm: Int? = null, val everyMonths: Int? = null) {
+    val known: Boolean get() = everyKm != null || everyMonths != null
+}
+
+/** When [UpkeepKind] was last done: the mileage and/or the date. */
+data class UpkeepDone(val km: Int? = null, val at: Long? = null)
+
+/**
+ * The mileage: what the driver read off the dashboard at [readAt], plus the
+ * kilometres the drive monitor has counted since.
+ */
+data class Odometer(val km: Int, val readAt: Long, val drivenSince: Double = 0.0) {
+    val nowKm: Int get() = km + drivenSince.roundToInt()
+}
+
+enum class UpkeepStage { UNKNOWN, OK, SOON, DUE }
+
+/** One item's standing: what's left on the km and day counts, and the stage that follows. */
+data class UpkeepDue(val kind: UpkeepKind, val kmLeft: Int?, val daysLeft: Int?, val stage: UpkeepStage)
+
+/** The pure rules: intervals, what's left, what to say. Unit-tested. */
+object UpkeepRules {
+    const val SOON_KM = 1_000
+    const val SOON_DAYS = 30
+    private const val DAY_MS = 24 * 3_600_000L
+
+    /**
+     * The items this car has, with the intervals already in its profile (oil
+     * from the service plan) and the rest unknown until the AI or the driver
+     * fills them in.
+     */
+    fun defaultPlan(car: CarProfile): List<UpkeepInterval> = buildList {
+        add(UpkeepInterval(UpkeepKind.OIL, car.serviceKm, car.serviceMonths))
+        add(UpkeepInterval(UpkeepKind.AIR_FILTER))
+        if (car.diesel) add(UpkeepInterval(UpkeepKind.FUEL_FILTER))
+        add(UpkeepInterval(UpkeepKind.CABIN_FILTER))
+        add(UpkeepInterval(UpkeepKind.BRAKE_FLUID, everyMonths = 24))
+        add(UpkeepInterval(UpkeepKind.COOLANT))
+        if (!car.timing.contains("chain", ignoreCase = true) && !car.timing.contains("chaîne", ignoreCase = true)) {
+            add(UpkeepInterval(UpkeepKind.TIMING_BELT))
+        }
+        if (car.particleFilter && car.filterAdditive) add(UpkeepInterval(UpkeepKind.ADDITIVE))
+        if (car.gearbox != GearboxType.MANUAL) add(UpkeepInterval(UpkeepKind.GEARBOX_OIL))
+        if (!car.diesel) add(UpkeepInterval(UpkeepKind.SPARK_PLUGS))
+    }
+
+    /** [ai]'s intervals over [base]: a known figure replaces, an unknown one keeps the base's. */
+    fun merge(base: List<UpkeepInterval>, ai: List<UpkeepInterval>): List<UpkeepInterval> {
+        val byKind = ai.associateBy { it.kind }
+        val merged = base.map { b ->
+            byKind[b.kind]?.let { a -> UpkeepInterval(b.kind, a.everyKm ?: b.everyKm, a.everyMonths ?: b.everyMonths) } ?: b
+        }
+        // Items the AI knows about that the defaults left out (a chain car with a belt-driven pump...).
+        return merged + ai.filter { a -> a.known && merged.none { it.kind == a.kind } }
+    }
+
+    /** Where [interval] stands given the last time it was done and the mileage. */
+    fun status(interval: UpkeepInterval, done: UpkeepDone?, odometerKm: Int?, now: Long): UpkeepDue {
+        val kmLeft = if (interval.everyKm != null && done?.km != null && odometerKm != null) done.km + interval.everyKm - odometerKm else null
+        val daysLeft = if (interval.everyMonths != null && done?.at != null) {
+            val due = Calendar.getInstance().apply { timeInMillis = done.at; add(Calendar.MONTH, interval.everyMonths) }.timeInMillis
+            ((due - now) / DAY_MS).toInt()
+        } else null
+        val stage = when {
+            kmLeft == null && daysLeft == null -> UpkeepStage.UNKNOWN
+            (kmLeft != null && kmLeft <= 0) || (daysLeft != null && daysLeft <= 0) -> UpkeepStage.DUE
+            (kmLeft != null && kmLeft <= SOON_KM) || (daysLeft != null && daysLeft <= SOON_DAYS) -> UpkeepStage.SOON
+            else -> UpkeepStage.OK
+        }
+        return UpkeepDue(interval.kind, kmLeft, daysLeft, stage)
+    }
+
+    fun statuses(plan: List<UpkeepInterval>, done: Map<UpkeepKind, UpkeepDone>, odometerKm: Int?, now: Long): List<UpkeepDue> =
+        plan.map { status(it, done[it.kind], odometerKm, now) }.sortedWith(compareBy({ order(it.stage) }, { soonest(it) }))
+
+    private fun order(stage: UpkeepStage) = when (stage) {
+        UpkeepStage.DUE -> 0
+        UpkeepStage.SOON -> 1
+        UpkeepStage.OK -> 2
+        UpkeepStage.UNKNOWN -> 3
+    }
+
+    /** A rough "how soon" for sorting: days, with 50 km counting as a day. */
+    private fun soonest(d: UpkeepDue): Int = listOfNotNull(d.daysLeft, d.kmLeft?.let { it / 50 }).minOrNull() ?: Int.MAX_VALUE
+
+    /**
+     * The items worth saying at start-up: due or nearly, and not yet said at
+     * that stage ([spoken] is the stage last announced per item).
+     */
+    fun toSpeak(dues: List<UpkeepDue>, spoken: Map<UpkeepKind, UpkeepStage>): List<UpkeepDue> =
+        dues.filter { (it.stage == UpkeepStage.SOON || it.stage == UpkeepStage.DUE) && spoken[it.kind] != it.stage }
+
+    /** The sentence for one due item; the km count wins over the date when both say something. */
+    internal fun line(d: UpkeepDue): SpokenLine {
+        val name = SpokenLine(d.kind.labelRes, emptyList())
+        val km = d.kmLeft
+        val days = d.daysLeft
+        return when {
+            d.stage == UpkeepStage.DUE && km != null && km <= 0 -> SpokenLine(R.string.upkeep_say_overdue_km, listOf(name, -km))
+            d.stage == UpkeepStage.DUE -> SpokenLine(R.string.upkeep_say_overdue_days, listOf(name, -(days ?: 0)))
+            km != null && km <= SOON_KM -> SpokenLine(R.string.upkeep_say_soon_km, listOf(name, km))
+            else -> SpokenLine(R.string.upkeep_say_soon_days, listOf(name, days ?: 0))
+        }
+    }
+}
+
+/** Asks Gemini for the maker's service intervals and reads the answer. Pure prompt and reading, unit-tested. */
+object UpkeepPlan {
+    private const val BUDGET_MS = 60_000L
+
+    val SCHEMA: JSONObject
+        get() {
+            val item = JSONObject().put("type", "OBJECT")
+                .put("properties", JSONObject()
+                    .put("kind", JSONObject().put("type", "STRING").put("enum", JSONArray(UpkeepKind.entries.map { it.name })))
+                    .put("every_km", JSONObject().put("type", "NUMBER").put("nullable", true))
+                    .put("every_months", JSONObject().put("type", "NUMBER").put("nullable", true)))
+                .put("required", JSONArray(listOf("kind", "every_km", "every_months")))
+            return JSONObject().put("type", "OBJECT")
+                .put("properties", JSONObject().put("items", JSONObject().put("type", "ARRAY").put("items", item)))
+                .put("required", JSONArray(listOf("items")))
+        }
+
+    fun prompt(car: String): String = buildString {
+        appendLine("You are an automotive technical reference. Give the manufacturer's service schedule for this exact car, as sold in Europe: \"$car\".")
+        appendLine("One item per kind, using these kinds: ${UpkeepKind.entries.joinToString(", ") { it.name }}.")
+        appendLine("OIL = engine oil and filter; ADDITIVE = the particulate filter's fuel additive (e.g. Eolys) refill; GEARBOX_OIL = gearbox oil or, on a robotised gearbox, the clutch actuator check; TIMING_BELT = timing belt replacement (leave out on a chain engine).")
+        appendLine("every_km and every_months: the maker's interval for normal use, whichever apply; null when not applicable or not sure. Leave out kinds this car doesn't have (no spark plugs on a diesel). Never guess wildly.")
+    }
+
+    /** The intervals in Gemini's [raw] answer; unknown kinds are skipped. */
+    fun read(raw: String): List<UpkeepInterval> {
+        val o = JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim())
+        val items = o.optJSONArray("items") ?: return emptyList()
+        return (0 until items.length()).mapNotNull { i ->
+            val it = items.optJSONObject(i) ?: return@mapNotNull null
+            val kind = UpkeepKind.entries.firstOrNull { k -> k.name == it.optString("kind") } ?: return@mapNotNull null
+            fun num(k: String) = if (it.isNull(k)) null else it.optDouble(k).takeIf { v -> !v.isNaN() && v > 0 }?.roundToInt()
+            UpkeepInterval(kind, num("every_km"), num("every_months"))
+        }.distinctBy { it.kind }
+    }
+
+    suspend fun fetch(context: Context, car: CarProfile): Result<List<UpkeepInterval>> {
+        val config = AiSettings.load(context)
+        if (config.apiKey.isBlank()) return Result.failure(IllegalStateException(context.getString(R.string.car_fetch_no_key)))
+        GeminiClient.reachGoogle().exceptionOrNull()?.let {
+            return Result.failure(IllegalStateException(AiMechanic.describe(context, it)))
+        }
+        return GeminiClient.generate(config.apiKey, prompt(car.promptDescription()), SCHEMA, budgetMs = BUDGET_MS)
+            .mapCatching { runCatching { read(it.text) }.getOrElse { throw UnreadableAnswerException() } }
+            .recoverCatching { throw IllegalStateException(AiMechanic.describe(context, it)) }
+    }
+}
+
+/** Everything the planner knows, for the tile and the dialog. */
+data class UpkeepState(
+    val plan: List<UpkeepInterval> = emptyList(),
+    val done: Map<UpkeepKind, UpkeepDone> = emptyMap(),
+    val odometer: Odometer? = null,
+    /** The plan came from the AI for this car (else defaults / the driver's own figures). */
+    val planFromAi: Boolean = false,
+    val fetching: Boolean = false,
+    /** Why the last automatic plan fetch failed, to show in the dialog. */
+    val fetchError: String? = null
+) {
+    fun statuses(now: Long): List<UpkeepDue> = UpkeepRules.statuses(plan, done, odometer?.nowKm, now)
+}
+
+/**
+ * The live side: keeps the plan, the log and the mileage, counts the
+ * kilometres driven, fetches the maker's intervals by itself once a key and a
+ * car are known, and tells the briefing what to say.
+ */
+object Maintenance {
+    private const val PREFS = "upkeep"
+
+    private var appContext: Context? = null
+    private val _state = MutableStateFlow(UpkeepState())
+    val state: StateFlow<UpkeepState> = _state.asStateFlow()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val fetchMutex = Mutex()
+    /** Which car's description the saved plan was fetched for. */
+    private var planFor: Int = 0
+    private var spoken: Map<UpkeepKind, UpkeepStage> = emptyMap()
+    private var drivenUnsaved = 0.0
+
+    fun setContext(context: Context) {
+        if (appContext != null) return
+        appContext = context.applicationContext
+        load()
+        scope.launch { CarProfileStore.profile.collect { onCar(it) } }
+    }
+
+    /** The plan follows the car: a new car gets the defaults and, given a key, the maker's intervals. */
+    private fun onCar(car: CarProfile) {
+        val hash = car.promptDescription().hashCode()
+        val s = _state.value
+        if (s.plan.isEmpty() || (planFor != hash && s.planFromAi)) {
+            _state.value = s.copy(plan = UpkeepRules.defaultPlan(car), planFromAi = false)
+            planFor = hash
+            save()
+        }
+        if (!_state.value.planFromAi) autoFetch(car, hash)
+    }
+
+    private fun autoFetch(car: CarProfile, hash: Int) {
+        val context = appContext ?: return
+        if (AiSettings.load(context).apiKey.isBlank()) return
+        scope.launch { fetchPlan(car, hash) }
+    }
+
+    /** Fetches the maker's intervals for [car] (the current one by default); the failure text is ready to show. */
+    suspend fun fetchPlan(car: CarProfile = CarProfileStore.current, hash: Int = car.promptDescription().hashCode()): Result<Unit> =
+        fetchMutex.withLock {
+            val context = appContext ?: return Result.failure(IllegalStateException("no context"))
+            _state.value = _state.value.copy(fetching = true, fetchError = null)
+            val result = UpkeepPlan.fetch(context, car)
+            result.onSuccess { ai ->
+                _state.value = _state.value.copy(plan = UpkeepRules.merge(UpkeepRules.defaultPlan(car), ai), planFromAi = true, fetching = false)
+                planFor = hash
+                save()
+            }.onFailure {
+                _state.value = _state.value.copy(fetching = false, fetchError = it.message)
+            }
+            result.map { }
+        }
+
+    /** The driver read the dashboard: [km] as of now. */
+    fun setOdometer(km: Int) {
+        _state.value = _state.value.copy(odometer = Odometer(km, System.currentTimeMillis()))
+        drivenUnsaved = 0.0
+        save()
+    }
+
+    /** The driver's own interval for [kind]. */
+    fun setInterval(interval: UpkeepInterval) {
+        _state.value = _state.value.copy(plan = _state.value.plan.map { if (it.kind == interval.kind) interval else it })
+        save()
+    }
+
+    fun setDone(kind: UpkeepKind, done: UpkeepDone?) {
+        val map = _state.value.done.toMutableMap()
+        if (done == null || (done.km == null && done.at == null)) map.remove(kind) else map[kind] = done
+        _state.value = _state.value.copy(done = map)
+        // Done again: the next reminder for it is news again.
+        spoken = spoken - kind
+        save()
+    }
+
+    /** The drive monitor counted [km] more kilometres. */
+    fun drove(km: Double) {
+        if (km <= 0.0) return
+        val odo = _state.value.odometer ?: return
+        _state.value = _state.value.copy(odometer = odo.copy(drivenSince = odo.drivenSince + km))
+        drivenUnsaved += km
+        if (drivenUnsaved >= 1.0) {
+            drivenUnsaved = 0.0
+            save()
+        }
+    }
+
+    /** What the briefing should say now; call [markSpoken] once it has. */
+    fun dueForBriefing(now: Long): List<UpkeepDue> = UpkeepRules.toSpeak(_state.value.statuses(now), spoken)
+
+    fun markSpoken(dues: List<UpkeepDue>) {
+        spoken = spoken + dues.associate { it.kind to it.stage }
+        save()
+    }
+
+    private fun load() {
+        val p = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return
+        val raw = p.getString("state", null) ?: return
+        runCatching {
+            val o = JSONObject(raw)
+            planFor = o.optInt("plan_for")
+            val plan = o.optJSONArray("plan")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    val it = a.getJSONObject(i)
+                    val kind = UpkeepKind.entries.firstOrNull { k -> k.name == it.optString("kind") } ?: return@mapNotNull null
+                    UpkeepInterval(kind, it.optInt("km").takeIf { v -> v > 0 }, it.optInt("months").takeIf { v -> v > 0 })
+                }
+            }.orEmpty()
+            val done = o.optJSONObject("done")?.let { d ->
+                d.keys().asSequence().mapNotNull { key ->
+                    val kind = UpkeepKind.entries.firstOrNull { k -> k.name == key } ?: return@mapNotNull null
+                    val it = d.getJSONObject(key)
+                    kind to UpkeepDone(it.optInt("km").takeIf { v -> v > 0 }, it.optLong("at").takeIf { v -> v > 0 })
+                }.toMap()
+            }.orEmpty()
+            val odo = o.optJSONObject("odometer")?.let { Odometer(it.getInt("km"), it.getLong("at"), it.optDouble("driven", 0.0)) }
+            spoken = o.optJSONObject("spoken")?.let { s ->
+                s.keys().asSequence().mapNotNull { key ->
+                    val kind = UpkeepKind.entries.firstOrNull { k -> k.name == key } ?: return@mapNotNull null
+                    val stage = UpkeepStage.entries.firstOrNull { st -> st.name == s.optString(key) } ?: return@mapNotNull null
+                    kind to stage
+                }.toMap()
+            }.orEmpty()
+            _state.value = UpkeepState(plan, done, odo, planFromAi = o.optBoolean("plan_ai"))
+        }
+    }
+
+    private fun save() {
+        val s = _state.value
+        val o = JSONObject()
+            .put("plan_for", planFor)
+            .put("plan_ai", s.planFromAi)
+            .put("plan", JSONArray(s.plan.map { JSONObject().put("kind", it.kind.name).putOpt("km", it.everyKm).putOpt("months", it.everyMonths) }))
+            .put("done", JSONObject().apply { s.done.forEach { (k, d) -> put(k.name, JSONObject().putOpt("km", d.km).putOpt("at", d.at)) } })
+            .putOpt("odometer", s.odometer?.let { JSONObject().put("km", it.km).put("at", it.readAt).put("driven", it.drivenSince) })
+            .put("spoken", JSONObject().apply { spoken.forEach { (k, st) -> put(k.name, st.name) } })
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putString("state", o.toString())?.apply()
+    }
+}

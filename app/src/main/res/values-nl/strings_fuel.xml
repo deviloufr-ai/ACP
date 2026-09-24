@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fuel prices nearby (FuelPrices.kt, FuelPricesTile.kt) -->
+    <string name="fuel_kind">Brandstofprijzen</string>
+    <string name="fuel_kind_blurb">Goedkoopste stations in de buurt, tik om te navigeren</string>
+    <string name="fuel_title">BRANDSTOF DICHTBIJ</string>
+    <string name="fuel_loading">Stations zoeken…</string>
+    <string name="fuel_none">Geen station met deze brandstof binnen %1$d km. Prijzen alleen voor Frankrijk.</string>
+    <string name="fuel_error">Prijzen nu niet beschikbaar</string>
+    <string name="fuel_cheapest">Goedkoopste %1$s</string>
+    <string name="fuel_navigate">tik om te navigeren</string>
+    <string name="fuel_allow_location">Locatie toestaan</string>
+    <plurals name="fuel_stations">
+        <item quantity="one">%1$d station binnen %2$d km</item>
+        <item quantity="other">%1$d stations binnen %2$d km</item>
+    </plurals>
+</resources>

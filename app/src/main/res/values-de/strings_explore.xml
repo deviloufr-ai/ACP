@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Erweiterte Messwerte</string>
+    <string name="explore_settings_detail">Experimentell: Rußbeladung und mehr, von der KI vorgeschlagen und vom Auto bestätigt</string>
+    <string name="explore_soot_load">Rußbeladung</string>
+    <string name="explore_dpf_temp">Filtertemperatur</string>
+    <string name="explore_dpf_pressure">Filterdruck</string>
+    <string name="explore_regen">Regeneration</string>
+    <string name="explore_km_since_regen">Seit der letzten Regeneration</string>
+    <string name="explore_additive">Additivstand</string>
+    <string name="explore_oil_temp">Öltemperatur</string>
+    <string name="explore_explanation">Experimentell. Generisches OBD liest den Partikelfilter nicht. Die KI schlägt die eigenen Diagnoseanfragen dieses Autos vor; jede wird am Adapter ausprobiert und nur behalten, wenn das Auto einen plausiblen, stabilen Wert liefert. Ein behaltener Wert kann trotzdem falsch sein.</string>
+    <string name="explore_search">Mit KI suchen</string>
+    <string name="explore_searching">Anfragen werden probiert… %1$d s</string>
+    <string name="explore_verified">Bestätigte Messwerte</string>
+    <string name="explore_none_verified">Noch keine. Adapter bei laufendem Motor verbinden und suchen.</string>
+    <string name="explore_results">Ausprobiert</string>
+    <string name="explore_forget">Alles vergessen</string>
+    <string name="explore_v_no_answer">keine Antwort</string>
+    <string name="explore_v_refused">abgelehnt</string>
+    <string name="explore_v_unreadable">unlesbar</string>
+    <string name="explore_v_implausible">unplausibel</string>
+    <string name="explore_v_unstable">instabil</string>
+    <string name="explore_v_ok">bestätigt</string>
+    <string name="explore_not_in_demo">Im Demomodus nicht verfügbar</string>
+    <string name="explore_nothing_found">Nichts bestätigt. Dieses Auto gibt sie vielleicht nur einem Werkstatttester preis.</string>
+    <string name="explore_source_standard">Standard</string>
+    <string name="explore_source_ai">KI</string>
+    <string name="explore_regen_yes">Regeneriert</string>
+    <string name="explore_regen_no">Keine Regeneration</string>
+    <string name="explore_soot_status">Rußbeladung %1$d %%</string>
+</resources>

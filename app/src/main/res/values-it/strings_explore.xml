@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Letture avanzate</string>
+    <string name="explore_settings_detail">Sperimentale: carico di fuliggine e altro, proposti dall\'IA e confermati dall\'auto</string>
+    <string name="explore_soot_load">Carico di fuliggine</string>
+    <string name="explore_dpf_temp">Temperatura del filtro</string>
+    <string name="explore_dpf_pressure">Pressione del filtro</string>
+    <string name="explore_regen">Rigenerazione</string>
+    <string name="explore_km_since_regen">Dall\'ultima rigenerazione</string>
+    <string name="explore_additive">Livello additivo</string>
+    <string name="explore_oil_temp">Temperatura olio</string>
+    <string name="explore_explanation">Sperimentale. L\'OBD generico non legge il filtro antiparticolato. L\'IA propone le richieste diagnostiche proprie di quest\'auto; ognuna viene provata sull\'adattatore e tenuta solo se l\'auto risponde con un valore plausibile e stabile. Una lettura tenuta può comunque essere sbagliata.</string>
+    <string name="explore_search">Cerca con l\'IA</string>
+    <string name="explore_searching">Prova delle richieste… %1$d s</string>
+    <string name="explore_verified">Letture confermate</string>
+    <string name="explore_none_verified">Nessuna per ora. Collega l\'adattatore a motore acceso e cerca.</string>
+    <string name="explore_results">Provate</string>
+    <string name="explore_forget">Dimentica tutto</string>
+    <string name="explore_v_no_answer">nessuna risposta</string>
+    <string name="explore_v_refused">rifiutata</string>
+    <string name="explore_v_unreadable">illeggibile</string>
+    <string name="explore_v_implausible">non plausibile</string>
+    <string name="explore_v_unstable">instabile</string>
+    <string name="explore_v_ok">confermata</string>
+    <string name="explore_not_in_demo">Non disponibile in modalità demo</string>
+    <string name="explore_nothing_found">Niente di confermato. Quest\'auto forse le dà solo a uno strumento d\'officina.</string>
+    <string name="explore_source_standard">standard</string>
+    <string name="explore_source_ai">IA</string>
+    <string name="explore_regen_yes">In rigenerazione</string>
+    <string name="explore_regen_no">Nessuna rigenerazione</string>
+    <string name="explore_soot_status">Carico di fuliggine %1$d %%</string>
+</resources>

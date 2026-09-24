@@ -59,7 +59,10 @@ enum class BuiltinKind(
     MY_CAR(R.string.car_kind_my_car, WidgetCategory.VEHICLE, R.string.car_kind_my_car_blurb, 4, 3),
     ECO_DRIVE(R.string.car_kind_eco, WidgetCategory.DRIVING, R.string.car_kind_eco_blurb, 4, 3),
     BREAK_TIMER(R.string.car_kind_break, WidgetCategory.DRIVING, R.string.car_kind_break_blurb, 3, 3),
-    FUEL_TO_DEST(R.string.car_kind_fuel_dest, WidgetCategory.NAVIGATION, R.string.car_kind_fuel_dest_blurb, 3, 3)
+    FUEL_TO_DEST(R.string.car_kind_fuel_dest, WidgetCategory.NAVIGATION, R.string.car_kind_fuel_dest_blurb, 3, 3),
+    // Servicing planner (Maintenance.kt) and fuel prices around the car (FuelPrices.kt).
+    SERVICE(R.string.upkeep_kind, WidgetCategory.VEHICLE, R.string.upkeep_kind_blurb, 4, 3),
+    FUEL_PRICES(R.string.fuel_kind, WidgetCategory.NAVIGATION, R.string.fuel_kind_blurb, 4, 3)
 }
 
 /**

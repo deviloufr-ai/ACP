@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Experimental advanced readings (PidExplorer.kt, PidExplorerDialog.kt) -->
+    <string name="explore_title">Leituras avançadas</string>
+    <string name="explore_settings_detail">Experimental: carga de fuligem e mais, propostas pela IA e confirmadas pelo carro</string>
+    <string name="explore_soot_load">Carga de fuligem</string>
+    <string name="explore_dpf_temp">Temperatura do filtro</string>
+    <string name="explore_dpf_pressure">Pressão do filtro</string>
+    <string name="explore_regen">Regeneração</string>
+    <string name="explore_km_since_regen">Desde a última regeneração</string>
+    <string name="explore_additive">Nível de aditivo</string>
+    <string name="explore_oil_temp">Temperatura do óleo</string>
+    <string name="explore_explanation">Experimental. O OBD genérico não lê o filtro de partículas. A IA propõe os pedidos de diagnóstico próprios deste carro; cada um é testado no adaptador e mantido só se o carro responder com um valor plausível e estável. Uma leitura mantida pode ainda estar errada.</string>
+    <string name="explore_search">Procurar com IA</string>
+    <string name="explore_searching">A testar os pedidos… %1$d s</string>
+    <string name="explore_verified">Leituras confirmadas</string>
+    <string name="explore_none_verified">Nenhuma ainda. Ligue o adaptador com o motor a trabalhar e procure.</string>
+    <string name="explore_results">Testadas</string>
+    <string name="explore_forget">Esquecer tudo</string>
+    <string name="explore_v_no_answer">sem resposta</string>
+    <string name="explore_v_refused">recusado</string>
+    <string name="explore_v_unreadable">ilegível</string>
+    <string name="explore_v_implausible">implausível</string>
+    <string name="explore_v_unstable">instável</string>
+    <string name="explore_v_ok">confirmado</string>
+    <string name="explore_not_in_demo">Indisponível no modo de demonstração</string>
+    <string name="explore_nothing_found">Nada confirmado. Este carro talvez só as dê a uma ferramenta de oficina.</string>
+    <string name="explore_source_standard">padrão</string>
+    <string name="explore_source_ai">IA</string>
+    <string name="explore_regen_yes">A regenerar</string>
+    <string name="explore_regen_no">Sem regeneração</string>
+    <string name="explore_soot_status">Carga de fuligem %1$d %%</string>
+</resources>
