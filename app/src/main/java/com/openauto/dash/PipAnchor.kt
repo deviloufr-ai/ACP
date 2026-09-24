@@ -217,17 +217,42 @@ object PipAnchor {
         // Picture-in-picture is SystemUI's own window, moved between displays by
         // nobody; it is parked small in the corner as before.
         val hidden = if (win.mode == "freeform") HiddenDisplay.acquire(context) else null
-        if (hidden != null) {
-            val moved = runGuarded { DockShell.moveToDisplay(context, win, hidden) }
+        if (hidden != null && moveOntoHiddenDisplay(context, win, hidden, reason)) return
+        parkInCorner(context, win, reason)
+    }
+
+    /** One park at a time per app: a page change parks the same window from the tile and from the pager at once. */
+    private val parkLocks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+
+    /**
+     * Moves [win] onto the hidden display; true once it is there. A page change
+     * asks twice for the same window (the tile going away and the pager both
+     * park it), each from its own listing, so the second ask used to find the
+     * window already moved and its move refused, and two refusals gave the
+     * hidden display up for good. So asks are taken one at a time, each looks
+     * again before moving, and a refusal is only held against the display when
+     * a fresh look shows the window still on the screen.
+     */
+    private suspend fun moveOntoHiddenDisplay(context: Context, win: FloatingWindow, hidden: Int, reason: String): Boolean =
+        parkLocks.getOrPut(win.packageName) { Mutex() }.withLock {
+            DockShell.forgetListing()
+            val now = runGuarded { findFloatingWindow(context, win.packageName) }.getOrNull() ?: return true // gone: nothing to park
+            if (now.offDisplay) return true
+            val moved = runGuarded { DockShell.moveToDisplay(context, now, hidden) }
             if (moved.isSuccess) {
                 HiddenDisplay.noteMoveSucceeded()
                 Log.i(TAG, "${win.packageName} parked on the hidden display ($reason)")
-                return
+                return true
+            }
+            DockShell.forgetListing()
+            val after = runGuarded { findFloatingWindow(context, win.packageName) }.getOrNull()
+            if (after == null || after.offDisplay) {
+                Log.i(TAG, "${win.packageName} is on the hidden display after all ($reason)")
+                return true
             }
             HiddenDisplay.noteMoveFailed(moved.exceptionOrNull()!!)
+            false
         }
-        parkInCorner(context, win, reason)
-    }
 
     /** The fallback park: the corner, with the cover over what still shows. */
     private suspend fun parkInCorner(context: Context, win: FloatingWindow, reason: String) {
@@ -385,12 +410,9 @@ object PipAnchor {
                         checkedAt = now, visible = win.visible, behindDashboard = win.behindDashboard
                     )
                     result.onFailure { publishError(context, packageName, it) }
-                    if (result.isSuccess) {
-                        DockShell.forgetListing()
-                        delay(UNHIDE_SETTLE_MS)
-                        continue
-                    }
-                    delay(POLL_MS)
+                    // The listing is stale by now whatever happened: the next poll looks afresh.
+                    DockShell.forgetListing()
+                    delay(if (result.isSuccess) UNHIDE_SETTLE_MS else POLL_MS)
                     continue
                 }
                 val keep = step as DockPolicy.Step.Keep

@@ -79,10 +79,19 @@ object DockShell {
     suspend fun moveToDisplay(context: Context, win: FloatingWindow, displayId: Int): String {
         val cmd = "am display move-stack ${win.stackId} $displayId"
         val out = shell(context, cmd)
+        if (out.contains(ALREADY_ON_DISPLAY)) {
+            // Refused because the stack is on that display already (a listing a
+            // moment old said otherwise): what was asked for is the case.
+            Log.d(TAG, "${win.mode} ${win.packageName} already on display $displayId")
+            return "$cmd: already there"
+        }
         if (looksLikeError(out)) error(out.trim().lines().firstOrNull().orEmpty().ifBlank { "move refused" })
         Log.d(TAG, "${win.mode} ${win.packageName} -> display $displayId via `$cmd`")
         return "$cmd: ok"
     }
+
+    /** What `am display move-stack` answers for a stack already on the display asked for (an IllegalArgumentException). */
+    private const val ALREADY_ON_DISPLAY = "to its current displayId"
 
     private fun looksLikeError(out: String): Boolean =
         out.contains("Error", ignoreCase = true) || out.contains("Exception") || out.contains("Unknown")

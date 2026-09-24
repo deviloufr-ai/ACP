@@ -40,7 +40,7 @@ internal object HiddenDisplay {
     private const val NAME = "Dashwheel parked windows"
 
     /** Consecutive failed moves onto the display before it is given up on for this process. */
-    private const val MAX_FAILURES = 2
+    private const val MAX_FAILURES = 3
 
     /**
      * `DisplayManager.VIRTUAL_DISPLAY_FLAG_DESTROY_CONTENT_ON_REMOVAL`, not in
