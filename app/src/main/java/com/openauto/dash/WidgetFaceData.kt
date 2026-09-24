@@ -93,12 +93,21 @@ internal fun rememberWidgetFace(kind: BuiltinKind, env: SkinTileEnv): WidgetFace
     BuiltinKind.QUICK_DIAL -> quickDialFace()
     BuiltinKind.NOTIFICATIONS -> notificationsFace(env)
     BuiltinKind.AUDIO -> audioFace()
-    // Live views: they keep their content and get the design's frame (DesignFrame).
-    BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D -> null
+    BuiltinKind.FILTER_CARE -> filterFace()
+    BuiltinKind.WARMUP -> warmupFace(env)
+    BuiltinKind.BATTERY -> batteryFace(env)
+    BuiltinKind.ECO_DRIVE -> ecoFace()
+    BuiltinKind.FUEL_TO_DEST -> fuelToDestFace()
+    BuiltinKind.BREAK_TIMER -> breakFace()
+    // Live views and the spec sheet: they keep their content and get the design's frame (DesignFrame).
+    BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D, BuiltinKind.MY_CAR -> null
 }
 
-/** Widgets whose content is a live view (map, docked window, 3D model), framed rather than redrawn. */
-internal val FRAMED_KINDS = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D)
+/**
+ * Widgets framed rather than redrawn: live views (map, docked window, 3D
+ * model) and the car's spec sheet, whose tap opens the car settings.
+ */
+internal val FRAMED_KINDS = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D, BuiltinKind.MY_CAR)
 
 private fun fmt(pattern: String, vararg args: Any): String = String.format(Locale.getDefault(), pattern, *args)
 
@@ -664,3 +673,181 @@ internal fun sampleFace(kind: BuiltinKind): WidgetFace = WidgetFace(
     clock = if (kind == BuiltinKind.CLOCK) Triple(12, 30, 0) else null,
     compass = kind == BuiltinKind.COMPASS
 )
+
+// --- Car care (CarCareTiles.kt) -------------------------------------------------------
+
+@Composable
+private fun filterFace(): WidgetFace? {
+    val car by CarProfileStore.profile.collectAsState()
+    val care by CarCare.state.collectAsState()
+    // No particle filter: the standard tile says so.
+    if (!car.particleFilter) return null
+    val streak = care.filter.shortStreak
+    val drive = care.drive
+    val last = care.filter.lastLongAt
+    val now = System.currentTimeMillis()
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.FILTER_CARE),
+        title = BuiltinKind.FILTER_CARE.label,
+        value = streak.toString(),
+        unit = stringResource(R.string.car_filter_short_unit),
+        caption = stringResource(
+            when {
+                streak >= 6 -> R.string.car_filter_needs_drive_now
+                streak >= CareRules.FILTER_WARN_STREAK -> R.string.car_filter_needs_drive
+                else -> R.string.car_filter_ok
+            }
+        ),
+        alert = streak >= CareRules.FILTER_WARN_STREAK,
+        fraction = drive?.let { it.hotFastMs.toFloat() / CareRules.LONG_DRIVE_MS },
+        rows = listOfNotNull(
+            drive?.let {
+                FaceRow(stringResource(R.string.car_filter_this_drive, (it.hotFastMs / 60_000).toInt(), (CareRules.LONG_DRIVE_MS / 60_000).toInt()), "")
+            },
+            FaceRow(
+                if (last > 0) stringResource(R.string.car_filter_last_long, android.text.format.DateUtils.getRelativeTimeSpanString(last, now, android.text.format.DateUtils.MINUTE_IN_MILLIS).toString())
+                else stringResource(R.string.car_filter_last_long_never),
+                ""
+            )
+        )
+    )
+}
+
+@Composable
+private fun warmupFace(env: SkinTileEnv): WidgetFace? {
+    val car by CarProfileStore.profile.collectAsState()
+    val care by CarCare.state.collectAsState()
+    val now by rememberWallClock(1_000L)
+    val t = env.obdData.coolantTempC
+    if (env.obdConnection != ObdConnectionState.CONNECTED || t == 0) return null
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.WARMUP),
+        title = BuiltinKind.WARMUP.label,
+        value = t.toString(), unit = "°C",
+        caption = when {
+            t < car.coldC -> stringResource(R.string.car_warmup_cold, car.coldRpmLimit)
+            t < car.hotC - 10 -> stringResource(R.string.car_warmup_warming)
+            else -> stringResource(R.string.car_warmup_warm)
+        },
+        alert = t < car.coldC,
+        fraction = t.toFloat() / car.hotC,
+        rows = listOfNotNull(care.drive?.let { FaceRow(stringResource(R.string.car_running_for, formatDuration(now - it.startedAt)), "") })
+    )
+}
+
+@Composable
+private fun batteryFace(env: SkinTileEnv): WidgetFace? {
+    val car by CarProfileStore.profile.collectAsState()
+    val v = env.obdData.voltage
+    if (env.obdConnection != ObdConnectionState.CONNECTED || v < LiveWatch.MIN_PLAUSIBLE_V || v > LiveWatch.MAX_PLAUSIBLE_V) return null
+    val running = env.obdData.rpm > LiveWatch.RUNNING_RPM
+    val (status, weak) = if (running) when {
+        v >= LiveWatch.CHARGE_CLEAR_V -> R.string.car_battery_charging to false
+        v >= LiveWatch.NOT_CHARGING_V -> R.string.car_battery_charging_low to true
+        else -> R.string.car_battery_not_charging to true
+    } else when {
+        v >= 12.6 -> R.string.car_battery_full to false
+        v >= LiveWatch.BATTERY_CLEAR_V -> R.string.car_battery_good to false
+        v >= LiveWatch.WEAK_BATTERY_V -> R.string.car_battery_low to true
+        else -> R.string.car_battery_weak to true
+    }
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.BATTERY),
+        title = BuiltinKind.BATTERY.label,
+        value = fmt("%.1f", v), unit = "V",
+        caption = stringResource(status),
+        alert = weak,
+        fraction = ((v - 11.5) / (14.8 - 11.5)).toFloat().coerceIn(0f, 1f),
+        rows = listOf(
+            FaceRow(
+                car.batteryAh?.let { stringResource(R.string.car_battery_capacity, it) }
+                    ?: stringResource(if (running) R.string.car_battery_hint_running else R.string.car_battery_hint_off),
+                ""
+            )
+        )
+    )
+}
+
+@Composable
+private fun ecoFace(): WidgetFace? {
+    val car by CarProfileStore.profile.collectAsState()
+    val care by CarCare.state.collectAsState()
+    // No drive yet: the standard tile explains what the score will be.
+    val drive = care.drive ?: care.lastDrive ?: return null
+    val score = drive.ecoScore
+    val liters = drive.distanceKm * car.typicalUse / 100
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.ECO_DRIVE),
+        title = stringResource(if (care.drive != null) R.string.car_eco_title else R.string.car_eco_title_last),
+        value = score?.toString() ?: "--", unit = "/ 100",
+        caption = stringResource(
+            when {
+                score == null -> R.string.car_eco_too_early
+                score >= 80 -> R.string.car_eco_smooth
+                score >= 60 -> R.string.car_eco_fair
+                else -> R.string.car_eco_harsh
+            }
+        ),
+        alert = score != null && score < 60,
+        fraction = score?.let { it / 100f },
+        stats = listOfNotNull(
+            drive.sweetPercent?.let { FaceStat(stringResource(R.string.car_eco_band, car.sweetBand.first, car.sweetBand.last), "$it %") },
+            FaceStat(stringResource(R.string.car_eco_hard), stringResource(R.string.car_eco_hard_value, drive.hardAccel, drive.hardBrake)),
+            if (car.gearbox == GearboxType.ROBOTISED) FaceStat(stringResource(R.string.car_eco_clutch), drive.clutchHolds.toString()) else null,
+            FaceStat(
+                stringResource(R.string.car_eco_fuel, fmt("%.1f", drive.distanceKm)),
+                stringResource(R.string.car_eco_fuel_value, fmt("%.1f", liters), fmt("%.2f", liters * car.fuelPrice), car.currency)
+            )
+        )
+    )
+}
+
+@Composable
+private fun fuelToDestFace(): WidgetFace? {
+    val nav by NavDirections.state.collectAsState()
+    val canFuel by McuReader.fuelPercent.collectAsState()
+    val canRange by McuReader.rangeKm.collectAsState()
+    val obd by ObdBluetoothManager.data.collectAsState()
+    val car by CarProfileStore.profile.collectAsState()
+    val range = remember(canFuel, canRange, obd.fuelLevelPct, car) { carFuelInfo(canFuel, obd.fuelLevelPct, canRange)?.rangeKm }
+        ?: return null
+    val toGo = if (nav.active) CareRules.remainingKm(nav.eta) else null
+    val verdict = CareRules.fuelVerdict(range, toGo)
+    val icon = kindIcon(BuiltinKind.FUEL_TO_DEST)
+    val title = BuiltinKind.FUEL_TO_DEST.label
+    if (verdict == null) {
+        return WidgetFace(icon = icon, title = title, value = range.toString(), unit = "km", caption = stringResource(R.string.car_fuel_dest_no_nav))
+    }
+    val km = toGo ?: 0.0
+    return WidgetFace(
+        icon = icon, title = title,
+        value = (range - km).toInt().toString(),
+        unit = stringResource(R.string.car_fuel_dest_spare_unit),
+        caption = stringResource(
+            when (verdict) {
+                FuelVerdict.ENOUGH -> R.string.car_fuel_dest_enough
+                FuelVerdict.TIGHT -> R.string.car_fuel_dest_tight
+                FuelVerdict.SHORT -> R.string.car_fuel_dest_short
+            }
+        ),
+        alert = verdict != FuelVerdict.ENOUGH,
+        fraction = (km / range).toFloat().coerceIn(0f, 1f),
+        rows = listOf(FaceRow(stringResource(R.string.car_fuel_dest_detail, range, km.toInt()), ""))
+    )
+}
+
+@Composable
+private fun breakFace(): WidgetFace {
+    val care by CarCare.state.collectAsState()
+    val due = CareRules.FIRST_BREAK_MIN * 60_000L
+    val driving = care.rest.drivingMs
+    return WidgetFace(
+        icon = kindIcon(BuiltinKind.BREAK_TIMER),
+        title = BuiltinKind.BREAK_TIMER.label,
+        value = formatDuration(driving),
+        caption = stringResource(if (driving >= due) R.string.car_break_due else R.string.car_break_ok),
+        alert = driving >= due,
+        fraction = driving.toFloat() / due,
+        rows = listOf(FaceRow(stringResource(R.string.car_break_hint), ""))
+    )
+}

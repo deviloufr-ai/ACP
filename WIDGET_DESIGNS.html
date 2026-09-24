@@ -291,10 +291,10 @@ button:focus-visible, .card:focus-visible { outline: 2px solid var(--acc); outli
     <h1>Every widget, sixteen ways</h1>
     <p class="lede">Each built-in tile on the dashboard now carries its own design. In edit mode, tap the palette button on a tile to open the design picker; the choice is saved with that tile, so two clocks can look different. The previews below use sample values; on the head unit every design shows the same live data as today's tile.</p>
     <div class="facts">
-      <span class="fact"><b>22</b> widgets</span>
+      <span class="fact"><b>29</b> widgets</span>
       <span class="fact"><b>16</b> designs each (Standard + 15 new)</span>
       <span class="fact"><b>9</b> layouts × <b>10</b> material looks</span>
-      <span class="fact">Map, Maps window and 3D car get <b>framed</b> versions</span>
+      <span class="fact">Map, Maps window, 3D car and My car get <b>framed</b> versions</span>
     </div>
   </header>
 
@@ -391,6 +391,13 @@ const W = [
   { id: "QUICK_DIAL", name: "Quick dial", cat: "INFO", w: 4, h: 2, f: { icon: "call", title: "Quick dial", value: "Mum", text: true, caption: "4 favourites · tap to call", rows: [{ t: "Mum", d: "Mobile", av: "M" }, { t: "Alex Martin", d: "Mobile", av: "AM" }, { t: "Office", d: "Work", av: "O" }, { t: "Sam", d: "Mobile", av: "S" }], stats: [["Next", "Alex"], ["Then", "Office"]], actions: ["call", "dialer"] } },
   { id: "NOTIFICATIONS", name: "Notifications", cat: "INFO", w: 4, h: 3, f: { icon: "bell", title: "Notifications", value: "3", unit: "new", caption: "Alex: On my way, 10 min", fraction: .3, rows: [{ t: "Alex: On my way, 10 min", d: "14:28" }, { t: "Parcel delivered", d: "13:02" }, { t: "Battery saver on", d: "12:40" }], stats: [["Latest", "14:28"], ["Apps", "3"]], actions: ["trash"] } },
   { id: "MEDIA", name: "Music player", cat: "APPS", w: 5, h: 3, f: { icon: "music", title: "Now playing", value: "Midnight City", text: true, caption: "M83 · Hurry Up, We're Dreaming", fraction: .42, art: true, stats: [["Elapsed", "1:47"], ["Length", "4:03"]], actions: ["prev", "pause", "next"] } },
+  { id: "FILTER_CARE", name: "Particle filter", cat: "VEHICLE", w: 4, h: 3, f: { icon: "sensors", title: "Particle filter", value: "3", unit: "short trips", caption: "Needs a long drive soon", alert: true, fraction: .4, rows: [{ t: "This drive: 4 of 10 min hot and fast", d: "" }, { t: "Last long drive 3 days ago", d: "" }] } },
+  { id: "WARMUP", name: "Engine warm-up", cat: "VEHICLE", w: 3, h: 3, f: { icon: "speed", title: "Warm-up", value: "54", unit: "°C", caption: "Warming up, keep it under 3000 rpm", alert: true, fraction: .6, rows: [{ t: "Running for 6m 12s", d: "" }] } },
+  { id: "BATTERY", name: "Battery", cat: "VEHICLE", w: 3, h: 3, f: { icon: "fuel", title: "Battery", value: "14.1", unit: "V", caption: "Charging normally", fraction: .79, rows: [{ t: "70 Ah battery", d: "" }] } },
+  { id: "MY_CAR", name: "My car", cat: "VEHICLE", w: 4, h: 3, f: { icon: "car", title: "My car", frame: "spec" } },
+  { id: "ECO_DRIVE", name: "Eco driving", cat: "DRIVING", w: 4, h: 3, f: { icon: "trip", title: "Eco driving", value: "84", unit: "/ 100", caption: "Smooth driving", fraction: .84, stats: [["1500–2500 rpm", "72 %"], ["Hard accel / brake", "2 / 1"], ["Fuel for 38.2 km", "2.4 L · 4.51 €"]] } },
+  { id: "BREAK_TIMER", name: "Break reminder", cat: "DRIVING", w: 3, h: 3, f: { icon: "clock", title: "Break", value: "1h 42m", caption: "Break in 18 minutes", fraction: .85, rows: [{ t: "Stop every 2 hours", d: "" }] } },
+  { id: "FUEL_TO_DEST", name: "Fuel to destination", cat: "NAVIGATION", w: 3, h: 3, f: { icon: "fuel", title: "Fuel to destination", value: "212", unit: "km spare", caption: "Enough fuel to get there", fraction: .48, rows: [{ t: "412 km range, 200 km to go", d: "" }] } },
   { id: "AUDIO", name: "Audio", cat: "APPS", w: 3, h: 2, f: { icon: "vol", title: "Audio", value: "65", unit: "%", caption: "Media volume", fraction: .65, stats: [["Output", "Speakers"], ["Bluetooth", "On"]], actions: ["mute", "minus", "plus"] } }
 ];
 const WBY = Object.fromEntries(W.map(w => [w.id, w]));
@@ -534,6 +541,10 @@ function frameContent(kind) {
     <path d="M20 0 L50 120 M140 0 L120 120 M0 25 L200 18" stroke="#fff" stroke-width="5" fill="none"/>
     <path d="M50 120 L62 80 L118 64 L150 20" stroke="#1a73e8" stroke-width="5" fill="none" stroke-linecap="round"/>
     <rect x="8" y="8" width="96" height="22" rx="4" fill="#0f5f36"/><text x="16" y="23" font-size="10" fill="#fff" font-family="Roboto" font-weight="700">↱ 300 m Rue de Rivoli</text></svg>`;
+  if (kind === "spec") return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice"><rect width="200" height="120" fill="#1E2024"/>
+    <text x="12" y="22" font-size="11" fill="#E8EAED" font-family="Roboto" font-weight="700">Citroën C4 Picasso 1.6 THP</text>
+    ${[["Engine", "1.6 THP 156"], ["Gearbox", "EGS6 · 6 gears"], ["Oil", "4.25 L · 5W-30"], ["Tyres", "225/45 R17 · 2.3 / 2.3 bar"], ["Service", "20,000 km / 12 months"]].map(([l, v], i) =>
+      `<text x="12" y="${42 + i * 16}" font-size="9" fill="#9AA0A6" font-family="Roboto">${l}</text><text x="188" y="${42 + i * 16}" font-size="9" fill="#E8EAED" font-family="Roboto" font-weight="700" text-anchor="end">${v}</text>`).join("")}</svg>`;
   return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet"><defs><radialGradient id="flo" cx=".5" cy=".85" r=".6"><stop offset="0" stop-color="#8ab4f833"/><stop offset="1" stop-color="#0000"/></radialGradient>
     <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7dbe2"/><stop offset="1" stop-color="#6b7280"/></linearGradient></defs>
     <rect width="200" height="120" fill="#10141b"/><ellipse cx="100" cy="98" rx="80" ry="14" fill="url(#flo)"/>
