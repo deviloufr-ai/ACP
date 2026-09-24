@@ -280,6 +280,7 @@ object PipAnchor {
     suspend fun track(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
         val status = statusFlow(packageName)
         managed.add(packageName)
+        if (packageName == MAPS_PACKAGE && freshStarted.add(packageName)) forceStop(context, packageName)
         var mem = DockPolicy.Memory()
         var lastResult: String? = null
         while (true) {
@@ -377,6 +378,29 @@ object PipAnchor {
 
 
     private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Apps already stopped once in this process, so a fresh window of ours is the only one. */
+    private val freshStarted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * The first time the tile loads, Maps is stopped outright: the head unit's
+     * own dashboard keeps Maps open in its window and pulls it back to itself,
+     * fighting the tile over it. Stopped first, the window the tile then opens
+     * is the only one. Once per process, so a running navigation is never cut
+     * again after that.
+     */
+    private suspend fun forceStop(context: Context, packageName: String) {
+        val out = runGuarded { DockShell.shell(context, "am force-stop $packageName") }
+            .getOrElse { "failed: ${it.message}" }
+        Log.i(TAG, "stopped $packageName before docking it: ${out.trim().ifEmpty { "ok" }}")
+        parked.remove(packageName)
+        noteFreeform(packageName, false)
+        lastReopenAt.remove(packageName) // open ours straight away
+        delay(FORCE_STOP_SETTLE_MS)
+    }
+
+    /** Gives the system a moment to take the stopped app's windows down before the listing is read. */
+    private const val FORCE_STOP_SETTLE_MS = 500L
 
     /**
      * The user tapped a tile its window should be covering: whatever the
