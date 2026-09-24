@@ -126,6 +126,7 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                 if (state.results.isNotEmpty()) {
                     Label(stringResource(R.string.explore_results))
                     state.results.forEach { r ->
+                        val ok = r.verdict == ProbeVerdict.OK
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(r.candidate.reading.labelRes) + " · " + r.candidate.label,
@@ -133,7 +134,6 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                             )
                             Spacer(Modifier.width(8.dp))
-                            val ok = r.verdict == ProbeVerdict.OK
                             Text(
                                 stringResource(r.verdict.labelRes) + (r.value?.takeIf { ok || r.verdict == ProbeVerdict.IMPLAUSIBLE || r.verdict == ProbeVerdict.UNSTABLE }
                                     ?.let { " (" + String.format(Locale.getDefault(), "%.1f", it) + ")" } ?: ""),
