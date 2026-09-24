@@ -70,6 +70,20 @@ object DockShell {
     }
 
     /**
+     * Moves a floating task into [stackId], a fullscreen stack, at its bottom
+     * (or top): the app then shows full screen instead of in a window, and keeps
+     * running (a navigation or a song goes on), unlike `am stack remove`.
+     */
+    suspend fun moveTask(context: Context, win: FloatingWindow, stackId: Int, toTop: Boolean = false): String {
+        val taskId = win.taskId ?: error("no task id for ${win.packageName}")
+        val cmd = "am stack move-task $taskId $stackId $toTop"
+        val out = shell(context, cmd)
+        if (looksLikeError(out)) error(out.trim().lines().firstOrNull().orEmpty().ifBlank { "move refused" })
+        Log.d(TAG, "${win.mode} ${win.packageName} task $taskId -> stack $stackId via `$cmd`")
+        return "$cmd: ok"
+    }
+
+    /**
      * Moves the window's whole stack onto [displayId]: onto the launcher's
      * hidden display to park it out of sight, back onto the screen (display 0)
      * to dock it again. The window keeps its size, its place and its state;

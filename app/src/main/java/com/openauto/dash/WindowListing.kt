@@ -116,6 +116,26 @@ object WindowListing {
         return found
     }
 
+    /**
+     * The id of a fullscreen stack for ordinary apps on the dashboard's own
+     * display: the one holding the dashboard's task when it is listed, else any
+     * other. A floating task moved there leaves freeform and shows full screen,
+     * still running. Null when the listing has no such stack (the Home stack
+     * never counts: it only takes home activities).
+     */
+    internal fun fullscreenStackId(output: String, selfPackage: String = "com.openauto.dash"): Int? {
+        val blocks = stackBlocks(output)
+        val selfDisplay = blocks.firstOrNull { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+            ?.let { displayId(it) } ?: DEFAULT_DISPLAY
+        val candidates = blocks.filter {
+            windowingMode(it) == "fullscreen" && !it.contains("ActivityType=home") &&
+                (displayId(it) ?: DEFAULT_DISPLAY) == selfDisplay
+        }
+        val block = candidates.firstOrNull { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+            ?: candidates.firstOrNull()
+        return block?.takeWhile { it.isDigit() }?.toIntOrNull()
+    }
+
     /** Android's id for the screen itself (`Display.DEFAULT_DISPLAY`, kept out of the Android types here). */
     const val DEFAULT_DISPLAY = 0
 

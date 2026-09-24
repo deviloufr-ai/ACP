@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.ImageFormat
 import android.hardware.display.DisplayManager
@@ -64,6 +65,9 @@ internal object HiddenDisplay {
      * The display's id, creating it on first use; null when it cannot be made
      * or was given up on, in which case windows are parked in the corner instead.
      */
+    // The destroy-on-removal flag is real but hidden from the SDK, so lint
+    // doesn't know it belongs with the public ones it is combined with.
+    @SuppressLint("WrongConstant")
     @Synchronized
     fun acquire(context: Context): Int? {
         display?.let { return it.display.displayId }
