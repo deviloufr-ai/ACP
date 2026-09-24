@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">Mein Auto</string>
     <string name="car_my_car_title_dialog">Mein Auto</string>
-    <string name="car_settings_explanation">Geben Sie Ihr Auto so genau wie möglich an (Modell, Motor, Version, Baujahr, Getriebe). Die KI füllt die Daten aus; prüfen, bei Bedarf korrigieren, dann speichern. Die Kacheln und der KI-Mechaniker nutzen sie.</string>
+    <string name="car_settings_explanation">Das Auto genau benennen, dann die Daten von der KI ausfüllen lassen. Vor dem Speichern prüfen.</string>
     <string name="car_name">Auto</string>
     <string name="car_fetch">Daten per KI holen</string>
     <string name="car_fetch_ok">Daten ausgefüllt: prüfen, dann Speichern</string>
@@ -168,4 +168,8 @@
         <item quantity="one">%1$d Minute</item>
         <item quantity="other">%1$d Minuten</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Fahrer rechts</string>
+    <string name="car_spec_driver_side_detail">Rechtslenker: Vorlagen legen die wichtigsten Kacheln nach rechts</string>
 </resources>

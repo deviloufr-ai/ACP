@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">Mijn auto</string>
     <string name="car_my_car_title_dialog">Mijn auto</string>
-    <string name="car_settings_explanation">Geef je auto zo precies mogelijk op (model, motor, uitvoering, bouwjaar, versnellingsbak). AI vult de gegevens in; controleer ze, verbeter waar nodig en sla op. De tegels en de AI-monteur gebruiken ze.</string>
+    <string name="car_settings_explanation">Benoem je auto precies en laat de AI de gegevens invullen. Controleer ze voor je opslaat.</string>
     <string name="car_name">Auto</string>
     <string name="car_fetch">Gegevens ophalen met AI</string>
     <string name="car_fetch_ok">Gegevens ingevuld: controleer ze en tik op Opslaan</string>
@@ -168,4 +168,8 @@
         <item quantity="one">%1$d minuut</item>
         <item quantity="other">%1$d minuten</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Bestuurder rechts</string>
+    <string name="car_spec_driver_side_detail">Rechts gestuurd: sjablonen zetten de belangrijkste tegels rechts</string>
 </resources>

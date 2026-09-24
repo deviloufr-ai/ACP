@@ -174,7 +174,34 @@ fun DashboardItem.overlaps(other: DashboardItem): Boolean =
  */
 object DashboardStore {
 
-    const val PAGE_COUNT = 3
+    /**
+     * Dashboards form a cross: three side by side (pages 0-2), and the middle
+     * one also has two above and two below (pages 3-6). New pages were added
+     * after the first three so older saved layouts keep their page numbers.
+     */
+    const val PAGE_COUNT = 7
+
+    /** The pages swiped left/right, in order. */
+    val ROW = listOf(0, 1, 2)
+
+    /** The middle page of [ROW], the only one with pages above and below. */
+    const val CENTER = 1
+
+    /** The pages swiped up/down from [CENTER], top to bottom; [CENTER] sits at [COLUMN_HOME]. */
+    val COLUMN = listOf(3, 4, CENTER, 5, 6)
+    const val COLUMN_HOME = 2
+
+    /** The page's place in the cross, for labels: Home, left of it, two above it... */
+    @StringRes
+    fun nameRes(page: Int): Int = when (page) {
+        CENTER -> R.string.dash_page_home
+        0 -> R.string.dash_page_left
+        2 -> R.string.dash_page_right
+        4 -> R.string.dash_page_above
+        3 -> R.string.dash_page_above2
+        5 -> R.string.dash_page_below
+        else -> R.string.dash_page_below2
+    }
 
     private const val PREFS = "dashboard_layout_prefs"
     private const val KEY_PAGES = "pages"
@@ -204,17 +231,21 @@ object DashboardStore {
      */
     private val retained = HashMap<Int, MutableList<JSONObject>>()
 
-    /** Default layout when nothing is saved yet: map, directions and music on page 1. */
-    private fun defaultPages(): List<List<DashboardItem>> = listOf(
-        autoPlace(
-            listOf(
-                DashboardItem.BuiltinWidget(BuiltinKind.NAVMAP),
-                DashboardItem.BuiltinWidget(BuiltinKind.NAVIGATION, w = 4, h = 3),
-                DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
-            )
-        ),
-        emptyList(),
-        emptyList()
+    /**
+     * Default layout when nothing is saved yet: the Daily template, laid out
+     * for the head unit's 1280x720 screen ([half]: beside a Maps dock). Car
+     * tiles are included so a new user sees where to connect the adapter.
+     */
+    private fun defaultPages(half: Boolean = false): List<List<DashboardItem>> = TemplatePlacer.pages(
+        DashTemplate.DAILY,
+        TemplateScreen.of(
+            pageWidthDp = if (half) 640f else 1280f,
+            pageHeightDp = 576f,
+            obdPaired = true,
+            driverOnRight = CarProfileStore.current.driverOnRight,
+            mapsDocked = half,
+            dockApps = emptyList()
+        )
     )
 
     /**
@@ -231,7 +262,7 @@ object DashboardStore {
 
     fun load(context: Context, variant: String = ""): List<List<DashboardItem>> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = prefs.getString(pagesKey(variant), null) ?: run { retained.clear(); return defaultPages() }
+        val raw = prefs.getString(pagesKey(variant), null) ?: run { retained.clear(); return defaultPages(variant.isNotEmpty()) }
 
         // A corrupt primary value falls back to the last good layout rather
         // than to the defaults; only when both are unreadable does the user
@@ -244,7 +275,7 @@ object DashboardStore {
             ?: run {
                 Log.e(TAG, "Saved layout and its backup are both unreadable; using defaults")
                 retained.clear()
-                return defaultPages()
+                return defaultPages(variant.isNotEmpty())
             }
 
         // Always return exactly PAGE_COUNT pages. Tiles that predate grid

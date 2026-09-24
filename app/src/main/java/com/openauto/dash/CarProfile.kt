@@ -42,6 +42,8 @@ data class CarProfile(
     val consumptionL100: Double? = null,
     val particleFilter: Boolean = false,
     val filterAdditive: Boolean = false,
+    /** Right-hand drive: templates put the main tiles on the right. */
+    val driverOnRight: Boolean = false,
     val oilCapacityL: Double? = null,
     val oilSpec: String = "",
     val serviceKm: Int? = null,
@@ -119,6 +121,7 @@ data class CarProfile(
         put("gearbox", gearbox.name); put("gearbox_name", gearboxName); putOpt("gears", gears)
         putOpt("tank_l", tankL); putOpt("consumption_l100", consumptionL100)
         put("particle_filter", particleFilter); put("filter_additive", filterAdditive)
+        put("driver_on_right", driverOnRight)
         putOpt("oil_capacity_l", oilCapacityL); put("oil_spec", oilSpec)
         putOpt("service_km", serviceKm); putOpt("service_months", serviceMonths); put("timing", timing)
         put("tyre_size", tyreSize); putOpt("tyre_front_bar", tyreFrontBar); putOpt("tyre_rear_bar", tyreRearBar)
@@ -167,6 +170,7 @@ data class CarProfile(
                 gearboxName = o.optString("gearbox_name"), gears = int("gears"),
                 tankL = dbl("tank_l"), consumptionL100 = dbl("consumption_l100"),
                 particleFilter = o.optBoolean("particle_filter"), filterAdditive = o.optBoolean("filter_additive"),
+                driverOnRight = o.optBoolean("driver_on_right"),
                 oilCapacityL = dbl("oil_capacity_l"), oilSpec = o.optString("oil_spec"),
                 serviceKm = int("service_km"), serviceMonths = int("service_months"), timing = o.optString("timing"),
                 tyreSize = o.optString("tyre_size"), tyreFrontBar = dbl("tyre_front_bar"), tyreRearBar = dbl("tyre_rear_bar"),

@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Ecrã dividido com uma app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">A organizar painel %1$d</string>
-    <string name="dash_arranging_hint">Premir continuamente um bloco para o mover, arrastar a pega do canto para redimensionar. Largado sobre outro bloco, troca-os ou afasta-o.</string>
+    <string name="dash_arranging_dashboard">A organizar: %1$s</string>
+    <string name="dash_arranging_hint">Prima um bloco para o mover, arraste o canto para o redimensionar.</string>
     <string name="dash_undo">Anular</string>
     <string name="dash_reset_page">Limpar página</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Atualização disponível – %1$s</string>
+    <string name="dash_update_available">Atualização disponível: %1$s</string>
     <string name="dash_update_downloading">A transferir atualização… %1$d%%</string>
     <string name="dash_update_installing">A iniciar o instalador…</string>
     <string name="dash_menu_check_updates">Procurar atualizações</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Adicionar ao painel</string>
     <string name="dash_add_app">Adicionar app</string>
-    <string name="dash_add_app_window">Adicionar janela de app (no bloco)</string>
-    <string name="dash_add_app_pair">Adicionar par de apps (dividido)</string>
+    <string name="dash_add_app_window">Adicionar uma app numa janela</string>
+    <string name="dash_add_app_pair">Adicionar um par em ecrã dividido</string>
     <string name="dash_add_widget">Adicionar widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Trocar apps esquerda/direita</string>
     <string name="dash_split_with">Ecrã dividido com…</string>
-    <string name="dash_pair_first">Par de apps – primeira app (esquerda)</string>
-    <string name="dash_pair_second">Par de apps – segunda app (direita)</string>
+    <string name="dash_pair_first">Par de apps: primeira app (esquerda)</string>
+    <string name="dash_pair_second">Par de apps: segunda app (direita)</string>
     <string name="dash_enable_split_title">Ativar ecrã dividido</string>
-    <string name="dash_enable_split_body">Esta ROM bloqueia as APIs habituais de ecrã dividido, por isso o Dashwheel usa o do próprio sistema, o mesmo das apps recentes. Ativar uma vez «Dashwheel» em Definições → Acessibilidade para o permitir.</string>
+    <string name="dash_enable_split_body">O Dashwheel usa o ecrã dividido do sistema, o das aplicações recentes. Ative o Dashwheel uma vez em Definições, Acessibilidade.</string>
     <string name="dash_open_settings">Abrir definições</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">App de sistema (avançado)</string>
-    <string name="dash_system_app_body">Instalar o Dashwheel como app de sistema privilegiada para poder integrar a verdadeira app Google Maps — com navegação — no bloco Maps, como os launchers de origem. Com o Magisk, instala sem alterar o sistema (um módulo Magisk, funciona mesmo com /system cheio); caso contrário, usa su ou o ADB root interno (:%1$d). Reiniciar depois para ativar.</string>
+    <string name="dash_system_app_title">Aplicação de sistema</string>
+    <string name="dash_system_app_body">Instala o Dashwheel como aplicação de sistema para que o bloco Maps mostre o verdadeiro Google Maps, com navegação. Precisa de root, ou do ADB interno na porta %1$d. Reinicie depois.</string>
     <string name="dash_root_checking">A verificar root…</string>
-    <string name="dash_root_available">Root (su) disponível ✓ – usará o módulo Magisk se existir</string>
-    <string name="dash_root_missing">Sem su – tentará o ADB root interno (:%1$d).</string>
+    <string name="dash_root_available">Root disponível. Instala-se como módulo Magisk se o Magisk estiver presente.</string>
+    <string name="dash_root_missing">Sem root. Vai tentar o ADB interno na porta %1$d.</string>
     <string name="dash_install_system_app">Instalar como app de sistema</string>
     <string name="dash_reboot_now">Reiniciar agora</string>
     <string name="dash_system_installed">Instalado. Reiniciar para ativar o Maps integrado.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps fixo na metade esquerda, páginas deslizantes à direita</string>
     <string name="dash_layout_maps_right">Mapa à direita</string>
     <string name="dash_layout_maps_right_desc">Google Maps fixo na metade direita, páginas deslizantes à esquerda</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Início</string>
+    <string name="dash_page_left">À esquerda do Início</string>
+    <string name="dash_page_right">À direita do Início</string>
+    <string name="dash_page_above">Acima do Início</string>
+    <string name="dash_page_above2">Dois acima do Início</string>
+    <string name="dash_page_below">Abaixo do Início</string>
+    <string name="dash_page_below2">Dois abaixo do Início</string>
+    <string name="dash_empty_title">Ainda não há nada aqui</string>
+    <string name="dash_empty_body">Adicione um bloco ou escolha um modelo para todas as páginas.</string>
 </resources>

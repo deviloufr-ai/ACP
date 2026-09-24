@@ -149,7 +149,7 @@
     <string name="info_map_clear_route">Route wissen</string>
     <string name="info_map_ready">Klaar om te navigeren</string>
     <string name="info_map_start">Start</string>
-    <string name="info_map_gps_not_ready">GPS niet gereed — Start opent toch Google Maps</string>
+    <string name="info_map_gps_not_ready">GPS niet gereed: Start opent toch Google Maps</string>
     <string name="info_map_no_route">Geen route gevonden</string>
     <string name="info_map_routing_failed">Route berekenen mislukt</string>
     <string name="info_map_routing_failed_detail">Route berekenen mislukt (%1$s)</string>

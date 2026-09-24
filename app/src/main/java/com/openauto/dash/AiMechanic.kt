@@ -427,6 +427,11 @@ object AiMechanic {
         CarVoice.setContext(context)
     }
 
+    /** [DemoMode]'s fault codes (and, when it ends, the real ones back). */
+    internal fun demoWrite(state: State) {
+        _state.value = state
+    }
+
     /** Called when the OBD link comes up: scans without being asked. */
     suspend fun autoScan() {
         ObdBluetoothManager.readTroubleCodes().onSuccess { report(it, announce = true) }
@@ -437,6 +442,11 @@ object AiMechanic {
      * the explanation always lands on the tile.
      */
     fun report(codes: List<String>, announce: Boolean) {
+        // Demo codes are shown as scanned with canned advice, never remembered, asked of Gemini or spoken.
+        if (DemoMode.isOn) {
+            _state.value = DemoMode.mechanicState(codes)
+            return
+        }
         scope.launch {
             mutex.withLock {
                 val context = appContext ?: return@withLock
@@ -454,6 +464,7 @@ object AiMechanic {
 
     /** Codes were cleared from the car: forget them. */
     fun cleared() {
+        if (DemoMode.isOn) return
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.remove(KEY_KNOWN)?.apply()
         _state.value = State(codes = emptyList())
     }
@@ -472,6 +483,7 @@ object AiMechanic {
 
     /** Checks one set of live readings against the warning rules, and rescans once the engine runs. */
     fun watch(data: ObdData) {
+        if (DemoMode.isOn) return
         if (rescan.due(data.rpm, System.currentTimeMillis())) scope.launch { autoScan() }
         val alert = liveWatch.check(data, System.currentTimeMillis()) ?: return
         val context = appContext ?: return

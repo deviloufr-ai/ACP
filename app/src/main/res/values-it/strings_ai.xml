@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Meccanico IA</string>
-    <string name="ai_explanation">Quando l\'adattatore OBD si connette, Dashwheel cerca da solo i codici guasto. Ogni nuovo codice viene spiegato da Google Gemini e letto ad alta voce; i dettagli compaiono nel riquadro Codici guasto. Vengono inviati solo i codici, i dati del motore e il modello dell\'auto.</string>
+    <string name="ai_explanation">Quando l\'adattatore si collega, Dashwheel cerca i codici di errore. Uno nuovo viene spiegato da Gemini e letto a voce. Vengono inviati solo codici, valori del motore e modello.</string>
     <string name="ai_activation_code">Codice di attivazione</string>
     <string name="ai_activation_hint">Sblocca la chiave integrata</string>
     <string name="ai_activate">Attiva</string>
@@ -17,10 +17,10 @@
     <string name="ai_done">Fine</string>
 
     <!-- Settings dialog: test results -->
-    <string name="ai_test_ok">Gemini funziona ✓ (%1$s).</string>
-    <string name="ai_test_activated_ok">Attivato ✓ Gemini funziona ✓ (%1$s).</string>
+    <string name="ai_test_ok">Gemini funziona (%1$s).</string>
+    <string name="ai_test_activated_ok">Attivato. Gemini funziona (%1$s).</string>
     <string name="ai_test_failed">Non ha funzionato: %1$s</string>
-    <string name="ai_test_activated_unreachable">Attivato ✓ Gemini non ancora raggiungibile: %1$s</string>
+    <string name="ai_test_activated_unreachable">Attivato. Gemini non ancora raggiungibile: %1$s</string>
     <string name="ai_test_waiting">Connessione a Google… %1$d s</string>
     <string name="ai_wrong_code">Codice di attivazione errato</string>
     <string name="ai_no_voice">Nessuna voce in %1$s su questo dispositivo: aggiungine una in Impostazioni Android → Sintesi vocale.</string>
@@ -65,8 +65,8 @@
     <string name="ai_ask_replay">Riascolta</string>
 
     <!-- Fault codes tile: status -->
-    <string name="ai_no_codes">Nessun codice guasto ✓</string>
-    <string name="ai_cleared">Cancellati ✓</string>
+    <string name="ai_no_codes">Nessun codice guasto</string>
+    <string name="ai_cleared">Cancellati</string>
     <string name="ai_scan_failed">Lettura non riuscita</string>
     <string name="ai_clear_failed">Cancellazione non riuscita</string>
     <string name="ai_thinking">Chiedo al meccanico IA…</string>

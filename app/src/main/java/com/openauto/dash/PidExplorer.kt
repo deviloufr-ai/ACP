@@ -283,6 +283,7 @@ object PidExplorer {
      */
     suspend fun search(): Result<Unit> = mutex.withLock {
         val context = appContext ?: return Result.failure(IllegalStateException("no context"))
+        if (DemoMode.isOn) return Result.failure(IllegalStateException(context.getString(R.string.explore_not_in_demo)))
         if (ObdBluetoothManager.connectionState.value != ObdConnectionState.CONNECTED) {
             return Result.failure(IllegalStateException(context.getString(R.string.vehicle_obd_not_connected)))
         }
@@ -363,7 +364,7 @@ object PidExplorer {
         pollJob = scope.launch {
             while (isActive) {
                 val list = _state.value.verified
-                if (list.isNotEmpty() && !_state.value.searching &&
+                if (list.isNotEmpty() && !DemoMode.isOn && !_state.value.searching &&
                     ObdBluetoothManager.connectionState.value == ObdConnectionState.CONNECTED
                 ) {
                     val now = System.currentTimeMillis()

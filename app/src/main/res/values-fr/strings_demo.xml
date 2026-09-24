@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Mode démo</string>
+    <string name="demo_menu_stop">Arrêter la démo</string>
+    <string name="demo_badge">Démo · données fictives</string>
+    <string name="demo_stop">Arrêter</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Tournez à droite sur %1$s</string>
+    <string name="demo_nav_left">Tournez à gauche sur %1$s</string>
+    <string name="demo_nav_straight">Continuez sur %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">J\'arrive, à dans 10 minutes</string>
+    <string name="demo_notif_event_title">Rendez-vous chez le dentiste</string>
+    <string name="demo_notif_event_text">Demain à 9 h 30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">La vanne EGR ne laisse pas repasser assez de gaz d\'échappement, sûrement de la suie. Vous pouvez rouler ; faites-la nettoyer bientôt.</string>
+    <string name="demo_p0401_meaning">Débit EGR trop faible</string>
+    <string name="demo_p0401_explanation">Le moteur renvoie une partie des gaz d\'échappement à l\'admission pour moins polluer. Le calculateur en a demandé plus qu\'il n\'en a reçu : sur ce moteur, c\'est presque toujours une vanne encrassée.</string>
+    <string name="demo_p0401_cause_1">Vanne EGR encrassée par la suie</string>
+    <string name="demo_p0401_cause_2">Vanne EGR grippée, ou son moteur défaillant</string>
+    <string name="demo_p0401_cause_3">Refroidisseur ou conduit EGR bouché</string>
+    <string name="demo_p0401_check_first">Déposer la vanne EGR et vérifier l\'encrassement</string>
+    <string name="demo_p0401_repair">Nettoyer la vanne, ou la remplacer si elle grippe</string>
+    <string name="demo_p0401_cost">Environ 80 à 150 € pour un nettoyage, 250 à 400 € pour une vanne neuve</string>
+    <string name="demo_p0401_driving">Oui. Attendez-vous à un ralenti un peu irrégulier et à une consommation en hausse jusqu\'à la réparation.</string>
+</resources>

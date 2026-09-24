@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Modo demo</string>
+    <string name="demo_menu_stop">Detener demo</string>
+    <string name="demo_badge">Demo · datos ficticios</string>
+    <string name="demo_stop">Detener</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Gira a la derecha hacia %1$s</string>
+    <string name="demo_nav_left">Gira a la izquierda hacia %1$s</string>
+    <string name="demo_nav_straight">Continúa por %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">Voy de camino, llego en 10 minutos</string>
+    <string name="demo_notif_event_title">Cita con el dentista</string>
+    <string name="demo_notif_event_text">Mañana a las 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">La válvula EGR no deja volver suficiente gas de escape, seguramente por hollín. Se puede conducir; hazla limpiar pronto.</string>
+    <string name="demo_p0401_meaning">Caudal EGR insuficiente</string>
+    <string name="demo_p0401_explanation">El motor devuelve parte del escape a la admisión para contaminar menos. La centralita pidió más de lo que llegó; en este motor casi siempre es una válvula llena de hollín.</string>
+    <string name="demo_p0401_cause_1">Válvula EGR obstruida por hollín</string>
+    <string name="demo_p0401_cause_2">Válvula EGR agarrotada, o su motor fallando</string>
+    <string name="demo_p0401_cause_3">Enfriador o conducto EGR obstruido</string>
+    <string name="demo_p0401_check_first">Desmontar la válvula EGR y comprobar el hollín</string>
+    <string name="demo_p0401_repair">Limpiar la válvula, o cambiarla si se agarrota</string>
+    <string name="demo_p0401_cost">Unos 80 a 150 € por una limpieza, 250 a 400 € por una válvula nueva</string>
+    <string name="demo_p0401_driving">Sí. Espera un ralentí algo irregular y más consumo hasta repararla.</string>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Demomodus</string>
+    <string name="demo_menu_stop">Demo stoppen</string>
+    <string name="demo_badge">Demo · verzonnen gegevens</string>
+    <string name="demo_stop">Stop</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Sla rechtsaf naar %1$s</string>
+    <string name="demo_nav_left">Sla linksaf naar %1$s</string>
+    <string name="demo_nav_straight">Ga verder op %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">Ik kom eraan, over 10 minuten</string>
+    <string name="demo_notif_event_title">Afspraak tandarts</string>
+    <string name="demo_notif_event_text">Morgen om 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">De EGR-klep laat te weinig uitlaatgas terug, vrijwel zeker door roet. Doorrijden kan; laat hem binnenkort reinigen.</string>
+    <string name="demo_p0401_meaning">EGR-doorstroming te laag</string>
+    <string name="demo_p0401_explanation">De motor voert een deel van het uitlaatgas terug om schoner te rijden. De computer vroeg meer dan er aankwam; bij deze motor is dat bijna altijd een klep vol roet.</string>
+    <string name="demo_p0401_cause_1">EGR-klep verstopt met roet</string>
+    <string name="demo_p0401_cause_2">EGR-klep zit vast, of de stelmotor faalt</string>
+    <string name="demo_p0401_cause_3">EGR-koeler of -leiding verstopt</string>
+    <string name="demo_p0401_check_first">EGR-klep demonteren en op roet controleren</string>
+    <string name="demo_p0401_repair">Klep reinigen, of vervangen als hij blijft hangen</string>
+    <string name="demo_p0401_cost">Ongeveer 80 tot 150 € voor een reiniging, 250 tot 400 € voor een nieuwe klep</string>
+    <string name="demo_p0401_driving">Ja. Reken op een wat onrustig stationair toerental en meer verbruik tot de reparatie.</string>
+</resources>

@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">CARBURANT &amp; AUTONOMIE</string>
     <string name="vehicle_via_canbox">via CANbox</string>
     <string name="vehicle_via_obd">via OBD</string>
-    <string name="vehicle_fuel_no_obd">L\'OBD de cette voiture n\'indique pas le carburant. Apprenez-le plutôt depuis la CANbox — root requis.</string>
+    <string name="vehicle_fuel_no_obd">L\'OBD de cette voiture n\'indique pas le carburant. Apprenez-le plutôt depuis la CANbox : root requis.</string>
     <string name="vehicle_find_fuel_signal">Trouver le signal carburant</string>
     <string name="vehicle_try_obd_fuel_pid">Essayer le PID carburant OBD</string>
     <string name="vehicle_km_to_empty">KM RESTANTS</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">ordinateur de bord</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Réglez le niveau indiqué par la jauge, touchez Capture A — puis fermez et utilisez la voiture normalement. Quelques jours plus tard, quand la jauge a un peu baissé, rouvrez, réglez la nouvelle valeur et touchez Capture B. Capture A est conservée après un redémarrage. Seuls les octets qui ont suivi le carburant sont proposés.</string>
+    <string name="vehicle_finder_help">Réglez le niveau indiqué par la jauge, touchez Capture A, puis fermez et utilisez la voiture normalement. Quelques jours plus tard, quand la jauge a un peu baissé, rouvrez, réglez la nouvelle valeur et touchez Capture B. Capture A est conservée après un redémarrage. Seuls les octets qui ont suivi le carburant sont proposés.</string>
     <string name="vehicle_dash_reads">La jauge indique</string>
     <string name="vehicle_waiting_canbox">En attente des données CANbox… (root requis)</string>
     <string name="vehicle_finder_step_a">Réglez le niveau de carburant affiché, puis touchez Capture A.</string>
-    <string name="vehicle_finder_step_b">A capturé à %1$d%% (enregistré). Vous pouvez fermer et rouler normalement — revenez quand la jauge a baissé de quelques %%, réglez la nouvelle valeur, puis Capture B.</string>
+    <string name="vehicle_finder_step_b">A capturé à %1$d%% (enregistré). Vous pouvez fermer et rouler normalement, revenez quand la jauge a baissé de quelques %%, réglez la nouvelle valeur, puis Capture B.</string>
     <string name="vehicle_finder_same">A et B sont au même niveau. Faites la Capture B à un autre niveau de carburant.</string>
     <string name="vehicle_finder_none">Aucun octet n\'a suivi la variation. Refaites B après une baisse plus importante.</string>
     <string name="vehicle_finder_candidates">Octets qui ont suivi le carburant</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">L\'ordinateur de bord affiche</string>
     <string name="vehicle_range_search">Rechercher</string>
     <string name="vehicle_range_none">Aucun signal ne contient cette valeur. Vérifiez le nombre, laissez l\'ordinateur de bord ouvert quelques secondes et relancez la recherche.</string>
-    <string name="vehicle_range_candidates">Signaux contenant cette valeur — choisissez celui qui suit l\'ordinateur de bord</string>
+    <string name="vehicle_range_candidates">Signaux contenant cette valeur : choisissez celui qui suit l\'ordinateur de bord</string>
     <string name="vehicle_range_frame">trame %1$s · octets %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">fermé</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">MONITEUR CAN — trouver un signal</string>
+    <string name="vehicle_can_monitor_title">MONITEUR CAN : trouver un signal</string>
     <string name="vehicle_can_monitor_help">Portes FERMÉES → Capture A. Puis OUVREZ la porte → Capture B. Seuls les signaux discrets qui diffèrent sont affichés.</string>
     <string name="vehicle_can_a_closed">A ✓ fermé</string>
     <string name="vehicle_can_b_open">B ✓ ouvert</string>
@@ -130,9 +130,9 @@
     <string name="vehicle_dtc_p0017_fix">Probablement chaîne de distribution / tendeur détendus (1.6 THP). Inspectez chaîne et pignons.</string>
     <string name="vehicle_dtc_p0011_title">Calage arbre à cames d\'admission trop avancé (banc 1)</string>
     <string name="vehicle_dtc_p0011_fix">Déphaseur VVT ou électrovanne de commande d\'huile. Vérifiez niveau/qualité d\'huile, électrovanne VVT et usure de la chaîne de distribution.</string>
-    <string name="vehicle_dtc_p0341_title">Capteur de position d\'arbre à cames – plage</string>
+    <string name="vehicle_dtc_p0341_title">Capteur de position d\'arbre à cames : plage</string>
     <string name="vehicle_dtc_p0341_fix">Vérifiez le capteur d\'arbre à cames et son câblage ; contrôlez le calage (chaîne).</string>
-    <string name="vehicle_dtc_p0340_title">Capteur de position d\'arbre à cames – circuit</string>
+    <string name="vehicle_dtc_p0340_title">Capteur de position d\'arbre à cames : circuit</string>
     <string name="vehicle_dtc_p0340_fix">Testez/remplacez le capteur d\'arbre à cames ; inspectez connecteur et câblage.</string>
     <string name="vehicle_dtc_p0299_title">Pression de suralimentation insuffisante</string>
     <string name="vehicle_dtc_p0299_fix">Fréquent sur THP/HDi. Recherchez des fuites de suralimentation (durites/échangeur), vérifiez wastegate/actionneur du turbo et la vanne de décharge.</string>
@@ -140,7 +140,7 @@
     <string name="vehicle_dtc_p0234_fix">Vérifiez un actionneur de wastegate grippé, l\'électrovanne de suralimentation et une géométrie variable (VNT) bloquée (HDi).</string>
     <string name="vehicle_dtc_p0087_title">Pression de rampe carburant trop basse</string>
     <string name="vehicle_dtc_p0087_fix">HDi : vérifiez filtre à carburant, alimentation basse pression, pompe haute pression et régulateur de pression de rampe ; recherchez air/fuites.</string>
-    <string name="vehicle_dtc_p0089_title">Régulateur de pression carburant – performance</string>
+    <string name="vehicle_dtc_p0089_title">Régulateur de pression carburant : performance</string>
     <string name="vehicle_dtc_p0089_fix">Vérifiez le régulateur de pression de rampe/doseur et la pompe ; contrôlez le filtre à carburant.</string>
     <string name="vehicle_dtc_p0093_title">Fuite de carburant importante détectée</string>
     <string name="vehicle_dtc_p0093_fix">HDi : inspectez les retours d\'injecteurs, les tuyaux haute pression et les joints de pompe (fuite de gazole).</string>
@@ -154,7 +154,7 @@
     <string name="vehicle_dtc_p2463_fix">Diesel HDi : faites un long trajet sur voie rapide pour la régénération ; vérifiez le capteur de pression FAP et le niveau d\'additif (Eolys). Peut nécessiter une régénération forcée.</string>
     <string name="vehicle_dtc_p242f_title">Colmatage FAP (accumulation de cendres)</string>
     <string name="vehicle_dtc_p242f_fix">FAP en fin de vie ou colmaté ; peut nécessiter une régénération forcée ou un nettoyage/remplacement du FAP.</string>
-    <string name="vehicle_dtc_p0113_title">Capteur de température d\'air d\'admission – signal haut</string>
+    <string name="vehicle_dtc_p0113_title">Capteur de température d\'air d\'admission : signal haut</string>
     <string name="vehicle_dtc_p0113_fix">Vérifiez le capteur de température d\'air et son câblage/connecteur ; nettoyez ou remplacez le capteur (souvent dans le débitmètre/l\'admission).</string>
     <string name="vehicle_dtc_p0128_title">Liquide de refroid. sous la température du thermostat</string>
     <string name="vehicle_dtc_p0128_fix">Généralement un thermostat bloqué ouvert. Remplacez le thermostat ; vérifiez le niveau de liquide et la sonde.</string>
@@ -173,7 +173,7 @@
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Code inconnu</string>
-    <string name="vehicle_dtc_fallback_title">Défaut %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">Défaut %1$s (%2$s) : %3$s</string>
     <string name="vehicle_dtc_fallback_fix">Aucune description enregistrée. Recherchez des codes associés, vérifiez le capteur/câblage du circuit concerné et cherchez « %1$s Citroën C4 Picasso » pour des conseils propres au modèle.</string>
     <string name="vehicle_dtc_system_powertrain">groupe motopropulseur</string>
     <string name="vehicle_dtc_system_chassis">châssis</string>

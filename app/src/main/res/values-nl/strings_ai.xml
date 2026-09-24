@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI-monteur</string>
-    <string name="ai_explanation">Zodra de OBD-adapter verbinding maakt, zoekt Dashwheel zelf naar foutcodes. Een nieuwe code wordt door Google Gemini uitgelegd en hardop voorgelezen; de details staan op de tegel Foutcodes. Alleen de codes, de motorwaarden en het automodel worden verstuurd.</string>
+    <string name="ai_explanation">Zodra de adapter verbindt, zoekt Dashwheel naar foutcodes. Een nieuwe wordt door Gemini uitgelegd en voorgelezen. Alleen codes, motorwaarden en automodel worden verstuurd.</string>
     <string name="ai_activation_code">Activeringscode</string>
     <string name="ai_activation_hint">Ontgrendelt de ingebouwde sleutel</string>
     <string name="ai_activate">Activeren</string>
@@ -17,10 +17,10 @@
     <string name="ai_done">Klaar</string>
 
     <!-- Settings dialog: test results -->
-    <string name="ai_test_ok">Gemini werkt ✓ (%1$s).</string>
-    <string name="ai_test_activated_ok">Geactiveerd ✓ Gemini werkt ✓ (%1$s).</string>
+    <string name="ai_test_ok">Gemini werkt (%1$s).</string>
+    <string name="ai_test_activated_ok">Geactiveerd. Gemini werkt (%1$s).</string>
     <string name="ai_test_failed">Mislukt: %1$s</string>
-    <string name="ai_test_activated_unreachable">Geactiveerd ✓ Gemini nog niet bereikbaar: %1$s</string>
+    <string name="ai_test_activated_unreachable">Geactiveerd. Gemini nog niet bereikbaar: %1$s</string>
     <string name="ai_test_waiting">Verbinding met Google… %1$d s</string>
     <string name="ai_wrong_code">Onjuiste activeringscode</string>
     <string name="ai_no_voice">Geen stem voor %1$s op dit apparaat: voeg er een toe via Android-instellingen → Tekst-naar-spraak.</string>
@@ -64,8 +64,8 @@
     <string name="ai_ask_replay">Opnieuw beluisteren</string>
 
     <!-- Fault codes tile: status -->
-    <string name="ai_no_codes">Geen foutcodes ✓</string>
-    <string name="ai_cleared">Gewist ✓</string>
+    <string name="ai_no_codes">Geen foutcodes</string>
+    <string name="ai_cleared">Gewist</string>
     <string name="ai_scan_failed">Uitlezen mislukt</string>
     <string name="ai_clear_failed">Wissen mislukt</string>
     <string name="ai_thinking">AI-monteur wordt geraadpleegd…</string>

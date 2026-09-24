@@ -66,7 +66,13 @@ object NavDirections {
     @Volatile
     private var currentKey: String? = null
 
+    /** [DemoMode]'s route (and, when it ends, the real one back). */
+    internal fun demoWrite(state: NavState) {
+        _state.value = state
+    }
+
     fun onPosted(context: Context, sbn: StatusBarNotification) {
+        if (DemoMode.isOn) return
         if (sbn.packageName !in PACKAGES) return
         val parsed = parse(context, sbn) ?: return
         currentKey = sbn.key
@@ -74,6 +80,7 @@ object NavDirections {
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
+        if (DemoMode.isOn) return
         if (sbn.key == currentKey) {
             currentKey = null
             _state.value = NavState()
@@ -81,6 +88,7 @@ object NavDirections {
     }
 
     fun clear() {
+        if (DemoMode.isOn) return
         currentKey = null
         _state.value = NavState()
     }

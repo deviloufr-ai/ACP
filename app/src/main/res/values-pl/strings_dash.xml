@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Podzielony ekran z aplikacją</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">Układanie pulpitu %1$d</string>
-    <string name="dash_arranging_hint">Przytrzymaj kafelek, aby go przesunąć; przeciągnij uchwyt w rogu, aby zmienić rozmiar. Upuszczenie na inny kafelek zamienia je lub go odsuwa.</string>
+    <string name="dash_arranging_dashboard">Układanie: %1$s</string>
+    <string name="dash_arranging_hint">Przytrzymaj kafelek, aby go przesunąć; przeciągnij róg, aby zmienić rozmiar.</string>
     <string name="dash_undo">Cofnij</string>
     <string name="dash_reset_page">Wyczyść stronę</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Dostępna aktualizacja – %1$s</string>
+    <string name="dash_update_available">Dostępna aktualizacja: %1$s</string>
     <string name="dash_update_downloading">Pobieranie aktualizacji… %1$d%%</string>
     <string name="dash_update_installing">Uruchamianie instalatora…</string>
     <string name="dash_menu_check_updates">Sprawdź aktualizacje</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Dodaj do pulpitu</string>
     <string name="dash_add_app">Dodaj aplikację</string>
-    <string name="dash_add_app_window">Dodaj okno aplikacji (w kafelku)</string>
-    <string name="dash_add_app_pair">Dodaj parę aplikacji (podział)</string>
+    <string name="dash_add_app_window">Dodaj aplikację w oknie</string>
+    <string name="dash_add_app_pair">Dodaj parę na podzielonym ekranie</string>
     <string name="dash_add_widget">Dodaj widżet</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Zamień aplikacje lewa/prawa</string>
     <string name="dash_split_with">Podzielony ekran z…</string>
-    <string name="dash_pair_first">Para aplikacji – pierwsza (z lewej)</string>
-    <string name="dash_pair_second">Para aplikacji – druga (z prawej)</string>
+    <string name="dash_pair_first">Para aplikacji: pierwsza (z lewej)</string>
+    <string name="dash_pair_second">Para aplikacji: druga (z prawej)</string>
     <string name="dash_enable_split_title">Włącz podzielony ekran</string>
-    <string name="dash_enable_split_body">Ten ROM blokuje zwykłe API podzielonego ekranu, więc Dashwheel korzysta z systemowego podziału – tego samego co w ostatnich aplikacjach. Aby na to zezwolić, jednorazowo włącz „Dashwheel” w Ustawienia → Ułatwienia dostępu.</string>
+    <string name="dash_enable_split_body">Dashwheel korzysta z systemowego podziału ekranu, tego z ostatnich aplikacji. Włącz raz Dashwheel w Ustawienia, Ułatwienia dostępu.</string>
     <string name="dash_open_settings">Otwórz ustawienia</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">Aplikacja systemowa (zaawansowane)</string>
-    <string name="dash_system_app_body">Zainstaluj Dashwheel jako uprzywilejowaną aplikację systemową, aby osadzić prawdziwą aplikację Google Maps – z nawigacją – w kafelku Maps, jak w fabrycznych launcherach. Z Magiskiem instaluje się bez modyfikacji systemu (moduł Magisk – działa nawet przy pełnym /system); w przeciwnym razie przez su lub wewnętrzne root ADB (:%1$d). Następnie uruchom ponownie, aby aktywować.</string>
+    <string name="dash_system_app_title">Aplikacja systemowa</string>
+    <string name="dash_system_app_body">Instaluje Dashwheel jako aplikację systemową, żeby kafelek Maps mógł pokazywać prawdziwe Google Maps z nawigacją. Wymaga roota albo wewnętrznego ADB na porcie %1$d. Potem uruchom ponownie.</string>
     <string name="dash_root_checking">Sprawdzanie roota…</string>
-    <string name="dash_root_available">Root (su) dostępny ✓ – użyje modułu Magisk, jeśli jest</string>
-    <string name="dash_root_missing">Brak su – próba przez wewnętrzne root ADB (:%1$d).</string>
+    <string name="dash_root_available">Root dostępny. Z Magiskiem instaluje się jako moduł Magisk.</string>
+    <string name="dash_root_missing">Brak roota. Spróbuje wewnętrznego ADB na porcie %1$d.</string>
     <string name="dash_install_system_app">Zainstaluj jako systemową</string>
     <string name="dash_reboot_now">Uruchom ponownie</string>
     <string name="dash_system_installed">Zainstalowano. Uruchom ponownie, aby włączyć wbudowane Maps.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps zadokowane po lewej, strony przesuwane po prawej</string>
     <string name="dash_layout_maps_right">Mapa po prawej</string>
     <string name="dash_layout_maps_right_desc">Google Maps zadokowane po prawej, strony przesuwane po lewej</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Ekran główny</string>
+    <string name="dash_page_left">Na lewo od głównego</string>
+    <string name="dash_page_right">Na prawo od głównego</string>
+    <string name="dash_page_above">Nad głównym</string>
+    <string name="dash_page_above2">Dwa nad głównym</string>
+    <string name="dash_page_below">Pod głównym</string>
+    <string name="dash_page_below2">Dwa pod głównym</string>
+    <string name="dash_empty_title">Tu jeszcze nic nie ma</string>
+    <string name="dash_empty_body">Dodaj kafelek albo wybierz szablon dla wszystkich stron.</string>
 </resources>

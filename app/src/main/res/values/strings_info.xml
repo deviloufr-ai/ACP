@@ -149,7 +149,7 @@
     <string name="info_map_clear_route">Clear route</string>
     <string name="info_map_ready">Ready to navigate</string>
     <string name="info_map_start">Start</string>
-    <string name="info_map_gps_not_ready">GPS not ready — Start still opens Google Maps</string>
+    <string name="info_map_gps_not_ready">GPS not ready: Start still opens Google Maps</string>
     <string name="info_map_no_route">No route found</string>
     <string name="info_map_routing_failed">Routing failed</string>
     <string name="info_map_routing_failed_detail">Routing failed (%1$s)</string>

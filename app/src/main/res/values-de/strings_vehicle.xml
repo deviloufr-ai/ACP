@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">KRAFTSTOFF &amp; REICHWEITE</string>
     <string name="vehicle_via_canbox">über CANbox</string>
     <string name="vehicle_via_obd">über OBD</string>
-    <string name="vehicle_fuel_no_obd">Das OBD dieses Autos meldet keinen Kraftstoffstand. Stattdessen von der CANbox lernen — Root erforderlich.</string>
+    <string name="vehicle_fuel_no_obd">Das OBD dieses Autos meldet keinen Kraftstoffstand. Stattdessen von der CANbox lernen: Root erforderlich.</string>
     <string name="vehicle_find_fuel_signal">Kraftstoffsignal suchen</string>
     <string name="vehicle_try_obd_fuel_pid">OBD-Kraftstoff-PID testen</string>
     <string name="vehicle_km_to_empty">KM BIS LEER</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">Bordcomputer</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Den Stand der Tankanzeige einstellen, Aufnahme A tippen — dann schließen und das Auto normal nutzen. Tage später, wenn die Anzeige etwas gesunken ist, erneut öffnen, den neuen Wert einstellen und Aufnahme B tippen. Aufnahme A bleibt nach Neustarts gespeichert. Nur Bytes, die sich mit dem Kraftstoff bewegt haben, werden angeboten.</string>
+    <string name="vehicle_finder_help">Den Stand der Tankanzeige einstellen, Aufnahme A tippen, dann schließen und das Auto normal nutzen. Tage später, wenn die Anzeige etwas gesunken ist, erneut öffnen, den neuen Wert einstellen und Aufnahme B tippen. Aufnahme A bleibt nach Neustarts gespeichert. Nur Bytes, die sich mit dem Kraftstoff bewegt haben, werden angeboten.</string>
     <string name="vehicle_dash_reads">Anzeige zeigt</string>
     <string name="vehicle_waiting_canbox">Warte auf CANbox-Daten… (Root nötig)</string>
     <string name="vehicle_finder_step_a">Angezeigten Kraftstoffstand einstellen, dann Aufnahme A tippen.</string>
-    <string name="vehicle_finder_step_b">A bei %1$d%% erfasst (gespeichert). Schließen und normal fahren — wiederkommen, wenn die Anzeige um ein paar %% gesunken ist, neuen Wert einstellen, dann Aufnahme B.</string>
+    <string name="vehicle_finder_step_b">A bei %1$d%% erfasst (gespeichert). Schließen und normal fahren, wiederkommen, wenn die Anzeige um ein paar %% gesunken ist, neuen Wert einstellen, dann Aufnahme B.</string>
     <string name="vehicle_finder_same">A und B haben denselben Stand. Aufnahme B bei anderem Kraftstoffstand machen.</string>
     <string name="vehicle_finder_none">Kein Byte ist der Änderung gefolgt. B nach größerem Abfall neu aufnehmen.</string>
     <string name="vehicle_finder_candidates">Bytes, die dem Kraftstoff folgten</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">Bordcomputer zeigt</string>
     <string name="vehicle_range_search">Suchen</string>
     <string name="vehicle_range_none">Kein Signal enthält diesen Wert. Prüfe die Zahl, lass den Bordcomputer ein paar Sekunden offen und suche erneut.</string>
-    <string name="vehicle_range_candidates">Signale mit diesem Wert — wähle das, das dem Bordcomputer folgt</string>
+    <string name="vehicle_range_candidates">Signale mit diesem Wert: wähle das, das dem Bordcomputer folgt</string>
     <string name="vehicle_range_frame">Frame %1$s · Bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">geschlossen</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">CAN-MONITOR — Signal finden</string>
+    <string name="vehicle_can_monitor_title">CAN-MONITOR: Signal finden</string>
     <string name="vehicle_can_monitor_help">Türen ZU → Aufnahme A. Dann Tür ÖFFNEN → Aufnahme B. Nur abweichende diskrete Signale werden angezeigt.</string>
     <string name="vehicle_can_a_closed">A ✓ zu</string>
     <string name="vehicle_can_b_open">B ✓ offen</string>
@@ -130,9 +130,9 @@
     <string name="vehicle_dtc_p0017_fix">Vermutlich gelängte Steuerkette / Spanner (1.6 THP). Kette und Kettenräder prüfen.</string>
     <string name="vehicle_dtc_p0011_title">Einlassnockenwelle zu weit auf früh verstellt (Bank 1)</string>
     <string name="vehicle_dtc_p0011_fix">VVT-Nockenwellenversteller oder Ölsteuerventil. Ölstand/-qualität, VVT-Magnetventil und Steuerkettenverschleiß prüfen.</string>
-    <string name="vehicle_dtc_p0341_title">Nockenwellensensor – Bereich</string>
+    <string name="vehicle_dtc_p0341_title">Nockenwellensensor: Bereich</string>
     <string name="vehicle_dtc_p0341_fix">Nockenwellensensor und Verkabelung prüfen; Steuerzeiten (Kette) kontrollieren.</string>
-    <string name="vehicle_dtc_p0340_title">Nockenwellensensor – Stromkreis</string>
+    <string name="vehicle_dtc_p0340_title">Nockenwellensensor: Stromkreis</string>
     <string name="vehicle_dtc_p0340_fix">Nockenwellensensor testen/ersetzen; Stecker und Verkabelung prüfen.</string>
     <string name="vehicle_dtc_p0299_title">Ladedruck zu niedrig</string>
     <string name="vehicle_dtc_p0299_fix">Häufig bei THP/HDi. Auf Ladeluftlecks (Schläuche/Ladeluftkühler), Wastegate/Turbo-Steller und Schubumluftventil prüfen.</string>
@@ -140,7 +140,7 @@
     <string name="vehicle_dtc_p0234_fix">Klemmenden Wastegate-Steller, Ladedruck-Magnetventil und festsitzende VNT (HDi) prüfen.</string>
     <string name="vehicle_dtc_p0087_title">Kraftstoff-Raildruck zu niedrig</string>
     <string name="vehicle_dtc_p0087_fix">HDi: Kraftstofffilter, Niederdruckversorgung, Hochdruckpumpe und Raildruckregler prüfen; auf Luft/Lecks achten.</string>
-    <string name="vehicle_dtc_p0089_title">Kraftstoffdruckregler – Funktion</string>
+    <string name="vehicle_dtc_p0089_title">Kraftstoffdruckregler: Funktion</string>
     <string name="vehicle_dtc_p0089_fix">Raildruckregler/Zumesseinheit und Pumpe prüfen; Kraftstofffilter kontrollieren.</string>
     <string name="vehicle_dtc_p0093_title">Großes Kraftstoffleck erkannt</string>
     <string name="vehicle_dtc_p0093_fix">HDi: Injektor-Leckölleitung, Hochdruckleitungen und Pumpendichtungen auf Dieselaustritt prüfen.</string>
@@ -154,7 +154,7 @@
     <string name="vehicle_dtc_p2463_fix">HDi-Diesel: längere Autobahnfahrt zur Regeneration; DPF-Drucksensor und Additivstand (Eolys) prüfen. Evtl. Zwangsregeneration nötig.</string>
     <string name="vehicle_dtc_p242f_title">DPF-Verstopfung (Ascheablagerung)</string>
     <string name="vehicle_dtc_p242f_fix">DPF am Lebensende oder verstopft; evtl. Zwangsregeneration oder DPF-Reinigung/-Tausch nötig.</string>
-    <string name="vehicle_dtc_p0113_title">Ansauglufttemperatursensor – Signal hoch</string>
+    <string name="vehicle_dtc_p0113_title">Ansauglufttemperatursensor: Signal hoch</string>
     <string name="vehicle_dtc_p0113_fix">Ansauglufttemperatursensor und Verkabelung/Stecker prüfen; Sensor reinigen oder ersetzen (oft im LMM/Ansaugtrakt).</string>
     <string name="vehicle_dtc_p0128_title">Kühlmittel unter Thermostat-Regeltemperatur</string>
     <string name="vehicle_dtc_p0128_fix">Meist ein offen hängendes Thermostat. Thermostat ersetzen; Kühlmittelstand und Sensor prüfen.</string>
@@ -168,12 +168,12 @@
     <string name="vehicle_dtc_p0172_fix">Auf undichte Einspritzdüsen, zu hohen Kraftstoffdruck, verschmutzten LMM oder defekte Lambdasonde prüfen.</string>
     <string name="vehicle_dtc_p0505_title">Leerlaufregelung</string>
     <string name="vehicle_dtc_p0505_fix">Drosselklappe reinigen; auf Ansauglecks und Funktion des Drosselklappenmotors prüfen.</string>
-    <string name="vehicle_dtc_p2100_title">Drosselklappen-Stellmotor – Stromkreis</string>
+    <string name="vehicle_dtc_p2100_title">Drosselklappen-Stellmotor: Stromkreis</string>
     <string name="vehicle_dtc_p2100_fix">Drosselklappenmotor und Verkabelung prüfen; evtl. Drosselklappe ersetzen.</string>
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Unbekannter Code</string>
-    <string name="vehicle_dtc_fallback_title">Fehler %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">Fehler %1$s (%2$s): %3$s</string>
     <string name="vehicle_dtc_fallback_fix">Keine Beschreibung hinterlegt. Nach zugehörigen Codes suchen, Sensor/Verkabelung des betroffenen Kreises prüfen und nach „%1$s Citroën C4 Picasso“ suchen, um modellspezifische Hinweise zu finden.</string>
     <string name="vehicle_dtc_system_powertrain">Antriebsstrang</string>
     <string name="vehicle_dtc_system_chassis">Fahrwerk</string>

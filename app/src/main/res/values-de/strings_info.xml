@@ -139,7 +139,7 @@
     <string name="info_directions_access_title">Benachrichtigungszugriff erforderlich</string>
     <string name="info_directions_access_hint">Die Route stammt aus der Navigationsbenachrichtigung von Google Maps.</string>
     <string name="info_directions_idle_title">Keine aktive Route</string>
-    <string name="info_directions_idle_hint">Navigation in Google Maps oder Waze starten – die nächste Abbiegung erscheint hier.</string>
+    <string name="info_directions_idle_hint">Navigation in Google Maps oder Waze starten: die nächste Abbiegung erscheint hier.</string>
     <string name="info_directions_open_maps">Google Maps öffnen</string>
     <string name="info_nav_continue">Weiterfahren</string>
 
@@ -149,7 +149,7 @@
     <string name="info_map_clear_route">Route löschen</string>
     <string name="info_map_ready">Bereit zur Navigation</string>
     <string name="info_map_start">Start</string>
-    <string name="info_map_gps_not_ready">GPS nicht bereit – Start öffnet trotzdem Google Maps</string>
+    <string name="info_map_gps_not_ready">GPS nicht bereit: Start öffnet trotzdem Google Maps</string>
     <string name="info_map_no_route">Keine Route gefunden</string>
     <string name="info_map_routing_failed">Routenberechnung fehlgeschlagen</string>
     <string name="info_map_routing_failed_detail">Routenberechnung fehlgeschlagen (%1$s)</string>

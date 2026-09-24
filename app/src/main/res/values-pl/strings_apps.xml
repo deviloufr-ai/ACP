@@ -29,7 +29,7 @@
     <string name="apps_kind_doors">Drzwi</string>
     <string name="apps_kind_doors_blurb">Stan drzwi i bagażnika (MCU)</string>
     <string name="apps_kind_can_mon">Monitor CAN</string>
-    <string name="apps_kind_can_mon_blurb">Surowe ramki CAN (debug)</string>
+    <string name="apps_kind_can_mon_blurb">Surowe ramki CAN, do szukania sygnałów</string>
     <string name="apps_kind_speed_hud">Prędkość</string>
     <string name="apps_kind_speed_hud_blurb">Duża cyfrowa prędkość z OBD lub GPS</string>
     <string name="apps_kind_compass">Kompas</string>
@@ -43,7 +43,7 @@
     <string name="apps_kind_clock">Zegar</string>
     <string name="apps_kind_clock_blurb">Duża godzina i data</string>
     <string name="apps_kind_weather">Pogoda</string>
-    <string name="apps_kind_weather_blurb">Warunki przy aucie (bez konta)</string>
+    <string name="apps_kind_weather_blurb">Pogoda przy samochodzie, bez konta</string>
     <string name="apps_kind_calendar">Kalendarz</string>
     <string name="apps_kind_calendar_blurb">Najbliższe wydarzenia z kalendarza</string>
     <string name="apps_kind_quick_dial">Szybkie wybieranie</string>
@@ -63,7 +63,7 @@
     <string name="apps_save">Zapisz</string>
 
     <!-- Launch bar tile and its editor -->
-    <string name="apps_launch_bar_empty">Pasek aplikacji — dotknij ołówka, aby dodać aplikacje</string>
+    <string name="apps_launch_bar_empty">Pasek aplikacji: dotknij ołówka, aby dodać aplikacje</string>
     <string name="apps_launch_bar_edit">Edytuj pasek aplikacji</string>
     <string name="apps_launch_bar_editor_title">Aplikacje na pasku</string>
     <string name="apps_launch_bar_editor_empty">Brak aplikacji. Dodaj te najczęściej używane.</string>

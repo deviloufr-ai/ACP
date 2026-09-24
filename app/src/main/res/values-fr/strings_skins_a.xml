@@ -58,7 +58,7 @@
 
     <!-- Cockpit skin: app toggles and launch bar -->
     <string name="cockpit_open_app">Ouvrir %1$s</string>
-    <string name="cockpit_launch_bar_empty">BARRE D\'APPLIS — APPUYER SUR LE CRAYON POUR EN AJOUTER</string>
+    <string name="cockpit_launch_bar_empty">BARRE D\'APPLIS : APPUYER SUR LE CRAYON POUR EN AJOUTER</string>
     <string name="cockpit_edit_launch_bar">Modifier la barre d\'applis</string>
 
     <!-- Orbit skin: top bar -->
@@ -110,6 +110,6 @@
     <string name="orbit_fuel_percent">carb. %1$d %%</string>
 
     <!-- Orbit skin: launch bar -->
-    <string name="orbit_launch_bar_empty">Barre d\'applis — appuyez sur le crayon pour en ajouter</string>
+    <string name="orbit_launch_bar_empty">Barre d\'applis : appuyez sur le crayon pour en ajouter</string>
     <string name="orbit_edit_launch_bar">Modifier la barre d\'applis</string>
 </resources>

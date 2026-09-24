@@ -56,16 +56,19 @@ class StartupBriefingTest {
     }
 
     @Test
-    fun weatherComesAfterAGreetingForTheTimeOfDay() {
-        val lines = BriefingLines.compose(BriefingFacts(hour = 8, weather = weather(12.4)))
-        assertEquals(R.string.briefing_morning, lines[0].res)
-        assertEquals(R.plurals.briefing_weather, lines[1].res)
-        assertEquals(12, lines[1].args[0])
-        assertEquals(SpokenLine(R.string.info_wx_overcast, emptyList()), lines[1].args[1])
-        assertEquals(2, lines.size)
-        assertEquals(R.string.briefing_afternoon, BriefingLines.compose(BriefingFacts(hour = 14, weather = weather(12.0)))[0].res)
-        assertEquals(R.string.briefing_evening, BriefingLines.compose(BriefingFacts(hour = 21, weather = weather(12.0)))[0].res)
-        assertEquals(R.string.briefing_evening, BriefingLines.compose(BriefingFacts(hour = 2, weather = weather(12.0)))[0].res)
+    fun aNormalStartIsSilent() {
+        // Mild weather, a full tank and a clean engine: nothing worth interrupting for.
+        val fine = BriefingFacts(hour = 8, weather = weather(12.4), fuel = FuelInfo(80, 700, "CANbox"), faults = emptyList())
+        assertTrue(BriefingLines.compose(fine).isEmpty())
+    }
+
+    @Test
+    fun whatIsSaidComesAfterAGreetingForTheTimeOfDay() {
+        val lines = BriefingLines.compose(BriefingFacts(hour = 8, weather = weather(-2.0)))
+        assertEquals(listOf(R.string.briefing_morning, R.string.briefing_ice), lines.map { it.res })
+        assertEquals(R.string.briefing_afternoon, BriefingLines.compose(BriefingFacts(hour = 14, weather = weather(-2.0)))[0].res)
+        assertEquals(R.string.briefing_evening, BriefingLines.compose(BriefingFacts(hour = 21, weather = weather(-2.0)))[0].res)
+        assertEquals(R.string.briefing_evening, BriefingLines.compose(BriefingFacts(hour = 2, weather = weather(-2.0)))[0].res)
     }
 
     @Test
@@ -75,14 +78,11 @@ class StartupBriefingTest {
         assertTrue(ice(weather(-4.0)))
         assertTrue(ice(weather(5.0, code = 71)))
         assertFalse(ice(weather(4.0)))
-        // Plurals pick by size: "-1 degree", not "-1 degrees".
-        assertEquals(1, BriefingLines.compose(BriefingFacts(hour = 8, weather = weather(-1.0)))[1].quantity)
     }
 
     @Test
-    fun lowFuelGetsItsOwnWarning() {
-        val normal = BriefingLines.compose(BriefingFacts(hour = 8, fuel = FuelInfo(40, 370, "CANbox")))
-        assertEquals(SpokenLine(R.string.briefing_fuel, listOf(370)), normal[1])
+    fun onlyLowFuelIsMentioned() {
+        assertTrue(BriefingLines.compose(BriefingFacts(hour = 8, fuel = FuelInfo(40, 370, "CANbox"))).isEmpty())
         val low = BriefingLines.compose(BriefingFacts(hour = 8, fuel = FuelInfo(12, 110, "CANbox")))
         assertEquals(SpokenLine(R.string.briefing_fuel_low, listOf(110)), low[1])
     }
@@ -90,7 +90,7 @@ class StartupBriefingTest {
     @Test
     fun engineLineFollowsWhatTheScanFound() {
         fun engine(f: BriefingFacts) = BriefingLines.compose(f).drop(1)
-        assertEquals(listOf(SpokenLine(R.string.briefing_no_faults, emptyList())), engine(BriefingFacts(hour = 8, faults = emptyList())))
+        assertTrue(engine(BriefingFacts(hour = 8, faults = emptyList())).isEmpty())
         assertEquals(
             listOf(SpokenLine(R.plurals.briefing_faults, listOf(2), quantity = 2)),
             engine(BriefingFacts(hour = 8, faults = listOf("P0128", "P2002")))

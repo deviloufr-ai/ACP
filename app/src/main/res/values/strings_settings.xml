@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings screen (TopBar.kt): everything set once, behind one menu entry -->
+    <string name="settings_menu">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_car">Car</string>
+    <string name="settings_section_look">Look</string>
+    <string name="settings_section_advanced">Advanced</string>
+    <string name="settings_ai_detail">Explains fault codes and speaks alerts</string>
+    <string name="settings_system_detail">The real Google Maps in the Maps tile. Needs root.</string>
+    <string name="settings_version" translatable="false">Dashwheel v%1$s</string>
+</resources>

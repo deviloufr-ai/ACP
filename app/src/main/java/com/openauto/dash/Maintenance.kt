@@ -246,7 +246,7 @@ object Maintenance {
 
     private fun autoFetch(car: CarProfile, hash: Int) {
         val context = appContext ?: return
-        if (AiSettings.load(context).apiKey.isBlank()) return
+        if (AiSettings.load(context).apiKey.isBlank() || DemoMode.isOn) return
         scope.launch { fetchPlan(car, hash) }
     }
 
@@ -290,7 +290,7 @@ object Maintenance {
 
     /** The drive monitor counted [km] more kilometres. */
     fun drove(km: Double) {
-        if (km <= 0.0) return
+        if (km <= 0.0 || DemoMode.isOn) return
         val odo = _state.value.odometer ?: return
         _state.value = _state.value.copy(odometer = odo.copy(drivenSince = odo.drivenSince + km))
         drivenUnsaved += km

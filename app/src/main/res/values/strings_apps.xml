@@ -29,7 +29,7 @@
     <string name="apps_kind_doors">Doors</string>
     <string name="apps_kind_doors_blurb">Door and boot status from the MCU</string>
     <string name="apps_kind_can_mon">CAN monitor</string>
-    <string name="apps_kind_can_mon_blurb">Raw CAN frames (debug)</string>
+    <string name="apps_kind_can_mon_blurb">Raw CAN frames, for finding signals</string>
     <string name="apps_kind_speed_hud">Speed</string>
     <string name="apps_kind_speed_hud_blurb">Big digital speed from OBD or GPS</string>
     <string name="apps_kind_compass">Compass</string>
@@ -43,7 +43,7 @@
     <string name="apps_kind_clock">Clock</string>
     <string name="apps_kind_clock_blurb">Time and date, large</string>
     <string name="apps_kind_weather">Weather</string>
-    <string name="apps_kind_weather_blurb">Conditions at the car (no account needed)</string>
+    <string name="apps_kind_weather_blurb">Conditions at the car, no account needed</string>
     <string name="apps_kind_calendar">Agenda</string>
     <string name="apps_kind_calendar_blurb">Your next calendar events</string>
     <string name="apps_kind_quick_dial">Quick dial</string>
@@ -63,7 +63,7 @@
     <string name="apps_save">Save</string>
 
     <!-- Launch bar tile and its editor -->
-    <string name="apps_launch_bar_empty">Launch bar — tap the pencil to add apps</string>
+    <string name="apps_launch_bar_empty">Launch bar: tap the pencil to add apps</string>
     <string name="apps_launch_bar_edit">Edit launch bar</string>
     <string name="apps_launch_bar_editor_title">Launch bar apps</string>
     <string name="apps_launch_bar_editor_empty">No apps yet. Add the ones you launch most.</string>

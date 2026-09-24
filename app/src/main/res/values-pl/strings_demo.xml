@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Tryb demo</string>
+    <string name="demo_menu_stop">Zatrzymaj demo</string>
+    <string name="demo_badge">Demo · zmyślone dane</string>
+    <string name="demo_stop">Stop</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Skręć w prawo w %1$s</string>
+    <string name="demo_nav_left">Skręć w lewo w %1$s</string>
+    <string name="demo_nav_straight">Jedź dalej: %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">Już jadę, będę za 10 minut</string>
+    <string name="demo_notif_event_title">Wizyta u dentysty</string>
+    <string name="demo_notif_event_text">Jutro o 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">Zawór EGR przepuszcza za mało spalin, najpewniej przez sadzę. Można jeździć; niedługo oddaj go do czyszczenia.</string>
+    <string name="demo_p0401_meaning">Za mały przepływ EGR</string>
+    <string name="demo_p0401_explanation">Silnik zawraca część spalin do dolotu, żeby mniej zanieczyszczać. Sterownik zażądał więcej, niż dotarło; w tym silniku to prawie zawsze zawór zapchany sadzą.</string>
+    <string name="demo_p0401_cause_1">Zawór EGR zapchany sadzą</string>
+    <string name="demo_p0401_cause_2">Zawór EGR zacięty, albo uszkodzony jego silniczek</string>
+    <string name="demo_p0401_cause_3">Zatkana chłodnica lub przewód EGR</string>
+    <string name="demo_p0401_check_first">Zdemontować zawór EGR i sprawdzić sadzę</string>
+    <string name="demo_p0401_repair">Wyczyścić zawór lub wymienić, jeśli się zacina</string>
+    <string name="demo_p0401_cost">Około 80 do 150 € za czyszczenie, 250 do 400 € za nowy zawór</string>
+    <string name="demo_p0401_driving">Tak. Do naprawy spodziewaj się nieco nierównego biegu jałowego i większego spalania.</string>
+</resources>

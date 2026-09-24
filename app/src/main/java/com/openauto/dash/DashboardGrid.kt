@@ -11,10 +11,12 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,10 +34,13 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +71,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /*
@@ -107,7 +113,9 @@ internal fun DashboardPage(
     canMove: (Int, Int, Int) -> Boolean,
     onAdd: () -> Unit,
     /** Opens the design picker for the built-in tile at this index. */
-    onDesign: (Int) -> Unit = {}
+    onDesign: (Int) -> Unit = {},
+    /** Opens the template chooser (offered by an empty page). */
+    onTemplates: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -250,12 +258,11 @@ internal fun DashboardPage(
             }
         }
 
-        // "+" to add a tile only on an empty page; while arranging, the edit bar
-        // has Add, so the button never sits on top of a tile's corner.
+        // An empty page says so and offers both ways to fill it. Only there:
+        // while arranging, the edit bar has the same two, so nothing ever
+        // sits on top of a tile's corner.
         if (pageItems.isEmpty()) {
-            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
-                AddTile(onClick = onAdd)
-            }
+            EmptyPage(onAdd = onAdd, onTemplates = onTemplates, modifier = Modifier.align(Alignment.Center))
         }
     }
 }
@@ -581,6 +588,46 @@ internal fun TileContent(
             modifier = Modifier.fillMaxSize()
         ) {
             HostedSystemWidget(appWidgetId = item.appWidgetId, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** What an empty dashboard shows: one line, and the two ways to fill it. */
+@Composable
+internal fun EmptyPage(onAdd: () -> Unit, onTemplates: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.dash_empty_title),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.dash_empty_body),
+            color = DashColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = onAdd,
+                colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.dash_add))
+            }
+            OutlinedButton(
+                onClick = onTemplates,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = DashColors.TextPrimary),
+                border = BorderStroke(1.dp, DashColors.Line),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(stringResource(R.string.templates_button))
+            }
         }
     }
 }

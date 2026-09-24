@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI mechanic</string>
-    <string name="ai_explanation">When the OBD adapter connects, Dashwheel checks for fault codes by itself. A new code is explained by Google Gemini and said out loud; the details go on the Fault codes tile. Only the codes, engine readings and car model are sent.</string>
+    <string name="ai_explanation">When the adapter connects, Dashwheel scans for fault codes. A new one is explained by Gemini and spoken. Only the codes, engine readings and car model are sent.</string>
     <string name="ai_activation_code">Activation code</string>
     <string name="ai_activation_hint">Unlocks the built-in key</string>
     <string name="ai_activate">Activate</string>
@@ -17,10 +17,10 @@
     <string name="ai_done">Done</string>
 
     <!-- Settings dialog: test results -->
-    <string name="ai_test_ok">Gemini works ✓ (%1$s).</string>
-    <string name="ai_test_activated_ok">Activated ✓ Gemini works ✓ (%1$s).</string>
+    <string name="ai_test_ok">Gemini works (%1$s).</string>
+    <string name="ai_test_activated_ok">Activated. Gemini works (%1$s).</string>
     <string name="ai_test_failed">Didn\'t work: %1$s</string>
-    <string name="ai_test_activated_unreachable">Activated ✓ Gemini not reachable yet: %1$s</string>
+    <string name="ai_test_activated_unreachable">Activated. Gemini not reachable yet: %1$s</string>
     <string name="ai_test_waiting">Contacting Google… %1$d s</string>
     <string name="ai_wrong_code">Wrong activation code</string>
     <string name="ai_no_voice">No %1$s voice on this unit: add one in Android Settings → Text-to-speech.</string>
@@ -64,8 +64,8 @@
     <string name="ai_ask_replay">Listen again</string>
 
     <!-- Fault codes tile: status -->
-    <string name="ai_no_codes">No fault codes ✓</string>
-    <string name="ai_cleared">Cleared ✓</string>
+    <string name="ai_no_codes">No fault codes</string>
+    <string name="ai_cleared">Cleared</string>
     <string name="ai_scan_failed">Scan failed</string>
     <string name="ai_clear_failed">Clear failed</string>
     <string name="ai_thinking">Asking the AI mechanic…</string>

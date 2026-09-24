@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">BRANDSTOF &amp; ACTIERADIUS</string>
     <string name="vehicle_via_canbox">via CANbox</string>
     <string name="vehicle_via_obd">via OBD</string>
-    <string name="vehicle_fuel_no_obd">De OBD van deze auto geeft geen brandstof door. Leer het in plaats daarvan van de CANbox — root vereist.</string>
+    <string name="vehicle_fuel_no_obd">De OBD van deze auto geeft geen brandstof door. Leer het in plaats daarvan van de CANbox: root vereist.</string>
     <string name="vehicle_find_fuel_signal">Brandstofsignaal zoeken</string>
     <string name="vehicle_try_obd_fuel_pid">OBD-brandstof-PID proberen</string>
     <string name="vehicle_km_to_empty">KM TOT LEEG</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">boordcomputer</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Stel het niveau van je brandstofmeter in en tik op Opname A — sluit dit daarna en gebruik de auto normaal. Dagen later, als de meter wat gezakt is, open je dit opnieuw, stel je de nieuwe waarde in en tik je op Opname B. Opname A blijft bewaard na herstarten. Alleen bytes die met de brandstof meebewogen worden aangeboden.</string>
+    <string name="vehicle_finder_help">Stel het niveau van je brandstofmeter in en tik op Opname A, sluit dit daarna en gebruik de auto normaal. Dagen later, als de meter wat gezakt is, open je dit opnieuw, stel je de nieuwe waarde in en tik je op Opname B. Opname A blijft bewaard na herstarten. Alleen bytes die met de brandstof meebewogen worden aangeboden.</string>
     <string name="vehicle_dash_reads">Meter geeft aan</string>
     <string name="vehicle_waiting_canbox">Wachten op CANbox-gegevens… (root vereist)</string>
     <string name="vehicle_finder_step_a">Stel het getoonde brandstofniveau in en tik op Opname A.</string>
-    <string name="vehicle_finder_step_b">A vastgelegd op %1$d%% (bewaard). Je kunt dit sluiten en normaal rijden — kom terug als de meter een paar %% gezakt is, stel de nieuwe waarde in en dan Opname B.</string>
+    <string name="vehicle_finder_step_b">A vastgelegd op %1$d%% (bewaard). Je kunt dit sluiten en normaal rijden, kom terug als de meter een paar %% gezakt is, stel de nieuwe waarde in en dan Opname B.</string>
     <string name="vehicle_finder_same">A en B staan op hetzelfde niveau. Doe Opname B bij een ander brandstofniveau.</string>
     <string name="vehicle_finder_none">Geen byte volgde de verandering. Neem B opnieuw op na een grotere daling.</string>
     <string name="vehicle_finder_candidates">Bytes die met de brandstof meebewogen</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">Boordcomputer toont</string>
     <string name="vehicle_range_search">Zoeken</string>
     <string name="vehicle_range_none">Geen signaal bevat die waarde. Controleer het getal, laat de boordcomputer een paar seconden open en zoek opnieuw.</string>
-    <string name="vehicle_range_candidates">Signalen met die waarde — kies het signaal dat de boordcomputer volgt</string>
+    <string name="vehicle_range_candidates">Signalen met die waarde: kies het signaal dat de boordcomputer volgt</string>
     <string name="vehicle_range_frame">frame %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">dicht</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">CAN-MONITOR — signaal zoeken</string>
+    <string name="vehicle_can_monitor_title">CAN-MONITOR: signaal zoeken</string>
     <string name="vehicle_can_monitor_help">Portieren DICHT → Opname A. Dan het portier OPENEN → Opname B. Alleen afwijkende discrete signalen worden getoond.</string>
     <string name="vehicle_can_a_closed">A ✓ dicht</string>
     <string name="vehicle_can_b_open">B ✓ open</string>
@@ -130,9 +130,9 @@
     <string name="vehicle_dtc_p0017_fix">Waarschijnlijk uitgerekte distributieketting / spanner (1.6 THP). Inspecteer ketting en tandwielen.</string>
     <string name="vehicle_dtc_p0011_title">Inlaatnokkenas te ver vervroegd (bank 1)</string>
     <string name="vehicle_dtc_p0011_fix">VVT-nokkenasversteller of oliestuurklep. Controleer oliepeil/-kwaliteit, VVT-klep en slijtage van de distributieketting.</string>
-    <string name="vehicle_dtc_p0341_title">Nokkenaspositiesensor – bereik</string>
+    <string name="vehicle_dtc_p0341_title">Nokkenaspositiesensor: bereik</string>
     <string name="vehicle_dtc_p0341_fix">Controleer de nokkenassensor en bedrading; controleer of de afstelling (ketting) klopt.</string>
-    <string name="vehicle_dtc_p0340_title">Nokkenaspositiesensor – circuit</string>
+    <string name="vehicle_dtc_p0340_title">Nokkenaspositiesensor: circuit</string>
     <string name="vehicle_dtc_p0340_fix">Test/vervang de nokkenassensor; inspecteer stekker en bedrading.</string>
     <string name="vehicle_dtc_p0299_title">Turbodruk te laag</string>
     <string name="vehicle_dtc_p0299_fix">Vaak bij THP/HDi. Zoek drukverlies (slangen/intercooler), controleer wastegate/turboactuator en de blow-offklep.</string>
@@ -140,7 +140,7 @@
     <string name="vehicle_dtc_p0234_fix">Controleer op een vastzittende wastegate-actuator, de turbodrukklep en een vastzittende VNT (HDi).</string>
     <string name="vehicle_dtc_p0087_title">Brandstofraildruk te laag</string>
     <string name="vehicle_dtc_p0087_fix">HDi: controleer brandstoffilter, lagedruktoevoer, hogedrukpomp en raildrukregelaar; zoek naar lucht/lekken.</string>
-    <string name="vehicle_dtc_p0089_title">Brandstofdrukregelaar – prestatie</string>
+    <string name="vehicle_dtc_p0089_title">Brandstofdrukregelaar: prestatie</string>
     <string name="vehicle_dtc_p0089_fix">Controleer de raildrukregelaar/doseerklep en pomp; inspecteer het brandstoffilter.</string>
     <string name="vehicle_dtc_p0093_title">Groot brandstoflek gedetecteerd</string>
     <string name="vehicle_dtc_p0093_fix">HDi: inspecteer de lekleidingen van de verstuivers, hogedrukleidingen en pompafdichtingen op diesellekken.</string>
@@ -154,7 +154,7 @@
     <string name="vehicle_dtc_p2463_fix">HDi-diesel: maak een lange snelwegrit voor regeneratie; controleer de roetfilterdruksensor en het additiefniveau (Eolys). Mogelijk geforceerde regeneratie nodig.</string>
     <string name="vehicle_dtc_p242f_title">Roetfilter verstopt (asophoping)</string>
     <string name="vehicle_dtc_p242f_fix">Roetfilter aan het eind van zijn levensduur of verstopt; mogelijk geforceerde regeneratie of reiniging/vervanging nodig.</string>
-    <string name="vehicle_dtc_p0113_title">Inlaatluchttemperatuursensor – signaal hoog</string>
+    <string name="vehicle_dtc_p0113_title">Inlaatluchttemperatuursensor: signaal hoog</string>
     <string name="vehicle_dtc_p0113_fix">Controleer de IAT-sensor en bedrading/stekker; reinig of vervang de sensor (vaak in de luchtmassameter/inlaat).</string>
     <string name="vehicle_dtc_p0128_title">Koelvloeistof onder thermostaattemperatuur</string>
     <string name="vehicle_dtc_p0128_fix">Meestal een open vastzittende thermostaat. Vervang de thermostaat; controleer koelvloeistofpeil en sensor.</string>
@@ -168,12 +168,12 @@
     <string name="vehicle_dtc_p0172_fix">Zoek naar lekkende verstuivers, te hoge brandstofdruk, vuile luchtmassameter of defecte lambdasonde.</string>
     <string name="vehicle_dtc_p0505_title">Stationairregeling</string>
     <string name="vehicle_dtc_p0505_fix">Reinig het gasklephuis; zoek naar inlaatlekken en controleer de werking van de gasklepmotor.</string>
-    <string name="vehicle_dtc_p2100_title">Gasklepactuator – motorcircuit</string>
+    <string name="vehicle_dtc_p2100_title">Gasklepactuator: motorcircuit</string>
     <string name="vehicle_dtc_p2100_fix">Controleer gasklepmotor en bedrading; mogelijk moet het gasklephuis vervangen worden.</string>
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Onbekende code</string>
-    <string name="vehicle_dtc_fallback_title">Storing %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">Storing %1$s (%2$s): %3$s</string>
     <string name="vehicle_dtc_fallback_fix">Geen beschrijving opgeslagen. Zoek naar gerelateerde codes, controleer sensor/bedrading van het betreffende circuit en zoek op \"%1$s Citroën C4 Picasso\" voor modelspecifieke tips.</string>
     <string name="vehicle_dtc_system_powertrain">aandrijflijn</string>
     <string name="vehicle_dtc_system_chassis">chassis</string>

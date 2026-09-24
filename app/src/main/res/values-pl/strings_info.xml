@@ -149,7 +149,7 @@
     <string name="info_map_clear_route">Wyczyść trasę</string>
     <string name="info_map_ready">Gotowe do nawigacji</string>
     <string name="info_map_start">Start</string>
-    <string name="info_map_gps_not_ready">GPS niegotowy – Start i tak otworzy Google Maps</string>
+    <string name="info_map_gps_not_ready">GPS niegotowy: Start i tak otworzy Google Maps</string>
     <string name="info_map_no_route">Nie znaleziono trasy</string>
     <string name="info_map_routing_failed">Nie udało się wyznaczyć trasy</string>
     <string name="info_map_routing_failed_detail">Nie udało się wyznaczyć trasy (%1$s)</string>

@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">My car</string>
     <string name="car_my_car_title_dialog">My car</string>
-    <string name="car_settings_explanation">Name your car as precisely as you can (model, engine, version, year, gearbox). AI fills in the specs; check them, correct any, then save. The tiles and the AI mechanic use them.</string>
+    <string name="car_settings_explanation">Name your car precisely, then let AI fill in the specs. Check them before saving.</string>
     <string name="car_name">Car</string>
     <string name="car_fetch">Fetch specs with AI</string>
     <string name="car_fetch_ok">Specs filled in: check them, then Save</string>
@@ -168,4 +168,8 @@
         <item quantity="one">%1$d minute</item>
         <item quantity="other">%1$d minutes</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Driver on the right</string>
+    <string name="car_spec_driver_side_detail">Right-hand drive: templates put the main tiles on the right</string>
 </resources>

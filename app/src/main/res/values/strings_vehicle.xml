@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">FUEL &amp; RANGE</string>
     <string name="vehicle_via_canbox">via CANbox</string>
     <string name="vehicle_via_obd">via OBD</string>
-    <string name="vehicle_fuel_no_obd">This car\'s OBD doesn\'t report fuel. Learn it from the CANbox instead — needs root.</string>
+    <string name="vehicle_fuel_no_obd">This car\'s OBD doesn\'t report fuel. Learn it from the CANbox instead: needs root.</string>
     <string name="vehicle_find_fuel_signal">Find fuel signal</string>
     <string name="vehicle_try_obd_fuel_pid">Try OBD fuel PID</string>
     <string name="vehicle_km_to_empty">KM TO EMPTY</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">trip computer</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Set the level your dash gauge shows, tap Capture A — then close this and use the car normally. Days later, once the gauge has dropped a little, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.</string>
+    <string name="vehicle_finder_help">Set the level your dash gauge shows, tap Capture A, then close this and use the car normally. Days later, once the gauge has dropped a little, reopen, set the new value and tap Capture B. Capture A is saved across restarts. Only bytes that moved with the fuel are offered.</string>
     <string name="vehicle_dash_reads">Dash reads</string>
     <string name="vehicle_waiting_canbox">Waiting for CANbox data… (needs root)</string>
     <string name="vehicle_finder_step_a">Set the fuel level your dash shows, then tap Capture A.</string>
-    <string name="vehicle_finder_step_b">Captured A at %1$d%% (saved). You can close this and drive normally — come back once the gauge drops a few %%, set the new value, then Capture B.</string>
+    <string name="vehicle_finder_step_b">Captured A at %1$d%% (saved). You can close this and drive normally, come back once the gauge drops a few %%, set the new value, then Capture B.</string>
     <string name="vehicle_finder_same">A and B are at the same level. Capture B at a different fuel level.</string>
     <string name="vehicle_finder_none">No byte tracked the change. Recapture B after a bigger drop.</string>
     <string name="vehicle_finder_candidates">Bytes that moved with the fuel</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">Trip computer shows</string>
     <string name="vehicle_range_search">Search</string>
     <string name="vehicle_range_none">No signal holds that value. Check the number, leave the trip computer open a few seconds and search again.</string>
-    <string name="vehicle_range_candidates">Signals holding that value — pick the one that follows the trip computer</string>
+    <string name="vehicle_range_candidates">Signals holding that value: pick the one that follows the trip computer</string>
     <string name="vehicle_range_frame">frame %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">closed</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">CAN MONITOR — find a signal</string>
+    <string name="vehicle_can_monitor_title">CAN MONITOR: find a signal</string>
     <string name="vehicle_can_monitor_help">Doors CLOSED → Capture A. Then OPEN the door → Capture B. Only discrete signals that differ are shown.</string>
     <string name="vehicle_can_a_closed">A ✓ closed</string>
     <string name="vehicle_can_b_open">B ✓ open</string>
@@ -173,7 +173,7 @@
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Unknown code</string>
-    <string name="vehicle_dtc_fallback_title">%1$s %2$s fault — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">%1$s %2$s fault: %3$s</string>
     <string name="vehicle_dtc_fallback_fix">No stored description. Scan for related codes, check the affected circuit\'s sensor/wiring, and search \"%1$s Citroën C4 Picasso\" for model-specific guidance.</string>
     <string name="vehicle_dtc_system_powertrain">Powertrain</string>
     <string name="vehicle_dtc_system_chassis">Chassis</string>

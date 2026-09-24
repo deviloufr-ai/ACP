@@ -29,7 +29,7 @@
     <string name="apps_kind_doors">Portas</string>
     <string name="apps_kind_doors_blurb">Estado das portas e da mala (MCU)</string>
     <string name="apps_kind_can_mon">Monitor CAN</string>
-    <string name="apps_kind_can_mon_blurb">Tramas CAN em bruto (depuração)</string>
+    <string name="apps_kind_can_mon_blurb">Tramas CAN em bruto, para encontrar sinais</string>
     <string name="apps_kind_speed_hud">Velocidade</string>
     <string name="apps_kind_speed_hud_blurb">Velocidade digital grande por OBD ou GPS</string>
     <string name="apps_kind_compass">Bússola</string>
@@ -43,7 +43,7 @@
     <string name="apps_kind_clock">Relógio</string>
     <string name="apps_kind_clock_blurb">Hora e data, em grande</string>
     <string name="apps_kind_weather">Meteorologia</string>
-    <string name="apps_kind_weather_blurb">Condições no local do carro (sem conta)</string>
+    <string name="apps_kind_weather_blurb">Condições junto ao carro, sem conta</string>
     <string name="apps_kind_calendar">Agenda</string>
     <string name="apps_kind_calendar_blurb">Próximos eventos do calendário</string>
     <string name="apps_kind_quick_dial">Marcação rápida</string>
@@ -63,7 +63,7 @@
     <string name="apps_save">Guardar</string>
 
     <!-- Launch bar tile and its editor -->
-    <string name="apps_launch_bar_empty">Barra de apps — tocar no lápis para adicionar apps</string>
+    <string name="apps_launch_bar_empty">Barra de apps: tocar no lápis para adicionar apps</string>
     <string name="apps_launch_bar_edit">Editar barra de apps</string>
     <string name="apps_launch_bar_editor_title">Apps da barra</string>
     <string name="apps_launch_bar_editor_empty">Ainda sem apps. Adicionar as mais usadas.</string>

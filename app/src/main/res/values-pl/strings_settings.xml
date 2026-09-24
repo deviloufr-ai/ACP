@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings screen (TopBar.kt): everything set once, behind one menu entry -->
+    <string name="settings_menu">Ustawienia</string>
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_section_car">Samochód</string>
+    <string name="settings_section_look">Wygląd</string>
+    <string name="settings_section_advanced">Zaawansowane</string>
+    <string name="settings_ai_detail">Objaśnia kody usterek i mówi ostrzeżenia</string>
+    <string name="settings_system_detail">Prawdziwe Google Maps w kafelku Maps. Wymaga roota.</string>
+</resources>

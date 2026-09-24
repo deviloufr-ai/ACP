@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Écran partagé avec une appli</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">Organisation du tableau de bord %1$d</string>
-    <string name="dash_arranging_hint">Appuyez longuement sur une tuile pour la déplacer, faites glisser la poignée d\'angle pour la redimensionner. Déposée sur une tuile, elle l\'échange ou la décale.</string>
+    <string name="dash_arranging_dashboard">Organisation : %1$s</string>
+    <string name="dash_arranging_hint">Maintenez une tuile pour la déplacer, tirez son coin pour la redimensionner.</string>
     <string name="dash_undo">Annuler</string>
     <string name="dash_reset_page">Vider la page</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Mise à jour disponible — %1$s</string>
+    <string name="dash_update_available">Mise à jour disponible : %1$s</string>
     <string name="dash_update_downloading">Téléchargement de la mise à jour… %1$d %%</string>
     <string name="dash_update_installing">Lancement de l\'installation…</string>
     <string name="dash_menu_check_updates">Rechercher des mises à jour</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Ajouter au tableau de bord</string>
     <string name="dash_add_app">Ajouter une appli</string>
-    <string name="dash_add_app_window">Ajouter une fenêtre d\'appli (dans la tuile)</string>
-    <string name="dash_add_app_pair">Ajouter une paire d\'applis (écran partagé)</string>
+    <string name="dash_add_app_window">Ajouter une app dans une fenêtre</string>
+    <string name="dash_add_app_pair">Ajouter une paire en écran partagé</string>
     <string name="dash_add_widget">Ajouter un widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Inverser les applis gauche/droite</string>
     <string name="dash_split_with">Écran partagé avec…</string>
-    <string name="dash_pair_first">Paire d\'applis — 1re appli (gauche)</string>
-    <string name="dash_pair_second">Paire d\'applis — 2e appli (droite)</string>
+    <string name="dash_pair_first">Paire d\'applis : 1re appli (gauche)</string>
+    <string name="dash_pair_second">Paire d\'applis : 2e appli (droite)</string>
     <string name="dash_enable_split_title">Activer l\'écran partagé</string>
-    <string name="dash_enable_split_body">Cette ROM bloque les API habituelles d\'écran partagé ; Dashwheel utilise donc celui du système, le même que depuis les applis récentes. Activez une fois « Dashwheel » dans Paramètres → Accessibilité pour l\'autoriser.</string>
+    <string name="dash_enable_split_body">Dashwheel utilise l\'écran partagé du système, celui des applications récentes. Activez Dashwheel une fois dans Paramètres, Accessibilité.</string>
     <string name="dash_open_settings">Ouvrir les paramètres</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">Appli système (avancé)</string>
-    <string name="dash_system_app_body">Installez Dashwheel comme appli système privilégiée pour intégrer la vraie appli Google Maps — avec la navigation — dans la tuile Maps, comme les launchers d\'origine. Avec Magisk, l\'installation est systemless (un module Magisk, qui fonctionne même si /system est plein) ; sinon elle passe par su ou par l\'ADB root interne (:%1$d). Redémarrez ensuite pour l\'activer.</string>
+    <string name="dash_system_app_title">Application système</string>
+    <string name="dash_system_app_body">Installe Dashwheel comme application système pour que la tuile Maps affiche le vrai Google Maps, navigation comprise. Nécessite le root, ou l\'ADB interne sur le port %1$d. Redémarrez ensuite.</string>
     <string name="dash_root_checking">Vérification du root…</string>
-    <string name="dash_root_available">Root (su) disponible ✓ — module Magisk utilisé s\'il est présent</string>
-    <string name="dash_root_missing">Pas de su — essai via l\'ADB root interne (:%1$d).</string>
+    <string name="dash_root_available">Root disponible. S\'installe en module Magisk si Magisk est présent.</string>
+    <string name="dash_root_missing">Pas de root. Essai via l\'ADB interne sur le port %1$d.</string>
     <string name="dash_install_system_app">Installer en appli système</string>
     <string name="dash_reboot_now">Redémarrer</string>
     <string name="dash_system_installed">Installé. Redémarrez pour activer Maps intégré.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps ancré sur la moitié gauche, pages à balayer à droite</string>
     <string name="dash_layout_maps_right">Carte à droite</string>
     <string name="dash_layout_maps_right_desc">Google Maps ancré sur la moitié droite, pages à balayer à gauche</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Accueil</string>
+    <string name="dash_page_left">À gauche de l\'accueil</string>
+    <string name="dash_page_right">À droite de l\'accueil</string>
+    <string name="dash_page_above">Au-dessus de l\'accueil</string>
+    <string name="dash_page_above2">Deux au-dessus de l\'accueil</string>
+    <string name="dash_page_below">Sous l\'accueil</string>
+    <string name="dash_page_below2">Deux sous l\'accueil</string>
+    <string name="dash_empty_title">Rien ici pour l\'instant</string>
+    <string name="dash_empty_body">Ajoutez une tuile, ou choisissez un modèle pour toutes les pages.</string>
 </resources>

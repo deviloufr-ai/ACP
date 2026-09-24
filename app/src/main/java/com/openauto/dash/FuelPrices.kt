@@ -140,7 +140,7 @@ object FuelPriceRepo {
     private const val REFRESH_MS = 30 * 60_000L
     private const val MOVE_DEG = 0.03   // ~3 km: the neighbourhood has changed
 
-    /** Made-up stations (a demo), and null to go back to the real ones. */
+    /** [DemoMode]'s stations (and, when it ends, the real ones back). */
     internal fun demoWrite(stations: List<FuelStation>?, error: String?) {
         _stations.value = stations
         _error.value = error
@@ -148,6 +148,7 @@ object FuelPriceRepo {
 
     /** Fetches when the list is stale, the car has moved or the grade changed; cheap to call often. */
     suspend fun refresh(lat: Double, lng: Double, grade: FuelGrade, force: Boolean = false) {
+        if (DemoMode.isOn) return
         val now = System.currentTimeMillis()
         val moved = abs(lat - lastLat) > MOVE_DEG || abs(lng - lastLng) > MOVE_DEG
         if (!force && !moved && grade == lastGrade && now - lastFetch < REFRESH_MS) return

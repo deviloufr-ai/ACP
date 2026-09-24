@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Demo mode</string>
+    <string name="demo_menu_stop">Stop demo</string>
+    <string name="demo_badge">Demo · made-up data</string>
+    <string name="demo_stop">Stop</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Turn right onto %1$s</string>
+    <string name="demo_nav_left">Turn left onto %1$s</string>
+    <string name="demo_nav_straight">Continue onto %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">On my way, see you in 10 minutes</string>
+    <string name="demo_notif_event_title">Dentist appointment</string>
+    <string name="demo_notif_event_text">Tomorrow at 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">The EGR valve isn\'t letting enough exhaust gas back in, most likely soot. Fine to drive; have it cleaned soon.</string>
+    <string name="demo_p0401_meaning">EGR flow too low</string>
+    <string name="demo_p0401_explanation">The engine sends some exhaust back to the intake to cut emissions. The computer asked for more than it got, which on this engine usually means a valve clogged with soot.</string>
+    <string name="demo_p0401_cause_1">EGR valve clogged with soot</string>
+    <string name="demo_p0401_cause_2">EGR valve stuck, or its motor failing</string>
+    <string name="demo_p0401_cause_3">Blocked EGR cooler or pipe</string>
+    <string name="demo_p0401_check_first">Take the EGR valve off and look for soot</string>
+    <string name="demo_p0401_repair">Clean the valve, or replace it if it sticks</string>
+    <string name="demo_p0401_cost">About 80 to 150 € for a cleaning, 250 to 400 € for a new valve</string>
+    <string name="demo_p0401_driving">Yes. Expect a slightly rough idle and higher fuel use until it\'s fixed.</string>
+</resources>

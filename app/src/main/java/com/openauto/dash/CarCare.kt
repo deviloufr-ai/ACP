@@ -272,7 +272,13 @@ object CarCare {
         )
     }
 
+    /** [DemoMode]'s drive stats, never saved (and, when it ends, the real ones back). */
+    internal fun demoWrite(state: CareState) {
+        _state.value = state
+    }
+
     fun watch(data: ObdData) {
+        if (DemoMode.isOn) return
         val now = System.currentTimeMillis()
         val before = _state.value
         val (next, events) = CareRules.step(before, data, now, CarProfileStore.current)

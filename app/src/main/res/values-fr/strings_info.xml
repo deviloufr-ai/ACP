@@ -149,7 +149,7 @@
     <string name="info_map_clear_route">Effacer l\'itinéraire</string>
     <string name="info_map_ready">Prêt pour la navigation</string>
     <string name="info_map_start">Démarrer</string>
-    <string name="info_map_gps_not_ready">GPS pas prêt — Démarrer ouvre quand même Google Maps</string>
+    <string name="info_map_gps_not_ready">GPS pas prêt : Démarrer ouvre quand même Google Maps</string>
     <string name="info_map_no_route">Aucun itinéraire trouvé</string>
     <string name="info_map_routing_failed">Échec du calcul d\'itinéraire</string>
     <string name="info_map_routing_failed_detail">Échec du calcul d\'itinéraire (%1$s)</string>

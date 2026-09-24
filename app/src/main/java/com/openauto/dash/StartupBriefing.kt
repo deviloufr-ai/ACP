@@ -23,7 +23,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** An appointment worth mentioning: its title and start time, already formatted. */
@@ -51,23 +50,22 @@ internal object BriefingLines {
     const val LOW_FUEL_PCT = 15
     const val ICE_BELOW_C = 3
 
-    /** In speaking order; empty when there's nothing worth saying beyond hello. */
+    /**
+     * In speaking order; empty, so the start stays silent, unless something
+     * needs saying: ice, low fuel, a fault, an appointment coming up. Fine
+     * weather, a full tank and a clean engine go without saying.
+     */
     fun compose(f: BriefingFacts): List<SpokenLine> {
         val body = buildList {
             f.weather?.let { w ->
-                val t = w.tempC.roundToInt()
-                // The condition is a resource too, resolved in the voice's language.
-                add(SpokenLine(R.plurals.briefing_weather, listOf(t, SpokenLine(w.conditionRes, emptyList())), quantity = abs(t)))
-                if (t <= ICE_BELOW_C || w.code in FREEZING_CODES) add(SpokenLine(R.string.briefing_ice, emptyList()))
+                if (w.tempC.roundToInt() <= ICE_BELOW_C || w.code in FREEZING_CODES) add(SpokenLine(R.string.briefing_ice, emptyList()))
             }
             f.fuel?.let {
-                val res = if (it.percent <= LOW_FUEL_PCT) R.string.briefing_fuel_low else R.string.briefing_fuel
-                add(SpokenLine(res, listOf(it.rangeKm)))
+                if (it.percent <= LOW_FUEL_PCT) add(SpokenLine(R.string.briefing_fuel_low, listOf(it.rangeKm)))
             }
             f.faults?.let { codes ->
                 when {
-                    codes.isEmpty() -> add(SpokenLine(R.string.briefing_no_faults, emptyList()))
-                    f.faultsJustSaid -> Unit
+                    codes.isEmpty() || f.faultsJustSaid -> Unit
                     f.faultSummary != null -> add(SpokenLine(R.string.briefing_verbatim, listOf(f.faultSummary)))
                     else -> add(SpokenLine(R.plurals.briefing_faults, listOf(codes.size), quantity = codes.size))
                 }
@@ -113,10 +111,10 @@ internal object CarStart {
 }
 
 /**
- * A few spoken sentences when the car starts: weather, fuel range, engine
- * health and the next appointment. Built from what the dashboard already
- * knows, with no AI call, so it's quick, works offline, and nothing about the
- * driver's day is sent anywhere.
+ * A few spoken sentences when the car starts, and only when something needs
+ * saying: ice, low fuel, engine faults, an appointment in the next two hours.
+ * Built from what the dashboard already knows, with no AI call, so it's
+ * quick, works offline, and nothing about the driver's day is sent anywhere.
  *
  * "The car starts" means the unit was off or asleep for [CarStart.OFF_GAP_MS]. A
  * heartbeat saved every [TICK_MS] stops while the unit is off or in deep
@@ -131,7 +129,7 @@ object StartupBriefing {
     private const val SETTLE_MS = 12_000L
     // A scan finished this recently counts as this start's.
     private const val FRESH_SCAN_MS = 90_000L
-    private const val EVENT_WINDOW_MS = 12 * 3_600_000L
+    private const val EVENT_WINDOW_MS = 2 * 3_600_000L
 
     private const val PREFS = "startup_briefing"
 

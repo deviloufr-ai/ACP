@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Gesplitst scherm met een app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">Dashboard %1$d indelen</string>
-    <string name="dash_arranging_hint">Houd een tegel ingedrukt om hem te verplaatsen, sleep de hoekgreep om het formaat te wijzigen. Neerzetten op een tegel wisselt of verschuift die.</string>
+    <string name="dash_arranging_dashboard">%1$s indelen</string>
+    <string name="dash_arranging_hint">Houd een tegel vast om te verplaatsen, sleep de hoek om te vergroten.</string>
     <string name="dash_undo">Ongedaan maken</string>
     <string name="dash_reset_page">Pagina wissen</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Update beschikbaar – %1$s</string>
+    <string name="dash_update_available">Update beschikbaar: %1$s</string>
     <string name="dash_update_downloading">Update downloaden… %1$d%%</string>
     <string name="dash_update_installing">Installatie starten…</string>
     <string name="dash_menu_check_updates">Zoeken naar updates</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Toevoegen aan dashboard</string>
     <string name="dash_add_app">App toevoegen</string>
-    <string name="dash_add_app_window">App-venster toevoegen (draait in de tegel)</string>
-    <string name="dash_add_app_pair">App-paar toevoegen (gesplitst)</string>
+    <string name="dash_add_app_window">App in een venster toevoegen</string>
+    <string name="dash_add_app_pair">Gesplitst app-paar toevoegen</string>
     <string name="dash_add_widget">Widget toevoegen</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Gesplitste apps links/rechts wisselen</string>
     <string name="dash_split_with">Gesplitst scherm met…</string>
-    <string name="dash_pair_first">App-paar – eerste app (links)</string>
-    <string name="dash_pair_second">App-paar – tweede app (rechts)</string>
+    <string name="dash_pair_first">App-paar: eerste app (links)</string>
+    <string name="dash_pair_second">App-paar: tweede app (rechts)</string>
     <string name="dash_enable_split_title">Gesplitst scherm inschakelen</string>
-    <string name="dash_enable_split_body">Deze ROM blokkeert de gebruikelijke API\'s voor gesplitst scherm, dus gebruikt Dashwheel de eigen splitsing van het systeem, dezelfde als bij recente apps. Zet eenmalig ‘Dashwheel’ aan onder Instellingen → Toegankelijkheid om dit toe te staan.</string>
+    <string name="dash_enable_split_body">Dashwheel gebruikt het gesplitste scherm van het systeem, dat van recente apps. Zet Dashwheel eenmalig aan onder Instellingen, Toegankelijkheid.</string>
     <string name="dash_open_settings">Instellingen openen</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">Systeem-app (geavanceerd)</string>
-    <string name="dash_system_app_body">Installeer Dashwheel als geprivilegieerde systeem-app, zodat het de echte Google Maps-app – met navigatie – in de Maps-tegel kan insluiten, zoals fabriekslaunchers. Met Magisk gebeurt dat systemless (een Magisk-module – werkt ook als /system vol is); anders via su of de interne root-ADB (:%1$d). Start daarna opnieuw op om het te activeren.</string>
+    <string name="dash_system_app_title">Systeem-app</string>
+    <string name="dash_system_app_body">Installeert Dashwheel als systeem-app zodat de Maps-tegel de echte Google Maps kan tonen, met navigatie. Vereist root, of de interne ADB op poort %1$d. Daarna opnieuw opstarten.</string>
     <string name="dash_root_checking">Root controleren…</string>
-    <string name="dash_root_available">Root (su) beschikbaar ✓ – gebruikt Magisk-module indien aanwezig</string>
-    <string name="dash_root_missing">Geen su – probeert interne root-ADB (:%1$d).</string>
+    <string name="dash_root_available">Root beschikbaar. Installeert als Magisk-module wanneer Magisk aanwezig is.</string>
+    <string name="dash_root_missing">Geen root. Probeert de interne ADB op poort %1$d.</string>
     <string name="dash_install_system_app">Installeren als systeem-app</string>
     <string name="dash_reboot_now">Nu herstarten</string>
     <string name="dash_system_installed">Geïnstalleerd. Herstart om ingesloten Maps te activeren.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps vast op de linkerhelft, pagina\'s vegen rechts</string>
     <string name="dash_layout_maps_right">Kaart rechts</string>
     <string name="dash_layout_maps_right_desc">Google Maps vast op de rechterhelft, pagina\'s vegen links</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Start</string>
+    <string name="dash_page_left">Links van Start</string>
+    <string name="dash_page_right">Rechts van Start</string>
+    <string name="dash_page_above">Boven Start</string>
+    <string name="dash_page_above2">Twee boven Start</string>
+    <string name="dash_page_below">Onder Start</string>
+    <string name="dash_page_below2">Twee onder Start</string>
+    <string name="dash_empty_title">Hier staat nog niets</string>
+    <string name="dash_empty_body">Voeg een tegel toe of kies een sjabloon voor alle pagina\'s.</string>
 </resources>

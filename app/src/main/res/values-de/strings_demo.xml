@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Demomodus</string>
+    <string name="demo_menu_stop">Demo beenden</string>
+    <string name="demo_badge">Demo · erfundene Daten</string>
+    <string name="demo_stop">Beenden</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Rechts abbiegen auf %1$s</string>
+    <string name="demo_nav_left">Links abbiegen auf %1$s</string>
+    <string name="demo_nav_straight">Weiter auf %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">Bin unterwegs, in 10 Minuten da</string>
+    <string name="demo_notif_event_title">Zahnarzttermin</string>
+    <string name="demo_notif_event_text">Morgen um 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">Das AGR-Ventil lässt zu wenig Abgas zurück, meist wegen Ruß. Weiterfahren ist in Ordnung; bald reinigen lassen.</string>
+    <string name="demo_p0401_meaning">AGR-Durchfluss zu gering</string>
+    <string name="demo_p0401_explanation">Der Motor führt einen Teil des Abgases zurück, um Schadstoffe zu senken. Das Steuergerät hat mehr angefordert, als angekommen ist; bei diesem Motor ist das fast immer ein verrußtes Ventil.</string>
+    <string name="demo_p0401_cause_1">AGR-Ventil verrußt</string>
+    <string name="demo_p0401_cause_2">AGR-Ventil klemmt, oder sein Stellmotor fällt aus</string>
+    <string name="demo_p0401_cause_3">AGR-Kühler oder -Leitung verstopft</string>
+    <string name="demo_p0401_check_first">AGR-Ventil ausbauen und auf Ruß prüfen</string>
+    <string name="demo_p0401_repair">Ventil reinigen oder ersetzen, wenn es klemmt</string>
+    <string name="demo_p0401_cost">Etwa 80 bis 150 € für eine Reinigung, 250 bis 400 € für ein neues Ventil</string>
+    <string name="demo_p0401_driving">Ja. Bis zur Reparatur etwas unrunder Leerlauf und höherer Verbrauch.</string>
+</resources>

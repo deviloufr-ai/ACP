@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">COMBUSTIBLE Y AUTONOMÍA</string>
     <string name="vehicle_via_canbox">vía CANbox</string>
     <string name="vehicle_via_obd">vía OBD</string>
-    <string name="vehicle_fuel_no_obd">El OBD de este coche no informa del combustible. Apréndelo desde la CANbox — requiere root.</string>
+    <string name="vehicle_fuel_no_obd">El OBD de este coche no informa del combustible. Apréndelo desde la CANbox: requiere root.</string>
     <string name="vehicle_find_fuel_signal">Buscar señal de combustible</string>
     <string name="vehicle_try_obd_fuel_pid">Probar PID de combustible OBD</string>
     <string name="vehicle_km_to_empty">KM RESTANTES</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">ordenador de a bordo</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Ajusta el nivel que marca el indicador y toca Captura A — luego cierra y usa el coche con normalidad. Días después, cuando el indicador haya bajado un poco, vuelve a abrir, ajusta el nuevo valor y toca Captura B. La Captura A se guarda aunque se reinicie. Solo se ofrecen los bytes que variaron con el combustible.</string>
+    <string name="vehicle_finder_help">Ajusta el nivel que marca el indicador y toca Captura A, luego cierra y usa el coche con normalidad. Días después, cuando el indicador haya bajado un poco, vuelve a abrir, ajusta el nuevo valor y toca Captura B. La Captura A se guarda aunque se reinicie. Solo se ofrecen los bytes que variaron con el combustible.</string>
     <string name="vehicle_dash_reads">El indicador marca</string>
     <string name="vehicle_waiting_canbox">Esperando datos de la CANbox… (requiere root)</string>
     <string name="vehicle_finder_step_a">Ajusta el nivel de combustible que marca el cuadro y toca Captura A.</string>
-    <string name="vehicle_finder_step_b">A capturada al %1$d%% (guardada). Puedes cerrar y conducir con normalidad — vuelve cuando el indicador baje unos %%, ajusta el nuevo valor y luego Captura B.</string>
+    <string name="vehicle_finder_step_b">A capturada al %1$d%% (guardada). Puedes cerrar y conducir con normalidad, vuelve cuando el indicador baje unos %%, ajusta el nuevo valor y luego Captura B.</string>
     <string name="vehicle_finder_same">A y B están al mismo nivel. Haz la Captura B con otro nivel de combustible.</string>
     <string name="vehicle_finder_none">Ningún byte siguió el cambio. Repite B tras una bajada mayor.</string>
     <string name="vehicle_finder_candidates">Bytes que variaron con el combustible</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">El ordenador de a bordo muestra</string>
     <string name="vehicle_range_search">Buscar</string>
     <string name="vehicle_range_none">Ninguna señal tiene ese valor. Revisa el número, deja abierto el ordenador de a bordo unos segundos y vuelve a buscar.</string>
-    <string name="vehicle_range_candidates">Señales con ese valor — elige la que sigue al ordenador de a bordo</string>
+    <string name="vehicle_range_candidates">Señales con ese valor: elige la que sigue al ordenador de a bordo</string>
     <string name="vehicle_range_frame">trama %1$s · bytes %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">cerrado</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">MONITOR CAN — buscar una señal</string>
+    <string name="vehicle_can_monitor_title">MONITOR CAN: buscar una señal</string>
     <string name="vehicle_can_monitor_help">Puertas CERRADAS → Captura A. Luego ABRE la puerta → Captura B. Solo se muestran las señales discretas que cambian.</string>
     <string name="vehicle_can_a_closed">A ✓ cerrado</string>
     <string name="vehicle_can_b_open">B ✓ abierto</string>
@@ -173,7 +173,7 @@
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Código desconocido</string>
-    <string name="vehicle_dtc_fallback_title">Avería de %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">Avería de %1$s (%2$s): %3$s</string>
     <string name="vehicle_dtc_fallback_fix">Sin descripción guardada. Busca códigos relacionados, revisa el sensor/cableado del circuito afectado y busca «%1$s Citroën C4 Picasso» para indicaciones del modelo.</string>
     <string name="vehicle_dtc_system_powertrain">tren motriz</string>
     <string name="vehicle_dtc_system_chassis">chasis</string>

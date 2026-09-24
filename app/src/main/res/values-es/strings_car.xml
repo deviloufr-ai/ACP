@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">Mi coche</string>
     <string name="car_my_car_title_dialog">Mi coche</string>
-    <string name="car_settings_explanation">Indica tu coche con la mayor precisión posible (modelo, motor, versión, año, cambio). La IA rellena la ficha; revísala, corrige lo necesario y guarda. Las tarjetas y el Mecánico IA la usan.</string>
+    <string name="car_settings_explanation">Nombra tu coche con precisión y deja que la IA rellene las características. Revísalas antes de guardar.</string>
     <string name="car_name">Coche</string>
     <string name="car_fetch">Obtener ficha con IA</string>
     <string name="car_fetch_ok">Ficha rellenada: revísala y pulsa Guardar</string>
@@ -170,4 +170,8 @@
         <item quantity="many">%1$d minutos</item>
         <item quantity="other">%1$d minutos</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Conductor a la derecha</string>
+    <string name="car_spec_driver_side_detail">Volante a la derecha: las plantillas ponen las tarjetas principales a la derecha</string>
 </resources>

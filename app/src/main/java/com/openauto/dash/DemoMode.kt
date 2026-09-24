@@ -1,0 +1,510 @@
+package com.openauto.dash
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
+import android.location.Location
+import android.location.LocationManager
+import android.os.SystemClock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+/**
+ * Demo mode: a made-up drive through Paris that feeds every live source the
+ * tiles read (OBD readings and fault codes, GPS and the trip computer, g-force,
+ * CANbox fuel / range / doors, weather, turn-by-turn, music, notifications and
+ * the car-care stats), so the whole dashboard can be shown off parked and
+ * without an adapter.
+ *
+ * Meanwhile the real sources are held back (each checks [isOn]) so they don't
+ * fight the fake values, nothing is saved and nothing is spoken; stopping puts
+ * back what they showed before. It lives in memory only: a restart is always
+ * back on real data.
+ */
+object DemoMode {
+
+    private val _active = MutableStateFlow(false)
+    val active: StateFlow<Boolean> = _active.asStateFlow()
+    val isOn: Boolean get() = _active.value
+
+    /** The fake music player's track, shown in place of the real media session. */
+    private val _media = MutableStateFlow(MediaState())
+    val media: StateFlow<MediaState> = _media.asStateFlow()
+
+    private const val TICK_MS = 250L
+    /** Place de la Concorde: where the fake drive sets off. */
+    private const val START_LAT = 48.8656
+    private const val START_LNG = 2.3212
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var job: Job? = null
+    private var before: Snapshot? = null
+    /** What a fault-code scan finds; Clear empties it. */
+    private var codes = listOf("P0401")
+    /** The mechanic's advice on [codes], built when the demo starts. */
+    private var diagnosis: Diagnosis? = null
+
+    fun toggle(context: Context) = if (isOn) stop() else start(context)
+
+    fun start(context: Context) {
+        if (isOn) return
+        val app = context.applicationContext
+        before = Snapshot.take()
+        codes = listOf("P0401")
+        diagnosis = demoDiagnosis(app)
+        player.reset()
+        _active.value = true
+        FuelPriceRepo.demoWrite(DEMO_STATIONS, null)
+        val sim = Simulation(System.currentTimeMillis())
+        job = scope.launch {
+            var tick = 0
+            while (isActive) {
+                sim.step(app, System.currentTimeMillis(), gps = tick % 4 == 0)
+                player.tick()
+                _media.value = player.state()
+                tick++
+                delay(TICK_MS)
+            }
+        }
+    }
+
+    fun stop() {
+        if (!isOn) return
+        job?.cancel()
+        job = null
+        before?.restore()
+        before = null
+        _media.value = MediaState()
+        _active.value = false
+    }
+
+    /** The fault-code tile's state for [codes]: the advice comes with them, as after a real scan. */
+    internal fun mechanicState(codes: List<String>) =
+        AiMechanic.State(codes = codes, diagnosis = diagnosis?.takeIf { codes.isNotEmpty() })
+
+    /**
+     * The mechanic's advice on the demo's P0401 (EGR flow too low, a classic
+     * on this diesel), in the mechanic's language like real advice, so the
+     * tile shows what a scan leads to instead of a bare code.
+     */
+    private fun demoDiagnosis(context: Context): Diagnosis {
+        val r = AiSettings.load(context).language.resources(context)
+        return Diagnosis(
+            severity = Severity.SOON,
+            summary = r.getString(R.string.demo_p0401_summary),
+            codes = listOf(
+                CodeAdvice(
+                    code = "P0401",
+                    meaning = r.getString(R.string.demo_p0401_meaning),
+                    causes = listOf(
+                        r.getString(R.string.demo_p0401_cause_1),
+                        r.getString(R.string.demo_p0401_cause_2),
+                        r.getString(R.string.demo_p0401_cause_3)
+                    ),
+                    checkFirst = r.getString(R.string.demo_p0401_check_first),
+                    explanation = r.getString(R.string.demo_p0401_explanation),
+                    repair = r.getString(R.string.demo_p0401_repair),
+                    cost = r.getString(R.string.demo_p0401_cost),
+                    driving = r.getString(R.string.demo_p0401_driving)
+                )
+            )
+        )
+    }
+
+    /** The demo's answer to a fault-code scan. */
+    internal suspend fun scanCodes(): Result<List<String>> {
+        delay(1_200)
+        return Result.success(codes)
+    }
+
+    /** The demo's answer to Clear: the codes are gone until the next demo. */
+    internal suspend fun clearCodes(): Result<Unit> {
+        delay(800)
+        codes = emptyList()
+        return Result.success(Unit)
+    }
+
+    // --- Music -----------------------------------------------------------------
+
+    internal fun playPause() = player.playPause()
+    internal fun next() = player.skip(1)
+    internal fun previous() = player.skip(-1)
+    internal fun positionMs(): Long = player.positionMs()
+
+    private val player = Player()
+
+    /** Made-up tracks, each with its own gradient cover. */
+    private class Track(val title: String, val artist: String, val durationMs: Long, val from: Int, val to: Int)
+
+    private class Player {
+        private val tracks = listOf(
+            Track("Neon Boulevard", "Midnight Transit", 204_000, 0xFFFF4D8D.toInt(), 0xFF3A1C71.toInt()),
+            Track("Coastal Highway", "The Overpass", 245_000, 0xFF00C9A7.toInt(), 0xFF1E3C72.toInt()),
+            Track("Afterglow", "Luna Park", 228_000, 0xFFFFB347.toInt(), 0xFFB0306A.toInt()),
+            Track("Kilometre Zero", "Echo Valley", 176_000, 0xFF7F7FD5.toInt(), 0xFF1D2671.toInt())
+        )
+        private val covers = HashMap<Int, Bitmap>()
+        private var index = 0
+        private var playing = true
+        /** Position at [markAt] (elapsed realtime), extrapolated while playing. */
+        private var markPos = 0L
+        private var markAt = 0L
+
+        fun reset() {
+            index = 0
+            playing = true
+            markPos = 47_000
+            markAt = SystemClock.elapsedRealtime()
+        }
+
+        fun positionMs(): Long =
+            if (playing) markPos + (SystemClock.elapsedRealtime() - markAt) else markPos
+
+        fun playPause() {
+            markPos = positionMs()
+            markAt = SystemClock.elapsedRealtime()
+            playing = !playing
+            _media.value = state()
+        }
+
+        fun skip(by: Int) {
+            index = (index + by).mod(tracks.size)
+            markPos = 0
+            markAt = SystemClock.elapsedRealtime()
+            _media.value = state()
+        }
+
+        fun tick() {
+            if (positionMs() >= tracks[index].durationMs) skip(1)
+        }
+
+        fun state(): MediaState {
+            val t = tracks[index]
+            return MediaState(
+                title = t.title,
+                artist = t.artist,
+                isPlaying = playing,
+                hasMedia = true,
+                durationMs = t.durationMs,
+                artwork = covers.getOrPut(index) { cover(t.from, t.to) }
+            )
+        }
+
+        private fun cover(from: Int, to: Int): Bitmap {
+            val size = 320
+            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            val s = size.toFloat()
+            c.drawRect(0f, 0f, s, s, Paint().apply { shader = LinearGradient(0f, 0f, s, s, from, to, Shader.TileMode.CLAMP) })
+            c.drawCircle(s * 0.7f, s * 0.35f, s * 0.45f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = RadialGradient(s * 0.7f, s * 0.35f, s * 0.45f, 0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+            })
+            return bmp
+        }
+    }
+
+    // --- The drive -------------------------------------------------------------
+
+    /** One manoeuvre of the fake route: the turn, the street it leads onto, and the leg before it. */
+    private enum class Turn { RIGHT, LEFT, STRAIGHT }
+    private class Leg(val turn: Turn, val street: String, val metres: Double)
+
+    private val route = listOf(
+        Leg(Turn.RIGHT, "Rue de Rivoli", 850.0),
+        Leg(Turn.LEFT, "Boulevard de Sébastopol", 1_200.0),
+        Leg(Turn.STRAIGHT, "Boulevard Saint-Michel", 1_500.0),
+        Leg(Turn.RIGHT, "Quai de la Tournelle", 900.0),
+        Leg(Turn.LEFT, "Avenue des Gobelins", 1_100.0)
+    )
+    /** The rest of the way after the last listed manoeuvre. */
+    private const val FINAL_METRES = 6_400.0
+
+    /**
+     * Speed (km/h) over one 150 s loop: pull away, town traffic, a fast
+     * stretch, slow down and stop at a light.
+     */
+    private val speedKeys = listOf(
+        0.0 to 0.0, 6.0 to 0.0, 18.0 to 48.0, 40.0 to 52.0, 52.0 to 50.0, 62.0 to 88.0,
+        100.0 to 92.0, 112.0 to 60.0, 124.0 to 34.0, 136.0 to 30.0, 146.0 to 0.0, 150.0 to 0.0
+    )
+
+    /** Revs per km/h in each gear of the C4 Picasso's six-speed box (index 0 unused). */
+    private val rpmPerKmh = listOf(0.0, 118.0, 64.0, 41.0, 30.0, 23.0, 19.0)
+
+    private fun speedAt(t: Double): Double {
+        val x = t.mod(speedKeys.last().first)
+        val i = speedKeys.indexOfLast { it.first <= x }.coerceAtMost(speedKeys.size - 2)
+        val (t0, v0) = speedKeys[i]
+        val (t1, v1) = speedKeys[i + 1]
+        val f = ((x - t0) / (t1 - t0)).coerceIn(0.0, 1.0)
+        val eased = f * f * (3 - 2 * f)
+        val v = v0 + (v1 - v0) * eased
+        // A little life in the steady stretches.
+        return if (v > 20) v + 1.5 * sin(t / 3.1) else v
+    }
+
+    private fun headingAt(t: Double): Double = (60 + 35 * sin(t / 47) + 20 * sin(t / 13)).mod(360.0)
+
+    private class Simulation(val startedAt: Long) {
+        var lat = START_LAT
+        var lng = START_LNG
+        var lastAt = startedAt
+        var tripM = 0.0
+        var movingMs = 0L
+        var legIndex = 0
+        var legDone = 0.0
+        var peakLat = 0f
+        var peakLon = 0f
+        var care = demoCare(startedAt)
+        // The same every tick: built once, so the feeds see nothing new.
+        val weather = Weather(18.4, 17.1, 2, 11.0, 21.0, 12.0, startedAt)
+        var notifications: List<NotifItem>? = null
+        val trip0 = TripState(startedAt = startedAt - 36 * 60_000L, distanceM = 23_400.0, movingMs = 29 * 60_000L, maxSpeedKmh = 92f)
+        var trip = trip0
+
+        fun step(context: Context, now: Long, gps: Boolean) {
+            val t = (now - startedAt) / 1000.0
+            val dt = ((now - lastAt) / 1000.0).coerceIn(0.0, 1.0)
+            lastAt = now
+            val kmh = speedAt(t)
+            val accel = (speedAt(t + 0.5) - speedAt(t - 0.5)) / 3.6 // m/s²
+            val metres = kmh / 3.6 * dt
+
+            // Engine and gearbox.
+            val gear = (6 downTo 1).firstOrNull { kmh * rpmPerKmh[it] >= if (accel > 1.0) 1_700 else 1_300 } ?: 1
+            val rpm = if (kmh < 3) 820 + 15 * sin(t * 2) else max(900.0, kmh * rpmPerKmh[gear])
+            val throttle = if (accel < -0.3) 0.0 else (12 + accel * 22 + kmh * 0.08).coerceIn(0.0, 85.0)
+            val load = if (accel < -0.3) 8.0 else (22 + accel * 26 + kmh * 0.2).coerceIn(5.0, 95.0)
+            val coolant = 80 + 10 * (1 - exp(-t / 50)) + sin(t / 20)
+            val data = ObdData(
+                speedKmh = kmh.roundToInt(),
+                rpm = rpm.roundToInt(),
+                coolantTempC = coolant.roundToInt(),
+                intakeTempC = if (kmh < 5) 27 else 23,
+                throttlePct = throttle.roundToInt(),
+                engineLoadPct = load.roundToInt(),
+                fuelLevelPct = 58,
+                voltage = 14.2 + 0.05 * sin(t / 4)
+            )
+            val pending = if (codes.isEmpty()) emptySet() else codes.toSet()
+            ObdBluetoothManager.demoWrite(data, EngineLamp(on = false, storedCodes = 0), pending)
+            AiMechanic.demoWrite(mechanicState(codes))
+            care = CareRules.step(care, data, now, CarProfileStore.current).first
+            CarCare.demoWrite(care)
+
+            // Where the car is, and the forces on it.
+            val heading = headingAt(t)
+            val rad = heading * PI / 180
+            lat += metres * cos(rad) / 111_320.0
+            lng += metres * sin(rad) / (111_320.0 * cos(lat * PI / 180))
+            tripM += metres
+            if (kmh > 3) movingMs += (dt * 1000).toLong()
+            val turnRate = (headingAt(t + 0.5) - headingAt(t - 0.5)) * PI / 180
+            val lateral = (kmh / 3.6 * turnRate / 9.81).toFloat().coerceIn(-0.6f, 0.6f)
+            val longitudinal = (accel / 9.81).toFloat().coerceIn(-0.6f, 0.6f)
+            peakLat = max(peakLat, abs(lateral))
+            peakLon = max(peakLon, abs(longitudinal))
+            GForceFeed.demoWrite(GForce(lateral, longitudinal, peakLat, peakLon))
+            trip = trip0.copy(
+                distanceM = trip0.distanceM + tripM,
+                movingMs = trip0.movingMs + movingMs,
+                maxSpeedKmh = max(trip.maxSpeedKmh, kmh.toFloat())
+            )
+            if (gps) {
+                val fix = Location(LocationManager.GPS_PROVIDER).apply {
+                    latitude = lat
+                    longitude = lng
+                    altitude = 42.0
+                    speed = (kmh / 3.6).toFloat()
+                    bearing = heading.toFloat()
+                    accuracy = 4f
+                    time = now
+                    elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+                }
+                LocationFeed.demoWrite(fix, trip, heading.toFloat())
+            }
+
+            // CANbox: doors shut, fuel and range going down with the kilometres.
+            McuReader.demoWrite(McuReader.DoorState(), fuelPercent = 58, rangeKm = (612 - tripM / 1000).roundToInt())
+            WeatherRepo.demoWrite(weather, error = null)
+            NotificationFeed.demoWrite(notifications ?: demoNotifications(context, startedAt).also { notifications = it })
+            navigate(context, metres, now)
+        }
+
+        /** Counts down to the next turn along [route], then on to the one after. */
+        private fun navigate(context: Context, metres: Double, now: Long) {
+            legDone += metres
+            if (legDone >= route[legIndex].metres) {
+                legDone = 0.0
+                legIndex = (legIndex + 1) % route.size
+            }
+            val leg = route[legIndex]
+            val toTurn = leg.metres - legDone
+            val toGo = toTurn + route.drop(legIndex + 1).sumOf { it.metres } + FINAL_METRES
+            val minutes = max(1, (toGo / 1000 / 32 * 60).roundToInt())
+            val arrival = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(now + minutes * 60_000L))
+            val instruction = context.getString(
+                when (leg.turn) {
+                    Turn.RIGHT -> R.string.demo_nav_right
+                    Turn.LEFT -> R.string.demo_nav_left
+                    Turn.STRAIGHT -> R.string.demo_nav_straight
+                },
+                leg.street
+            )
+            NavDirections.demoWrite(
+                NavState(
+                    active = true,
+                    instruction = instruction,
+                    distance = distanceText(toTurn),
+                    eta = String.format(Locale.getDefault(), "%d min · %.1f km · %s", minutes, toGo / 1000, arrival),
+                    icon = arrow(leg.turn),
+                    packageName = "com.google.android.apps.maps"
+                )
+            )
+        }
+    }
+
+    private fun distanceText(m: Double): String =
+        if (m >= 1_000) String.format(Locale.getDefault(), "%.1f km", m / 1000)
+        else "${(m / 50).roundToInt().coerceAtLeast(1) * 50} m"
+
+    /** The car-care picture of a drive already 36 minutes in, with a short-trip streak behind it. */
+    private fun demoCare(now: Long): CareState {
+        val min = 60_000L
+        return CareState(
+            drive = Drive(
+                startedAt = now - 36 * min, lastAt = now, lastRunningAt = now,
+                runningMs = 36 * min, movingMs = 29 * min, distanceKm = 23.4,
+                hotFastMs = 9 * min, sweetMs = 21 * min, overRevMs = 20_000,
+                hardAccel = 1, hardBrake = 0, peakCoolant = 90, lastSpeed = 0, lastSpeedAt = now
+            ),
+            lastDrive = Drive(
+                startedAt = now - 26 * 60 * min, lastAt = now - 26 * 60 * min + 14 * min,
+                runningMs = 14 * min, movingMs = 11 * min, distanceKm = 6.8,
+                sweetMs = 8 * min, hardBrake = 1, peakCoolant = 78
+            ),
+            filter = FilterLog(shortStreak = 2, lastLongAt = now - 4 * 24 * 60 * min),
+            rest = RestTimer(drivingMs = 36 * min, lastAt = now)
+        )
+    }
+
+    private fun demoNotifications(context: Context, startedAt: Long): List<NotifItem> = listOf(
+        NotifItem(
+            key = "demo:message", packageName = "com.google.android.apps.messaging", appLabel = "Messages",
+            title = "Camille", text = context.getString(R.string.demo_notif_message),
+            postedAt = startedAt - 2 * 60_000L, icon = null, contentIntent = null
+        ),
+        NotifItem(
+            key = "demo:event", packageName = "com.google.android.calendar", appLabel = "Calendar",
+            title = context.getString(R.string.demo_notif_event_title), text = context.getString(R.string.demo_notif_event_text),
+            postedAt = startedAt - 25 * 60_000L, icon = null, contentIntent = null
+        )
+    )
+
+    private val arrows = HashMap<Turn, Bitmap>()
+
+    /** A white manoeuvre arrow like the ones Maps posts. */
+    private fun arrow(turn: Turn): Bitmap = arrows.getOrPut(turn) {
+        val size = 96
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 12f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        val head = Paint(paint).apply { style = Paint.Style.FILL }
+        when (turn) {
+            Turn.STRAIGHT -> {
+                c.drawLine(48f, 84f, 48f, 30f, paint)
+                c.drawPath(Path().apply { moveTo(48f, 8f); lineTo(70f, 36f); lineTo(26f, 36f); close() }, head)
+            }
+            else -> {
+                val dir = if (turn == Turn.RIGHT) 1f else -1f
+                c.drawPath(Path().apply { moveTo(48f - 14f * dir, 88f); lineTo(48f - 14f * dir, 44f); lineTo(48f + 14f * dir, 44f) }, paint)
+                c.drawPath(Path().apply { moveTo(48f + 38f * dir, 44f); lineTo(48f + 12f * dir, 22f); lineTo(48f + 12f * dir, 66f); close() }, head)
+            }
+        }
+        bmp
+    }
+
+    /** A few stations around the fake drive, priced like a Paris day. */
+    private val DEMO_STATIONS = listOf(
+        FuelStation(1, "44, Rue De Rivoli", "Paris", 48.8573, 2.3494, mapOf(FuelGrade.GAZOLE to 1.789, FuelGrade.E10 to 1.849, FuelGrade.SP98 to 1.929)),
+        FuelStation(2, "6, Avenue De La Grande Armée", "Paris", 48.8749, 2.2905, mapOf(FuelGrade.GAZOLE to 1.729, FuelGrade.E10 to 1.809)),
+        FuelStation(3, "112, Boulevard Haussmann", "Paris", 48.8748, 2.3196, mapOf(FuelGrade.GAZOLE to 1.759, FuelGrade.SP95 to 1.859, FuelGrade.E85 to 0.899)),
+        FuelStation(4, "28, Quai De La Rapée", "Paris", 48.8452, 2.3689, mapOf(FuelGrade.GAZOLE to 1.699, FuelGrade.E10 to 1.779, FuelGrade.GPLC to 0.959))
+    )
+
+    /** What the real sources showed when the demo began, put back when it ends. */
+    private class Snapshot(
+        val lamp: EngineLamp?,
+        val pending: Set<String>,
+        val location: Location?,
+        val trip: TripState,
+        val heading: Float?,
+        val g: GForce,
+        val doors: McuReader.DoorState?,
+        val fuel: Int?,
+        val range: Int?,
+        val weather: Weather?,
+        val weatherError: String?,
+        val nav: NavState,
+        val notifications: List<NotifItem>,
+        val care: CareState,
+        val ai: AiMechanic.State,
+        val stations: List<FuelStation>?,
+        val stationsError: String?
+    ) {
+        fun restore() {
+            ObdBluetoothManager.endDemo(lamp, pending)
+            LocationFeed.demoWrite(location, trip, heading)
+            GForceFeed.demoWrite(g)
+            McuReader.demoWrite(doors, fuel, range)
+            WeatherRepo.demoWrite(weather, weatherError)
+            NavDirections.demoWrite(nav)
+            NotificationFeed.demoWrite(notifications)
+            CarCare.demoWrite(care)
+            AiMechanic.demoWrite(ai)
+            FuelPriceRepo.demoWrite(stations, stationsError)
+        }
+
+        companion object {
+            fun take() = Snapshot(
+                ObdBluetoothManager.lamp.value, ObdBluetoothManager.pending.value,
+                LocationFeed.location.value, LocationFeed.trip.value, LocationFeed.headingDeg.value,
+                GForceFeed.g.value,
+                McuReader.doorState.value, McuReader.fuelPercent.value, McuReader.rangeKm.value,
+                WeatherRepo.weather.value, WeatherRepo.error.value,
+                NavDirections.state.value, NotificationFeed.items.value,
+                CarCare.state.value, AiMechanic.state.value,
+                FuelPriceRepo.stations.value, FuelPriceRepo.error.value
+            )
+        }
+    }
+}

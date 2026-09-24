@@ -134,6 +134,7 @@ class CarMediaController(private val context: Context) {
      * position so a progress bar advances smoothly while playing.
      */
     fun positionMs(): Long {
+        if (DemoMode.isOn) return DemoMode.positionMs()
         val state = activeController?.playbackState ?: return 0L
         val base = state.position
         return if (state.state == PlaybackState.STATE_PLAYING) {
@@ -145,15 +146,18 @@ class CarMediaController(private val context: Context) {
     }
 
     fun playPause() {
+        if (DemoMode.isOn) return DemoMode.playPause()
         val controls = activeController?.transportControls ?: return
         if (_mediaState.value.isPlaying) controls.pause() else controls.play()
     }
 
     fun next() {
+        if (DemoMode.isOn) return DemoMode.next()
         activeController?.transportControls?.skipToNext()
     }
 
     fun previous() {
+        if (DemoMode.isOn) return DemoMode.previous()
         activeController?.transportControls?.skipToPrevious()
     }
 

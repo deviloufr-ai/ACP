@@ -58,7 +58,7 @@
 
     <!-- Cockpit skin: app toggles and launch bar -->
     <string name="cockpit_open_app">%1$s öffnen</string>
-    <string name="cockpit_launch_bar_empty">STARTLEISTE — STIFT ANTIPPEN, UM APPS HINZUZUFÜGEN</string>
+    <string name="cockpit_launch_bar_empty">STARTLEISTE: STIFT ANTIPPEN, UM APPS HINZUZUFÜGEN</string>
     <string name="cockpit_edit_launch_bar">Startleiste bearbeiten</string>
 
     <!-- Orbit skin: top bar -->
@@ -110,6 +110,6 @@
     <string name="orbit_fuel_percent">tank %1$d %%</string>
 
     <!-- Orbit skin: launch bar -->
-    <string name="orbit_launch_bar_empty">Startleiste — Stift antippen, um Apps hinzuzufügen</string>
+    <string name="orbit_launch_bar_empty">Startleiste: Stift antippen, um Apps hinzuzufügen</string>
     <string name="orbit_edit_launch_bar">Startleiste bearbeiten</string>
 </resources>

@@ -7,18 +7,23 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
@@ -28,20 +33,26 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VerticalSplit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +66,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +79,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -93,11 +106,15 @@ internal class TopBarModel(
     val onConnectObd: () -> Unit,
     val onSplit: () -> Unit,
     val onToggleEdit: () -> Unit,
+    val onTemplates: () -> Unit,
     val onTheme: () -> Unit,
     val onAi: () -> Unit,
     val onSystem: () -> Unit,
     val onLanguage: () -> Unit,
     val onCheckUpdates: () -> Unit,
+    /** Demo mode is running: the menu offers to stop it. */
+    val demo: Boolean,
+    val onDemo: () -> Unit,
     /**
      * The head unit's status bar is up and already shows the time: the bar puts
      * the page dots ([BarPageDots]) where its clock was, so no row of dots is
@@ -105,7 +122,6 @@ internal class TopBarModel(
      */
     val merged: Boolean = false,
     val page: Int = 0,
-    val pageCount: Int = 0,
     val onPage: (Int) -> Unit = {}
 )
 
@@ -122,20 +138,22 @@ internal fun TopBar(
     onConnectObd: () -> Unit,
     onSplit: () -> Unit,
     onToggleEdit: () -> Unit,
+    onTemplates: () -> Unit,
     onTheme: () -> Unit,
     onAi: () -> Unit,
     onSystem: () -> Unit,
     onLanguage: () -> Unit,
     onCheckUpdates: () -> Unit,
+    demo: Boolean,
+    onDemo: () -> Unit,
     merged: Boolean = false,
     page: Int = 0,
-    pageCount: Int = 0,
     onPage: (Int) -> Unit = {}
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
-        onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
-        onLanguage, onCheckUpdates, merged, page, pageCount, onPage
+        onApps, onConnectObd, onSplit, onToggleEdit, onTemplates, onTheme, onAi, onSystem,
+        onLanguage, onCheckUpdates, demo, onDemo, merged, page, onPage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -188,6 +206,10 @@ internal fun StandardTopBar(m: TopBarModel) {
             }
 
             Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                if (m.demo) {
+                    DemoBadge(onStop = m.onDemo)
+                    Spacer(Modifier.width(6.dp))
+                }
                 VehicleAlerts(m.obdConnection, m.obdData)
                 ObdDot(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
@@ -281,10 +303,14 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
     }
 }
 
-/** Menu around any [anchor] a skin draws: edit, theme, AI mechanic, split screen, system install, and the version. */
+/**
+ * Menu around any [anchor] a skin draws: the things done often (edit,
+ * templates, split screen, demo) and one door to everything set once.
+ */
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
     var bootLogo by remember { mutableStateOf(false) }
     var carSettings by remember { mutableStateOf(false) }
     var upkeep by remember { mutableStateOf(false) }
@@ -303,32 +329,127 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
                 leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
                 onClick = pick(m.onToggleEdit)
             )
-            DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
-            DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
-            DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
-            DashMenuItem(stringResource(R.string.car_menu), leading = { MenuIcon(Icons.Filled.DirectionsCar) }, onClick = pick { carSettings = true })
-            DashMenuItem(stringResource(R.string.upkeep_dialog_title), leading = { MenuIcon(Icons.Filled.Handyman) }, onClick = pick { upkeep = true })
-            DashMenuItem(stringResource(R.string.explore_title), leading = { MenuIcon(Icons.Filled.Science) }, onClick = pick { explorer = true })
-            // Only on the QF001 / K706 firmware the feature was built for.
-            if (BootLogoSupport.available) {
-                DashMenuItem(stringResource(R.string.boot_menu), leading = { MenuIcon(Icons.Filled.PowerSettingsNew) }, onClick = pick { bootLogo = true })
-            }
+            DashMenuItem(stringResource(R.string.templates_button), leading = { MenuIcon(Icons.Filled.Dashboard) }, onClick = pick(m.onTemplates))
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
-            DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
-            DashMenuItem(stringResource(R.string.dash_menu_check_updates), leading = { MenuIcon(Icons.Filled.SystemUpdate) }, onClick = pick(m.onCheckUpdates))
+            DashMenuItem(stringResource(R.string.settings_menu), leading = { MenuIcon(Icons.Filled.Settings) }, onClick = pick { settings = true })
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
-            Text(
-                "Dashwheel v${m.versionName}",
-                color = DashColors.Muted,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            DashMenuItem(
+                text = stringResource(if (m.demo) R.string.demo_menu_stop else R.string.demo_menu_start),
+                leading = { MenuIcon(if (m.demo) Icons.Filled.Stop else Icons.Filled.PlayCircle) },
+                onClick = pick(m.onDemo)
             )
         }
+    }
+    if (settings) {
+        SettingsDialog(
+            m,
+            onCar = { settings = false; carSettings = true },
+            onUpkeep = { settings = false; upkeep = true },
+            onExplorer = { settings = false; explorer = true },
+            onBootLogo = { settings = false; bootLogo = true },
+            onDismiss = { settings = false }
+        )
     }
     if (bootLogo) BootLogoDialog(onDismiss = { bootLogo = false })
     if (carSettings) CarSettingsDialog(onDismiss = { carSettings = false })
     if (upkeep) UpkeepDialog(onDismiss = { upkeep = false })
     if (explorer) PidExplorerDialog(onDismiss = { explorer = false })
+}
+
+/**
+ * Everything set once, in three groups: the car, how the launcher looks, and
+ * the advanced bits (system install, boot logo, updates). Each row opens the
+ * dialog it stands for; the version lives on the updates row.
+ */
+@Composable
+private fun SettingsDialog(
+    m: TopBarModel,
+    onCar: () -> Unit,
+    onUpkeep: () -> Unit,
+    onExplorer: () -> Unit,
+    onBootLogo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val car by CarProfileStore.profile.collectAsState()
+    val pick: (() -> Unit) -> () -> Unit = { action ->
+        {
+            onDismiss()
+            action()
+        }
+    }
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text(stringResource(R.string.settings_title), color = DashColors.TextPrimary) },
+        text = {
+            Column(modifier = Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState())) {
+                SettingsSection(stringResource(R.string.settings_section_car))
+                SettingsRow(Icons.Filled.DirectionsCar, stringResource(R.string.car_menu), car.name, onCar)
+                SettingsRow(Icons.Filled.AutoAwesome, stringResource(R.string.ai_title), stringResource(R.string.settings_ai_detail), pick(m.onAi))
+                SettingsRow(Icons.Filled.Handyman, stringResource(R.string.upkeep_dialog_title), stringResource(R.string.upkeep_settings_detail), onUpkeep)
+                SettingsRow(Icons.Filled.Science, stringResource(R.string.explore_title), stringResource(R.string.explore_settings_detail), onExplorer)
+
+                SettingsSection(stringResource(R.string.settings_section_look))
+                SettingsRow(Icons.Filled.Palette, stringResource(R.string.dash_menu_theme), null, pick(m.onTheme))
+                SettingsRow(Icons.Filled.Language, stringResource(R.string.language_menu), null, pick(m.onLanguage))
+
+                SettingsSection(stringResource(R.string.settings_section_advanced))
+                // Only on the QF001 / K706 firmware the feature was built for.
+                if (BootLogoSupport.available) {
+                    SettingsRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.boot_menu), null, onBootLogo)
+                }
+                SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), pick(m.onSystem))
+                SettingsRow(
+                    Icons.Filled.SystemUpdate, stringResource(R.string.dash_menu_check_updates),
+                    stringResource(R.string.settings_version, m.versionName), pick(m.onCheckUpdates)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_close), color = DashColors.Accent) }
+        }
+    )
+}
+
+@Composable
+private fun SettingsSection(title: String) {
+    Text(
+        title.uppercase(),
+        color = DashColors.Accent,
+        letterSpacing = 0.08.em,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 2.dp)
+    )
+}
+
+/** One setting: icon, name, what it is right now or what it does, and a chevron. */
+@Composable
+private fun SettingsRow(icon: ImageVector, title: String, detail: String?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+            if (detail != null) {
+                Text(
+                    detail,
+                    color = DashColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = DashColors.Muted)
+    }
 }
 
 @Composable
@@ -416,6 +537,40 @@ private fun AlertChip(icon: ImageVector, text: String) {
     }
 }
 
+/** Floats over the dashboard while [DemoMode] runs, so made-up readings are never taken for the car's; tap to stop. */
+@Composable
+internal fun DemoBadge(onStop: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(DashColors.Card.copy(alpha = 1f))
+            .border(1.dp, DashColors.Accent.copy(alpha = 0.6f), shape)
+            .clickable(onClick = onStop)
+            .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(DashColors.Accent))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.demo_badge),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+        Spacer(Modifier.width(12.dp))
+        Icon(Icons.Filled.Close, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            stringResource(R.string.demo_stop),
+            color = DashColors.Accent,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+    }
+}
 
 /**
  * Toolbar shown while arranging: what to do, plus Add / Undo / Reset / Done.
@@ -428,6 +583,7 @@ internal fun EditBar(
     onAdd: () -> Unit,
     onUndo: () -> Unit,
     onReset: () -> Unit,
+    onTemplates: () -> Unit,
     onDone: () -> Unit
 ) {
     val glass = DashColors.Glass
@@ -449,7 +605,7 @@ internal fun EditBar(
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                stringResource(R.string.dash_arranging_dashboard, page + 1),
+                stringResource(R.string.dash_arranging_dashboard, stringResource(DashboardStore.nameRes(page))),
                 color = DashColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.labelLarge
@@ -475,6 +631,11 @@ internal fun EditBar(
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.dash_undo), color = if (canUndo) DashColors.TextPrimary else DashColors.Muted)
         }
+        TextButton(onClick = onTemplates) {
+            Icon(Icons.Filled.Dashboard, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.templates_button), color = DashColors.TextPrimary)
+        }
         TextButton(onClick = onReset) {
             Text(stringResource(R.string.dash_reset_page), color = DashColors.Warning)
         }
@@ -492,34 +653,76 @@ internal fun EditBar(
 }
 
 @Composable
-internal fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
-    PageDotRow(count, current, onSelect, Modifier.fillMaxWidth().padding(vertical = 10.dp))
+internal fun PageDots(current: Int, onSelect: (Int) -> Unit) {
+    PageDotRow(current, onSelect, Modifier.fillMaxWidth().padding(vertical = 2.dp))
 }
 
 /** The page dots inside a bar, in the clock's place while the head unit's status bar shows the time. */
 @Composable
 internal fun BarPageDots(m: TopBarModel) {
-    PageDotRow(m.pageCount, m.page, m.onPage, Modifier)
+    PageDotRow(m.page, m.onPage, Modifier)
 }
 
+/**
+ * The dashboards drawn as the cross they form: the row of pages swiped
+ * sideways, with the middle dot's column of smaller dots for the pages above
+ * and below it.
+ */
 @Composable
-private fun PageDotRow(count: Int, current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
+private fun PageDotRow(current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(count) { index ->
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(width = if (index == current) 22.dp else 8.dp, height = 8.dp)
-                    .clip(CircleShape)
-                    .background(if (index == current) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
-                    .clickable { onSelect(index) }
-            )
+        DashboardStore.ROW.forEach { page ->
+            if (page == DashboardStore.CENTER) {
+                // The column is one tap area, 48 dp wide, and the nearest dot
+                // wins: the small dots are too close together to aim at.
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.pointerInput(onSelect) {
+                        detectTapGestures { tap ->
+                            val row = (tap.y * DashboardStore.COLUMN.size / size.height).toInt()
+                            onSelect(DashboardStore.COLUMN[row.coerceIn(0, DashboardStore.COLUMN.size - 1)])
+                        }
+                    }
+                ) {
+                    DashboardStore.COLUMN.forEach { p ->
+                        if (p == DashboardStore.CENTER) {
+                            PageDot(p == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 2.dp))
+                        } else {
+                            PageDot(p == current, width = 5.dp, height = 11.dp, PaddingValues(horizontal = 22.dp, vertical = 1.dp))
+                        }
+                    }
+                }
+            } else {
+                // 48 x 48 dp to tap, whatever the dot's size.
+                PageDot(page == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 20.dp)) { onSelect(page) }
+            }
         }
     }
+}
+
+/**
+ * One page dot: [width] x [height] is its stretched "you are here" shape, the
+ * smaller side its round one. [touch] widens the tap area around the dot;
+ * without [onClick] the dot is drawn only, and something around it takes the tap.
+ */
+@Composable
+private fun PageDot(selected: Boolean, width: Dp, height: Dp, touch: PaddingValues, onClick: (() -> Unit)? = null) {
+    val round = minOf(width, height)
+    Box(
+        modifier = Modifier
+            .then(
+                if (onClick != null) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+                else Modifier
+            )
+            .padding(touch)
+            .size(width = if (selected) width else round, height = if (selected) height else round)
+            .clip(CircleShape)
+            .background(if (selected) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
+    )
 }
 
 /**

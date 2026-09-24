@@ -69,8 +69,16 @@ object WeatherRepo {
     private const val REFRESH_MS = 15 * 60_000L
     private const val MOVE_DEG = 0.05   // ~5 km: refresh sooner when the car has moved on
 
+    /** [DemoMode]'s weather (and, when it ends, the real one back). */
+    internal fun demoWrite(weather: Weather?, error: String?) {
+        _weather.value = weather
+        _error.value = error
+    }
+
     /** Fetches when the last result is stale or the car has moved; cheap to call often. */
     suspend fun refresh(lat: Double, lng: Double, force: Boolean = false) {
+        // The demo's position is made up; asking about it would only overwrite its weather.
+        if (DemoMode.isOn) return
         val now = System.currentTimeMillis()
         val moved = abs(lat - lastLat) > MOVE_DEG || abs(lng - lastLng) > MOVE_DEG
         if (!force && !moved && now - lastFetch < REFRESH_MS) return

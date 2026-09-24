@@ -58,7 +58,7 @@
 
     <!-- Cockpit skin: app toggles and launch bar -->
     <string name="cockpit_open_app">Open %1$s</string>
-    <string name="cockpit_launch_bar_empty">LAUNCH BAR — TAP THE PENCIL TO ADD APPS</string>
+    <string name="cockpit_launch_bar_empty">LAUNCH BAR: TAP THE PENCIL TO ADD APPS</string>
     <string name="cockpit_edit_launch_bar">Edit launch bar</string>
 
     <!-- Orbit skin: top bar -->
@@ -110,6 +110,6 @@
     <string name="orbit_fuel_percent">fuel %1$d%%</string>
 
     <!-- Orbit skin: launch bar -->
-    <string name="orbit_launch_bar_empty">Launch bar — tap the pencil to add apps</string>
+    <string name="orbit_launch_bar_empty">Launch bar: tap the pencil to add apps</string>
     <string name="orbit_edit_launch_bar">Edit launch bar</string>
 </resources>

@@ -100,7 +100,15 @@ object LocationFeed {
         _trip.value = TripState()
     }
 
+    /** [DemoMode]'s position and trip (and, when it ends, the real ones back). */
+    internal fun demoWrite(location: Location?, trip: TripState, heading: Float?) {
+        _location.value = location
+        _trip.value = trip
+        _headingDeg.value = heading
+    }
+
     private fun onFix(l: Location) {
+        if (DemoMode.isOn) return
         val prev = lastFix
         _location.value = l
         val speedKmh = l.speed * 3.6f
@@ -164,7 +172,13 @@ object GForceFeed : SensorEventListener {
         _g.value = _g.value.copy(peakLateral = 0f, peakLongitudinal = 0f)
     }
 
+    /** [DemoMode]'s forces (and, when it ends, the real ones back). */
+    internal fun demoWrite(g: GForce) {
+        _g.value = g
+    }
+
     override fun onSensorChanged(event: SensorEvent) {
+        if (DemoMode.isOn) return
         // Low-pass to isolate gravity, subtract it for linear acceleration.
         for (i in 0..2) gravity[i] = 0.9f * gravity[i] + 0.1f * event.values[i]
         val lx = event.values[0] - gravity[0]
@@ -238,7 +252,13 @@ object NotificationFeed {
     private val _items = MutableStateFlow<List<NotifItem>>(emptyList())
     val items: StateFlow<List<NotifItem>> = _items
 
+    /** [DemoMode]'s notifications (and, when it ends, the real ones back). */
+    internal fun demoWrite(items: List<NotifItem>) {
+        _items.value = items
+    }
+
     fun onPosted(context: Context, sbn: StatusBarNotification) {
+        if (DemoMode.isOn) return
         if (sbn.packageName == context.packageName) return
         if (sbn.isOngoing) return
         val n = sbn.notification ?: return
@@ -252,6 +272,7 @@ object NotificationFeed {
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
+        if (DemoMode.isOn) return
         _items.value = _items.value.filter { it.key != sbn.key }
     }
 

@@ -29,7 +29,7 @@
     <string name="apps_kind_doors">Türen</string>
     <string name="apps_kind_doors_blurb">Tür- und Kofferraumstatus von der MCU</string>
     <string name="apps_kind_can_mon">CAN-Monitor</string>
-    <string name="apps_kind_can_mon_blurb">Rohe CAN-Frames (Debug)</string>
+    <string name="apps_kind_can_mon_blurb">Rohe CAN-Frames, zum Finden von Signalen</string>
     <string name="apps_kind_speed_hud">Tempo</string>
     <string name="apps_kind_speed_hud_blurb">Große Digitalanzeige per OBD oder GPS</string>
     <string name="apps_kind_compass">Kompass</string>
@@ -43,7 +43,7 @@
     <string name="apps_kind_clock">Uhr</string>
     <string name="apps_kind_clock_blurb">Uhrzeit und Datum, groß</string>
     <string name="apps_kind_weather">Wetter</string>
-    <string name="apps_kind_weather_blurb">Wetter am Fahrzeug (kein Konto nötig)</string>
+    <string name="apps_kind_weather_blurb">Wetter am Auto, ohne Konto</string>
     <string name="apps_kind_calendar">Termine</string>
     <string name="apps_kind_calendar_blurb">Nächste Kalendertermine</string>
     <string name="apps_kind_quick_dial">Kurzwahl</string>
@@ -63,7 +63,7 @@
     <string name="apps_save">Speichern</string>
 
     <!-- Launch bar tile and its editor -->
-    <string name="apps_launch_bar_empty">App-Leiste — Stift antippen, um Apps hinzuzufügen</string>
+    <string name="apps_launch_bar_empty">App-Leiste: Stift antippen, um Apps hinzuzufügen</string>
     <string name="apps_launch_bar_edit">App-Leiste bearbeiten</string>
     <string name="apps_launch_bar_editor_title">Apps der Leiste</string>
     <string name="apps_launch_bar_editor_empty">Noch keine Apps. Die meistgenutzten hinzufügen.</string>

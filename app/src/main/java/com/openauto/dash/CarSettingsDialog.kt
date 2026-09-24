@@ -126,6 +126,10 @@ internal fun CarSettingsDialog(onDismiss: () -> Unit) {
                     }
                 }
 
+                SwitchRow(stringResource(R.string.car_spec_driver_side), stringResource(R.string.car_spec_driver_side_detail), draft.driverOnRight) {
+                    edit(draft.copy(driverOnRight = it))
+                }
+
                 Label(stringResource(R.string.car_section_engine))
                 TextSpec(stringResource(R.string.car_spec_engine), draft.engine) { edit(draft.copy(engine = it)) }
                 ChoiceRow(FuelType.entries, draft.fuel, { context.getString(it.labelRes) }) { edit(draft.copy(fuel = it)) }

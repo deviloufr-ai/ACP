@@ -29,7 +29,7 @@
     <string name="apps_kind_doors">Portieren</string>
     <string name="apps_kind_doors_blurb">Status van portieren en kofferbak (MCU)</string>
     <string name="apps_kind_can_mon">CAN-monitor</string>
-    <string name="apps_kind_can_mon_blurb">Ruwe CAN-frames (debug)</string>
+    <string name="apps_kind_can_mon_blurb">Ruwe CAN-frames, om signalen te vinden</string>
     <string name="apps_kind_speed_hud">Snelheid</string>
     <string name="apps_kind_speed_hud_blurb">Grote digitale snelheid via OBD of GPS</string>
     <string name="apps_kind_compass">Kompas</string>
@@ -43,7 +43,7 @@
     <string name="apps_kind_clock">Klok</string>
     <string name="apps_kind_clock_blurb">Tijd en datum, groot</string>
     <string name="apps_kind_weather">Weer</string>
-    <string name="apps_kind_weather_blurb">Weer bij de auto (geen account nodig)</string>
+    <string name="apps_kind_weather_blurb">Weer bij de auto, zonder account</string>
     <string name="apps_kind_calendar">Agenda</string>
     <string name="apps_kind_calendar_blurb">Je volgende afspraken</string>
     <string name="apps_kind_quick_dial">Snelkiezen</string>
@@ -63,7 +63,7 @@
     <string name="apps_save">Opslaan</string>
 
     <!-- Launch bar tile and its editor -->
-    <string name="apps_launch_bar_empty">App-balk — tik op het potlood om apps toe te voegen</string>
+    <string name="apps_launch_bar_empty">App-balk: tik op het potlood om apps toe te voegen</string>
     <string name="apps_launch_bar_edit">App-balk bewerken</string>
     <string name="apps_launch_bar_editor_title">Apps in de balk</string>
     <string name="apps_launch_bar_editor_empty">Nog geen apps. Voeg toe wat je het meest gebruikt.</string>

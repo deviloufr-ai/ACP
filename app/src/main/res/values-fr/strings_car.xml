@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">Ma voiture</string>
     <string name="car_my_car_title_dialog">Ma voiture</string>
-    <string name="car_settings_explanation">Nommez votre voiture le plus précisément possible (modèle, moteur, version, année, boîte). L\'IA remplit la fiche ; vérifiez-la, corrigez si besoin, puis enregistrez. Les tuiles et le Mécanicien IA s\'en servent.</string>
+    <string name="car_settings_explanation">Nommez votre voiture précisément, puis laissez l\'IA remplir les caractéristiques. Vérifiez-les avant d\'enregistrer.</string>
     <string name="car_name">Voiture</string>
     <string name="car_fetch">Remplir la fiche avec l\'IA</string>
     <string name="car_fetch_ok">Fiche remplie : vérifiez-la, puis Enregistrer</string>
@@ -170,4 +170,8 @@
         <item quantity="many">%1$d minutes</item>
         <item quantity="other">%1$d minutes</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Conducteur à droite</string>
+    <string name="car_spec_driver_side_detail">Conduite à droite : les modèles placent les tuiles principales à droite</string>
 </resources>

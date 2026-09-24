@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Schermo diviso con un\'app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">Disposizione cruscotto %1$d</string>
-    <string name="dash_arranging_hint">Tieni premuto un riquadro per spostarlo, trascina la maniglia nell\'angolo per ridimensionarlo. Rilasciato su un altro riquadro, li scambia o lo sposta.</string>
+    <string name="dash_arranging_dashboard">Disposizione: %1$s</string>
+    <string name="dash_arranging_hint">Tieni premuto un riquadro per spostarlo, trascina l\'angolo per ridimensionarlo.</string>
     <string name="dash_undo">Annulla</string>
     <string name="dash_reset_page">Svuota pagina</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Aggiornamento disponibile – %1$s</string>
+    <string name="dash_update_available">Aggiornamento disponibile: %1$s</string>
     <string name="dash_update_downloading">Download aggiornamento… %1$d%%</string>
     <string name="dash_update_installing">Avvio dell\'installazione…</string>
     <string name="dash_menu_check_updates">Cerca aggiornamenti</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Aggiungi al cruscotto</string>
     <string name="dash_add_app">Aggiungi app</string>
-    <string name="dash_add_app_window">Aggiungi finestra app (nel riquadro)</string>
-    <string name="dash_add_app_pair">Aggiungi coppia di app (schermo diviso)</string>
+    <string name="dash_add_app_window">Aggiungi un\'app in una finestra</string>
+    <string name="dash_add_app_pair">Aggiungi una coppia a schermo diviso</string>
     <string name="dash_add_widget">Aggiungi widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Scambia app sinistra/destra</string>
     <string name="dash_split_with">Schermo diviso con…</string>
-    <string name="dash_pair_first">Coppia di app – prima app (sinistra)</string>
-    <string name="dash_pair_second">Coppia di app – seconda app (destra)</string>
+    <string name="dash_pair_first">Coppia di app: prima app (sinistra)</string>
+    <string name="dash_pair_second">Coppia di app: seconda app (destra)</string>
     <string name="dash_enable_split_title">Attiva schermo diviso</string>
-    <string name="dash_enable_split_body">Questa ROM blocca le normali API dello schermo diviso, quindi Dashwheel usa quello di sistema, lo stesso delle app recenti. Attiva una volta «Dashwheel» in Impostazioni → Accessibilità per consentirlo.</string>
+    <string name="dash_enable_split_body">Dashwheel usa lo schermo diviso del sistema, quello delle app recenti. Attiva Dashwheel una volta in Impostazioni, Accessibilità.</string>
     <string name="dash_open_settings">Apri impostazioni</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">App di sistema (avanzato)</string>
-    <string name="dash_system_app_body">Installa Dashwheel come app di sistema privilegiata per incorporare la vera app Google Maps, con navigazione, nel riquadro Maps, come i launcher di serie. Con Magisk si installa in modalità systemless (un modulo Magisk, funziona anche se /system è pieno); altrimenti usa su o l\'ADB root interno (:%1$d). Poi riavvia per attivarla.</string>
+    <string name="dash_system_app_title">App di sistema</string>
+    <string name="dash_system_app_body">Installa Dashwheel come app di sistema, così il riquadro Maps può mostrare il vero Google Maps, navigazione inclusa. Serve il root, o l\'ADB interno sulla porta %1$d. Poi riavvia.</string>
     <string name="dash_root_checking">Verifica root…</string>
-    <string name="dash_root_available">Root (su) disponibile ✓ – userà il modulo Magisk se presente</string>
-    <string name="dash_root_missing">Nessun su – proverà l\'ADB root interno (:%1$d).</string>
+    <string name="dash_root_available">Root disponibile. Con Magisk si installa come modulo Magisk.</string>
+    <string name="dash_root_missing">Nessun root. Proverà l\'ADB interno sulla porta %1$d.</string>
     <string name="dash_install_system_app">Installa come app di sistema</string>
     <string name="dash_reboot_now">Riavvia ora</string>
     <string name="dash_system_installed">Installato. Riavvia per attivare Maps integrato.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps agganciato a sinistra, pagine scorrevoli a destra</string>
     <string name="dash_layout_maps_right">Mappa a destra</string>
     <string name="dash_layout_maps_right_desc">Google Maps agganciato a destra, pagine scorrevoli a sinistra</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Home</string>
+    <string name="dash_page_left">A sinistra della Home</string>
+    <string name="dash_page_right">A destra della Home</string>
+    <string name="dash_page_above">Sopra la Home</string>
+    <string name="dash_page_above2">Due sopra la Home</string>
+    <string name="dash_page_below">Sotto la Home</string>
+    <string name="dash_page_below2">Due sotto la Home</string>
+    <string name="dash_empty_title">Qui non c\'è ancora niente</string>
+    <string name="dash_empty_body">Aggiungi un riquadro o scegli un modello per tutte le pagine.</string>
 </resources>

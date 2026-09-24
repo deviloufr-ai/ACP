@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mécanicien IA</string>
-    <string name="ai_explanation">Quand l\'adaptateur OBD se connecte, Dashwheel recherche lui-même les codes défaut. Un nouveau code est expliqué par Google Gemini et annoncé à voix haute ; le détail s\'affiche sur la tuile Codes défaut. Seuls les codes, les mesures moteur et le modèle de voiture sont envoyés.</string>
+    <string name="ai_explanation">Quand l\'adaptateur se connecte, Dashwheel recherche les codes défaut. Un nouveau code est expliqué par Gemini et lu à voix haute. Seuls les codes, les mesures moteur et le modèle sont envoyés.</string>
     <string name="ai_activation_code">Code d\'activation</string>
     <string name="ai_activation_hint">Déverrouille la clé intégrée</string>
     <string name="ai_activate">Activer</string>
@@ -17,10 +17,10 @@
     <string name="ai_done">Terminé</string>
 
     <!-- Settings dialog: test results -->
-    <string name="ai_test_ok">Gemini fonctionne ✓ (%1$s).</string>
-    <string name="ai_test_activated_ok">Activé ✓ Gemini fonctionne ✓ (%1$s).</string>
+    <string name="ai_test_ok">Gemini fonctionne (%1$s).</string>
+    <string name="ai_test_activated_ok">Activé. Gemini fonctionne (%1$s).</string>
     <string name="ai_test_failed">Échec : %1$s</string>
-    <string name="ai_test_activated_unreachable">Activé ✓ Gemini pas encore joignable : %1$s</string>
+    <string name="ai_test_activated_unreachable">Activé. Gemini pas encore joignable : %1$s</string>
     <string name="ai_test_waiting">Connexion à Google… %1$d s</string>
     <string name="ai_wrong_code">Code d\'activation incorrect</string>
     <string name="ai_no_voice">Aucune voix en %1$s sur cet appareil : ajoutez-en une dans Paramètres Android → Synthèse vocale.</string>
@@ -65,8 +65,8 @@
     <string name="ai_ask_replay">Réécouter</string>
 
     <!-- Fault codes tile: status -->
-    <string name="ai_no_codes">Aucun code défaut ✓</string>
-    <string name="ai_cleared">Effacés ✓</string>
+    <string name="ai_no_codes">Aucun code défaut</string>
+    <string name="ai_cleared">Effacés</string>
     <string name="ai_scan_failed">Échec de la lecture</string>
     <string name="ai_clear_failed">Échec de l\'effacement</string>
     <string name="ai_thinking">Le mécanicien IA réfléchit…</string>

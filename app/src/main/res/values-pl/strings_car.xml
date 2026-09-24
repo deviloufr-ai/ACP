@@ -111,7 +111,7 @@
     <!-- My car settings -->
     <string name="car_menu">Mój samochód</string>
     <string name="car_my_car_title_dialog">Mój samochód</string>
-    <string name="car_settings_explanation">Opisz swój samochód jak najdokładniej (model, silnik, wersja, rok, skrzynia biegów). AI uzupełni dane; sprawdź je, popraw w razie potrzeby i zapisz. Korzystają z nich kafelki i Mechanik AI.</string>
+    <string name="car_settings_explanation">Podaj dokładnie swój samochód, a AI uzupełni dane. Sprawdź je przed zapisaniem.</string>
     <string name="car_name">Samochód</string>
     <string name="car_fetch">Pobierz dane przez AI</string>
     <string name="car_fetch_ok">Dane uzupełnione: sprawdź je, potem Zapisz</string>
@@ -173,4 +173,8 @@
         <item quantity="many">%1$d minut</item>
         <item quantity="other">%1$d minuty</item>
     </plurals>
+
+    <!-- Which side the driver sits on (templates) -->
+    <string name="car_spec_driver_side">Kierowca po prawej</string>
+    <string name="car_spec_driver_side_detail">Kierownica po prawej: szablony umieszczają główne kafelki po prawej</string>
 </resources>

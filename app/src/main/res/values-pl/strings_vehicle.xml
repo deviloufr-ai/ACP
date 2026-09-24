@@ -37,7 +37,7 @@
     <string name="vehicle_fuel_range_title">PALIWO I ZASIĘG</string>
     <string name="vehicle_via_canbox">z CANbox</string>
     <string name="vehicle_via_obd">z OBD</string>
-    <string name="vehicle_fuel_no_obd">OBD tego auta nie podaje poziomu paliwa. Można go odczytać z CANbox — wymaga roota.</string>
+    <string name="vehicle_fuel_no_obd">OBD tego auta nie podaje poziomu paliwa. Można go odczytać z CANbox: wymaga roota.</string>
     <string name="vehicle_find_fuel_signal">Znajdź sygnał paliwa</string>
     <string name="vehicle_try_obd_fuel_pid">Spróbuj PID paliwa OBD</string>
     <string name="vehicle_km_to_empty">POZOSTAŁE KM</string>
@@ -52,11 +52,11 @@
     <string name="vehicle_range_from_car">komputer pokładowy</string>
 
     <!-- Fuel signal finder dialog -->
-    <string name="vehicle_finder_help">Ustaw poziom wskazywany na desce rozdzielczej i dotknij Zapis A — potem zamknij i używaj auta normalnie. Po kilku dniach, gdy wskazanie nieco spadnie, otwórz ponownie, ustaw nową wartość i dotknij Zapis B. Zapis A jest zachowywany po restarcie. Proponowane są tylko bajty, które zmieniały się razem z paliwem.</string>
+    <string name="vehicle_finder_help">Ustaw poziom wskazywany na desce rozdzielczej i dotknij Zapis A, potem zamknij i używaj auta normalnie. Po kilku dniach, gdy wskazanie nieco spadnie, otwórz ponownie, ustaw nową wartość i dotknij Zapis B. Zapis A jest zachowywany po restarcie. Proponowane są tylko bajty, które zmieniały się razem z paliwem.</string>
     <string name="vehicle_dash_reads">Wskazanie</string>
     <string name="vehicle_waiting_canbox">Oczekiwanie na dane CANbox… (wymaga roota)</string>
     <string name="vehicle_finder_step_a">Ustaw wskazywany poziom paliwa, a potem dotknij Zapis A.</string>
-    <string name="vehicle_finder_step_b">Zapis A przy %1$d%% (zachowany). Można zamknąć i jeździć normalnie — wróć, gdy wskazanie spadnie o kilka %%, ustaw nową wartość, a potem Zapis B.</string>
+    <string name="vehicle_finder_step_b">Zapis A przy %1$d%% (zachowany). Można zamknąć i jeździć normalnie, wróć, gdy wskazanie spadnie o kilka %%, ustaw nową wartość, a potem Zapis B.</string>
     <string name="vehicle_finder_same">A i B mają ten sam poziom. Wykonaj Zapis B przy innym poziomie paliwa.</string>
     <string name="vehicle_finder_none">Żaden bajt nie podążył za zmianą. Powtórz B po większym spadku.</string>
     <string name="vehicle_finder_candidates">Bajty zmieniające się z paliwem</string>
@@ -69,7 +69,7 @@
     <string name="vehicle_range_car_shows">Komputer pokładowy pokazuje</string>
     <string name="vehicle_range_search">Szukaj</string>
     <string name="vehicle_range_none">Żaden sygnał nie zawiera tej wartości. Sprawdź liczbę, zostaw komputer pokładowy otwarty na kilka sekund i szukaj ponownie.</string>
-    <string name="vehicle_range_candidates">Sygnały z tą wartością — wybierz ten, który podąża za komputerem pokładowym</string>
+    <string name="vehicle_range_candidates">Sygnały z tą wartością: wybierz ten, który podąża za komputerem pokładowym</string>
     <string name="vehicle_range_frame">ramka %1$s · bajty %2$d–%3$d</string>
 
     <!-- OBD adapter picker -->
@@ -104,7 +104,7 @@
     <string name="vehicle_door_closed">zamknięte</string>
 
     <!-- CAN monitor (debug tile) -->
-    <string name="vehicle_can_monitor_title">MONITOR CAN — znajdź sygnał</string>
+    <string name="vehicle_can_monitor_title">MONITOR CAN: znajdź sygnał</string>
     <string name="vehicle_can_monitor_help">Drzwi ZAMKNIĘTE → Zapis A. Potem OTWÓRZ drzwi → Zapis B. Pokazywane są tylko różniące się sygnały dyskretne.</string>
     <string name="vehicle_can_a_closed">A ✓ zamknięte</string>
     <string name="vehicle_can_b_open">B ✓ otwarte</string>
@@ -116,23 +116,23 @@
     <!-- Fault code (DTC) descriptions: title + what to check -->
     <string name="vehicle_dtc_p0300_title">Losowe/wielokrotne wypadanie zapłonów</string>
     <string name="vehicle_dtc_p0300_fix">Sprawdzić świece i cewki (THP: cewki to znany słaby punkt), wtryskiwacze oraz nieszczelności podciśnienia. Wymieniać świece/cewki kompletem.</string>
-    <string name="vehicle_dtc_p0301_title">Wypadanie zapłonów – cylinder 1</string>
+    <string name="vehicle_dtc_p0301_title">Wypadanie zapłonów: cylinder 1</string>
     <string name="vehicle_dtc_p0301_fix">Zamienić cewkę/świecę z cyl. 1 z innym cyl.; jeśli usterka się przenosi, wymienić tę cewkę/świecę. Sprawdzić też wtryskiwacz 1.</string>
-    <string name="vehicle_dtc_p0302_title">Wypadanie zapłonów – cylinder 2</string>
+    <string name="vehicle_dtc_p0302_title">Wypadanie zapłonów: cylinder 2</string>
     <string name="vehicle_dtc_p0302_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 2 i ciśnienie sprężania.</string>
-    <string name="vehicle_dtc_p0303_title">Wypadanie zapłonów – cylinder 3</string>
+    <string name="vehicle_dtc_p0303_title">Wypadanie zapłonów: cylinder 3</string>
     <string name="vehicle_dtc_p0303_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 3 i ciśnienie sprężania.</string>
-    <string name="vehicle_dtc_p0304_title">Wypadanie zapłonów – cylinder 4</string>
+    <string name="vehicle_dtc_p0304_title">Wypadanie zapłonów: cylinder 4</string>
     <string name="vehicle_dtc_p0304_fix">Zamienić cewkę/świecę, aby zlokalizować usterkę; sprawdzić wtryskiwacz 4 i ciśnienie sprężania.</string>
     <string name="vehicle_dtc_p0016_title">Korelacja wał korbowy/wałek rozrządu (bank 1 czujnik A)</string>
     <string name="vehicle_dtc_p0016_fix">Typowe dla 1.6 THP: rozciągnięty łańcuch rozrządu. Sprawdzić łańcuch, napinacz oraz czujniki wałka rozrządu/wału korbowego. Często potrzebny zestaw łańcucha rozrządu.</string>
     <string name="vehicle_dtc_p0017_title">Korelacja wał korbowy/wałek rozrządu (bank 1 czujnik B)</string>
     <string name="vehicle_dtc_p0017_fix">Prawdopodobnie rozciągnięty łańcuch rozrządu / napinacz (1.6 THP). Sprawdzić łańcuch i koła zębate.</string>
-    <string name="vehicle_dtc_p0011_title">Wałek rozrządu dolotu – zbyt duże wyprzedzenie (bank 1)</string>
+    <string name="vehicle_dtc_p0011_title">Wałek rozrządu dolotu: zbyt duże wyprzedzenie (bank 1)</string>
     <string name="vehicle_dtc_p0011_fix">Zmiennik faz VVT lub zawór sterujący olejem. Sprawdzić poziom/jakość oleju, elektrozawór VVT i zużycie łańcucha rozrządu.</string>
-    <string name="vehicle_dtc_p0341_title">Czujnik położenia wałka rozrządu – zakres</string>
+    <string name="vehicle_dtc_p0341_title">Czujnik położenia wałka rozrządu: zakres</string>
     <string name="vehicle_dtc_p0341_fix">Sprawdzić czujnik wałka rozrządu i okablowanie; zweryfikować ustawienie rozrządu (łańcuch).</string>
-    <string name="vehicle_dtc_p0340_title">Czujnik położenia wałka rozrządu – obwód</string>
+    <string name="vehicle_dtc_p0340_title">Czujnik położenia wałka rozrządu: obwód</string>
     <string name="vehicle_dtc_p0340_fix">Przetestować/wymienić czujnik wałka rozrządu; sprawdzić złącze i okablowanie.</string>
     <string name="vehicle_dtc_p0299_title">Zbyt niskie ciśnienie doładowania</string>
     <string name="vehicle_dtc_p0299_fix">Częste w THP/HDi. Szukać nieszczelności doładowania (węże/intercooler), sprawdzić wastegate/siłownik turbo i zawór upustowy.</string>
@@ -154,7 +154,7 @@
     <string name="vehicle_dtc_p2463_fix">Diesel HDi: odbyć dłuższą jazdę trasą w celu regeneracji; sprawdzić czujnik ciśnienia DPF i poziom dodatku (Eolys). Może być potrzebna wymuszona regeneracja.</string>
     <string name="vehicle_dtc_p242f_title">Zatkany DPF (nagromadzenie popiołu)</string>
     <string name="vehicle_dtc_p242f_fix">DPF na końcu żywotności lub zatkany; może wymagać wymuszonej regeneracji albo czyszczenia/wymiany DPF.</string>
-    <string name="vehicle_dtc_p0113_title">Czujnik temperatury powietrza dolotowego – wysoki sygnał</string>
+    <string name="vehicle_dtc_p0113_title">Czujnik temperatury powietrza dolotowego: wysoki sygnał</string>
     <string name="vehicle_dtc_p0113_fix">Sprawdzić czujnik IAT i okablowanie/złącze; wyczyścić lub wymienić czujnik (często w przepływomierzu/dolocie).</string>
     <string name="vehicle_dtc_p0128_title">Płyn chłodn. poniżej temperatury termostatu</string>
     <string name="vehicle_dtc_p0128_fix">Zwykle termostat zablokowany w pozycji otwartej. Wymienić termostat; sprawdzić poziom płynu i czujnik.</string>
@@ -173,7 +173,7 @@
 
     <!-- Fault codes not in the table: described from the code's structure -->
     <string name="vehicle_dtc_unknown_code">Nieznany kod</string>
-    <string name="vehicle_dtc_fallback_title">Usterka: %1$s (%2$s) — %3$s</string>
+    <string name="vehicle_dtc_fallback_title">Usterka: %1$s (%2$s): %3$s</string>
     <string name="vehicle_dtc_fallback_fix">Brak zapisanego opisu. Poszukać powiązanych kodów, sprawdzić czujnik/okablowanie danego obwodu i wyszukać „%1$s Citroën C4 Picasso”, aby znaleźć wskazówki dla tego modelu.</string>
     <string name="vehicle_dtc_system_powertrain">układ napędowy</string>
     <string name="vehicle_dtc_system_chassis">podwozie</string>

@@ -58,7 +58,7 @@
 
     <!-- Cockpit skin: app toggles and launch bar -->
     <string name="cockpit_open_app">%1$s openen</string>
-    <string name="cockpit_launch_bar_empty">STARTBALK — TIK OP HET POTLOOD OM APPS TOE TE VOEGEN</string>
+    <string name="cockpit_launch_bar_empty">STARTBALK: TIK OP HET POTLOOD OM APPS TOE TE VOEGEN</string>
     <string name="cockpit_edit_launch_bar">Startbalk bewerken</string>
 
     <!-- Orbit skin: top bar -->
@@ -110,6 +110,6 @@
     <string name="orbit_fuel_percent">tank %1$d%%</string>
 
     <!-- Orbit skin: launch bar -->
-    <string name="orbit_launch_bar_empty">Startbalk — tik op het potlood om apps toe te voegen</string>
+    <string name="orbit_launch_bar_empty">Startbalk: tik op het potlood om apps toe te voegen</string>
     <string name="orbit_edit_launch_bar">Startbalk bewerken</string>
 </resources>

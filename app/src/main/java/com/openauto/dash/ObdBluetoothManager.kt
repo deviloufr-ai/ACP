@@ -139,7 +139,8 @@ object ObdBluetoothManager {
                 }
             }
             if (!ok) closeQuietly() else _lastError.value = null
-            _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
+            // A demo started meanwhile owns the state; it hands back the real one when it ends.
+            if (!DemoMode.isOn) _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
             return ok
         } finally {
             // Cancelled mid-attempt (the screen went away): a CONNECTING left
@@ -277,7 +278,7 @@ object ObdBluetoothManager {
 
     /** Polls speed, RPM and coolant temperature once, updating [data]. */
     suspend fun poll(): Unit = withContext(Dispatchers.IO) {
-        if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext
+        if (DemoMode.isOn || _connectionState.value != ObdConnectionState.CONNECTED) return@withContext
         commandMutex.withLock {
             if (_connectionState.value == ObdConnectionState.CONNECTED) pollLocked()
         }
@@ -315,6 +316,7 @@ object ObdBluetoothManager {
      * code list (e.g. "P0133"), empty if none, or a failure with a message.
      */
     suspend fun readTroubleCodes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        if (DemoMode.isOn) return@withContext DemoMode.scanCodes()
         if (_connectionState.value != ObdConnectionState.CONNECTED) {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
@@ -364,7 +366,7 @@ object ObdBluetoothManager {
      * regular polling is unaffected. Null when not connected or unanswered.
      */
     suspend fun query(header: String?, request: String, timeoutMs: Long = READ_TIMEOUT_MS): String? = withContext(Dispatchers.IO) {
-        if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext null
+        if (DemoMode.isOn || _connectionState.value != ObdConnectionState.CONNECTED) return@withContext null
         commandMutex.withLock {
             if (_connectionState.value != ObdConnectionState.CONNECTED) return@withLock null
             try {
@@ -378,6 +380,7 @@ object ObdBluetoothManager {
 
     /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
     suspend fun clearTroubleCodes(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DemoMode.isOn) return@withContext DemoMode.clearCodes()
         if (_connectionState.value != ObdConnectionState.CONNECTED) {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
@@ -442,6 +445,23 @@ object ObdBluetoothManager {
             if (_connectionState.value == ObdConnectionState.CONNECTED) _connectionState.value = ObdConnectionState.ERROR
             null
         }
+    }
+
+    /** [DemoMode]'s readings, shown as if an adapter were connected. */
+    internal fun demoWrite(data: ObdData, lamp: EngineLamp?, pending: Set<String>) {
+        _connectionState.value = ObdConnectionState.CONNECTED
+        _data.value = data
+        _lamp.value = lamp
+        _pending.value = pending
+    }
+
+    /** The demo is over: back to the real link, whose next poll fills the readings in again. */
+    internal fun endDemo(lamp: EngineLamp?, pending: Set<String>) {
+        val linked = socket?.isConnected == true
+        _connectionState.value = if (linked) ObdConnectionState.CONNECTED else ObdConnectionState.DISCONNECTED
+        _data.value = ObdData()
+        _lamp.value = lamp
+        _pending.value = pending
     }
 
     suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {

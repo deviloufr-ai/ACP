@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
+    <string name="demo_menu_start">Modalità demo</string>
+    <string name="demo_menu_stop">Ferma demo</string>
+    <string name="demo_badge">Demo · dati fittizi</string>
+    <string name="demo_stop">Ferma</string>
+    <!-- Fake turn-by-turn instructions; %1$s = street name -->
+    <string name="demo_nav_right">Svolta a destra in %1$s</string>
+    <string name="demo_nav_left">Svolta a sinistra in %1$s</string>
+    <string name="demo_nav_straight">Prosegui su %1$s</string>
+    <!-- Fake notifications -->
+    <string name="demo_notif_message">Sto arrivando, tra 10 minuti</string>
+    <string name="demo_notif_event_title">Appuntamento dal dentista</string>
+    <string name="demo_notif_event_text">Domani alle 9:30</string>
+
+    <!-- The mechanic's canned advice on the demo's fault code (P0401, EGR flow too low) -->
+    <string name="demo_p0401_summary">La valvola EGR non fa tornare abbastanza gas di scarico, quasi certamente per la fuliggine. Si può guidare; falla pulire presto.</string>
+    <string name="demo_p0401_meaning">Portata EGR insufficiente</string>
+    <string name="demo_p0401_explanation">Il motore rimanda parte dei gas di scarico all\'aspirazione per inquinare meno. La centralina ne ha chiesto più di quanto ne è arrivato: su questo motore è quasi sempre una valvola intasata.</string>
+    <string name="demo_p0401_cause_1">Valvola EGR intasata dalla fuliggine</string>
+    <string name="demo_p0401_cause_2">Valvola EGR bloccata, o motorino guasto</string>
+    <string name="demo_p0401_cause_3">Radiatore o condotto EGR ostruito</string>
+    <string name="demo_p0401_check_first">Smontare la valvola EGR e controllare la fuliggine</string>
+    <string name="demo_p0401_repair">Pulire la valvola, o sostituirla se si blocca</string>
+    <string name="demo_p0401_cost">Circa 80 a 150 € per una pulizia, 250 a 400 € per una valvola nuova</string>
+    <string name="demo_p0401_driving">Sì. Aspettati un minimo un po\' irregolare e consumi più alti fino alla riparazione.</string>
+</resources>

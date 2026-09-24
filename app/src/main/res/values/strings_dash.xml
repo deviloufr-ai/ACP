@@ -27,13 +27,13 @@
     <string name="dash_menu_split_screen">Split screen with an app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
-    <string name="dash_arranging_dashboard">Arranging dashboard %1$d</string>
-    <string name="dash_arranging_hint">Long-press a tile to move it, drag the corner handle to resize. Dropping on a tile swaps or nudges it.</string>
+    <string name="dash_arranging_dashboard">Arranging %1$s</string>
+    <string name="dash_arranging_hint">Hold a tile to move it, drag its corner to resize it.</string>
     <string name="dash_undo">Undo</string>
     <string name="dash_reset_page">Reset page</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Update available — %1$s</string>
+    <string name="dash_update_available">Update available: %1$s</string>
     <string name="dash_update_downloading">Downloading update… %1$d%%</string>
     <string name="dash_update_installing">Starting installer…</string>
     <string name="dash_menu_check_updates">Check for updates</string>
@@ -63,25 +63,25 @@
     <!-- Add to dashboard -->
     <string name="dash_add_to_dashboard">Add to dashboard</string>
     <string name="dash_add_app">Add app</string>
-    <string name="dash_add_app_window">Add app window (runs in the tile)</string>
-    <string name="dash_add_app_pair">Add app pair (split)</string>
+    <string name="dash_add_app_window">Add an app in a window</string>
+    <string name="dash_add_app_pair">Add a split pair</string>
     <string name="dash_add_widget">Add widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Swap split apps left/right</string>
     <string name="dash_split_with">Split screen with…</string>
-    <string name="dash_pair_first">Split pair — first app (left)</string>
-    <string name="dash_pair_second">Split pair — second app (right)</string>
+    <string name="dash_pair_first">Split pair: first app (left)</string>
+    <string name="dash_pair_second">Split pair: second app (right)</string>
     <string name="dash_enable_split_title">Enable split screen</string>
-    <string name="dash_enable_split_body">This ROM blocks the usual split-screen APIs, so Dashwheel uses the system\'s own split — the same one you get from recents. Turn on \"Dashwheel\" under Settings → Accessibility once to allow it.</string>
+    <string name="dash_enable_split_body">Dashwheel uses the system\'s own split screen, the one from recents. Turn on Dashwheel once under Settings, Accessibility.</string>
     <string name="dash_open_settings">Open settings</string>
 
     <!-- System app install (root) -->
-    <string name="dash_system_app_title">System app (advanced)</string>
-    <string name="dash_system_app_body">Install Dashwheel as a privileged system app so it can embed the real Google Maps app — with navigation — in the Maps tile, like OEM car launchers. With Magisk it installs systemlessly (a Magisk module — works even though /system is full); otherwise it uses su, or the internal root ADB (:%1$d). Reboot afterwards to activate it.</string>
+    <string name="dash_system_app_title">System app</string>
+    <string name="dash_system_app_body">Installs Dashwheel as a system app so the Maps tile can hold the real Google Maps, navigation included. Needs root, or the internal ADB on port %1$d. Reboot afterwards.</string>
     <string name="dash_root_checking">Checking root…</string>
-    <string name="dash_root_available">Root (su) available ✓ — will use Magisk module if present</string>
-    <string name="dash_root_missing">No su — will try internal root ADB (:%1$d).</string>
+    <string name="dash_root_available">Root available. Installs as a Magisk module when Magisk is present.</string>
+    <string name="dash_root_missing">No root. Will try the internal ADB on port %1$d.</string>
     <string name="dash_install_system_app">Install as system app</string>
     <string name="dash_reboot_now">Reboot now</string>
     <string name="dash_system_installed">Installed. Reboot to activate embedded Maps.</string>
@@ -134,4 +134,15 @@
     <string name="dash_layout_maps_left_desc">Google Maps docked on the left half, pages swipe on the right</string>
     <string name="dash_layout_maps_right">Map on the right</string>
     <string name="dash_layout_maps_right_desc">Google Maps docked on the right half, pages swipe on the left</string>
+
+    <!-- The pages' places in the cross, and an empty page -->
+    <string name="dash_page_home">Home</string>
+    <string name="dash_page_left">Left of Home</string>
+    <string name="dash_page_right">Right of Home</string>
+    <string name="dash_page_above">Above Home</string>
+    <string name="dash_page_above2">Two above Home</string>
+    <string name="dash_page_below">Below Home</string>
+    <string name="dash_page_below2">Two below Home</string>
+    <string name="dash_empty_title">Nothing here yet</string>
+    <string name="dash_empty_body">Add a tile, or pick a template for all the pages.</string>
 </resources>

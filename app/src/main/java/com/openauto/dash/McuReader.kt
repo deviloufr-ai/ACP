@@ -190,6 +190,13 @@ object McuReader {
             ?.remove("fuel_key")?.remove("fuel_byte")?.remove("fuel_fullraw")?.apply()
     }
 
+    /** [DemoMode]'s doors, fuel and range (and, when it ends, the real ones back). */
+    internal fun demoWrite(doors: DoorState?, fuelPercent: Int?, rangeKm: Int?) {
+        _doorState.value = doors
+        _fuelPercent.value = fuelPercent
+        _rangeKm.value = rangeKm
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var job: Job? = null
     private var process: Process? = null
@@ -244,6 +251,8 @@ object McuReader {
         // The CANbox repeats most frames several times a second; only a new
         // value is worth waking every collector for.
         if (changed) _entries.value = latest.values.toList()
+        // The demo shows its own doors, fuel and range; the raw frames above stay real.
+        if (DemoMode.isOn) return
 
         // Fuel: the learned CANbox byte → percent, calibrated against a full tank.
         fuelMapping?.let { fm ->

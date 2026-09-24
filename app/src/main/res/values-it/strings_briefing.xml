@@ -2,21 +2,14 @@
 <resources>
     <!-- AI mechanic settings: the start-up briefing switch -->
     <string name="briefing_setting">Riepilogo all\'avvio</string>
-    <string name="briefing_setting_detail">All\'avvio: meteo, autonomia, motore e il prossimo appuntamento</string>
+    <string name="briefing_setting_detail">All\'avvio: carburante basso, ghiaccio, guasti del motore e il prossimo appuntamento</string>
 
     <!-- Spoken when the car starts, in the mechanic's language -->
     <string name="briefing_morning">Buongiorno.</string>
     <string name="briefing_afternoon">Buon pomeriggio.</string>
     <string name="briefing_evening">Buonasera.</string>
-    <plurals name="briefing_weather">
-        <item quantity="one">%1$d grado, %2$s.</item>
-        <item quantity="many">%1$d gradi, %2$s.</item>
-        <item quantity="other">%1$d gradi, %2$s.</item>
-    </plurals>
     <string name="briefing_ice">Attenzione al ghiaccio sulla strada.</string>
-    <string name="briefing_fuel">Autonomia di circa %1$d chilometri.</string>
     <string name="briefing_fuel_low">Carburante in esaurimento: circa %1$d chilometri, prevedi un rifornimento.</string>
-    <string name="briefing_no_faults">Nessun guasto al motore.</string>
     <plurals name="briefing_faults">
         <item quantity="one">%1$d codice guasto del motore memorizzato, dettagli sullo schermo.</item>
         <item quantity="many">%1$d codici guasto del motore memorizzati, dettagli sullo schermo.</item>
