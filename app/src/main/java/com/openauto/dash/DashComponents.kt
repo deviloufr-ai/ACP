@@ -270,7 +270,7 @@ internal fun DockDivider(onDrag: (Float) -> Unit, onDragEnd: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxHeight()
-            .width(18.dp)
+            .width(24.dp)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragEnd = { onDragEnd() },

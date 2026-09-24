@@ -99,6 +99,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 internal const val MAX_UNDO = 30
 
 /**
+ * Gap between the docked Maps window and the divider. The system claims the
+ * 30 dp band around a freeform window as its resize handle (WindowManager's
+ * RESIZE_HANDLE_WIDTH_IN_DP) and swallows drags that start in it; the divider
+ * has to start outside that band to receive its drag at all.
+ */
+private val DOCK_RESIZE_CLEARANCE = 32.dp
+
+/**
  * Simple car launcher: three swipeable "virtual desktop" dashboards. Each page
  * is a grid the user fills with app shortcuts and widgets (our built-in Maps /
  * media / OBD cards, or any real Android app-widget) via the "+" tile. A single
@@ -618,15 +626,21 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
             // movableContent: switching Maps left <-> right moves the same dock
             // instead of disposing and rebuilding it (which closed the window).
+            // The side is a parameter, not a capture: the lambda is remembered
+            // once, so a captured side would stay the first one composed.
             val mapsDock = remember {
-                movableContentWithReceiverOf<RowScope> {
+                movableContentWithReceiverOf<RowScope, Alignment.Horizontal?> { side ->
+                // Android treats the 30 dp around a freeform window as its
+                // resize handle and takes any drag that starts there for the
+                // system, so the divider must sit further away than that from
+                // the Maps window's edge or dragging it does nothing.
                 Box(
                     modifier = Modifier
                         .weight(dockFraction)
                         .fillMaxHeight()
                         .padding(
-                            start = if (dockSide == Alignment.Start) 8.dp else 0.dp,
-                            end = if (dockSide == Alignment.End) 8.dp else 0.dp,
+                            start = if (side == Alignment.Start) 8.dp else DOCK_RESIZE_CLEARANCE,
+                            end = if (side == Alignment.End) 8.dp else DOCK_RESIZE_CLEARANCE,
                             top = 8.dp, bottom = 8.dp
                         )
                 ) {
@@ -649,7 +663,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 )
             }
             Row(modifier = Modifier.fillMaxSize().onSizeChanged { rowWidthPx = it.width }) {
-            if (dockSide == Alignment.Start) { mapsDock(); divider() }
+            if (dockSide == Alignment.Start) { mapsDock(dockSide); divider() }
             /** One dashboard, by its index into pages. */
             val dashboardPage: @Composable (Int) -> Unit = { page ->
                 DashboardPage(
@@ -714,7 +728,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     dashboardPage(page)
                 }
             }
-            if (dockSide == Alignment.End) { divider(); mapsDock() }
+            if (dockSide == Alignment.End) { divider(); mapsDock(dockSide) }
             }
 
             // Floating swap button (bottom-centre), shown whenever the launcher
