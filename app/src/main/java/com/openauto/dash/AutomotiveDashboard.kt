@@ -817,9 +817,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         // this head unit whenever a floating window is on screen, and it used to
         // cover the launcher bar there. A horizontal swipe across the bar (or
         // the page dots) changes page, for when a docked window covers the pages.
+        // A parked window's cover sits in the bottom-right corner; the bar stops
+        // short of it so its ⋮ button stays reachable.
+        val coverShowing by ParkedCover.showing.collectAsState()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(end = if (coverShowing) (ParkedCover.WIDTH_DP + 4).dp else 0.dp)
                 .pointerInput(Unit) {
                     var dragged = 0f
                     val threshold = 48.dp.toPx()
