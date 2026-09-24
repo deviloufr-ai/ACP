@@ -36,7 +36,6 @@
     <string name="design_change">Changer le style de %1$s</string>
     <string name="design_picker_title">Style : %1$s</string>
     <string name="design_picker_hint">Touchez un style pour l\'appliquer à cette tuile. Chaque tuile garde le sien.</string>
-    <string name="design_picker_hint_sample">Touchez un style pour l\'appliquer à cette tuile. Les aperçus montrent des valeurs d\'exemple tant que le widget n\'a pas de mesure.</string>
     <string name="design_codes_unit">codes</string>
     <string name="design_engine_lamp">Voyant moteur</string>
     <string name="design_on">Allumé</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">Appeler %1$s</string>
     <string name="design_notif_new_unit">nouv.</string>
     <string name="design_latest">Dernière</string>
+    <string name="design_no_scan_yet">Pas encore analysé</string>
+    <string name="design_range_unknown">Autonomie pas encore configurée</string>
 </resources>

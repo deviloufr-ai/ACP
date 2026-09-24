@@ -3,13 +3,18 @@ package com.openauto.dash
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.location.Location
 import android.media.AudioManager
 import android.net.Uri
 import android.provider.CalendarContract
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddLocation
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Close
@@ -66,12 +71,13 @@ import kotlin.math.sqrt
 
 /*
  * Live readings for the designed tiles. Each built-in widget turns the feeds
- * its standard tile uses into a [WidgetFace]. A null face means the widget is
- * in a state that needs its standard tile (connect the adapter, grant access,
- * save a spot...), so the design steps aside until the reading exists.
+ * its standard tile uses into a [WidgetFace]. A design never steps aside for
+ * the standard tile: while a reading is missing (adapter off, access not
+ * granted, nothing playing...) the face shows "--", says why, and carries the
+ * button that fixes it, so the chosen design is always the one on screen.
  */
 
-/** The live face of [kind], or null while only the standard tile can help (see file comment). */
+/** The live face of [kind]; null only for [FRAMED_KINDS], which keep their own content. */
 @Composable
 internal fun rememberWidgetFace(kind: BuiltinKind, env: SkinTileEnv): WidgetFace? = when (kind) {
     BuiltinKind.TELEMETRY -> telemetryFace(env)
@@ -111,11 +117,41 @@ internal val FRAMED_KINDS = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, Bu
 
 private fun fmt(pattern: String, vararg args: Any): String = String.format(Locale.getDefault(), pattern, *args)
 
+/** A reading that isn't there yet: "--", why, and the button that gets it. */
+private fun idleFace(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    caption: String,
+    unit: String = "",
+    action: FaceAction? = null,
+    fullCircle: Boolean = false
+) = WidgetFace(
+    icon = icon, title = title, value = "--", unit = unit, caption = caption,
+    fraction = 0f, fullCircle = fullCircle, actions = listOfNotNull(action)
+)
+
+/** The adapter isn't connected: say so, and offer Connect (off while a connection is under way). */
+@Composable
+private fun obdIdle(kind: BuiltinKind, env: SkinTileEnv, unit: String): WidgetFace = idleFace(
+    kindIcon(kind), kind.label,
+    stringResource(if (env.obdConnection == ObdConnectionState.CONNECTING) R.string.dash_obd_connecting else R.string.vehicle_obd_not_connected),
+    unit,
+    FaceAction(Icons.Filled.Bluetooth, stringResource(R.string.info_connect), primary = true, enabled = env.obdConnection.isIdle, onClick = env.onConnectObd)
+)
+
+/** Opens the system screen that grants notification access (media, directions, notifications). */
+@Composable
+private fun grantAccessAction(): FaceAction {
+    val context = LocalContext.current
+    return FaceAction(Icons.Filled.LockOpen, stringResource(R.string.info_grant_access), primary = true,
+        onClick = { CarMediaController.openNotificationAccessSettings(context) })
+}
+
 // --- Vehicle -----------------------------------------------------------------------
 
 @Composable
-private fun telemetryFace(env: SkinTileEnv): WidgetFace? {
-    if (env.obdConnection != ObdConnectionState.CONNECTED) return null
+private fun telemetryFace(env: SkinTileEnv): WidgetFace {
+    if (env.obdConnection != ObdConnectionState.CONNECTED) return obdIdle(BuiltinKind.TELEMETRY, env, "km/h")
     val d = env.obdData
     return WidgetFace(
         icon = Icons.Filled.Speed,
@@ -134,8 +170,8 @@ private fun telemetryFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun obdAllFace(env: SkinTileEnv): WidgetFace? {
-    if (env.obdConnection != ObdConnectionState.CONNECTED) return null
+private fun obdAllFace(env: SkinTileEnv): WidgetFace {
+    if (env.obdConnection != ObdConnectionState.CONNECTED) return obdIdle(BuiltinKind.OBD_ALL, env, "rpm")
     val d = env.obdData
     return WidgetFace(
         icon = Icons.Filled.Sensors,
@@ -156,8 +192,13 @@ private fun obdAllFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun rangeFace(env: SkinTileEnv): WidgetFace? {
-    val fuel = rememberFuel(env.obdData, env.obdConnection) ?: return null
+private fun rangeFace(env: SkinTileEnv): WidgetFace {
+    var showRangeFinder by remember { mutableStateOf(false) }
+    if (showRangeFinder) RangeFinderDialog(onDismiss = { showRangeFinder = false })
+    val fuel = rememberFuel(env.obdData, env.obdConnection) ?: return idleFace(
+        Icons.Filled.LocalGasStation, BuiltinKind.RANGE.label, stringResource(R.string.design_range_unknown), "km",
+        FaceAction(Icons.Filled.Tune, stringResource(R.string.vehicle_find_range_signal), primary = true, onClick = { showRangeFinder = true })
+    )
     return WidgetFace(
         icon = Icons.Filled.LocalGasStation,
         title = BuiltinKind.RANGE.label,
@@ -174,16 +215,24 @@ private fun rangeFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun faultCodesFace(env: SkinTileEnv): WidgetFace? {
+private fun faultCodesFace(env: SkinTileEnv): WidgetFace {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val ai by AiMechanic.state.collectAsState()
     val lamp by ObdBluetoothManager.lamp.collectAsState()
     val pending by ObdBluetoothManager.pending.collectAsState()
     var busy by remember { mutableStateOf(false) }
-    // No scan yet: the standard tile explains the adapter and runs the first scan.
-    val codes = ai.codes ?: return null
     val connected = env.obdConnection == ObdConnectionState.CONNECTED
+    val scan = FaceAction(Icons.Filled.Search, stringResource(R.string.vehicle_scan), primary = true, enabled = connected && !busy, onClick = {
+        busy = true
+        scope.launch {
+            ObdBluetoothManager.readTroubleCodes().onSuccess { AiMechanic.report(it, announce = false) }
+            busy = false
+        }
+    })
+    val codes = ai.codes ?: return if (connected) {
+        idleFace(Icons.Filled.Warning, BuiltinKind.OBD_DTC.label, stringResource(R.string.design_no_scan_yet), action = scan)
+    } else obdIdle(BuiltinKind.OBD_DTC, env, "")
     val titles = remember(codes, context) { codes.map { ObdCodes.describe(it).localizedTitle(context) } }
     val lampOn = lamp?.on == true
     return WidgetFace(
@@ -203,13 +252,7 @@ private fun faultCodesFace(env: SkinTileEnv): WidgetFace? {
         },
         stats = listOfNotNull(lamp?.let { FaceStat(stringResource(R.string.design_engine_lamp), stringResource(if (it.on) R.string.design_on else R.string.design_off)) }),
         actions = listOf(
-            FaceAction(Icons.Filled.Search, stringResource(R.string.vehicle_scan), primary = true, enabled = connected && !busy, onClick = {
-                busy = true
-                scope.launch {
-                    ObdBluetoothManager.readTroubleCodes().onSuccess { AiMechanic.report(it, announce = false) }
-                    busy = false
-                }
-            }),
+            scan,
             FaceAction(Icons.Filled.DeleteSweep, stringResource(R.string.vehicle_clear), enabled = connected && !busy && codes.isNotEmpty(), onClick = {
                 busy = true
                 scope.launch {
@@ -222,13 +265,13 @@ private fun faultCodesFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun doorsFace(): WidgetFace? {
+private fun doorsFace(): WidgetFace {
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
     }
     val doors by McuReader.doorState.collectAsState()
-    val d = doors ?: return null
+    val d = doors ?: return idleFace(Icons.Filled.SensorDoor, BuiltinKind.DOORS.label, stringResource(R.string.vehicle_waiting_mcu))
     val open = stringResource(R.string.vehicle_door_open_caps)
     val closed = stringResource(R.string.vehicle_door_closed)
     val all = listOf(
@@ -254,14 +297,14 @@ private fun doorsFace(): WidgetFace? {
 }
 
 @Composable
-private fun canMonitorFace(): WidgetFace? {
+private fun canMonitorFace(): WidgetFace {
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
     }
     val entries by McuReader.entries.collectAsState()
     val now by rememberWallClock(500L)
-    if (entries.isEmpty()) return null
+    if (entries.isEmpty()) return idleFace(Icons.Filled.Sensors, BuiltinKind.CAN_MON.label, stringResource(R.string.vehicle_waiting_mcu), stringResource(R.string.design_can_ids))
     val changed = entries.count { now - it.changedAt < 1_000L }
     return WidgetFace(
         icon = Icons.Filled.Sensors,
@@ -370,15 +413,19 @@ private fun gForceFace(): WidgetFace {
 }
 
 @Composable
-private fun parkingFace(): WidgetFace? {
+private fun parkingFace(): WidgetFace {
     val context = LocalContext.current
     UseLocationFeed()
     LaunchedEffect(Unit) { ParkingStore.load(context) }
     val spot by ParkingStore.spot.collectAsState()
     val location by LocationFeed.location.collectAsState()
     rememberWallClock(30_000L).longValue
-    // No spot saved: the standard tile has the Save button.
-    val s = spot ?: return null
+    val s = spot ?: return idleFace(
+        Icons.Filled.LocalParking, BuiltinKind.PARKING.label,
+        stringResource(if (location != null) R.string.info_parking_prompt else R.string.info_waiting_gps),
+        action = FaceAction(Icons.Filled.AddLocation, stringResource(R.string.info_parking_save), primary = true,
+            enabled = location != null, onClick = { location?.let { ParkingStore.save(context, it) } })
+    )
     val here = location
     val (dist, bearing) = remember(here, s) {
         if (here == null) null to null else {
@@ -407,9 +454,18 @@ private fun parkingFace(): WidgetFace? {
 // --- Navigation and media ------------------------------------------------------------------
 
 @Composable
-private fun directionsFace(env: SkinTileEnv): WidgetFace? {
+private fun directionsFace(env: SkinTileEnv): WidgetFace {
     val nav by NavDirections.state.collectAsState()
-    if (!env.hasMediaAccess || !nav.active) return null
+    if (!env.hasMediaAccess) {
+        return idleFace(Icons.Filled.TurnRight, BuiltinKind.NAVIGATION.label, stringResource(R.string.info_directions_access_title), action = grantAccessAction())
+    }
+    if (!nav.active) {
+        return idleFace(
+            Icons.Filled.TurnRight, BuiltinKind.NAVIGATION.label, stringResource(R.string.info_directions_idle_title),
+            action = FaceAction(Icons.Filled.Navigation, stringResource(R.string.info_directions_open_maps), primary = true,
+                onClick = { openNavigationApp(env.context, nav) })
+        )
+    }
     val (value, unit) = nav.distanceParts
     val time = stringResource(R.string.design_nav_time)
     val distance = stringResource(R.string.design_nav_distance)
@@ -434,9 +490,12 @@ private fun directionsFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun mediaFace(env: SkinTileEnv): WidgetFace? {
+private fun mediaFace(env: SkinTileEnv): WidgetFace {
     val state = env.mediaState
-    if (!env.hasMediaAccess || !state.hasMedia) return null
+    if (!env.hasMediaAccess) {
+        return idleFace(Icons.Filled.MusicNote, stringResource(R.string.info_now_playing), stringResource(R.string.info_media_access_needed), action = grantAccessAction())
+            .let { WidgetFace(it.icon, it.title, stringResource(R.string.info_nothing_playing), caption = it.caption, textValue = true, fraction = 0f, actions = it.actions) }
+    }
     val positionMs = rememberMediaPosition(state, env.mediaController)
     val fraction = if (state.durationMs > 0L) (positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else null
     val art = remember(state.artwork) { state.artwork?.asImageBitmap() }
@@ -541,8 +600,12 @@ private fun clockFace(): WidgetFace {
 }
 
 @Composable
-private fun weatherFace(): WidgetFace? {
-    val w = rememberWeather() ?: return null
+private fun weatherFace(): WidgetFace {
+    val location by LocationFeed.location.collectAsState()
+    val w = rememberWeather() ?: return idleFace(
+        Icons.Filled.WbSunny, BuiltinKind.WEATHER.label,
+        stringResource(if (location == null) R.string.info_waiting_gps else R.string.info_weather_loading), "°C"
+    )
     return WidgetFace(
         icon = weatherIcon(w.code),
         title = BuiltinKind.WEATHER.label,
@@ -558,13 +621,11 @@ private fun weatherFace(): WidgetFace? {
     )
 }
 
-private fun granted(context: Context, permission: String) =
-    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-
 @Composable
-private fun agendaFace(): WidgetFace? {
+private fun agendaFace(): WidgetFace {
     val context = LocalContext.current
-    val allowed = granted(context, Manifest.permission.READ_CALENDAR)
+    val perm = rememberPermission(Manifest.permission.READ_CALENDAR)
+    val allowed = perm.granted
     var events by remember { mutableStateOf<List<AgendaEvent>?>(null) }
     LaunchedEffect(allowed) {
         if (!allowed) return@LaunchedEffect
@@ -573,9 +634,19 @@ private fun agendaFace(): WidgetFace? {
             delay(5 * 60_000)
         }
     }
-    if (!allowed) return null
-    val list = events ?: return null
-    if (list.isEmpty()) return null
+    val openCalendar = {
+        context.launchSafely(Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()))
+        Unit
+    }
+    if (!allowed) {
+        return idleFace(Icons.Filled.Event, BuiltinKind.CALENDAR.label, stringResource(R.string.info_agenda_needs_access),
+            action = FaceAction(Icons.Filled.LockOpen, stringResource(R.string.info_agenda_allow), primary = true, onClick = perm.request))
+    }
+    val list = events.orEmpty()
+    if (list.isEmpty()) {
+        return idleFace(Icons.Filled.Event, BuiltinKind.CALENDAR.label, stringResource(R.string.info_agenda_empty),
+            action = FaceAction(Icons.Filled.Event, stringResource(R.string.info_open), onClick = openCalendar))
+    }
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dayFmt = remember { SimpleDateFormat("EEE HH:mm", Locale.getDefault()) }
     val noTitle = stringResource(R.string.info_agenda_no_title)
@@ -597,21 +668,28 @@ private fun agendaFace(): WidgetFace? {
         // The next event's approach over the coming 3 hours.
         fraction = 1f - (span / (3 * 3_600_000f)).coerceIn(0f, 1f),
         rows = list.map { e -> FaceRow(e.title.ifBlank { noTitle }, whenText(e), alert = e.begin <= now) },
-        onClick = {
-            context.launchSafely(Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()))
-        }
+        onClick = openCalendar
     )
 }
 
 @Composable
-private fun quickDialFace(): WidgetFace? {
+private fun quickDialFace(): WidgetFace {
     val context = LocalContext.current
-    val allowed = granted(context, Manifest.permission.READ_CONTACTS)
+    val perm = rememberPermission(Manifest.permission.READ_CONTACTS)
+    val allowed = perm.granted
     var favourites by remember { mutableStateOf<List<Favourite>>(emptyList()) }
     LaunchedEffect(allowed) {
         if (allowed) favourites = withContext(Dispatchers.IO) { loadFavourites(context) }
     }
-    if (!allowed || favourites.isEmpty()) return null
+    val dialer = FaceAction(Icons.Filled.Dialpad, stringResource(R.string.info_quickdial_dialer), onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) })
+    if (!allowed) {
+        return idleFace(Icons.Filled.Call, BuiltinKind.QUICK_DIAL.label, stringResource(R.string.info_quickdial_needs_access),
+            action = FaceAction(Icons.Filled.LockOpen, stringResource(R.string.info_quickdial_allow), primary = true, onClick = perm.request))
+            .let { WidgetFace(it.icon, it.title, "--", caption = it.caption, actions = it.actions + dialer) }
+    }
+    if (favourites.isEmpty()) {
+        return idleFace(Icons.Filled.Call, BuiltinKind.QUICK_DIAL.label, stringResource(R.string.info_quickdial_empty), action = dialer)
+    }
     fun dial(f: Favourite) {
         f.number?.let { context.launchSafely(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it"))) }
     }
@@ -627,14 +705,16 @@ private fun quickDialFace(): WidgetFace? {
         actions = listOf(
             FaceAction(Icons.Filled.Call, stringResource(R.string.design_call_first, first.name.substringBefore(' ')), primary = true,
                 enabled = first.number != null, onClick = { dial(first) }),
-            FaceAction(Icons.Filled.Dialpad, stringResource(R.string.info_quickdial_dialer), onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) })
+            dialer
         )
     )
 }
 
 @Composable
-private fun notificationsFace(env: SkinTileEnv): WidgetFace? {
-    if (!env.hasMediaAccess) return null
+private fun notificationsFace(env: SkinTileEnv): WidgetFace {
+    if (!env.hasMediaAccess) {
+        return idleFace(Icons.Filled.Notifications, BuiltinKind.NOTIFICATIONS.label, stringResource(R.string.info_notif_needs_access), action = grantAccessAction())
+    }
     val items by NotificationFeed.items.collectAsState()
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val latest = items.firstOrNull()
@@ -656,7 +736,7 @@ private fun notificationsFace(env: SkinTileEnv): WidgetFace? {
     )
 }
 
-/** Stand-in reading for the design picker while a widget has no live one (not connected, no access...). */
+/** Stand-in reading for the design picker, for a kind with no face of its own. */
 @Composable
 internal fun sampleFace(kind: BuiltinKind): WidgetFace = WidgetFace(
     icon = kindIcon(kind),
@@ -677,11 +757,10 @@ internal fun sampleFace(kind: BuiltinKind): WidgetFace = WidgetFace(
 // --- Car care (CarCareTiles.kt) -------------------------------------------------------
 
 @Composable
-private fun filterFace(): WidgetFace? {
+private fun filterFace(): WidgetFace {
     val car by CarProfileStore.profile.collectAsState()
     val care by CarCare.state.collectAsState()
-    // No particle filter: the standard tile says so.
-    if (!car.particleFilter) return null
+    if (!car.particleFilter) return idleFace(kindIcon(BuiltinKind.FILTER_CARE), BuiltinKind.FILTER_CARE.label, stringResource(R.string.car_filter_none))
     val streak = care.filter.shortStreak
     val drive = care.drive
     val last = care.filter.lastLongAt
@@ -714,12 +793,13 @@ private fun filterFace(): WidgetFace? {
 }
 
 @Composable
-private fun warmupFace(env: SkinTileEnv): WidgetFace? {
+private fun warmupFace(env: SkinTileEnv): WidgetFace {
     val car by CarProfileStore.profile.collectAsState()
     val care by CarCare.state.collectAsState()
     val now by rememberWallClock(1_000L)
     val t = env.obdData.coolantTempC
-    if (env.obdConnection != ObdConnectionState.CONNECTED || t == 0) return null
+    if (env.obdConnection != ObdConnectionState.CONNECTED) return obdIdle(BuiltinKind.WARMUP, env, "°C")
+    if (t == 0) return idleFace(kindIcon(BuiltinKind.WARMUP), BuiltinKind.WARMUP.label, stringResource(R.string.car_waiting_obd), "°C")
     return WidgetFace(
         icon = kindIcon(BuiltinKind.WARMUP),
         title = BuiltinKind.WARMUP.label,
@@ -736,10 +816,13 @@ private fun warmupFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun batteryFace(env: SkinTileEnv): WidgetFace? {
+private fun batteryFace(env: SkinTileEnv): WidgetFace {
     val car by CarProfileStore.profile.collectAsState()
     val v = env.obdData.voltage
-    if (env.obdConnection != ObdConnectionState.CONNECTED || v < LiveWatch.MIN_PLAUSIBLE_V || v > LiveWatch.MAX_PLAUSIBLE_V) return null
+    if (env.obdConnection != ObdConnectionState.CONNECTED) return obdIdle(BuiltinKind.BATTERY, env, "V")
+    if (v < LiveWatch.MIN_PLAUSIBLE_V || v > LiveWatch.MAX_PLAUSIBLE_V) {
+        return idleFace(kindIcon(BuiltinKind.BATTERY), BuiltinKind.BATTERY.label, stringResource(R.string.car_waiting_obd), "V")
+    }
     val running = env.obdData.rpm > LiveWatch.RUNNING_RPM
     val (status, weak) = if (running) when {
         v >= LiveWatch.CHARGE_CLEAR_V -> R.string.car_battery_charging to false
@@ -769,11 +852,11 @@ private fun batteryFace(env: SkinTileEnv): WidgetFace? {
 }
 
 @Composable
-private fun ecoFace(): WidgetFace? {
+private fun ecoFace(): WidgetFace {
     val car by CarProfileStore.profile.collectAsState()
     val care by CarCare.state.collectAsState()
-    // No drive yet: the standard tile explains what the score will be.
-    val drive = care.drive ?: care.lastDrive ?: return null
+    val drive = care.drive ?: care.lastDrive
+        ?: return idleFace(kindIcon(BuiltinKind.ECO_DRIVE), BuiltinKind.ECO_DRIVE.label, stringResource(R.string.car_eco_empty), "/ 100")
     val score = drive.ecoScore
     val liters = drive.distanceKm * car.typicalUse / 100
     return WidgetFace(
@@ -803,14 +886,14 @@ private fun ecoFace(): WidgetFace? {
 }
 
 @Composable
-private fun fuelToDestFace(): WidgetFace? {
+private fun fuelToDestFace(): WidgetFace {
     val nav by NavDirections.state.collectAsState()
     val canFuel by McuReader.fuelPercent.collectAsState()
     val canRange by McuReader.rangeKm.collectAsState()
     val obd by ObdBluetoothManager.data.collectAsState()
     val car by CarProfileStore.profile.collectAsState()
     val range = remember(canFuel, canRange, obd.fuelLevelPct, car) { carFuelInfo(canFuel, obd.fuelLevelPct, canRange)?.rangeKm }
-        ?: return null
+        ?: return idleFace(kindIcon(BuiltinKind.FUEL_TO_DEST), BuiltinKind.FUEL_TO_DEST.label, stringResource(R.string.car_fuel_dest_no_range), "km")
     val toGo = if (nav.active) CareRules.remainingKm(nav.eta) else null
     val verdict = CareRules.fuelVerdict(range, toGo)
     val icon = kindIcon(BuiltinKind.FUEL_TO_DEST)

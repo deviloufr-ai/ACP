@@ -44,10 +44,10 @@ import androidx.compose.ui.window.DialogProperties
  */
 
 /**
- * A built-in tile drawn in its non-standard design. Live views (map, Maps
- * window, 3D car) keep their [standard] content inside the design's frame;
- * every other widget draws its live face, or its [standard] tile while it has
- * no reading to show.
+ * A built-in tile drawn in its non-standard design. Framed kinds (map, Maps
+ * window, 3D car, My car) keep their [standard] content inside the design's
+ * frame; every other widget draws its live face, which covers the states
+ * without a reading too (see WidgetFaceData.kt).
  */
 @Composable
 internal fun DesignedTile(item: DashboardItem.BuiltinWidget, env: SkinTileEnv, standard: @Composable () -> Unit) {
@@ -60,8 +60,8 @@ internal fun DesignedTile(item: DashboardItem.BuiltinWidget, env: SkinTileEnv, s
 }
 
 /**
- * Every design for [kind], each previewed with the widget's live reading (or a
- * stand-in while it has none) at the tile's own proportions [aspect].
+ * Every design for [kind], each previewed with the widget's live reading at
+ * the tile's own proportions [aspect].
  * [standardPreview] draws the tile as it is today.
  */
 @Composable
@@ -92,7 +92,7 @@ internal fun WidgetDesignPickerDialog(
                     style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    stringResource(if (live == null && kind !in FRAMED_KINDS) R.string.design_picker_hint_sample else R.string.design_picker_hint),
+                    stringResource(R.string.design_picker_hint),
                     color = DashColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )

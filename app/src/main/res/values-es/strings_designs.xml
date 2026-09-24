@@ -36,7 +36,6 @@
     <string name="design_change">Cambiar el diseño de %1$s</string>
     <string name="design_picker_title">Diseño: %1$s</string>
     <string name="design_picker_hint">Toca un diseño para usarlo en este mosaico. Cada mosaico conserva el suyo.</string>
-    <string name="design_picker_hint_sample">Toca un diseño para usarlo en este mosaico. Las vistas previas muestran valores de ejemplo hasta que el widget tenga datos.</string>
     <string name="design_codes_unit">códigos</string>
     <string name="design_engine_lamp">Testigo del motor</string>
     <string name="design_on">Encendido</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">Llamar a %1$s</string>
     <string name="design_notif_new_unit">nuevas</string>
     <string name="design_latest">Última</string>
+    <string name="design_no_scan_yet">Aún sin escanear</string>
+    <string name="design_range_unknown">Autonomía aún sin configurar</string>
 </resources>
