@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.util.Log
 import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +52,8 @@ val ObdConnectionState.isIdle: Boolean get() = this == ObdConnectionState.DISCON
  */
 object ObdBluetoothManager {
 
+    private const val TAG = "Obd"
+
     /** Well-known SPP UUID used by ELM327 clones. */
     private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
@@ -93,39 +96,69 @@ object ObdBluetoothManager {
     /**
      * Connects to the adapter at [deviceAddress] (a Bluetooth MAC).
      * Returns true on success. Requires BLUETOOTH_CONNECT at runtime (API 31+).
+     *
+     * One attempt at a time: the resume observer and the 5 s retry loop both
+     * call this, often in the same frame, and a second socket to an ELM327
+     * (which takes one connection) knocks out the first. A link left from an
+     * earlier try is closed first for the same reason, and whatever goes wrong
+     * ends in ERROR, never stuck in CONNECTING where no retry would happen.
      */
     @SuppressLint("MissingPermission")
-    suspend fun connect(deviceAddress: String): Boolean = withContext(Dispatchers.IO) {
-        val context = appContext ?: return@withContext false
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            ?: return@withContext false
-        val adapter = manager.adapter ?: return@withContext false
-
-        _connectionState.value = ObdConnectionState.CONNECTING
+    suspend fun connect(deviceAddress: String): Boolean {
+        if (_connectionState.value == ObdConnectionState.CONNECTED) return true
+        if (!connectLock.tryLock()) return false
         try {
-            val device = adapter.getRemoteDevice(deviceAddress)
-            runCatching { adapter.cancelDiscovery() }
-            val newSocket = openSocket(device) ?: run {
-                _connectionState.value = ObdConnectionState.ERROR
-                return@withContext false
+            if (_connectionState.value == ObdConnectionState.CONNECTED) return true
+            _connectionState.value = ObdConnectionState.CONNECTING
+            val ok = withContext(Dispatchers.IO) {
+                // No poll or fault-code scan may talk to the link being replaced.
+                commandMutex.withLock {
+                    runCatching { open(deviceAddress) }
+                        .onFailure { Log.w(TAG, "connect failed", it) }
+                        .getOrDefault(false)
+                }
             }
-
-            socket = newSocket
-            inputStream = newSocket.inputStream
-            outputStream = newSocket.outputStream
-            initializeAdapter()
-
-            _connectionState.value = ObdConnectionState.CONNECTED
-            true
-        } catch (e: IOException) {
-            _connectionState.value = ObdConnectionState.ERROR
-            closeQuietly()
-            false
-        } catch (e: SecurityException) {
-            _connectionState.value = ObdConnectionState.ERROR
-            closeQuietly()
-            false
+            if (!ok) closeQuietly()
+            _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
+            return ok
+        } finally {
+            // Cancelled mid-attempt (the screen went away): a CONNECTING left
+            // behind would stop every later retry.
+            if (_connectionState.value == ObdConnectionState.CONNECTING) {
+                closeQuietly()
+                _connectionState.value = ObdConnectionState.ERROR
+            }
+            connectLock.unlock()
         }
+    }
+
+    private val connectLock = Mutex()
+
+    @SuppressLint("MissingPermission")
+    private fun open(deviceAddress: String): Boolean {
+        val context = appContext ?: return false
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return false
+        val adapter = manager.adapter ?: return false
+        if (!adapter.isEnabled) {
+            Log.w(TAG, "Bluetooth is off")
+            return false
+        }
+        closeQuietly()
+        val device = adapter.getRemoteDevice(deviceAddress)
+        runCatching { adapter.cancelDiscovery() }
+        val newSocket = openSocket(device) ?: run {
+            Log.w(TAG, "no RFCOMM channel to $deviceAddress accepted the connection")
+            return false
+        }
+        socket = newSocket
+        inputStream = newSocket.inputStream
+        outputStream = newSocket.outputStream
+        // A socket nothing answers on is no adapter: fail, so it is tried again.
+        if (!initializeAdapter()) {
+            Log.w(TAG, "$deviceAddress connected but never answered")
+            return false
+        }
+        return true
     }
 
     /**
@@ -158,14 +191,17 @@ object ObdBluetoothManager {
         }
     }
 
-    /** Sends the standard ELM327 initialization sequence. */
-    private fun initializeAdapter() {
-        sendCommand("ATZ")   // reset
-        Thread.sleep(1000)   // clone adapters need a moment after reset
-        sendCommand("ATE0")  // echo off
-        sendCommand("ATL0")  // line feeds off
-        sendCommand("ATSP0") // automatic protocol selection
+    /** Sends the standard ELM327 initialization sequence; false if the adapter said nothing at all. */
+    private fun initializeAdapter(): Boolean {
+        val replies = listOf(
+            sendCommand("ATZ").also { Thread.sleep(1000) }, // reset; clone adapters need a moment after it
+            sendCommand("ATE0"),  // echo off
+            sendCommand("ATL0"),  // line feeds off
+            sendCommand("ATSP0")  // automatic protocol selection
+        )
+        if (replies.all { it == null }) return false
         sendCommand("0100")  // probe supported PIDs (wakes the ECU link)
+        return outputStream != null
     }
 
     /** Paired Bluetooth devices as (name, MAC) pairs, for the adapter picker. */
@@ -196,7 +232,9 @@ object ObdBluetoothManager {
     /** Polls speed, RPM and coolant temperature once, updating [data]. */
     suspend fun poll(): Unit = withContext(Dispatchers.IO) {
         if (_connectionState.value != ObdConnectionState.CONNECTED) return@withContext
-        commandMutex.withLock { pollLocked() }
+        commandMutex.withLock {
+            if (_connectionState.value == ObdConnectionState.CONNECTED) pollLocked()
+        }
     }
 
     private fun pollLocked() {
@@ -333,7 +371,10 @@ object ObdBluetoothManager {
             }
             response.toString().replace(">", "").trim().ifEmpty { null }
         } catch (e: IOException) {
-            _connectionState.value = ObdConnectionState.ERROR
+            // The link is gone: drop it so the retry opens a fresh one.
+            Log.w(TAG, "$command: ${e.message}")
+            closeQuietly()
+            if (_connectionState.value == ObdConnectionState.CONNECTED) _connectionState.value = ObdConnectionState.ERROR
             null
         }
     }
