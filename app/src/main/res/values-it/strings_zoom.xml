@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zoom_button">Dimensione di testo e icone</string>
+    <string name="zoom_out">Più piccolo</string>
+    <string name="zoom_in">Più grande</string>
+    <string name="zoom_reset">Torna al 100 %</string>
+</resources>

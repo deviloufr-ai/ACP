@@ -194,6 +194,41 @@ class DashboardStoreTest {
     }
 
     @Test
+    fun anyTileCanShrinkToOneCell() {
+        val clock = widget(BuiltinKind.CLOCK, 2, 2, 3, 2).withCell(2, 2, 1, 1)
+        assertEquals(1, clock.w)
+        assertEquals(1, clock.h)
+        val bar = DashboardItem.LaunchBar(listOf("a"), 0, 6, 8, 1).withCell(0, 6, 1, 1)
+        assertEquals(1, bar.w)
+    }
+
+    @Test
+    fun zoomStepsOnWholeTenthsWithinItsRange() {
+        assertEquals(1.1f, zoomStep(1f, 1), 0f)
+        assertEquals(0.9f, zoomStep(1f, -1), 0f)
+        // Ten taps up and ten down come back exactly, never 0.9999.
+        var z = 1f
+        repeat(10) { z = zoomStep(z, 1) }
+        repeat(10) { z = zoomStep(z, -1) }
+        assertEquals(1f, z, 0f)
+        assertEquals(ZOOM_MAX, zoomStep(ZOOM_MAX, 1), 0f)
+        assertEquals(ZOOM_MIN, zoomStep(ZOOM_MIN, -1), 0f)
+        assertEquals(ZOOM_MAX, widget(BuiltinKind.CLOCK, 0, 0, 3, 2).withZoom(9f).zoom, 0f)
+    }
+
+    @Test
+    fun zoomRoundTripsAndSurvivesMovesAndResizes() {
+        val zoomed = widget(BuiltinKind.CLOCK, 0, 0, 3, 2).withZoom(1.4f)
+        val pages = listOf(listOf(zoomed, DashboardItem.AppShortcut("a", 4, 0).withZoom(0.7f)), emptyList(), emptyList())
+        assertEquals(pages, DashboardStore.parsePages(DashboardStore.serializePages(pages)))
+        assertEquals(1.4f, zoomed.withCell(5, 3, 2, 1).zoom, 0f)
+        // The usual size is not written, so older builds see the same JSON.
+        assertFalse(DashboardStore.serializePages(listOf(listOf(widget(BuiltinKind.CLOCK, 0, 0, 3, 2)), emptyList(), emptyList())).contains("\"z\""))
+        assertFalse(DashboardItem.AppWindow("maps").canZoom())
+        assertTrue(zoomed.canZoom())
+    }
+
+    @Test
     fun everyWidgetHasAtLeastTenDesigns() {
         val generic = WidgetDesign.entries.filter { !it.isSignature }
         // The standard renderer plus the generic faces apply to every built-in kind.

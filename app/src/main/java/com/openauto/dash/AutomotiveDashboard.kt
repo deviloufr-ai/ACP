@@ -357,6 +357,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         mutatePage(page) { l -> l.mapIndexed { i, t -> if (i == index) t.withCell(t.x, t.y, cw, ch) else t } }
     }
 
+    /** Draws the tile at [index] with its text and icons [zoom] times their size. */
+    fun zoomTile(page: Int, index: Int, zoom: Float) {
+        mutatePage(page) { list -> list.mapIndexed { i, t -> if (i == index) t.withZoom(zoom) else t } }
+    }
+
     /** Restores the layout from before the last add / move / resize / remove. */
     fun undo() {
         val previous = history.lastOrNull() ?: return
@@ -693,7 +698,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     },
                     onAdd = { onAdd(page) },
                     onTemplates = { showTemplates = true },
-                    onDesign = { index -> designPicker = page to index }
+                    onDesign = { index -> designPicker = page to index },
+                    onZoom = { index, zoom -> zoomTile(page, index, zoom) }
                 )
             }
             // Sideways swipes only from the middle row: the pages above and
