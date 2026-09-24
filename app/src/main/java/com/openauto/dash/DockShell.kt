@@ -69,6 +69,21 @@ object DockShell {
         error(last.trim().lines().firstOrNull().orEmpty().ifBlank { "resize refused" })
     }
 
+    /**
+     * Moves the window's whole stack onto [displayId]: onto the launcher's
+     * hidden display to park it out of sight, back onto the screen (display 0)
+     * to dock it again. The window keeps its size, its place and its state;
+     * only the display it is composed on changes. Needs INTERNAL_SYSTEM_WINDOW,
+     * which root has and the ADB shell is granted.
+     */
+    suspend fun moveToDisplay(context: Context, win: FloatingWindow, displayId: Int): String {
+        val cmd = "am display move-stack ${win.stackId} $displayId"
+        val out = shell(context, cmd)
+        if (looksLikeError(out)) error(out.trim().lines().firstOrNull().orEmpty().ifBlank { "move refused" })
+        Log.d(TAG, "${win.mode} ${win.packageName} -> display $displayId via `$cmd`")
+        return "$cmd: ok"
+    }
+
     private fun looksLikeError(out: String): Boolean =
         out.contains("Error", ignoreCase = true) || out.contains("Exception") || out.contains("Unknown")
 

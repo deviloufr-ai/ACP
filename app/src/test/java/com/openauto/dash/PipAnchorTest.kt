@@ -157,6 +157,47 @@ class PipAnchorTest {
     }
 
     @Test
+    fun windowParkedOnTheHiddenDisplayIsOffDisplayAndCoversNothing() {
+        // Stacks are listed display by display, the hidden display's after the
+        // screen's: listed "behind" the dashboard, but on another display.
+        val listing = """
+            Stack id=1 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=41: com.openauto.dash/com.openauto.dash.MainActivity bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=8 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=64: com.google.android.apps.youtube.music/.MusicActivity bounds=[640,80][1280,660] userId=0 visible=true
+            Stack id=7 bounds=[0,0][1280,720] displayId=3 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
+        """.trimIndent()
+        val maps = WindowListing.parseFloatingWindow(listing, packageName = "com.google.android.apps.maps")!!
+        assertEquals(3, maps.displayId)
+        assertEquals(true, maps.offDisplay)
+        assertEquals(false, maps.behindDashboard)
+        // Its size and place survive the trip, for the tile to place it from.
+        assertEquals(ScreenRect(0, 80, 640, 660), maps.bounds)
+        val music = WindowListing.parseFloatingWindow(listing, packageName = "com.google.android.apps.youtube.music")!!
+        assertEquals(0, music.displayId)
+        assertEquals(false, music.offDisplay)
+        assertEquals(true, music.behindDashboard)
+        // A listing without display ids (an older format) counts everything as on the screen.
+        val plain = listing.replace(Regex(" displayId=\\d+"), "")
+        assertEquals(false, WindowListing.parseFloatingWindow(plain, packageName = "com.google.android.apps.maps")!!.offDisplay)
+    }
+
+    @Test
+    fun hiddenWindowsWithoutATileStillCountAsStraysSoTheyStayParked() {
+        val listing = """
+            Stack id=7 bounds=[0,0][1280,720] displayId=3 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,80][640,660] userId=0 visible=true
+        """.trimIndent()
+        val strays = WindowListing.strayWindows(listing, managed = setOf("com.google.android.apps.maps"), active = emptySet())
+        assertEquals(listOf(true), strays.map { it.offDisplay })
+    }
+
+    @Test
     fun strayWindowsAreTheManagedOnesWithoutATile() {
         val listing = """
             Stack id=7 bounds=[0,0][1280,720] displayId=0 userId=0

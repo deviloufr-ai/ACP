@@ -12,12 +12,13 @@ import android.view.WindowManager
 import kotlin.math.roundToInt
 
 /*
- * A parked window is pushed into the bottom-right corner, but the window
- * manager keeps 48 × 32 dp of any floating window on screen however far it is
- * pushed (WindowState's MINIMUM_VISIBLE_WIDTH / HEIGHT), so a corner of Maps
- * would still peek out, over the dashboard or over another app. This black
- * patch, like the screen's bezel, covers that corner while a window is parked
- * there. It takes the taps on it, so none reach the hidden window.
+ * The fallback when a window cannot go onto the [HiddenDisplay] (and for
+ * picture-in-picture): it is pushed into the bottom-right corner instead, but
+ * the window manager keeps 48 × 32 dp of any floating window on screen however
+ * far it is pushed (WindowState's MINIMUM_VISIBLE_WIDTH / HEIGHT), so a corner
+ * of Maps would still peek out, over the dashboard or over another app. This
+ * black patch, like the screen's bezel, covers that corner while a window is
+ * parked there. It takes the taps on it, so none reach the hidden window.
  */
 
 internal object ParkedCover {

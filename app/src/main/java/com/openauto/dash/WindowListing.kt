@@ -22,7 +22,11 @@ data class FloatingWindow(
     /** False when another stack (e.g. the dashboard's) covers it. */
     val visible: Boolean = true,
     /** True when the dashboard's own stack is listed in front of this one (partly covering it). */
-    val behindDashboard: Boolean = false
+    val behindDashboard: Boolean = false,
+    /** The display the window is on (0 is the screen). */
+    val displayId: Int = 0,
+    /** True when the window is on another display than the dashboard: parked on the hidden one, out of sight. */
+    val offDisplay: Boolean = false
 )
 
 object WindowListing {
@@ -86,6 +90,10 @@ object WindowListing {
         // appearing before the window's means the dashboard is drawn over it.
         val blocks = stackBlocks(output)
         val selfIndex = blocks.indexOfFirst { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+        // Stacks are listed display by display; only one on the dashboard's own
+        // display can be in front of it. A window parked on the hidden display
+        // is listed after everything on the screen, but it covers nothing.
+        val selfDisplay = blocks.getOrNull(selfIndex)?.let { displayId(it) } ?: DEFAULT_DISPLAY
         for ((index, block) in blocks.withIndex()) {
             val mode = windowingMode(block) ?: continue
             if (mode != "pinned" && mode != "freeform") continue
@@ -100,11 +108,20 @@ object WindowListing {
             val b = (BOUNDS.find(taskLine) ?: BOUNDS.find(block))?.groupValues
             val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
             val visible = !taskLine.contains("visible=false")
-            val behind = selfIndex in 0 until index
-            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible, behind)
+            val display = displayId(block) ?: DEFAULT_DISPLAY
+            val offDisplay = display != selfDisplay
+            val behind = !offDisplay && selfIndex in 0 until index
+            found += FloatingWindow(id, task.groupValues[1].toIntOrNull(), pkg, bounds, mode, visible, behind, display, offDisplay)
         }
         return found
     }
+
+    /** Android's id for the screen itself (`Display.DEFAULT_DISPLAY`, kept out of the Android types here). */
+    const val DEFAULT_DISPLAY = 0
+
+    /** The display a stack block says it is on, from its `Stack id=N ... displayId=N` line. */
+    private fun displayId(block: String): Int? =
+        DISPLAY.find(block.lineSequence().first())?.groupValues?.get(1)?.toIntOrNull()
 
     /** "mode package" per stack, for the tile's diagnostic line. */
     internal fun summarizeStacks(output: String): String? {
@@ -119,6 +136,8 @@ object WindowListing {
     private val TASK = Regex("taskId=(\\d+): ([\\w.]+)/")
 
     private val BOUNDS = Regex("bounds=\\[(-?\\d+),(-?\\d+)\\]\\[(-?\\d+),(-?\\d+)\\]")
+
+    private val DISPLAY = Regex("displayId=(\\d+)")
 
     private val MODE_NAME = Regex("(?:indowingMode|winMode)=([a-z-]+)")
 

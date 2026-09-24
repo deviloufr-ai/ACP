@@ -149,7 +149,7 @@ object PipAnchor {
     /** Unknown yet counts as placed: closing a window by mistake loses the app's state. */
     private fun isPlaced(packageName: String): Boolean = placedPackages.value?.contains(packageName) ?: true
 
-    /** Windows parked aside (off-page, or out of a dialog's way): alive, but not on the dashboard. */
+    /** Windows parked out of sight (off-page, or out of a dialog's way): alive, but not on the dashboard. */
     private val parked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** The window is back (or gone): the parked corner's cover goes once no window is left there. */
@@ -200,18 +200,37 @@ object PipAnchor {
     }
 
     /**
-     * The way a window leaves the dashboard without being closed: pushed off
-     * the bottom-right corner at its current size. The system never hides a
-     * freeform window completely: it keeps 48 × 32 dp of it on screen, a full
-     * strip down the side when a window was only pushed off the right edge,
-     * just a corner this way, and [ParkedCover] hides that corner. The app
-     * keeps running; the tile brings the window back when it is on screen again.
+     * The way a window leaves the dashboard without being closed: moved onto
+     * the launcher's [HiddenDisplay], where nothing of it shows and nothing
+     * needs covering. The app keeps running and drawing; the tile moves the
+     * window back onto the screen when it is on screen again. Only when that
+     * display cannot be used (a shell without the permission, a ROM that
+     * refuses) is the window pushed into the bottom-right corner instead, with
+     * [ParkedCover] over the 48 × 32 dp the system keeps in view.
      */
 
     private suspend fun park(context: Context, win: FloatingWindow, reason: String) {
         if (win.mode == "freeform") noteFreeform(win.packageName, true)
         parked.add(win.packageName)
         if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
+        if (win.offDisplay) return // already out of sight
+        // Picture-in-picture is SystemUI's own window, moved between displays by
+        // nobody; it is parked small in the corner as before.
+        val hidden = if (win.mode == "freeform") HiddenDisplay.acquire(context) else null
+        if (hidden != null) {
+            val moved = runGuarded { DockShell.moveToDisplay(context, win, hidden) }
+            if (moved.isSuccess) {
+                HiddenDisplay.noteMoveSucceeded()
+                Log.i(TAG, "${win.packageName} parked on the hidden display ($reason)")
+                return
+            }
+            HiddenDisplay.noteMoveFailed(moved.exceptionOrNull()!!)
+        }
+        parkInCorner(context, win, reason)
+    }
+
+    /** The fallback park: the corner, with the cover over what still shows. */
+    private suspend fun parkInCorner(context: Context, win: FloatingWindow, reason: String) {
         val b = win.bounds ?: return
         val dm = context.resources.displayMetrics
         val left = dm.widthPixels - ASIDE_SLIVER_PX
@@ -219,7 +238,7 @@ object PipAnchor {
         if (b.left < left || b.top < top) {
             runGuarded { DockShell.resize(context, win, ScreenRect(left, top, left + (b.right - b.left), top + (b.bottom - b.top))) }
                 .onFailure { Log.w(TAG, "park aside failed", it) }
-            Log.i(TAG, "${win.packageName} parked aside ($reason)")
+            Log.i(TAG, "${win.packageName} parked in the corner ($reason)")
         }
         if (win.packageName in parked && grantOverlayPermission(context)) ParkedCover.show(context) { parked.isNotEmpty() }
     }
@@ -269,9 +288,9 @@ object PipAnchor {
     private val parking = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
     /**
-     * Pushes [packageName]'s window into the bottom-right corner at its current
-     * size, out of sight (see [park]). One park at a time per app: a second request
-     * while one is under way would only repeat its round trips.
+     * Takes [packageName]'s window out of sight (see [park]) while a pop-up is
+     * over its tile. One park at a time per app: a second request while one is
+     * under way would only repeat its round trips.
      */
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
         parking.compute(packageName) { _, running ->
@@ -344,6 +363,36 @@ object PipAnchor {
                     lastRaiseAt = lastRaiseAt[packageName] ?: 0L, now = now
                 )
                 mem = next
+                if (step is DockPolicy.Step.Unhide || step is DockPolicy.Step.ReleaseHidden) {
+                    // Parked on the hidden display: bring it back onto the screen
+                    // first; it is placed on the tile by the next poll, at once.
+                    noteFreeform(packageName, win.mode == "freeform")
+                    val result = if (step is DockPolicy.Step.Unhide) {
+                        Log.i(TAG, "bringing $packageName back from the hidden display (attempt ${step.attempt})")
+                        runGuarded { DockShell.moveToDisplay(context, win, WindowListing.DEFAULT_DISPLAY) }
+                    } else {
+                        // It will not come back: the display goes, every window parked
+                        // on it with it, and the tiles reopen their apps instead of
+                        // waiting forever.
+                        expectedGone.add(packageName)
+                        expectedGone.addAll(parked)
+                        runGuarded { HiddenDisplay.release("$packageName stuck on it"); "hidden display released" }
+                    }
+                    lastResult = result.fold({ it }, { "failed: ${it.message}" })
+                    status.value = Status(
+                        pipPackage = win.packageName, docked = false, mode = win.mode, seen = lastSeen,
+                        windowBounds = win.bounds, target = rect, lastResult = lastResult,
+                        checkedAt = now, visible = win.visible, behindDashboard = win.behindDashboard
+                    )
+                    result.onFailure { publishError(context, packageName, it) }
+                    if (result.isSuccess) {
+                        DockShell.forgetListing()
+                        delay(UNHIDE_SETTLE_MS)
+                        continue
+                    }
+                    delay(POLL_MS)
+                    continue
+                }
                 val keep = step as DockPolicy.Step.Keep
                 if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
@@ -389,6 +438,9 @@ object PipAnchor {
 
     private val lastRaiseAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
+    /** How long a window just moved back onto the screen is given before it is placed on its tile. */
+    private const val UNHIDE_SETTLE_MS = 300L
+
     /** Apps already stopped once in this process, so a fresh window of ours is the only one. */
     private val freshStarted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
@@ -422,7 +474,7 @@ object PipAnchor {
     fun nudge(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            if (win.mode != "freeform") return@launch
+            if (win.mode != "freeform" || win.offDisplay) return@launch // the tracker brings a hidden window back
             val b = win.bounds ?: return@launch
             Log.i(TAG, "nudging $packageName (its tile was tapped)")
             val left = context.resources.displayMetrics.widthPixels - ASIDE_SLIVER_PX
@@ -615,11 +667,12 @@ object PipAnchor {
 
     /**
      * The tile left the screen (another page, edit mode). A freeform window
-     * cannot be hidden: the window manager keeps part of it on screen. Raising
-     * the dashboard above it does not help either, this ROM keeps floating
-     * windows drawn on top. So it is parked aside, still running (closing it
-     * reset Maps' guidance and stopped the music), and the tile docks it again
-     * when it is back; it is closed only once its app has no tile left.
+     * cannot be hidden on the screen: the window manager keeps part of it in
+     * view, and raising the dashboard above it does not help either, this ROM
+     * keeps floating windows drawn on top. So it is parked out of sight, still
+     * running (closing it reset Maps' guidance and stopped the music), and the
+     * tile docks it again when it is back; it is closed only once its app has
+     * no tile left.
      * Picture-in-picture, which the system keeps on screen anyway, is parked
      * small in the bottom-right corner. Nothing is done while another tile of
      * the same app is on screen (the app on both pages of a swipe): the window
