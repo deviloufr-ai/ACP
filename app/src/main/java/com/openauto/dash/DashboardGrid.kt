@@ -33,7 +33,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Density
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
@@ -115,31 +122,35 @@ internal fun DashboardPage(
     /** Opens the design picker for the built-in tile at this index. */
     onDesign: (Int) -> Unit = {},
     /** Opens the template chooser (offered by an empty page). */
-    onTemplates: () -> Unit = {}
+    onTemplates: () -> Unit = {},
+    /** Sets the tile at this index's zoom (its text and icon size). */
+    onZoom: (Int, Float) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
 
     // Renders one tile's inner content with all the shared dependencies wired in.
     val tileContent: @Composable (Int, DashboardItem, ((Int, Int) -> Unit)?) -> Unit = { index, item, fit ->
-        TileContent(
-            item = item,
-            editing = editing && !inSplitMode,
-            appsByPackage = appsByPackage,
-            mediaState = mediaState,
-            mediaController = mediaController,
-            hasMediaAccess = hasMediaAccess,
-            context = context,
-            obdData = obdData,
-            obdConnection = obdConnection,
-            onConnectObd = onConnectObd,
-            onPickDevice = onPickDevice,
-            onLaunchApp = onLaunchApp,
-            onLaunchSplitPair = onLaunchSplitPair,
-            onEditLaunchBar = { onEditLaunchBar(index) },
-            onModelTouch = onModelTouch,
-            onFitToWindow = fit
-        )
+        TileZoom(item.zoom) {
+            TileContent(
+                item = item,
+                editing = editing && !inSplitMode,
+                appsByPackage = appsByPackage,
+                mediaState = mediaState,
+                mediaController = mediaController,
+                hasMediaAccess = hasMediaAccess,
+                context = context,
+                obdData = obdData,
+                obdConnection = obdConnection,
+                onConnectObd = onConnectObd,
+                onPickDevice = onPickDevice,
+                onLaunchApp = onLaunchApp,
+                onLaunchSplitPair = onLaunchSplitPair,
+                onEditLaunchBar = { onEditLaunchBar(index) },
+                onModelTouch = onModelTouch,
+                onFitToWindow = fit
+            )
+        }
     }
 
     if (inSplitMode) {
@@ -239,6 +250,7 @@ internal fun DashboardPage(
                     canMove = canMove,
                     onRemove = onRemove,
                     onDesign = onDesign,
+                    onZoom = onZoom,
                     onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
                     onPreviewClear = { preview = null },
                     content = {
@@ -288,6 +300,7 @@ internal fun GridTile(
     canMove: (Int, Int, Int) -> Boolean,
     onRemove: (Int) -> Unit,
     onDesign: (Int) -> Unit,
+    onZoom: (Int, Float) -> Unit,
     onPreview: (Int, Int, Int, Int, Boolean) -> Unit,
     onPreviewClear: () -> Unit,
     content: @Composable () -> Unit
@@ -373,6 +386,16 @@ internal fun GridTile(
                 )
             ) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(18.dp))
+            }
+
+            // Top-left (top centre when the remove button took that corner): the
+            // tile's zoom, a small menu stepping its text and icon size.
+            if (item.canZoom()) {
+                TileZoomButton(
+                    zoom = item.zoom,
+                    onZoom = { onZoom(index, it) },
+                    modifier = Modifier.align(if (shortTile) Alignment.TopCenter else Alignment.TopStart).padding(4.dp)
+                )
             }
 
             // Bottom-left: this built-in tile's design (Hero, Gauge, LCD, ...).
@@ -664,6 +687,56 @@ internal fun DashboardItem.describe(): String = when (this) {
     is DashboardItem.LaunchBar -> stringResource(R.string.dash_describe_launch_bar)
     is DashboardItem.SystemWidget -> stringResource(R.string.dash_describe_widget)
     is DashboardItem.AppWindow -> stringResource(R.string.dash_app_window, packageName.substringAfterLast('.'))
+}
+
+/**
+ * Draws [content] as if the screen were [zoom] times denser: every dp and sp
+ * inside, so the tile's text, icons and spacing, grows or shrinks while the
+ * tile keeps its cells, and the layout re-flows to fit. Always provided, even
+ * at 1, so changing the zoom never rebuilds the tile (and its map or widget).
+ */
+@Composable
+internal fun TileZoom(zoom: Float, content: @Composable () -> Unit) {
+    val base = LocalDensity.current
+    val zoomed = remember(base, zoom) { Density(base.density * zoom, base.fontScale) }
+    CompositionLocalProvider(LocalDensity provides zoomed, content = content)
+}
+
+/** The zoom button on a tile being arranged, and its menu: smaller, the percentage, bigger, reset. */
+@Composable
+private fun TileZoomButton(zoom: Float, onZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        FilledIconButton(
+            onClick = { open = true },
+            modifier = Modifier.size(40.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
+            )
+        ) {
+            Icon(Icons.Filled.ZoomIn, contentDescription = stringResource(R.string.zoom_button), modifier = Modifier.size(18.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.keepClearOfWindows()) {
+            Row(modifier = Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { onZoom(zoomStep(zoom, -1)) }, enabled = zoom > ZOOM_MIN) {
+                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.zoom_out), tint = DashColors.TextPrimary)
+                }
+                Text(
+                    "${(zoom * 100).roundToInt()} %",
+                    color = DashColors.TextPrimary, fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center, modifier = Modifier.width(64.dp)
+                )
+                IconButton(onClick = { onZoom(zoomStep(zoom, 1)) }, enabled = zoom < ZOOM_MAX) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zoom_in), tint = DashColors.TextPrimary)
+                }
+            }
+            if (zoom != 1f) {
+                TextButton(onClick = { onZoom(1f) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text(stringResource(R.string.zoom_reset), color = DashColors.Accent)
+                }
+            }
+        }
+    }
 }
 
 /**

@@ -11,8 +11,8 @@ class DockPolicyTest {
 
     private val tile = ScreenRect(400, 100, 900, 400)
     private val area = ScreenRect(0, 80, 1280, 640)
-    private fun window(bounds: ScreenRect?, mode: String = "freeform", visible: Boolean = true, behind: Boolean = false, stack: Int = 7) =
-        FloatingWindow(stack, 63, "com.google.android.apps.maps", bounds, mode, visible, behind)
+    private fun window(bounds: ScreenRect?, mode: String = "freeform", visible: Boolean = true, behind: Boolean = false, stack: Int = 7, offDisplay: Boolean = false) =
+        FloatingWindow(stack, 63, "com.google.android.apps.maps", bounds, mode, visible, behind, if (offDisplay) 3 else 0, offDisplay)
 
     // --- no window ------------------------------------------------------------
 
@@ -176,6 +176,38 @@ class DockPolicyTest {
         val pip = window(tile, mode = "pinned", behind = true)
         val (step3, _) = DockPolicy.onPresent(DockPolicy.Memory(), pip, tile, area, 0, 100_000)
         assertFalse((step3 as DockPolicy.Step.Keep).raise)
+    }
+
+    @Test
+    fun windowOnTheHiddenDisplayIsBroughtBackBeforeAnythingElse() {
+        // Parked on the hidden display, even right over its tile: not docked,
+        // not placed, not raised; moved back onto the screen first.
+        val hidden = window(tile, behind = true, offDisplay = true)
+        val (step1, mem1) = DockPolicy.onPresent(DockPolicy.Memory(), hidden, tile, area, lastRaiseAt = 0, now = 100_000)
+        assertEquals(DockPolicy.Step.Unhide(1), step1)
+        assertTrue(mem1.hadWindow)
+        assertEquals(1, mem1.unhideAttempts)
+        // Back on the screen: the usual placement, and the count is forgotten.
+        val (step2, mem2) = DockPolicy.onPresent(mem1, window(tile), tile, area, lastRaiseAt = 0, now = 102_500)
+        assertTrue((step2 as DockPolicy.Step.Keep).docked)
+        assertEquals(0, mem2.unhideAttempts)
+    }
+
+    @Test
+    fun windowThatWillNotComeBackHasItsHiddenDisplayReleased() {
+        val hidden = window(tile, offDisplay = true)
+        var mem = DockPolicy.Memory()
+        repeat(DockPolicy.MAX_UNHIDE_ATTEMPTS) { n ->
+            val (step, next) = DockPolicy.onPresent(mem, hidden, tile, area, lastRaiseAt = 0, now = 100_000L + n * 2_500L)
+            assertEquals(DockPolicy.Step.Unhide(n + 1), step)
+            mem = next
+        }
+        val (step, next) = DockPolicy.onPresent(mem, hidden, tile, area, lastRaiseAt = 0, now = 110_000)
+        assertEquals(DockPolicy.Step.ReleaseHidden, step)
+        assertEquals(0, next.unhideAttempts)
+        // The window it closes was closed by us: its absence must not read as the user closing it.
+        val (after, _) = DockPolicy.onMissing(next, expectedGone = true, autoOpen = true, lastReopenAt = 0, now = 120_000)
+        assertEquals(DockPolicy.Step.Reopen(1), after)
     }
 
     @Test

@@ -29,6 +29,9 @@ object DockPolicy {
     /** Window and tile sizes this close, in pixels, count as the same size. */
     const val SIZE_SLACK_PX = 8
 
+    /** Tries to bring a window back from the hidden display before that display is given up on. */
+    const val MAX_UNHIDE_ATTEMPTS = 3
+
     /** What the loop remembers between polls for one app. */
     data class Memory(
         val hadWindow: Boolean = false,
@@ -37,7 +40,9 @@ object DockPolicy {
         val lastStack: Int? = null,
         val lastPlacementFailed: Boolean = false,
         /** The tile rectangle the window was last asked to take (tells a stale size from the app's minimum). */
-        val askedFor: ScreenRect? = null
+        val askedFor: ScreenRect? = null,
+        /** Failed tries so far to bring the window back from the hidden display. */
+        val unhideAttempts: Int = 0
     )
 
     sealed class Step {
@@ -49,6 +54,10 @@ object DockPolicy {
         object GiveUp : Step()
         /** Launch the app as a window at the tile ([attempt] is 1-based). */
         data class Reopen(val attempt: Int) : Step()
+        /** The window is parked on the hidden display: move it back onto the screen first ([attempt] is 1-based). */
+        data class Unhide(val attempt: Int) : Step()
+        /** The window will not come back from the hidden display: let that display go (the window closes and is reopened). */
+        object ReleaseHidden : Step()
         /**
          * The window exists. [raise] brings it above the dashboard; [place] is
          * where to move/resize it (null when it sits well), by dragging when
@@ -83,6 +92,14 @@ object DockPolicy {
      * raised it (0 if never).
      */
     fun onPresent(mem: Memory, win: FloatingWindow, rect: ScreenRect, limit: ScreenRect?, lastRaiseAt: Long, now: Long): Pair<Step, Memory> {
+        if (win.offDisplay) {
+            // Parked out of sight: nothing can be placed until it is back on the
+            // screen. A window that will not come back is closed with its hidden
+            // display and reopened by the usual path, rather than stay lost.
+            val seen = mem.copy(hadWindow = true, openAttempts = 0, lastStack = win.stackId)
+            if (mem.unhideAttempts >= MAX_UNHIDE_ATTEMPTS) return Step.ReleaseHidden to seen.copy(unhideAttempts = 0)
+            return Step.Unhide(mem.unhideAttempts + 1) to seen.copy(unhideAttempts = mem.unhideAttempts + 1)
+        }
         var attempts = if (win.stackId != mem.lastStack) 0 else mem.attempts
         val b = win.bounds
         val close = b != null && WindowListing.isClose(b, rect)
@@ -120,7 +137,7 @@ object DockPolicy {
         val step = Step.Keep(docked, raise, place, swipe, gaveUp = attempts >= MAX_ATTEMPTS, oversizePx = oversize)
         return step to mem.copy(
             hadWindow = true, openAttempts = 0, attempts = attempts, lastStack = win.stackId,
-            askedFor = if (place == rect) rect else mem.askedFor
+            askedFor = if (place == rect) rect else mem.askedFor, unhideAttempts = 0
         )
     }
 
