@@ -80,6 +80,7 @@ internal fun FuelPricesCard(modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val perm = rememberPermission(Manifest.permission.ACCESS_FINE_LOCATION)
     val error by FuelPriceRepo.error.collectAsState()
+    val location by LocationFeed.location.collectAsState()
     Card(modifier = modifier) {
         if (!perm.granted) {
             NeedsAccess(Icons.Filled.LocalGasStation, stringResource(R.string.fuel_title), stringResource(R.string.fuel_allow_location), perm.request)
@@ -92,7 +93,7 @@ internal fun FuelPricesCard(modifier: Modifier = Modifier) {
             }
             when {
                 nearby == null && error != null -> Hint(stringResource(R.string.fuel_error))
-                nearby == null -> Hint(stringResource(if (LocationFeed.location.value == null) R.string.info_waiting_gps else R.string.fuel_loading))
+                nearby == null -> Hint(stringResource(if (location == null) R.string.info_waiting_gps else R.string.fuel_loading))
                 nearby.ranked.isEmpty() -> Hint(stringResource(R.string.fuel_none, FuelPrices.RADIUS_KM))
                 else -> {
                     Text(
