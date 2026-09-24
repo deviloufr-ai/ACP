@@ -224,7 +224,7 @@ private fun DrawScope.label(
     drawText(layout, topLeft = Offset(x - layout.size.width * align, y - layout.firstBaseline))
 }
 
-/** Arc along a circle, angles clockwise from 12 o'clock as in [polar]. */
+/** Arc along a circle, angles clockwise from 12 o'clock as in [polarPoint]. */
 private fun DrawScope.arcDeg(color: Color, c: Offset, r: Float, fromDeg: Float, toDeg: Float, width: Float, cap: StrokeCap = StrokeCap.Round) {
     drawArc(color, fromDeg - 90f, toDeg - fromDeg, false, Offset(c.x - r, c.y - r), Size(r * 2, r * 2), style = Stroke(width, cap = cap))
 }
@@ -469,10 +469,10 @@ private fun TwinDials(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Stack(f, 
             if (i == 1) arcDeg(look.warn, c, 38.5f, -135f + 270f * 0.78f, 135f, 3f, StrokeCap.Butt)
             for (t in 0..20) {
                 val a = -135f + 270f * t / 20f
-                drawLine(Color(0xFFE8EAED), polar(c, 40f, a), polar(c, if (t % 5 != 0) 36.5f else 33f, a), strokeWidth = if (t % 5 != 0) 0.6f else 1.4f)
+                drawLine(Color(0xFFE8EAED), polarPoint(c, 40f, a), polarPoint(c, if (t % 5 != 0) 36.5f else 33f, a), strokeWidth = if (t % 5 != 0) 0.6f else 1.4f)
             }
             val a = -135f + 270f * fr
-            drawLine(look.accent, polar(c, 7f, a + 180f), polar(c, 34f, a), strokeWidth = 2.4f, cap = StrokeCap.Round)
+            drawLine(look.accent, polarPoint(c, 7f, a + 180f), polarPoint(c, 34f, a), strokeWidth = 2.4f, cap = StrokeCap.Round)
             drawCircle(Color(0xFFE8EAED), 3.8f, c)
             label(tm, g.value, c.x, 79f, 13f, Color.White)
             label(tm, g.unit.uppercase(Locale.getDefault()), c.x, 88f, 6f, Color(0xFF9AA0A6), weight = FontWeight.Normal)
@@ -548,9 +548,9 @@ private fun CompassRose(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             drawCircle(look.fill, 47f, c)
             drawCircle(look.dim, 47f, c, style = Stroke(0.8f))
             rotate(if (toCar) 0f else -a, c) {
-                for (d in 0 until 360 step 10) drawLine(look.ink, polar(c, 44f, d.toFloat()), polar(c, if (d % 30 != 0) 41f else 37.5f, d.toFloat()), strokeWidth = if (d % 30 != 0) 0.6f else 1.3f)
+                for (d in 0 until 360 step 10) drawLine(look.ink, polarPoint(c, 44f, d.toFloat()), polarPoint(c, if (d % 30 != 0) 41f else 37.5f, d.toFloat()), strokeWidth = if (d % 30 != 0) 0.6f else 1.3f)
                 letters.forEachIndexed { i, l ->
-                    val p = polar(c, 29f, i * 90f)
+                    val p = polarPoint(c, 29f, i * 90f)
                     rotate(i * 90f, p) { label(tm, l, p.x, p.y + 4f, 11f, if (i == 0) look.warn else look.ink, weight = FontWeight.ExtraBold) }
                 }
                 drawPath(Path().apply { moveTo(50f, 30f); lineTo(54f, 50f); lineTo(50f, 70f); lineTo(46f, 50f); close() }, look.dim.copy(alpha = 0.45f))
@@ -711,7 +711,7 @@ private fun Radar(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 )
             }
             val r = 8f + 36f * (1f - frac(f.fraction))
-            val p = polar(c, r, f.angle ?: 0f)
+            val p = polarPoint(c, r, f.angle ?: 0f)
             drawCircle(look.accent.copy(alpha = 0.25f), 7f, p)
             drawCircle(look.accent, 3.6f, p)
             drawRoundRect(look.ink, Offset(47f, 45f), Size(6f, 10f), CornerRadius(2f))
@@ -966,7 +966,7 @@ private fun SunPath(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             val t = ((hour - 6f) / 16f).coerceIn(0f, 1f)
             val c = Offset(100f, 86f)
             arcDeg(look.dim.copy(alpha = 0.6f), c, 76f, -90f, 90f, 1f, StrokeCap.Butt)
-            val pos = polar(c, 76f, -90f + 180f * t)
+            val pos = polarPoint(c, 76f, -90f + 180f * t)
             if (t > 0f) drawArc(
                 Brush.linearGradient(listOf(Color(0xFFFF8A65), Color(0xFFFFD54F), Color(0xFFFF8A65)), Offset(24f, 0f), Offset(176f, 0f)),
                 180f, 180f * t, false, Offset(24f, 10f), Size(152f, 152f), style = Stroke(3f, cap = StrokeCap.Round)
@@ -1126,7 +1126,7 @@ private fun RotaryPhone(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f
         drawCircle(Color(0xFF1D1F23), 48f, c)
         drawCircle(Color(0xFF3A3D44), 48f, c, style = Stroke(1.5f))
         listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0").forEachIndexed { i, n ->
-            val p = polar(c, 33f, 50f - i * 28f)
+            val p = polarPoint(c, 33f, 50f - i * 28f)
             val fav = f.rows.getOrNull(i)?.badge
             if (fav != null) {
                 drawCircle(look.accent, 9f, p)
@@ -1139,7 +1139,7 @@ private fun RotaryPhone(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f
         }
         drawCircle(Color(0xFFE8EAED), 17f, c)
         label(tm, f.value.take(8), 50f, 53f, 8f, Color(0xFF111111))
-        val stop = polar(c, 45f, 130f)
+        val stop = polarPoint(c, 45f, 130f)
         drawLine(Color(0xFFC0C4CA), stop, Offset(stop.x + 6f, stop.y - 6f), 3f, cap = StrokeCap.Round)
     }
 }
@@ -1248,7 +1248,7 @@ private fun Cassette(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 val c = Offset(x, 44f)
                 rotate(spin, c) {
                     drawCircle(Color(0xFFE8EAED), 7.5f, c)
-                    for (a in 0 until 360 step 60) drawCircle(Color(0xFF333333), 1.2f, polar(c, 5f, a.toFloat()))
+                    for (a in 0 until 360 step 60) drawCircle(Color(0xFF333333), 1.2f, polarPoint(c, 5f, a.toFloat()))
                 }
                 drawCircle(Color(0xFF333333), 2f, c)
             }
@@ -1285,13 +1285,13 @@ private fun VolumeKnob(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f,
         val fr = frac(f.fraction)
         for (i in 0 until 27) {
             val on = i / 26f <= fr
-            drawCircle(if (on) look.accent else look.track, if (on) 2.3f else 1.6f, polar(c, 45f, -135f + 270f * i / 26f))
+            drawCircle(if (on) look.accent else look.track, if (on) 2.3f else 1.6f, polarPoint(c, 45f, -135f + 270f * i / 26f))
         }
         drawCircle(Color(0xFF0B0C0E), 35f, c)
         drawCircle(Brush.radialGradient(listOf(Color(0xFF5A606A), Color(0xFF14161A)), Offset(38f, 35f), 60f), 32f, c)
-        for (a in 0 until 360 step 10) drawLine(Color.Black.copy(alpha = 0.5f), polar(c, 32f, a.toFloat()), polar(c, 30f, a.toFloat()), 1f)
+        for (a in 0 until 360 step 10) drawLine(Color.Black.copy(alpha = 0.5f), polarPoint(c, 32f, a.toFloat()), polarPoint(c, 30f, a.toFloat()), 1f)
         val a = -135f + 270f * fr
-        drawLine(look.accent, polar(c, 12f, a), polar(c, 27f, a), 3.4f, cap = StrokeCap.Round)
+        drawLine(look.accent, polarPoint(c, 12f, a), polarPoint(c, 27f, a), 3.4f, cap = StrokeCap.Round)
     }
 }
 

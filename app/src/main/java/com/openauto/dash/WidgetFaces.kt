@@ -397,7 +397,7 @@ internal fun FaceProgress(fraction: Float, look: FaceLook, m: FaceMetrics, modif
 }
 
 /** Point on a circle, angle in degrees clockwise from 12 o'clock. */
-internal fun polar(c: Offset, r: Float, deg: Float): Offset {
+internal fun polarPoint(c: Offset, r: Float, deg: Float): Offset {
     val t = Math.toRadians(deg.toDouble())
     return Offset(c.x + r * sin(t).toFloat(), c.y - r * cos(t).toFloat())
 }
@@ -486,7 +486,7 @@ private fun DrawScope.drawGaugeArc(f: WidgetFace, look: FaceLook) {
             if (f.fullCircle && i == 24) break
             val a = a0 + span * i / 24f
             drawLine(
-                look.accent2.copy(alpha = 0.8f), polar(c, r * 0.99f, a), polar(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a),
+                look.accent2.copy(alpha = 0.8f), polarPoint(c, r * 0.99f, a), polarPoint(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a),
                 strokeWidth = if (i % 6 == 0) 2f else 1f
             )
         }
@@ -745,7 +745,7 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 if (full && i == n) break
                 val a = a0 + span * i / n
                 val major = i % 5 == 0
-                drawLine(look.ink, polar(c, tickOuter, a), polar(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
+                drawLine(look.ink, polarPoint(c, tickOuter, a), polarPoint(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
             }
             if (!full) {
                 val inset = c.x - (tickOuter - r * 0.03f)
@@ -757,16 +757,16 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             }
             val labelStyle = TextStyle(fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.16f / density / fontScale).sp)
             letters.forEachIndexed { i, l ->
-                val p = polar(c, r * 0.56f, i * 90f)
+                val p = polarPoint(c, r * 0.56f, i * 90f)
                 val layout = measurer.measure(l, labelStyle.copy(color = if (i == 0) look.accent else look.ink))
                 drawText(layout, topLeft = Offset(p.x - layout.size.width / 2f, p.y - layout.size.height / 2f))
             }
             val clock = f.clock
             if (clock != null) {
                 val (h, mi, s) = clock
-                drawLine(look.ink, c, polar(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
-                drawLine(look.ink, c, polar(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
-                drawLine(look.accent, polar(c, r * 0.15f, s * 6f + 180f), polar(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
+                drawLine(look.ink, c, polarPoint(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
+                drawLine(look.ink, c, polarPoint(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                drawLine(look.accent, polarPoint(c, r * 0.15f, s * 6f + 180f), polarPoint(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
             } else {
                 if (showValueInDial && dialValue.isNotEmpty()) {
                     val v = measurer.measure(dialValue, TextStyle(color = look.ink, fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.22f / density / fontScale).sp))
@@ -775,7 +775,7 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                     drawText(u, topLeft = Offset(c.x - u.size.width / 2f, c.y + r * 0.52f - u.size.height / 2f))
                 }
                 val a = a0 + span * (f.fraction ?: 0f).coerceIn(0f, 1f)
-                drawLine(look.accent, polar(c, r * 0.16f, a + 180f), polar(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                drawLine(look.accent, polarPoint(c, r * 0.16f, a + 180f), polarPoint(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
             }
             drawCircle(if (chrome) Color(0xFFC9CED5) else look.ink, r * 0.065f, c)
         }
