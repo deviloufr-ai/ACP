@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Car profile and car-care tiles (CarProfile.kt, CarCare.kt, CarCareTiles.kt, CarSettingsDialog.kt) -->
+
+    <!-- Widget picker -->
+    <string name="car_kind_filter">Filtro antiparticolato</string>
+    <string name="car_kind_filter_blurb">Tragitti brevi e pulizia del filtro</string>
+    <string name="car_kind_warmup">Riscaldamento</string>
+    <string name="car_kind_warmup_blurb">Temp. del liquido, piano a freddo</string>
+    <string name="car_kind_battery">Batteria</string>
+    <string name="car_kind_battery_blurb">Tensione e ricarica</string>
+    <string name="car_kind_my_car">La mia auto</string>
+    <string name="car_kind_my_car_blurb">Olio, gomme, tagliando e altri dati</string>
+    <string name="car_kind_eco">Guida eco</string>
+    <string name="car_kind_eco_blurb">Voto di guida, carburante e costo</string>
+    <string name="car_kind_break">Promemoria pausa</string>
+    <string name="car_kind_break_blurb">Tempo di guida, avviso vocale a 2 h</string>
+    <string name="car_kind_fuel_dest">Carburante fino alla meta</string>
+    <string name="car_kind_fuel_dest_blurb">L\'autonomia basta per il percorso?</string>
+
+    <!-- Shared -->
+    <string name="car_waiting_obd">In attesa dell\'adattatore OBD…</string>
+    <string name="car_unknown">Non noto</string>
+    <string name="car_running_for">Motore acceso da %1$s</string>
+    <string name="car_gears">%1$d marce</string>
+    <string name="car_months">%1$d mesi</string>
+
+    <!-- Particle filter -->
+    <string name="car_filter_title">FILTRO FAP</string>
+    <string name="car_filter_none">Quest\'auto non ha il filtro antiparticolato. Si cambia in ⋮ → La mia auto.</string>
+    <string name="car_filter_short_unit">tragitti brevi di fila</string>
+    <string name="car_filter_ok">Il filtro si pulisce bene</string>
+    <string name="car_filter_needs_drive">Fai 20 min sopra i 60 km/h</string>
+    <string name="car_filter_needs_drive_now">Il FAP vuole presto un lungo viaggio</string>
+    <string name="car_filter_this_drive">Questo viaggio: %1$d di %2$d min veloce a motore caldo</string>
+    <string name="car_filter_last_long">Ultimo viaggio lungo: %1$s</string>
+    <string name="car_filter_last_long_never">Nessun viaggio lungo registrato</string>
+    <string name="car_filter_additive">Usa un additivo: fanne controllare il livello a ogni tagliando</string>
+
+    <!-- Warm-up -->
+    <string name="car_warmup_title">RISCALDAMENTO</string>
+    <string name="car_warmup_cold">Freddo: resta sotto %1$d giri/min</string>
+    <string name="car_warmup_warming">In riscaldamento</string>
+    <string name="car_warmup_warm">Caldo: piena potenza OK</string>
+
+    <!-- Battery -->
+    <string name="car_battery_title">BATTERIA</string>
+    <string name="car_battery_charging">Ricarica normale</string>
+    <string name="car_battery_charging_low">Ricarica un po\' bassa</string>
+    <string name="car_battery_not_charging">Non ricarica: controlla l\'alternatore</string>
+    <string name="car_battery_full">Carica completa</string>
+    <string name="car_battery_good">Buona carica</string>
+    <string name="car_battery_low">Bassa: un viaggio la ricarica</string>
+    <string name="car_battery_weak">Batteria debole</string>
+    <string name="car_battery_hint_running">Motore acceso: 13,2–14,8 V è normale</string>
+    <string name="car_battery_hint_off">Motore spento: da 12,4 V in su è sana</string>
+    <string name="car_battery_capacity">Batteria da %1$d Ah</string>
+
+    <!-- Eco driving -->
+    <string name="car_eco_title">GUIDA ECO</string>
+    <string name="car_eco_title_last">ULTIMO VIAGGIO</string>
+    <string name="car_eco_empty">Parte dal prossimo viaggio</string>
+    <string name="car_eco_too_early">Troppo presto</string>
+    <string name="car_eco_smooth">Guida fluida</string>
+    <string name="car_eco_fair">Discreta: un po\' brusca</string>
+    <string name="car_eco_harsh">Brusca: rallenta</string>
+    <string name="car_eco_band">Regime %1$d–%2$d giri/min</string>
+    <string name="car_eco_hard">Accel. / frenate brusche</string>
+    <string name="car_eco_hard_value">%1$d / %2$d</string>
+    <string name="car_eco_clutch">Tenuta con l\'acceleratore</string>
+    <string name="car_eco_fuel">Carburante per %1$s km</string>
+    <string name="car_eco_fuel_value">≈ %1$s L · %2$s %3$s</string>
+
+    <!-- Fuel to destination -->
+    <string name="car_fuel_dest_title">CARBURANTE → META</string>
+    <string name="car_fuel_dest_no_range">Autonomia ancora ignota: configura il riquadro Carburante e autonomia</string>
+    <string name="car_fuel_dest_no_nav">Autonomia residua. Avvia la navigazione in Maps o Waze per confrontare.</string>
+    <string name="car_fuel_dest_spare_unit">km di margine</string>
+    <string name="car_fuel_dest_enough">Carburante sufficiente</string>
+    <string name="car_fuel_dest_tight">Al limite: poco margine</string>
+    <string name="car_fuel_dest_short">Rifornisci per strada</string>
+    <string name="car_fuel_dest_detail">%1$d km di autonomia · mancano %2$d km</string>
+
+    <!-- Break reminder -->
+    <string name="car_break_title">TEMPO DI GUIDA</string>
+    <string name="car_break_ok">Una pausa ogni 2 ore</string>
+    <string name="car_break_due">Ora di una pausa</string>
+    <string name="car_break_hint">Una sosta di 15 min lo azzera</string>
+
+    <!-- My car tile -->
+    <string name="car_my_car_title">LA MIA AUTO</string>
+    <string name="car_my_car_fetch_hint">Tocca per ottenere la scheda completa con l\'IA</string>
+    <string name="car_source_preset">Predefinito</string>
+    <string name="car_source_ai">Dall\'IA</string>
+    <string name="car_source_user">Modificato</string>
+    <string name="car_spec_engine">Motore</string>
+    <string name="car_spec_gearbox">Cambio</string>
+    <string name="car_spec_oil">Olio</string>
+    <string name="car_spec_tyres">Gomme</string>
+    <string name="car_spec_service">Tagliando</string>
+    <string name="car_gearbox_manual">Manuale</string>
+    <string name="car_gearbox_robotised">Robotizzato</string>
+    <string name="car_gearbox_automatic">Automatico</string>
+    <string name="car_gearbox_dual_clutch">Doppia frizione</string>
+    <string name="car_gearbox_cvt">CVT</string>
+    <string name="car_fuel_diesel">Diesel</string>
+    <string name="car_fuel_petrol">Benzina</string>
+    <string name="car_fuel_hybrid">Ibrida</string>
+    <string name="car_fuel_lpg">GPL</string>
+
+    <!-- My car settings -->
+    <string name="car_menu">La mia auto</string>
+    <string name="car_my_car_title_dialog">La mia auto</string>
+    <string name="car_settings_explanation">Indica la tua auto nel modo più preciso possibile (modello, motore, versione, anno, cambio). L\'IA compila la scheda; controllala, correggi se serve, poi salva. I riquadri e il Meccanico IA la usano.</string>
+    <string name="car_name">Auto</string>
+    <string name="car_fetch">Ottieni la scheda con l\'IA</string>
+    <string name="car_fetch_ok">Scheda compilata: controllala, poi Salva</string>
+    <string name="car_fetch_failed">Impossibile ottenere la scheda: %1$s</string>
+    <string name="car_fetch_no_key">prima aggiungi una chiave Gemini in ⋮ → Meccanico IA</string>
+    <string name="car_section_engine">Motore</string>
+    <string name="car_section_gearbox">Cambio</string>
+    <string name="car_section_upkeep">Manutenzione</string>
+    <string name="car_section_fuel_price">Prezzo del carburante</string>
+    <string name="car_section_notes">Punti deboli noti</string>
+    <string name="car_spec_power">Potenza (CV)</string>
+    <string name="car_spec_torque">Coppia (Nm)</string>
+    <string name="car_spec_torque_rpm">Coppia da (giri/min)</string>
+    <string name="car_spec_redline">Zona rossa (giri/min)</string>
+    <string name="car_spec_operating_temp">Temp. di esercizio (°C)</string>
+    <string name="car_spec_battery">Batteria (Ah)</string>
+    <string name="car_spec_filter">Filtro antiparticolato</string>
+    <string name="car_spec_filter_detail">Filtro antiparticolato diesel (FAP / DPF)</string>
+    <string name="car_spec_additive">Additivo del filtro</string>
+    <string name="car_spec_additive_detail">Il filtro usa un additivo nel carburante (es. Eolys)</string>
+    <string name="car_spec_gearbox_name">Nome del cambio</string>
+    <string name="car_spec_gears">Marce</string>
+    <string name="car_spec_tank">Serbatoio (L)</string>
+    <string name="car_spec_consumption">Consumo medio (L/100 km)</string>
+    <string name="car_spec_oil_capacity">Olio (L)</string>
+    <string name="car_spec_oil_spec">Specifica olio</string>
+    <string name="car_spec_service_km">Tagliando ogni (km)</string>
+    <string name="car_spec_service_months">o (mesi)</string>
+    <string name="car_spec_timing">Cinghia / catena di distribuzione</string>
+    <string name="car_spec_tyre_size">Misura gomme</string>
+    <string name="car_spec_tyre_front">Anteriori (bar)</string>
+    <string name="car_spec_tyre_rear">Posteriori (bar)</string>
+    <string name="car_spec_fuel_price">Prezzo al litro</string>
+    <string name="car_spec_currency">Valuta</string>
+    <string name="car_reset_preset">Torna al predefinito (C4 Picasso 1.6 HDi BMP6)</string>
+    <string name="car_save">Salva</string>
+
+    <!-- AI mechanic settings -->
+    <string name="car_ai_car">Auto</string>
+    <string name="car_ai_car_detail">%1$s. Cambiala in ⋮ → La mia auto.</string>
+
+    <!-- Spoken by CarCare, in the mechanic's language -->
+    <string name="car_say_cold_revs">Il motore è ancora freddo. Resta sotto i %1$d giri ancora per qualche minuto.</string>
+    <string name="car_say_clutch_hold">Tieni ferma l\'auto con il freno, non con l\'acceleratore. Consuma la frizione di questo cambio.</string>
+    <string name="car_say_filter">Gli ultimi %1$d viaggi sono stati brevi. Appena puoi, guida da 15 a 20 minuti sopra i 60 chilometri orari, così il filtro antiparticolato si pulisce.</string>
+    <string name="car_say_break">Stai guidando da %1$s. È ora di fare una pausa.</string>
+    <string name="car_say_fuel_short">La tua autonomia di %1$d chilometri non basta per la destinazione, a %2$d chilometri. Pianifica un rifornimento.</string>
+    <string name="car_hours_minutes">%1$s e %2$s</string>
+    <plurals name="car_hours">
+        <item quantity="one">%1$d ora</item>
+        <item quantity="many">%1$d ore</item>
+        <item quantity="other">%1$d ore</item>
+    </plurals>
+    <plurals name="car_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minuti</item>
+        <item quantity="other">%1$d minuti</item>
+    </plurals>
+</resources>

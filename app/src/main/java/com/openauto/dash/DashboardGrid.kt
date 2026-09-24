@@ -542,6 +542,13 @@ internal fun TileContent(
             BuiltinKind.QUICK_DIAL -> QuickDialCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.NOTIFICATIONS -> NotificationsCard(hasAccess = hasMediaAccess, modifier = Modifier.fillMaxSize())
             BuiltinKind.AUDIO -> AudioCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.FILTER_CARE -> FilterCareCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.WARMUP -> WarmupCard(obdData, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
+            BuiltinKind.BATTERY -> BatteryCard(obdData, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
+            BuiltinKind.MY_CAR -> MyCarCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.ECO_DRIVE -> EcoDriveCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.BREAK_TIMER -> BreakCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.FUEL_TO_DEST -> FuelToDestCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAR3D -> if (editing) {
                 EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
             } else if (isEmulator) {

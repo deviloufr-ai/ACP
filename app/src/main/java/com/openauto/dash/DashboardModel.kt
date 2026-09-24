@@ -51,7 +51,15 @@ enum class BuiltinKind(
     CALENDAR(R.string.apps_kind_calendar, WidgetCategory.INFO, R.string.apps_kind_calendar_blurb, 4, 3),
     QUICK_DIAL(R.string.apps_kind_quick_dial, WidgetCategory.INFO, R.string.apps_kind_quick_dial_blurb, 4, 2),
     NOTIFICATIONS(R.string.apps_kind_notifications, WidgetCategory.INFO, R.string.apps_kind_notifications_blurb, 4, 3),
-    AUDIO(R.string.apps_kind_audio, WidgetCategory.APPS, R.string.apps_kind_audio_blurb, 3, 2)
+    AUDIO(R.string.apps_kind_audio, WidgetCategory.APPS, R.string.apps_kind_audio_blurb, 3, 2),
+    // Car care, tailored by the car profile (CarCareTiles.kt).
+    FILTER_CARE(R.string.car_kind_filter, WidgetCategory.VEHICLE, R.string.car_kind_filter_blurb, 4, 3),
+    WARMUP(R.string.car_kind_warmup, WidgetCategory.VEHICLE, R.string.car_kind_warmup_blurb, 3, 3),
+    BATTERY(R.string.car_kind_battery, WidgetCategory.VEHICLE, R.string.car_kind_battery_blurb, 3, 3),
+    MY_CAR(R.string.car_kind_my_car, WidgetCategory.VEHICLE, R.string.car_kind_my_car_blurb, 4, 3),
+    ECO_DRIVE(R.string.car_kind_eco, WidgetCategory.DRIVING, R.string.car_kind_eco_blurb, 4, 3),
+    BREAK_TIMER(R.string.car_kind_break, WidgetCategory.DRIVING, R.string.car_kind_break_blurb, 3, 3),
+    FUEL_TO_DEST(R.string.car_kind_fuel_dest, WidgetCategory.NAVIGATION, R.string.car_kind_fuel_dest_blurb, 3, 3)
 }
 
 /**

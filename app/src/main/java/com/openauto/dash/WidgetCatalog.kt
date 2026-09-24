@@ -19,7 +19,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CarRepair
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Event
@@ -91,6 +98,13 @@ internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.QUICK_DIAL -> Icons.Filled.Call
     BuiltinKind.NOTIFICATIONS -> Icons.Filled.Notifications
     BuiltinKind.AUDIO -> Icons.Filled.VolumeUp
+    BuiltinKind.FILTER_CARE -> Icons.Filled.FilterAlt
+    BuiltinKind.WARMUP -> Icons.Filled.Thermostat
+    BuiltinKind.BATTERY -> Icons.Filled.BatteryChargingFull
+    BuiltinKind.MY_CAR -> Icons.Filled.CarRepair
+    BuiltinKind.ECO_DRIVE -> Icons.Filled.Eco
+    BuiltinKind.BREAK_TIMER -> Icons.Filled.Coffee
+    BuiltinKind.FUEL_TO_DEST -> Icons.Filled.EvStation
 }
 
 /** Picker for a new tile: built-ins by category, then the launch bar and system widgets. */

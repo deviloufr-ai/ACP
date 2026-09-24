@@ -9,7 +9,6 @@
     <string name="ai_own_key">Of je eigen Gemini-API-sleutel</string>
     <string name="ai_key">Gemini-API-sleutel</string>
     <string name="ai_key_hint">Gratis op aistudio.google.com → Get API key</string>
-    <string name="ai_engine">Motor</string>
     <string name="ai_language">Taal</string>
     <string name="ai_language_auto">Zoals de app</string>
     <string name="ai_speak">Waarschuwingen uitspreken</string>

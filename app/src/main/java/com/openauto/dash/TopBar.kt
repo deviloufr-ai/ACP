@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
@@ -283,6 +284,7 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
     var bootLogo by remember { mutableStateOf(false) }
+    var carSettings by remember { mutableStateOf(false) }
     val pick: (() -> Unit) -> () -> Unit = { action ->
         {
             open = false
@@ -300,6 +302,7 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
             DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
             DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
+            DashMenuItem(stringResource(R.string.car_menu), leading = { MenuIcon(Icons.Filled.DirectionsCar) }, onClick = pick { carSettings = true })
             // Only on the QF001 / K706 firmware the feature was built for.
             if (BootLogoSupport.available) {
                 DashMenuItem(stringResource(R.string.boot_menu), leading = { MenuIcon(Icons.Filled.PowerSettingsNew) }, onClick = pick { bootLogo = true })
@@ -317,6 +320,7 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
         }
     }
     if (bootLogo) BootLogoDialog(onDismiss = { bootLogo = false })
+    if (carSettings) CarSettingsDialog(onDismiss = { carSettings = false })
 }
 
 @Composable

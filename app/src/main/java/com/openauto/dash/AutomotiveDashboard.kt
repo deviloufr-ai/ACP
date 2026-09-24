@@ -366,6 +366,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
+        CarProfileStore.setContext(context)
+        CarCare.setContext(context)
         AiMechanic.setContext(context)
         StartupBriefing.start(context)
         mediaController.start()
@@ -409,6 +411,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         while (true) {
             ObdBluetoothManager.poll()
             AiMechanic.watch(ObdBluetoothManager.data.value)
+            CarCare.watch(ObdBluetoothManager.data.value)
             delay(500)
         }
     }

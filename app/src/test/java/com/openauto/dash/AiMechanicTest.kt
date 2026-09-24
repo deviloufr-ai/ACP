@@ -14,12 +14,12 @@ class AiMechanicTest {
     fun promptNamesTheCarEngineCodesLanguageAndReadings() {
         val prompt = MechanicPrompt.build(
             listOf("P0128", "P0480"),
-            CarEngine.HDI_16,
+            CarProfile.PRESET.promptDescription(),
             AiLanguage.FRENCH,
             ObdData(rpm = 850, coolantTempC = 72, voltage = 14.2)
         )
-        assertTrue(prompt.contains("C4 Picasso (2011)"))
-        assertTrue(prompt.contains("1.6 HDi diesel"))
+        assertTrue(prompt.contains("C4 Picasso 1.6 HDi 110"))
+        assertTrue(prompt.contains("BMP6"))
         assertTrue(prompt.contains("P0128, P0480"))
         assertTrue(prompt.contains("Answer in French"))
         assertTrue(prompt.contains("engine running at 850 rpm"))
@@ -29,7 +29,7 @@ class AiMechanicTest {
 
     @Test
     fun promptLeavesOutReadingsTheCarDidNotReport() {
-        val prompt = MechanicPrompt.build(listOf("P0128"), CarEngine.HDI_16, AiLanguage.ENGLISH, ObdData())
+        val prompt = MechanicPrompt.build(listOf("P0128"), CarProfile.PRESET.promptDescription(), AiLanguage.ENGLISH, ObdData())
         assertTrue(prompt.contains("engine not running"))
         assertFalse(prompt.contains("coolant"))
         assertFalse(prompt.contains("battery"))
@@ -219,13 +219,13 @@ class AiMechanicTest {
 
     @Test
     fun promptAsksForTheChosenLanguageByItsEnglishName() {
-        val prompt = MechanicPrompt.build(listOf("P0128"), CarEngine.HDI_16, AiLanguage.POLISH, null)
+        val prompt = MechanicPrompt.build(listOf("P0128"), CarProfile.PRESET.promptDescription(), AiLanguage.POLISH, null)
         assertTrue(prompt.contains("Answer in Polish, with correct spelling and all accents."))
     }
 
     @Test
     fun promptAsksForTheDetailSheet() {
-        val prompt = MechanicPrompt.build(listOf("P1352"), CarEngine.HDI_16, AiLanguage.FRENCH, null)
+        val prompt = MechanicPrompt.build(listOf("P1352"), CarProfile.PRESET.promptDescription(), AiLanguage.FRENCH, null)
         listOf("overview:", "explanation:", "symptoms:", "checks:", "repair:", "cost:", "diy:", "driving:").forEach {
             assertTrue(it, prompt.contains(it))
         }
@@ -241,7 +241,7 @@ class AiMechanicTest {
         assertEquals(2, codes.getInt("maxItems"))
         val allowed = codes.getJSONObject("items").getJSONObject("properties").getJSONObject("code").getJSONArray("enum")
         assertEquals(listOf("P1352", "P0480"), (0 until allowed.length()).map { allowed.getString(it) })
-        assertTrue(MechanicPrompt.build(listOf("P1352"), CarEngine.HDI_16, AiLanguage.FRENCH, null).contains("do not assume or add any other fault"))
+        assertTrue(MechanicPrompt.build(listOf("P1352"), CarProfile.PRESET.promptDescription(), AiLanguage.FRENCH, null).contains("do not assume or add any other fault"))
     }
 
     @Test
