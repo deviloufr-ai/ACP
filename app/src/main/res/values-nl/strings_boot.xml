@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Vast logo niet gewijzigd: %1$s</string>
     <string name="boot_still_unsupported">deze radio heeft geen gereedschap voor het vaste logo</string>
     <string name="boot_not_qf">Installeren werkt alleen op de bedoelde QF001 / K706-firmware. Gebruik Opslaan op USB.</string>
+    <string name="boot_no_adb">De interne ADB van de radio reageert niet (poort %1$d) en Dashwheel heeft geen root. Zet USB-foutopsporing aan (Instellingen → Over → tik 7 keer op Buildnummer, dan Ontwikkelaarsopties → USB-foutopsporing) of geef root, en probeer opnieuw.</string>
 </resources>

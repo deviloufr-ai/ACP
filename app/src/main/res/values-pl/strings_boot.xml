@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Nieruchome logo bez zmian: %1$s</string>
     <string name="boot_still_unsupported">to radio nie ma narzędzia do nieruchomego logo</string>
     <string name="boot_not_qf">Instalacja działa tylko na przewidzianym firmware QF001 / K706. Użyj Zapisz na USB.</string>
+    <string name="boot_no_adb">Wewnętrzne ADB radia nie odpowiada (port %1$d), a Dashwheel nie ma roota. Włącz debugowanie USB (Ustawienia → Informacje → dotknij 7 razy Numer kompilacji, potem Opcje programisty → Debugowanie USB) lub przyznaj root i spróbuj ponownie.</string>
 </resources>

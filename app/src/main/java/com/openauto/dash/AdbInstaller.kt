@@ -5,6 +5,8 @@ import android.util.Log
 import dadb.AdbKeyPair
 import dadb.Dadb
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Socket
 
 /**
  * Self-installs the app into `/system/priv-app` over the head unit's **internal
@@ -33,6 +35,18 @@ object AdbInstaller {
         val keyPair = AdbKeyPair.read(priv, pub)
         return Dadb.create(HOST, port, keyPair, timeoutMs, timeoutMs)
     }
+
+    /**
+     * The port adbd answers on at 127.0.0.1: the one the unit announces, else
+     * the K706 default or the stock 5555. Null when nothing listens (ADB is off),
+     * found in a second instead of a failed connect deep inside an install.
+     */
+    internal fun listeningPort(): Int? =
+        listOfNotNull(DockShell.adbPort(), DEFAULT_PORT, 5555).distinct().firstOrNull { port ->
+            runCatching { Socket().use { it.connect(InetSocketAddress(HOST, port), PROBE_TIMEOUT_MS) } }.isSuccess
+        }
+
+    private const val PROBE_TIMEOUT_MS = 1_000
 
     private fun currentUid(context: Context, port: Int): String? =
         runCatching { connect(context, port).use { it.shell("id -u").output.trim() } }.getOrNull()

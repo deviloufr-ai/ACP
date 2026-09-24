@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Logo fijo sin cambiar: %1$s</string>
     <string name="boot_still_unsupported">esta radio no tiene herramienta de logo fijo</string>
     <string name="boot_not_qf">Instalar solo funciona en el firmware QF001 / K706 previsto. Usa Guardar en USB.</string>
+    <string name="boot_no_adb">El ADB interno de la radio no responde (puerto %1$d) y Dashwheel no tiene root. Activa la depuración USB (Ajustes → Acerca de → toca 7 veces Número de compilación, luego Opciones de desarrollador → Depuración USB) o concede root, y vuelve a intentarlo.</string>
 </resources>

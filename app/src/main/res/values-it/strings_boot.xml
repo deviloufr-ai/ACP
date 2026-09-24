@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Logo fisso non cambiato: %1$s</string>
     <string name="boot_still_unsupported">questa autoradio non ha lo strumento del logo fisso</string>
     <string name="boot_not_qf">Installa funziona solo sul firmware QF001 / K706 previsto. Usa Salva su USB.</string>
+    <string name="boot_no_adb">L\'ADB interno dell\'autoradio non risponde (porta %1$d) e Dashwheel non ha il root. Attiva il debug USB (Impostazioni → Info → tocca 7 volte Numero build, poi Opzioni sviluppatore → Debug USB) o concedi il root, e riprova.</string>
 </resources>

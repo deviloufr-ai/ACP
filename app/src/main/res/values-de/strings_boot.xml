@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Festes Logo nicht geändert: %1$s</string>
     <string name="boot_still_unsupported">dieses Radio hat kein Werkzeug für das feste Logo</string>
     <string name="boot_not_qf">Installieren funktioniert nur auf der vorgesehenen QF001-/K706-Firmware. Nutze Auf USB speichern.</string>
+    <string name="boot_no_adb">Das interne ADB des Radios antwortet nicht (Port %1$d) und Dashwheel hat kein Root. Schalte USB-Debugging ein (Einstellungen → Über das Gerät → 7-mal auf Build-Nummer tippen, dann Entwickleroptionen → USB-Debugging) oder gewähre Root und versuche es erneut.</string>
 </resources>

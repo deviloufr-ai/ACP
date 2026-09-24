@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Still logo not changed: %1$s</string>
     <string name="boot_still_unsupported">this unit has no still-logo tool</string>
     <string name="boot_not_qf">Install now only works on the QF001 / K706 firmware it was made for. Use Save to USB instead.</string>
+    <string name="boot_no_adb">The head unit\'s internal ADB isn\'t answering (port %1$d) and Dashwheel has no root. Turn on USB debugging (Settings → About → tap Build number 7 times, then Developer options → USB debugging), or grant root, and try again.</string>
 </resources>

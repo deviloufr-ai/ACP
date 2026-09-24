@@ -24,6 +24,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -239,8 +240,8 @@ internal object BootAnimationMaker {
 
 /**
  * Puts the boot logo in place over the head unit's internal root ADB (see
- * [AdbInstaller]), only on the firmware it was worked out from: QF001 / K706
- * (ROCO, UIS7862S). Every other unit is refused ("Save to USB" still works).
+ * [AdbInstaller]), or Magisk root when that ADB is off, only on the firmware
+ * it was worked out from: QF001 / K706 (ROCO, UIS7862S). Every other unit is refused ("Save to USB" still works).
  *
  * - Animation: that firmware's boot animation player reads
  *   `/great/bootanimation.zip` ahead of the stock `/system/media` one, and
@@ -273,13 +274,49 @@ internal object BootAnimationInstaller {
 
     private class NotQf : Exception()
 
-    private fun shell(context: Context, port: Int, script: String, vararg push: Pair<File, String>): String {
-        AdbInstaller.ensureRoot(context, port)
-        return AdbInstaller.connect(context, port).use { dadb ->
-            push.forEach { (file, to) -> dadb.push(file, to) }
-            dadb.shell(script).allOutput.also { Log.d("BootAnimation", it) }
-        }.also { if (it.contains("NOTQF")) throw NotQf() }
+    /**
+     * Runs [script] as root after putting each local file of [push] at its
+     * path: over the internal ADB when it answers and gets root, else through
+     * Magisk `su`, else over the non-root ADB (the script then says what it
+     * couldn't do). Neither ADB nor su: a message saying how to turn ADB on.
+     */
+    private fun shell(context: Context, script: String, vararg push: Pair<File, String>): String {
+        val port = AdbInstaller.listeningPort()
+        val out = when {
+            port != null && AdbInstaller.ensureRoot(context, port) -> adbShell(context, port, script, *push)
+            SystemInstaller.isRootAvailable() -> suShell(script, *push)
+            port != null -> adbShell(context, port, script, *push)
+            else -> error(context.getString(R.string.boot_no_adb, DockShell.adbPort()))
+        }
+        Log.d("BootAnimation", out)
+        if (out.contains("NOTQF")) throw NotQf()
+        return out
     }
+
+    private fun adbShell(context: Context, port: Int, script: String, vararg push: Pair<File, String>): String =
+        AdbInstaller.connect(context, port).use { dadb ->
+            push.forEach { (file, to) -> dadb.push(file, to) }
+            dadb.shell(script).allOutput
+        }
+
+    /** The script fed to `su` on stdin, so no quoting gets in the way; bounded so a stuck prompt can't hang the dialog. */
+    private fun suShell(script: String, vararg push: Pair<File, String>): String {
+        val copy = push.joinToString("") { (file, to) ->
+            "cp '${file.absolutePath}' '$to' || { echo 'FAIL:could not copy ${file.name}'; exit; }; "
+        }
+        val process = ProcessBuilder("su").redirectErrorStream(true).start()
+        val out = StringBuilder()
+        val reader = Thread { out.append(process.inputStream.bufferedReader().readText()) }.apply { start() }
+        process.outputStream.bufferedWriter().use { it.write(copy + script + "\nexit\n") }
+        if (!process.waitFor(SU_TIMEOUT_S, TimeUnit.SECONDS)) {
+            process.destroy()
+            error("su timed out")
+        }
+        reader.join(2000)
+        return out.toString()
+    }
+
+    private const val SU_TIMEOUT_S = 120L
 
     private fun fail(context: Context, e: Throwable): Nothing =
         if (e is NotQf) error(context.getString(R.string.boot_not_qf)) else throw e
@@ -289,9 +326,9 @@ internal object BootAnimationInstaller {
         out.lineSequence().firstOrNull { it.startsWith("FAIL:") }?.removePrefix("FAIL:")?.trim() ?: out.trim()
 
     /** The LCD's own size (/sys/qf/panel_hactive x panel_vactive); null when this isn't the QF firmware. */
-    fun panel(context: Context, port: Int = AdbInstaller.DEFAULT_PORT): Result<Pair<Int, Int>?> = runCatching {
+    fun panel(context: Context): Result<Pair<Int, Int>?> = runCatching {
         val out = try {
-            shell(context, port, QF_ONLY + "echo \"PANEL \$(cat /sys/qf/panel_hactive) \$(cat /sys/qf/panel_vactive)\"")
+            shell(context, QF_ONLY + "echo \"PANEL \$(cat /sys/qf/panel_hactive) \$(cat /sys/qf/panel_vactive)\"")
         } catch (e: NotQf) {
             return@runCatching null
         }
@@ -309,9 +346,9 @@ internal object BootAnimationInstaller {
     }
 
     /** Installs the animation [zip] as /great/bootanimation.zip; returns that path. */
-    fun install(context: Context, zip: File, port: Int = AdbInstaller.DEFAULT_PORT): Result<String> = runCatching {
+    fun install(context: Context, zip: File): Result<String> = runCatching {
         verify(zip)
-        val out = try { shell(context, port, INSTALL_SCRIPT, zip to TMP) } catch (e: Exception) { fail(context, e) }
+        val out = try { shell(context, INSTALL_SCRIPT, zip to TMP) } catch (e: Exception) { fail(context, e) }
         if (!out.contains("OKBOOT")) error(reason(out))
         GREAT_ZIP
     }
@@ -320,8 +357,8 @@ internal object BootAnimationInstaller {
      * Writes [jpeg] (exactly the panel's [w] x [h]) as the still boot logo,
      * with the checks described on this object.
      */
-    fun installStillLogo(context: Context, jpeg: File, w: Int, h: Int, port: Int = AdbInstaller.DEFAULT_PORT): Result<Unit> = runCatching {
-        val out = try { shell(context, port, stillScript(w, h), jpeg to LOGO_JPG) } catch (e: Exception) { fail(context, e) }
+    fun installStillLogo(context: Context, jpeg: File, w: Int, h: Int): Result<Unit> = runCatching {
+        val out = try { shell(context, stillScript(w, h), jpeg to LOGO_JPG) } catch (e: Exception) { fail(context, e) }
         if (!out.contains("OKLOGO")) error(reason(out))
     }
 
@@ -331,33 +368,34 @@ internal object BootAnimationInstaller {
      * shows up in Factory settings → Logo set. Writes both to every mounted
      * stick and returns their names. Touches nothing on the unit itself.
      */
-    fun saveToUsb(context: Context, zip: File, logo: File, logoName: String, port: Int = AdbInstaller.DEFAULT_PORT): Result<List<String>> = runCatching {
+    fun saveToUsb(context: Context, zip: File, logo: File, logoName: String): Result<List<String>> = runCatching {
         verify(zip)
         val out = shell(
-            context, port,
+            context,
             "for D in /mnt/media_rw/*; do [ -d \"\$D\" ] || continue; " +
                 "mkdir -p \"\$D/QF/auto\" && cp $TMP \"\$D/QF/auto/bootanimation.zip\" && cp $TMP_BMP \"\$D/$logoName\" && echo OKUSB:\$D; " +
                 "done; sync; rm -f $TMP $TMP_BMP",
             zip to TMP, logo to TMP_BMP
         )
+        if (out.contains("FAIL:")) error(reason(out))
         val sticks = out.lineSequence().filter { it.startsWith("OKUSB:") }.map { it.trim().substringAfterLast('/') }.toList()
         if (sticks.isEmpty()) error(context.getString(R.string.boot_no_usb))
         sticks
     }
 
     /** Puts the original animation and still logo back; false if neither was ever changed. */
-    fun restore(context: Context, port: Int = AdbInstaller.DEFAULT_PORT): Result<Boolean> = runCatching {
-        val out = try { shell(context, port, RESTORE_SCRIPT) } catch (e: Exception) { fail(context, e) }
+    fun restore(context: Context): Result<Boolean> = runCatching {
+        val out = try { shell(context, RESTORE_SCRIPT) } catch (e: Exception) { fail(context, e) }
         if (out.contains("FAIL:")) error(reason(out))
         out.contains("OKRESTORE")
     }
 
     /** Plays the installed boot animation over the screen for a few seconds. */
-    fun play(context: Context, port: Int = AdbInstaller.DEFAULT_PORT): Result<Unit> = runCatching {
+    fun play(context: Context): Result<Unit> = runCatching {
         // Ended from a detached shell too, so a dropped connection can't leave it on screen
         // (and a reboot always clears it).
         shell(
-            context, port,
+            context,
             "setprop service.bootanim.exit 0; start bootanim; " +
                 "nohup sh -c 'sleep 8; setprop service.bootanim.exit 1; stop bootanim' >/dev/null 2>&1 & " +
                 "sleep 7; setprop service.bootanim.exit 1; sleep 1; stop bootanim"

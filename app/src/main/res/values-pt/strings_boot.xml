@@ -35,4 +35,5 @@
     <string name="boot_still_failed">Logótipo fixo não alterado: %1$s</string>
     <string name="boot_still_unsupported">este rádio não tem ferramenta de logótipo fixo</string>
     <string name="boot_not_qf">Instalar só funciona no firmware QF001 / K706 previsto. Use Guardar em USB.</string>
+    <string name="boot_no_adb">O ADB interno do rádio não responde (porta %1$d) e o Dashwheel não tem root. Ative a depuração USB (Definições → Acerca → toque 7 vezes em Número de compilação, depois Opções de programador → Depuração USB) ou conceda root, e tente de novo.</string>
 </resources>
