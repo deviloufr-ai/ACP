@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,11 +28,14 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -101,7 +105,6 @@ internal class TopBarModel(
      */
     val merged: Boolean = false,
     val page: Int = 0,
-    val pageCount: Int = 0,
     val onPage: (Int) -> Unit = {}
 )
 
@@ -125,13 +128,12 @@ internal fun TopBar(
     onCheckUpdates: () -> Unit,
     merged: Boolean = false,
     page: Int = 0,
-    pageCount: Int = 0,
     onPage: (Int) -> Unit = {}
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
         onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
-        onLanguage, onCheckUpdates, merged, page, pageCount, onPage
+        onLanguage, onCheckUpdates, merged, page, onPage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -281,6 +283,8 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    var carSettings by remember { mutableStateOf(false) }
+    var bootLogo by remember { mutableStateOf(false) }
     val pick: (() -> Unit) -> () -> Unit = { action ->
         {
             open = false
@@ -298,6 +302,11 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
             DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
             DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
+            DashMenuItem(stringResource(R.string.car_menu), leading = { MenuIcon(Icons.Filled.DirectionsCar) }, onClick = pick { carSettings = true })
+            // Only on the QF001 / K706 firmware the feature was built for.
+            if (BootLogoSupport.available) {
+                DashMenuItem(stringResource(R.string.boot_menu), leading = { MenuIcon(Icons.Filled.PowerSettingsNew) }, onClick = pick { bootLogo = true })
+            }
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
             DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
             DashMenuItem(stringResource(R.string.dash_menu_check_updates), leading = { MenuIcon(Icons.Filled.SystemUpdate) }, onClick = pick(m.onCheckUpdates))
@@ -310,6 +319,8 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             )
         }
     }
+    if (carSettings) CarSettingsDialog(onDismiss = { carSettings = false })
+    if (bootLogo) BootLogoDialog(onDismiss = { bootLogo = false })
 }
 
 @Composable
@@ -409,6 +420,7 @@ internal fun EditBar(
     onAdd: () -> Unit,
     onUndo: () -> Unit,
     onReset: () -> Unit,
+    onTemplates: () -> Unit,
     onDone: () -> Unit
 ) {
     val glass = DashColors.Glass
@@ -456,6 +468,11 @@ internal fun EditBar(
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.dash_undo), color = if (canUndo) DashColors.TextPrimary else DashColors.Muted)
         }
+        TextButton(onClick = onTemplates) {
+            Icon(Icons.Filled.Dashboard, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.templates_button), color = DashColors.TextPrimary)
+        }
         TextButton(onClick = onReset) {
             Text(stringResource(R.string.dash_reset_page), color = DashColors.Warning)
         }
@@ -473,34 +490,61 @@ internal fun EditBar(
 }
 
 @Composable
-internal fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
-    PageDotRow(count, current, onSelect, Modifier.fillMaxWidth().padding(vertical = 10.dp))
+internal fun PageDots(current: Int, onSelect: (Int) -> Unit) {
+    PageDotRow(current, onSelect, Modifier.fillMaxWidth().padding(vertical = 2.dp))
 }
 
 /** The page dots inside a bar, in the clock's place while the head unit's status bar shows the time. */
 @Composable
 internal fun BarPageDots(m: TopBarModel) {
-    PageDotRow(m.pageCount, m.page, m.onPage, Modifier)
+    PageDotRow(m.page, m.onPage, Modifier)
 }
 
+/**
+ * The dashboards drawn as the cross they form: the row of pages swiped
+ * sideways, with the middle dot's column of smaller dots for the pages above
+ * and below it.
+ */
 @Composable
-private fun PageDotRow(count: Int, current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
+private fun PageDotRow(current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(count) { index ->
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(width = if (index == current) 22.dp else 8.dp, height = 8.dp)
-                    .clip(CircleShape)
-                    .background(if (index == current) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
-                    .clickable { onSelect(index) }
-            )
+        DashboardStore.ROW.forEach { page ->
+            if (page == DashboardStore.CENTER) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    DashboardStore.COLUMN.forEach { p ->
+                        if (p == DashboardStore.CENTER) {
+                            PageDot(p == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 6.dp, vertical = 2.dp)) { onSelect(p) }
+                        } else {
+                            PageDot(p == current, width = 5.dp, height = 11.dp, PaddingValues(horizontal = 14.dp, vertical = 1.dp)) { onSelect(p) }
+                        }
+                    }
+                }
+            } else {
+                PageDot(page == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 6.dp, vertical = 12.dp)) { onSelect(page) }
+            }
         }
     }
+}
+
+/**
+ * One page dot: [width] x [height] is its stretched "you are here" shape, the
+ * smaller side its round one. [touch] widens the tap area around the dot.
+ */
+@Composable
+private fun PageDot(selected: Boolean, width: Dp, height: Dp, touch: PaddingValues, onClick: () -> Unit) {
+    val round = minOf(width, height)
+    Box(
+        modifier = Modifier
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(touch)
+            .size(width = if (selected) width else round, height = if (selected) height else round)
+            .clip(CircleShape)
+            .background(if (selected) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
+    )
 }
 
 /**

@@ -43,30 +43,51 @@ object DockShell {
      * rectangle in the bottom-right corner of the display.
      */
 
-    suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String {
-        // `am stack resize` / `am task resize` read LEFT TOP RIGHT BOTTOM as four
-        // separate arguments (the help text's "L,T,R,B" is wrong: a comma-joined
-        // value fails with NumberFormatException, confirmed on the head unit).
-        val bounds = "${rect.left} ${rect.top} ${rect.right} ${rect.bottom}"
-        val attempts = if (win.mode == "pinned") {
+    suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String =
+        resizeWith(context, win, rect, resizeCommands(win, rect))
+
+    /** Tries [attempts] in order and remembers which form the unit accepted. */
+    private suspend fun resizeWith(context: Context, win: FloatingWindow, rect: ScreenRect, attempts: List<String>): String {
+        var last = ""
+        for (cmd in attempts) {
+            last = shell(context, cmd)
+            if (!looksLikeError(last)) return resized(win, rect, cmd)
+            Log.w(TAG, "`$cmd` failed: ${last.trim()}")
+            if (cmd.startsWith("am task resize")) taskResizeRefused = true
+        }
+        error(last.trim().lines().firstOrNull().orEmpty().ifBlank { "resize refused" })
+    }
+
+    private fun resized(win: FloatingWindow, rect: ScreenRect, cmd: String): String {
+        val bounds = bounds(rect)
+        Log.d(TAG, "${win.mode} ${win.packageName} -> $bounds via `$cmd`")
+        return "${cmd.substringBefore(" $bounds")}: ok"
+    }
+
+    /**
+     * This head unit refuses `am task resize` ("resizeTask not allowed") and
+     * only takes `am stack resize`. Once seen, the refused form is not sent
+     * again: every placement would otherwise cost a round trip for nothing.
+     */
+    @Volatile private var taskResizeRefused = false
+
+    // `am stack resize` / `am task resize` read LEFT TOP RIGHT BOTTOM as four
+    // separate arguments (the help text's "L,T,R,B" is wrong: a comma-joined
+    // value fails with NumberFormatException, confirmed on the head unit).
+    private fun bounds(rect: ScreenRect) = "${rect.left} ${rect.top} ${rect.right} ${rect.bottom}"
+
+    /** The resize commands worth trying for [win], best first. */
+    private fun resizeCommands(win: FloatingWindow, rect: ScreenRect): List<String> {
+        val bounds = bounds(rect)
+        return if (win.mode == "pinned") {
             // Android 10/11 accept both; the animated form is nicer when present.
             listOf("am stack resize-animated ${win.stackId} $bounds", "am stack resize ${win.stackId} $bounds")
         } else {
             listOfNotNull(
-                win.taskId?.let { "am task resize $it $bounds" },
+                win.taskId?.takeUnless { taskResizeRefused }?.let { "am task resize $it $bounds" },
                 "am stack resize ${win.stackId} $bounds"
             )
         }
-        var last = ""
-        for (cmd in attempts) {
-            last = shell(context, cmd)
-            if (!looksLikeError(last)) {
-                Log.d(TAG, "${win.mode} ${win.packageName} -> $bounds via `$cmd`")
-                return "${cmd.substringBefore(" $bounds")}: ok"
-            }
-            Log.w(TAG, "`$cmd` failed: ${last.trim()}")
-        }
-        error(last.trim().lines().firstOrNull().orEmpty().ifBlank { "resize refused" })
     }
 
     /**
@@ -77,17 +98,65 @@ object DockShell {
      * onto its tile could stay invisible, while a started one always shows.
      */
     suspend fun relaunch(context: Context, win: FloatingWindow): String {
+        val out = shell(context, startCommand(context, win))
+        return started(win, out)
+    }
+
+    private fun startCommand(context: Context, win: FloatingWindow): String {
         val taskId = win.taskId ?: error("no task id")
         val component = context.packageManager.getLaunchIntentForPackage(win.packageName)?.component
             ?: error("${win.packageName} has no launcher activity")
-        val out = shell(
-            context,
-            "am start --task $taskId -a android.intent.action.MAIN -c android.intent.category.LAUNCHER " +
-                "-f 0x10000000 -p ${win.packageName} -n ${component.flattenToShortString()}"
-        )
+        return "am start --task $taskId -a android.intent.action.MAIN -c android.intent.category.LAUNCHER " +
+            "-f 0x10000000 -p ${win.packageName} -n ${component.flattenToShortString()}"
+    }
+
+    private fun started(win: FloatingWindow, out: String): String {
         if (looksLikeError(out)) error(out.trim().lines().lastOrNull().orEmpty().ifBlank { "start refused" })
-        Log.d(TAG, "relaunched ${win.packageName} into task $taskId")
-        return "am start --task $taskId: ok"
+        Log.d(TAG, "relaunched ${win.packageName} into task ${win.taskId}")
+        return "am start --task ${win.taskId}: ok"
+    }
+
+    /** Separates the two commands' output in [placeAndRaise]'s single round trip. */
+    private const val SPLIT_MARK = "--openauto-dash-split--"
+
+    /**
+     * [resize] then [relaunch], in one round trip instead of two: a window
+     * coming back to its tile is moved into place and then brought in front.
+     * Returns both outcomes. If the resize form was refused, the window was
+     * still raised; the other forms are then tried on their own.
+     */
+    suspend fun placeAndRaise(context: Context, win: FloatingWindow, rect: ScreenRect): Pair<Result<String>, Result<String>> {
+        val start = try {
+            startCommand(context, win)
+        } catch (e: IllegalStateException) {
+            return guarded { resize(context, win, rect) } to Result.failure(e)
+        }
+        val attempts = resizeCommands(win, rect)
+        val first = attempts.first()
+        // Each command's errors joined to its output, so they stay on their side
+        // of the mark; `true` so a refused start is read from its text, like
+        // every other command here, not turned into a failed round trip.
+        val out = shell(context, "$first 2>&1; echo $SPLIT_MARK; $start 2>&1; true")
+        if (SPLIT_MARK !in out) error(out.trim().lines().firstOrNull().orEmpty().ifBlank { "no answer" })
+        val resizeOut = out.substringBefore(SPLIT_MARK)
+        val raised = runCatching { started(win, out.substringAfter(SPLIT_MARK)) }
+        val placed = if (!looksLikeError(resizeOut)) {
+            Result.success(resized(win, rect, first))
+        } else {
+            Log.w(TAG, "`$first` failed: ${resizeOut.trim()}")
+            if (first.startsWith("am task resize")) taskResizeRefused = true
+            guarded { resizeWith(context, win, rect, attempts.drop(1)) }
+        }
+        return placed to raised
+    }
+
+    /** runCatching that never swallows coroutine cancellation. */
+    private inline fun <T> guarded(block: () -> T): Result<T> = try {
+        Result.success(block())
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        Result.failure(e)
     }
 
     private fun looksLikeError(out: String): Boolean =

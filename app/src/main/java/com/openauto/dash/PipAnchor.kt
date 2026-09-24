@@ -67,8 +67,6 @@ object PipAnchor {
 
     const val MAPS_PACKAGE = "com.google.android.apps.maps"
 
-    private const val POLL_MS = 2_500L
-
     /** What the tile shows. [pipPackage] is null while no PiP window exists. */
     data class Status(
         val pipPackage: String? = null,
@@ -279,7 +277,11 @@ object PipAnchor {
         managed.add(packageName)
         var mem = DockPolicy.Memory()
         var lastResult: String? = null
+        var quickPolls = 0
         while (true) {
+            // Whether this poll sent the window anywhere: its result is then
+            // checked again shortly, not a full poll later.
+            var acted = false
             val lookup = runGuarded { findFloatingWindow(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
             // hide() left in place is parked here (closed if its tile is gone).
@@ -318,6 +320,7 @@ object PipAnchor {
                         val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
                         Log.i(TAG, "opening $packageName at $rect (attempt ${step.attempt})")
                         SplitLauncher.launchFreeform(context, packageName, bounds)
+                        acted = true
                     }
                     else -> Unit
                 }
@@ -344,9 +347,21 @@ object PipAnchor {
                     checkedAt = now, visible = win.visible, behindDashboard = win.behindDashboard
                 )
                 val place = keep.place
+                acted = place != null || keep.raise
+                // Moved and raised in one round trip when both are due (a window
+                // coming back to its tile); the raise's outcome is kept for below.
+                var raised: Result<String>? = null
                 if (place != null) {
                     val result = runGuarded {
-                        if (keep.swipe) DockShell.swipeTo(context, win.bounds!!, place) else DockShell.resize(context, win, place)
+                        when {
+                            keep.swipe -> DockShell.swipeTo(context, win.bounds!!, place)
+                            keep.raise -> {
+                                lastRaiseAt[packageName] = now
+                                DockShell.placeAndRaise(context, win, place)
+                                    .also { raised = it.second }.first.getOrThrow()
+                            }
+                            else -> DockShell.resize(context, win, place)
+                        }
                     }
                     lastResult = result.fold({ it }, { "failed: ${it.message}" })
                     mem = mem.copy(lastPlacementFailed = result.isFailure)
@@ -362,7 +377,7 @@ object PipAnchor {
                     // could leave it invisible there.
                     lastRaiseAt[packageName] = now
                     Log.i(TAG, "raising $packageName above the dashboard")
-                    val relaunched = runGuarded { DockShell.relaunch(context, win) }
+                    val relaunched = (raised ?: runGuarded { DockShell.relaunch(context, win) })
                         .onFailure { Log.w(TAG, "relaunching $packageName failed", it) }
                     if (relaunched.isSuccess || bringToFront(context, win.taskId)) {
                         DockShell.forgetListing()
@@ -373,7 +388,9 @@ object PipAnchor {
                     status.value = status.value.copy(lastResult = lastResult)
                 }
             }
-            delay(POLL_MS)
+            val (wait, quick) = DockPolicy.nextPoll(acted, quickPolls)
+            quickPolls = quick
+            delay(wait)
         }
     }
 

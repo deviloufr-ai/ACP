@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dashboard templates: ready-made widget sets for all 7 dashboards -->
+    <string name="templates_button">Modèles</string>
+    <string name="templates_title">Modèles de tableaux de bord</string>
+    <string name="templates_daily">Quotidien</string>
+    <string name="templates_daily_blurb">Carte et musique au premier plan, la voiture et votre journée à un glissement</string>
+    <string name="templates_road_trip">Road trip</string>
+    <string name="templates_road_trip_blurb">Grande carte, autonomie, météo et arrêts pour les longs trajets</string>
+    <string name="templates_car_health">Santé de la voiture</string>
+    <string name="templates_car_health_blurb">Données moteur et codes défaut sur l\'accueil</string>
+    <string name="templates_hint">Chaque modèle remplit les 7 tableaux de bord et place les widgets pour cet écran, les plus importants du côté conducteur.</string>
+    <string name="templates_no_obd">Aucun adaptateur OBD choisi : les widgets de données voiture sont omis.</string>
+    <string name="templates_fill_empty">Remplir les pages vides</string>
+    <string name="templates_replace_all">Remplacer toutes les pages</string>
+</resources>

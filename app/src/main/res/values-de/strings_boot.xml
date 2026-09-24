@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Startlogo</string>
+    <string name="boot_title">Startlogo</string>
+    <string name="boot_search">%1$d Automarken durchsuchen</string>
+    <string name="boot_no_match">Keine Marke gefunden.</string>
+    <string name="boot_downloading">Logo wird geladen…</string>
+    <string name="boot_bg_black">Schwarz</string>
+    <string name="boot_bg_white">Weiß</string>
+    <string name="boot_show_name">Markennamen anzeigen</string>
+    <string name="boot_show_name_detail">Unter dem Logo</string>
+    <string name="boot_install">Jetzt installieren</string>
+    <string name="boot_play">Jetzt abspielen</string>
+    <string name="boot_restore">Original wiederherstellen</string>
+    <string name="boot_close">Schließen</string>
+    <string name="boot_building">Animation wird erstellt…</string>
+    <string name="boot_installing">Wird installiert…</string>
+    <string name="boot_restoring">Wird wiederhergestellt…</string>
+    <string name="boot_playing">Wird abgespielt…</string>
+    <string name="boot_installed">Installiert in %1$s. Beim nächsten Start sichtbar.</string>
+    <string name="boot_install_failed">Installation fehlgeschlagen: %1$s</string>
+    <string name="boot_restored">Die originale Startanimation ist zurück.</string>
+    <string name="boot_nothing_to_restore">Nichts wiederherzustellen: Die Startanimation wurde nie geändert.</string>
+    <string name="boot_restore_failed">Wiederherstellen fehlgeschlagen: %1$s</string>
+    <string name="boot_play_failed">Abspielen fehlgeschlagen: %1$s</string>
+    <string name="boot_current">Aktuelles Startlogo: %1$s</string>
+    <string name="boot_hint">Ändert, was das Radio beim Start zeigt, mit dem Logo dieser Marke: die Android-Animation und, falls eingeschaltet, das feste Logo. Nutzt das interne Root-ADB des Radios und ändert nie /system. Originale werden gesichert (auch in Dashwheel/boot_backup im internen Speicher), Wiederherstellen setzt sie zurück. Logos aus dem freien car-logos-dataset.</string>
+    <string name="boot_usb">Auf USB speichern</string>
+    <string name="boot_saving_usb">Schreibe auf den USB-Stick…</string>
+    <string name="boot_saved_usb">Gespeichert auf %1$s. Stick ab- und wieder anstecken: Das Radio importiert die Animation. Für das feste Logo: Einstellungen → Werkseinstellungen (8888) → Logo set → %2$s wählen → Update logo.</string>
+    <string name="boot_no_usb">Kein USB-Stick gefunden. Einen anstecken und erneut versuchen.</string>
+    <string name="boot_still">Auch das feste Logo ändern</string>
+    <string name="boot_still_detail">Das erste Bild, vor Android. Standardmäßig aus: wird in die Logo-Partition geschrieben, vorher gesichert und danach geprüft.</string>
+    <string name="boot_still_done">Festes Logo ebenfalls aktualisiert.</string>
+    <string name="boot_still_failed">Festes Logo nicht geändert: %1$s</string>
+    <string name="boot_still_unsupported">dieses Radio hat kein Werkzeug für das feste Logo</string>
+    <string name="boot_not_qf">Installieren funktioniert nur auf der vorgesehenen QF001-/K706-Firmware. Nutze Auf USB speichern.</string>
+</resources>

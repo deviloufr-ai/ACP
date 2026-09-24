@@ -22,14 +22,6 @@ import java.net.UnknownHostException
 import java.util.Locale
 import javax.net.ssl.SSLException
 
-/** The engines the 2011 C4 Picasso shipped with; answers are tailored to the one fitted. */
-enum class CarEngine(val label: String, val detail: String) {
-    VTI_16("1.6 VTi", "1.6 VTi petrol (PSA EP6, 120 hp)"),
-    THP_16("1.6 THP", "1.6 THP turbo petrol (PSA EP6 turbo, 156 hp)"),
-    HDI_16("1.6 HDi", "1.6 HDi diesel (PSA DV6, ~110 hp, particulate filter with Eolys additive)"),
-    HDI_20("2.0 HDi", "2.0 HDi diesel (PSA DW10, 150-163 hp, particulate filter)")
-}
-
 /**
  * Language the mechanic writes and speaks in. [label] is the language's own
  * name (for the picker), [promptName] its English name (for Gemini), [locale]
@@ -67,7 +59,6 @@ data class AiConfig(
     val apiKey: String = "",
     /** The key was unlocked with the activation code, so it isn't shown on screen. */
     val keyFromCode: Boolean = false,
-    val engine: CarEngine = CarEngine.HDI_16,
     /** The driver's pick; null follows the launcher's language. */
     val languageChoice: AiLanguage? = null,
     val speak: Boolean = true,
@@ -86,8 +77,6 @@ object AiSettings {
         return AiConfig(
             apiKey = p.getString("api_key", "").orEmpty(),
             keyFromCode = p.getBoolean("key_from_code", false),
-            engine = p.getString("engine", null)?.let { runCatching { CarEngine.valueOf(it) }.getOrNull() }
-                ?: CarEngine.HDI_16,
             languageChoice = p.getString("language", null)?.let { runCatching { AiLanguage.valueOf(it) }.getOrNull() },
             speak = p.getBoolean("speak", true),
             briefing = p.getBoolean("briefing", true)
@@ -98,7 +87,6 @@ object AiSettings {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("api_key", config.apiKey.trim())
             .putBoolean("key_from_code", config.keyFromCode)
-            .putString("engine", config.engine.name)
             .apply { config.languageChoice?.let { putString("language", it.name) } ?: remove("language") }
             .putBoolean("speak", config.speak)
             .putBoolean("briefing", config.briefing)
@@ -163,9 +151,10 @@ object MechanicPrompt {
         ).put("required", JSONArray(listOf("severity", "summary", "overview", "codes")))
     }
 
-    fun build(codes: List<String>, engine: CarEngine, language: AiLanguage, data: ObdData?): String = buildString {
+    /** [car] names the car, engine and gearbox ([CarProfile.promptDescription]). */
+    fun build(codes: List<String>, car: String, language: AiLanguage, data: ObdData?): String = buildString {
         appendLine("You are an experienced mechanic who knows Citroën / PSA cars well.")
-        appendLine("Car: Citroën C4 Picasso (2011), engine: ${engine.detail}.")
+        appendLine("Car: $car.")
         appendLine("Its OBD scan reports these stored fault codes: ${codes.joinToString(", ")}.")
         readings(data)?.let { appendLine("Live readings at the time of the scan: $it.") }
         appendLine()
@@ -498,7 +487,7 @@ object AiMechanic {
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
         val offline = MechanicLines.newCodes(fresh).text(config.language.resources(context))
         // "v2": answers with the detail sheet; older, shorter ones are asked again.
-        val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + config.engine.name + "|" + config.language.name
+        val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + CarProfileStore.current.promptDescription().hashCode() + "|" + config.language.name
         val cache = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         cache.getString(cacheKey, null)?.let(MechanicPrompt::parse)?.let { cached ->
@@ -513,7 +502,7 @@ object AiMechanic {
         }
 
         _state.value = State(codes = codes, thinking = true)
-        val prompt = MechanicPrompt.build(codes, config.engine, config.language, ObdBluetoothManager.data.value)
+        val prompt = MechanicPrompt.build(codes, CarProfileStore.current.promptDescription(), config.language, ObdBluetoothManager.data.value)
         GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.schema(codes))
             .mapCatching { reply -> reply.text to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
             .onSuccess { (raw, diagnosis) ->

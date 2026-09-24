@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Logo di avvio</string>
+    <string name="boot_title">Logo di avvio</string>
+    <string name="boot_search">Cerca tra %1$d marche</string>
+    <string name="boot_no_match">Nessuna marca corrisponde.</string>
+    <string name="boot_downloading">Download del logo…</string>
+    <string name="boot_bg_black">Nero</string>
+    <string name="boot_bg_white">Bianco</string>
+    <string name="boot_show_name">Mostra il nome della marca</string>
+    <string name="boot_show_name_detail">Scritto sotto il logo</string>
+    <string name="boot_install">Installa ora</string>
+    <string name="boot_play">Guardalo ora</string>
+    <string name="boot_restore">Ripristina l\'originale</string>
+    <string name="boot_close">Chiudi</string>
+    <string name="boot_building">Creazione dell\'animazione…</string>
+    <string name="boot_installing">Installazione…</string>
+    <string name="boot_restoring">Ripristino…</string>
+    <string name="boot_playing">In riproduzione…</string>
+    <string name="boot_installed">Installato in %1$s. Visibile al prossimo avvio.</string>
+    <string name="boot_install_failed">Installazione non riuscita: %1$s</string>
+    <string name="boot_restored">L\'animazione di avvio originale è tornata.</string>
+    <string name="boot_nothing_to_restore">Niente da ripristinare: l\'animazione di avvio non è mai stata cambiata.</string>
+    <string name="boot_restore_failed">Ripristino non riuscito: %1$s</string>
+    <string name="boot_play_failed">Riproduzione non riuscita: %1$s</string>
+    <string name="boot_current">Logo di avvio attuale: %1$s</string>
+    <string name="boot_hint">Cambia ciò che l\'autoradio mostra all\'avvio, con il logo di questa marca: l\'animazione di Android e, se attivo, il logo fisso. Usa l\'ADB root interno dell\'autoradio e non tocca mai /system. Gli originali vengono salvati (anche in Dashwheel/boot_backup nella memoria interna) e Ripristina li rimette. Loghi dal dataset libero car-logos-dataset.</string>
+    <string name="boot_usb">Salva su USB</string>
+    <string name="boot_saving_usb">Scrittura sulla chiavetta USB…</string>
+    <string name="boot_saved_usb">Salvato su %1$s. Scollega e ricollega la chiavetta: l\'autoradio importa l\'animazione. Per il logo fisso: Impostazioni → Impostazioni di fabbrica (8888) → Logo set → scegli %2$s → Update logo.</string>
+    <string name="boot_no_usb">Nessuna chiavetta USB trovata. Collegane una e riprova.</string>
+    <string name="boot_still">Cambia anche il logo fisso</string>
+    <string name="boot_still_detail">La prima immagine, prima di Android. Spento di default: viene scritto nella partizione del logo, con copia prima e verifica dopo.</string>
+    <string name="boot_still_done">Anche il logo fisso è aggiornato.</string>
+    <string name="boot_still_failed">Logo fisso non cambiato: %1$s</string>
+    <string name="boot_still_unsupported">questa autoradio non ha lo strumento del logo fisso</string>
+    <string name="boot_not_qf">Installa funziona solo sul firmware QF001 / K706 previsto. Usa Salva su USB.</string>
+</resources>

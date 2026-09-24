@@ -29,6 +29,23 @@ object DockPolicy {
     /** Window and tile sizes this close, in pixels, count as the same size. */
     const val SIZE_SLACK_PX = 8
 
+    /** Pace of the loop while nothing happens. */
+    const val POLL_MS = 2_500L
+
+    /** Pace right after the loop moved, raised or opened a window: its result is checked (and corrected) at once. */
+    const val QUICK_POLL_MS = 400L
+
+    /** Quick polls in a row at most, so a window the system keeps refusing is not hammered. */
+    const val MAX_QUICK_POLLS = 3
+
+    /**
+     * How long to wait before the next poll, and the new count of quick polls
+     * in a row. [acted] is whether this poll sent the window anywhere.
+     */
+    fun nextPoll(acted: Boolean, quickPolls: Int): Pair<Long, Int> =
+        if (acted && quickPolls < MAX_QUICK_POLLS) QUICK_POLL_MS to quickPolls + 1
+        else POLL_MS to 0
+
     /** What the loop remembers between polls for one app. */
     data class Memory(
         val hadWindow: Boolean = false,

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Logo de arranque</string>
+    <string name="boot_title">Logo de arranque</string>
+    <string name="boot_search">Buscar entre %1$d marcas</string>
+    <string name="boot_no_match">Ninguna marca coincide.</string>
+    <string name="boot_downloading">Descargando el logo…</string>
+    <string name="boot_bg_black">Negro</string>
+    <string name="boot_bg_white">Blanco</string>
+    <string name="boot_show_name">Mostrar el nombre de la marca</string>
+    <string name="boot_show_name_detail">Escrito bajo el logo</string>
+    <string name="boot_install">Instalar ahora</string>
+    <string name="boot_play">Verlo ahora</string>
+    <string name="boot_restore">Restaurar el original</string>
+    <string name="boot_close">Cerrar</string>
+    <string name="boot_building">Creando la animación…</string>
+    <string name="boot_installing">Instalando…</string>
+    <string name="boot_restoring">Restaurando…</string>
+    <string name="boot_playing">Reproduciendo en pantalla…</string>
+    <string name="boot_installed">Instalado en %1$s. Se verá en el próximo arranque.</string>
+    <string name="boot_install_failed">No se pudo instalar: %1$s</string>
+    <string name="boot_restored">Se ha restaurado la animación de arranque original.</string>
+    <string name="boot_nothing_to_restore">Nada que restaurar: la animación de arranque nunca se cambió.</string>
+    <string name="boot_restore_failed">No se pudo restaurar: %1$s</string>
+    <string name="boot_play_failed">No se pudo reproducir: %1$s</string>
+    <string name="boot_current">Logo de arranque actual: %1$s</string>
+    <string name="boot_hint">Cambia lo que muestra la radio al arrancar, con el logo de esta marca: la animación de Android y, si está activado, el logo fijo. Usa el ADB root interno de la radio y nunca toca /system. Los originales se guardan (también en Dashwheel/boot_backup en la memoria interna) y Restaurar los repone. Logos del conjunto libre car-logos-dataset.</string>
+    <string name="boot_usb">Guardar en USB</string>
+    <string name="boot_saving_usb">Escribiendo en la memoria USB…</string>
+    <string name="boot_saved_usb">Guardado en %1$s. Desconecta y vuelve a conectar la memoria: la radio importa la animación. Para el logo fijo: Ajustes → Ajustes de fábrica (8888) → Logo set → elige %2$s → Update logo.</string>
+    <string name="boot_no_usb">No se encontró ninguna memoria USB. Conecta una y vuelve a intentarlo.</string>
+    <string name="boot_still">Cambiar también el logo fijo</string>
+    <string name="boot_still_detail">La primera imagen, antes de Android. Desactivado por defecto: se escribe en la partición del logo, con copia antes y comprobación después.</string>
+    <string name="boot_still_done">Logo fijo actualizado también.</string>
+    <string name="boot_still_failed">Logo fijo sin cambiar: %1$s</string>
+    <string name="boot_still_unsupported">esta radio no tiene herramienta de logo fijo</string>
+    <string name="boot_not_qf">Instalar solo funciona en el firmware QF001 / K706 previsto. Usa Guardar en USB.</string>
+</resources>

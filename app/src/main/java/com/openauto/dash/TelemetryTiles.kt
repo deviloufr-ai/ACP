@@ -695,7 +695,7 @@ internal fun RangeCard(
     val canRange by McuReader.rangeKm.collectAsState()
     val obdConnected = connection == ObdConnectionState.CONNECTED
     val obdFuel = if (obdConnected) obdData.fuelLevelPct else 0
-    val fuel = fuelInfo(canFuel, obdFuel, canRange)
+    val fuel = carFuelInfo(canFuel, obdFuel, canRange)
     val fromCan = canFuel != null || canRange != null
     val source = if (fromCan) stringResource(R.string.vehicle_via_canbox)
         else if (obdFuel > 0) stringResource(R.string.vehicle_via_obd) else null
@@ -776,8 +776,8 @@ internal fun RangeCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MeterChip(stringResource(R.string.vehicle_fuel), "$approx$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
-                    MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / TANK_LITERS).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
-                    MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(fuel.avgUse), (fuel.avgUse / (2 * AVG_L_PER_100KM)).toFloat().coerceIn(0f, 1f), DashColors.Accent, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / fuel.tankL).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(fuel.avgUse), (fuel.avgUse / (2 * CarProfileStore.current.typicalUse)).toFloat().coerceIn(0f, 1f), DashColors.Accent, false, Modifier.weight(1f))
                 }
                 // Always reachable, so a learned signal can be recalibrated or forgotten.
                 Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="boot_menu">Logo de démarrage</string>
+    <string name="boot_title">Logo de démarrage</string>
+    <string name="boot_search">Rechercher parmi %1$d marques</string>
+    <string name="boot_no_match">Aucune marque ne correspond.</string>
+    <string name="boot_downloading">Téléchargement du logo…</string>
+    <string name="boot_bg_black">Noir</string>
+    <string name="boot_bg_white">Blanc</string>
+    <string name="boot_show_name">Afficher le nom de la marque</string>
+    <string name="boot_show_name_detail">Écrit sous le logo</string>
+    <string name="boot_install">Installer</string>
+    <string name="boot_play">Le voir maintenant</string>
+    <string name="boot_restore">Restaurer l\'original</string>
+    <string name="boot_close">Fermer</string>
+    <string name="boot_building">Création de l\'animation…</string>
+    <string name="boot_installing">Installation…</string>
+    <string name="boot_restoring">Restauration…</string>
+    <string name="boot_playing">Lecture à l\'écran…</string>
+    <string name="boot_installed">Installé dans %1$s. Visible au prochain démarrage.</string>
+    <string name="boot_install_failed">Installation impossible : %1$s</string>
+    <string name="boot_restored">L\'animation de démarrage d\'origine est rétablie.</string>
+    <string name="boot_nothing_to_restore">Rien à restaurer : l\'animation de démarrage n\'a jamais été modifiée.</string>
+    <string name="boot_restore_failed">Restauration impossible : %1$s</string>
+    <string name="boot_play_failed">Lecture impossible : %1$s</string>
+    <string name="boot_current">Logo de démarrage actuel : %1$s</string>
+    <string name="boot_hint">Change ce qui s\'affiche au démarrage, avec le logo de cette marque : l\'animation Android, et le logo fixe s\'il est activé. Passe par l\'ADB root interne de l\'autoradio et ne touche jamais /system. Les originaux sont sauvegardés (aussi dans Dashwheel/boot_backup sur la mémoire interne) et Restaurer les remet. Logos issus du jeu de données libre car-logos-dataset.</string>
+    <string name="boot_usb">Copier sur USB</string>
+    <string name="boot_saving_usb">Écriture sur la clé USB…</string>
+    <string name="boot_saved_usb">Enregistré sur %1$s. Débranchez puis rebranchez la clé : l\'autoradio importe l\'animation. Pour le logo fixe : Paramètres → Réglages usine (8888) → Logo set → choisir %2$s → Update logo.</string>
+    <string name="boot_no_usb">Aucune clé USB trouvée. Branchez-en une et réessayez.</string>
+    <string name="boot_still">Changer aussi le logo fixe</string>
+    <string name="boot_still_detail">La première image, avant Android. Désactivé par défaut : écrit dans la partition du logo, sauvegardée avant et vérifiée après.</string>
+    <string name="boot_still_done">Logo fixe mis à jour aussi.</string>
+    <string name="boot_still_failed">Logo fixe non modifié : %1$s</string>
+    <string name="boot_still_unsupported">cet autoradio n\'a pas d\'outil de logo fixe</string>
+    <string name="boot_not_qf">Installer ne fonctionne que sur le firmware QF001 / K706 prévu. Utilisez Copier sur USB.</string>
+</resources>

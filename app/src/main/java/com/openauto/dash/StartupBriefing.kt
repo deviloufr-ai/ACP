@@ -217,7 +217,7 @@ object StartupBriefing {
                 combine(McuReader.fuelPercent, McuReader.rangeKm) { f, r -> (!wantFuel || f != null) && (!wantRange || r != null) }
                     .first { it }
             }
-            return fuelInfo(McuReader.fuelPercent.value, 0, McuReader.rangeKm.value)
+            return carFuelInfo(McuReader.fuelPercent.value, 0, McuReader.rangeKm.value)
         } finally {
             McuReader.stop()
         }

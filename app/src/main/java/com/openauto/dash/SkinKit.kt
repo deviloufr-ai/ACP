@@ -116,7 +116,7 @@ internal fun rememberFuel(obdData: ObdData, connection: ObdConnectionState): Fue
     val canFuel by McuReader.fuelPercent.collectAsState()
     val canRange by McuReader.rangeKm.collectAsState()
     val obdFuel = if (connection == ObdConnectionState.CONNECTED) obdData.fuelLevelPct else 0
-    return fuelInfo(canFuel, obdFuel, canRange)
+    return carFuelInfo(canFuel, obdFuel, canRange)
 }
 
 /** Playback progress 0..1, and 0 while the duration is unknown. */

@@ -1,0 +1,90 @@
+package com.openauto.dash
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** Template placement: every page covered, readable, and arranged around the driver. */
+class DashTemplatesTest {
+
+    private val full = TemplateScreen.of(1280f, 576f, obdPaired = true, driverOnRight = false, mapsDocked = false, dockApps = emptyList())
+    private val half = TemplateScreen.of(640f, 576f, obdPaired = true, driverOnRight = false, mapsDocked = true, dockApps = emptyList())
+
+    private fun widgets(page: List<DashboardItem>) = page.filterIsInstance<DashboardItem.BuiltinWidget>()
+
+    private fun assertTiled(page: List<DashboardItem>, minCols: Int) {
+        val covered = Array(GRID_ROWS) { IntArray(GRID_COLS) }
+        page.forEach { t ->
+            assertTrue("$t out of bounds", t.x >= 0 && t.y >= 0 && t.x + t.w <= GRID_COLS && t.y + t.h <= GRID_ROWS)
+            if (t is DashboardItem.BuiltinWidget) {
+                assertTrue("$t too narrow", t.w >= minCols)
+                assertTrue("$t too short", t.h >= t.minH())
+            }
+            for (y in t.y until t.y + t.h) for (x in t.x until t.x + t.w) covered[y][x]++
+        }
+        if (page.isEmpty()) return
+        covered.forEachIndexed { y, row -> row.forEachIndexed { x, n -> assertEquals("cell $x,$y", 1, n) } }
+    }
+
+    @Test
+    fun everyTemplateTilesEveryPage_fullAndHalf() {
+        for (template in DashTemplate.entries) for (screen in listOf(full, half, full.copy(obdPaired = false))) {
+            val pages = TemplatePlacer.pages(template, screen)
+            assertEquals(DashboardStore.PAGE_COUNT, pages.size)
+            pages.forEach { assertTiled(it, screen.minCols) }
+        }
+    }
+
+    @Test
+    fun besideTheMapsDock_widgetsNeedMoreColumns_andTheMapIsLeftOut() {
+        assertTrue(half.minCols > full.minCols)
+        val home = TemplatePlacer.pages(DashTemplate.DAILY, half)[DashboardStore.CENTER]
+        assertFalse(widgets(home).any { it.kind == BuiltinKind.NAVMAP })
+        assertTrue(widgets(home).isNotEmpty())
+    }
+
+    @Test
+    fun theMostImportantTileSitsOnTheDriversSide() {
+        val lhd = widgets(TemplatePlacer.pages(DashTemplate.DAILY, full)[DashboardStore.CENTER])
+        val rhd = widgets(TemplatePlacer.pages(DashTemplate.DAILY, full.copy(driverOnRight = true))[DashboardStore.CENTER])
+        val mapL = lhd.single { it.kind == BuiltinKind.NAVMAP }
+        val mapR = rhd.single { it.kind == BuiltinKind.NAVMAP }
+        assertEquals(0, mapL.x)
+        assertEquals(GRID_COLS, mapR.x + mapR.w)
+        // The map is the biggest tile on Home.
+        assertTrue(lhd.all { it === mapL || it.w * it.h < mapL.w * mapL.h })
+    }
+
+    @Test
+    fun withoutAnAdapter_carDataIsHeldBack_andTelemetryBecomesTrip() {
+        val noObd = full.copy(obdPaired = false)
+        val carPage = TemplatePlacer.pages(DashTemplate.DAILY, noObd)[2]
+        assertEquals(listOf(BuiltinKind.TRIP), widgets(carPage).map { it.kind })
+        val obdKinds = setOf(BuiltinKind.TELEMETRY, BuiltinKind.RANGE, BuiltinKind.OBD_DTC, BuiltinKind.DOORS, BuiltinKind.OBD_ALL, BuiltinKind.CAN_MON)
+        for (template in DashTemplate.entries) {
+            assertFalse(TemplatePlacer.pages(template, noObd).flatten().any { it is DashboardItem.BuiltinWidget && it.kind in obdKinds })
+        }
+    }
+
+    @Test
+    fun homeGetsADockAlongTheBottom_keepingTheUsersApps() {
+        val mine = listOf(listOf(DashboardItem.AppShortcut("com.example.radio")), emptyList())
+        val apps = TemplatePlacer.dockApps(mine, installed = setOf("com.waze"))
+        assertEquals(listOf("com.example.radio"), apps)
+        assertEquals(listOf("com.waze"), TemplatePlacer.dockApps(emptyList(), installed = setOf("com.waze", "x.y")))
+
+        val home = TemplatePlacer.pages(DashTemplate.ROAD_TRIP, full.copy(dockApps = apps))[DashboardStore.CENTER]
+        val dock = home.filterIsInstance<DashboardItem.LaunchBar>().single()
+        assertEquals(listOf(GRID_ROWS - 1, GRID_COLS, 1), listOf(dock.y, dock.w, dock.h))
+        assertTiled(home, full.minCols)
+    }
+
+    @Test
+    fun rightHandDriveCountries() {
+        assertTrue(TemplateScreen.driverOnRight("GB"))
+        assertTrue(TemplateScreen.driverOnRight("jp"))
+        assertFalse(TemplateScreen.driverOnRight("FR"))
+        assertFalse(TemplateScreen.driverOnRight(""))
+    }
+}

@@ -9,7 +9,6 @@
     <string name="ai_own_key">Lub własny klucz API Gemini</string>
     <string name="ai_key">Klucz API Gemini</string>
     <string name="ai_key_hint">Za darmo na aistudio.google.com → Get API key</string>
-    <string name="ai_engine">Silnik</string>
     <string name="ai_language">Język</string>
     <string name="ai_language_auto">Jak aplikacja</string>
     <string name="ai_speak">Komunikaty głosowe</string>

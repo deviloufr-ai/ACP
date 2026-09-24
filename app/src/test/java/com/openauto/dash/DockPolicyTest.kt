@@ -193,4 +193,29 @@ class DockPolicyTest {
         val (again, _) = DockPolicy.onPresent(seen, window(ScreenRect(1276, 100, 1776, 400)), tile, area, lastRaiseAt = 100_000, now = 102_500)
         assertFalse((again as DockPolicy.Step.Keep).raise)
     }
+
+    // --- polling pace -------------------------------------------------------------
+
+    @Test
+    fun resultOfAMoveIsCheckedQuickly() {
+        assertEquals(DockPolicy.QUICK_POLL_MS to 1, DockPolicy.nextPoll(acted = true, quickPolls = 0))
+    }
+
+    @Test
+    fun quietPollsKeepTheNormalPace() {
+        assertEquals(DockPolicy.POLL_MS to 0, DockPolicy.nextPoll(acted = false, quickPolls = 0))
+        // A settled window ends a quick streak.
+        assertEquals(DockPolicy.POLL_MS to 0, DockPolicy.nextPoll(acted = false, quickPolls = 2))
+    }
+
+    @Test
+    fun aRefusingSystemIsNotHammered() {
+        var quick = 0
+        repeat(DockPolicy.MAX_QUICK_POLLS) {
+            val (delay, next) = DockPolicy.nextPoll(acted = true, quickPolls = quick)
+            assertEquals(DockPolicy.QUICK_POLL_MS, delay)
+            quick = next
+        }
+        assertEquals(DockPolicy.POLL_MS to 0, DockPolicy.nextPoll(acted = true, quickPolls = quick))
+    }
 }
