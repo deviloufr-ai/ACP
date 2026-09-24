@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">Mijn auto</string>
+    <string name="car_menu_detail">Model, motor en specificaties, ingevuld door AI</string>
     <string name="car_my_car_title_dialog">Mijn auto</string>
     <string name="car_settings_explanation">Geef je auto zo precies mogelijk op (model, motor, uitvoering, bouwjaar, versnellingsbak). AI vult de gegevens in; controleer ze, verbeter waar nodig en sla op. De tegels en de AI-monteur gebruiken ze.</string>
     <string name="car_name">Auto</string>

@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Done editing</string>
     <string name="dash_menu_theme">Theme</string>
     <string name="dash_menu_split_screen">Split screen with an app</string>
+    <string name="dash_menu_section_dashboard">Dashboard</string>
+    <string name="dash_menu_section_car">Car</string>
+    <string name="dash_menu_section_settings">Settings</string>
+    <string name="dash_menu_edit_dashboards_detail">Move, resize, add or remove tiles</string>
+    <string name="dash_menu_done_editing_detail">Keep this arrangement</string>
+    <string name="dash_menu_theme_detail">Skin and colours of the dashboard</string>
+    <string name="dash_menu_split_screen_detail">The dashboard next to any app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Arranging dashboard %1$d</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Downloading update… %1$d%%</string>
     <string name="dash_update_installing">Starting installer…</string>
     <string name="dash_menu_check_updates">Check for updates</string>
+    <string name="dash_menu_check_updates_detail">Fetch the latest version of Dashwheel</string>
     <string name="dash_update_checking">Checking for updates…</string>
     <string name="dash_update_up_to_date">Dashwheel is up to date (v%1$s)</string>
     <string name="dash_update">Update</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">System app (advanced)</string>
+    <string name="dash_system_app_detail">Installs Dashwheel with root for deeper app integration</string>
     <string name="dash_system_app_body">Install Dashwheel as a privileged system app so it can embed the real Google Maps app — with navigation — in the Maps tile, like OEM car launchers. With Magisk it installs systemlessly (a Magisk module — works even though /system is full); otherwise it uses su, or the internal root ADB (:%1$d). Reboot afterwards to activate it.</string>
     <string name="dash_root_checking">Checking root…</string>
     <string name="dash_root_available">Root (su) available ✓ — will use Magisk module if present</string>

@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">La mia auto</string>
+    <string name="car_menu_detail">Modello, motore e scheda tecnica, compilati dall\'IA</string>
     <string name="car_my_car_title_dialog">La mia auto</string>
     <string name="car_settings_explanation">Indica la tua auto nel modo più preciso possibile (modello, motore, versione, anno, cambio). L\'IA compila la scheda; controllala, correggi se serve, poi salva. I riquadri e il Meccanico IA la usano.</string>
     <string name="car_name">Auto</string>

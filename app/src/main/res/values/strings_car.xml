@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">My car</string>
+    <string name="car_menu_detail">Model, engine and specs, filled in by AI</string>
     <string name="car_my_car_title_dialog">My car</string>
     <string name="car_settings_explanation">Name your car as precisely as you can (model, engine, version, year, gearbox). AI fills in the specs; check them, correct any, then save. The tiles and the AI mechanic use them.</string>
     <string name="car_name">Car</string>

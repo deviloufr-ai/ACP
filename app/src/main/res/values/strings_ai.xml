@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI mechanic</string>
+    <string name="ai_menu_detail">Ask about a fault or a noise; Gemini key</string>
     <string name="ai_explanation">When the OBD adapter connects, Dashwheel checks for fault codes by itself. A new code is explained by Google Gemini and said out loud; the details go on the Fault codes tile. Only the codes, engine readings and car model are sent.</string>
     <string name="ai_activation_code">Activation code</string>
     <string name="ai_activation_hint">Unlocks the built-in key</string>

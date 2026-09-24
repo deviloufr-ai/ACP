@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Logo startowe</string>
+    <string name="boot_menu_detail">Marka Twojego samochodu na ekranie startowym urządzenia</string>
     <string name="boot_title">Logo startowe</string>
     <string name="boot_search">Szukaj wśród %1$d marek</string>
     <string name="boot_no_match">Brak pasującej marki.</string>

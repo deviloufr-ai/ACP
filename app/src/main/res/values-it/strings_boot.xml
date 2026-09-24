@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Logo di avvio</string>
+    <string name="boot_menu_detail">Il marchio della tua auto nella schermata di avvio dell\'unità</string>
     <string name="boot_title">Logo di avvio</string>
     <string name="boot_search">Cerca tra %1$d marche</string>
     <string name="boot_no_match">Nessuna marca corrisponde.</string>

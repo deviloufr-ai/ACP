@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">KI-Mechaniker</string>
+    <string name="ai_menu_detail">Fragen zu einer Störung oder einem Geräusch; Gemini-Schlüssel</string>
     <string name="ai_explanation">Sobald der OBD-Adapter verbunden ist, sucht Dashwheel selbstständig nach Fehlercodes. Ein neuer Code wird von Google Gemini erklärt und vorgelesen; die Details erscheinen auf der Kachel „Fehlercodes“. Gesendet werden nur die Codes, die Motorwerte und das Fahrzeugmodell.</string>
     <string name="ai_activation_code">Aktivierungscode</string>
     <string name="ai_activation_hint">Schaltet den integrierten Schlüssel frei</string>

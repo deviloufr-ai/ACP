@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Klaar met bewerken</string>
     <string name="dash_menu_theme">Thema</string>
     <string name="dash_menu_split_screen">Gesplitst scherm met een app</string>
+    <string name="dash_menu_section_dashboard">Dashboard</string>
+    <string name="dash_menu_section_car">Auto</string>
+    <string name="dash_menu_section_settings">Instellingen</string>
+    <string name="dash_menu_edit_dashboards_detail">Tegels verplaatsen, vergroten, toevoegen of verwijderen</string>
+    <string name="dash_menu_done_editing_detail">Deze indeling bewaren</string>
+    <string name="dash_menu_theme_detail">Uiterlijk en kleuren van het dashboard</string>
+    <string name="dash_menu_split_screen_detail">Het dashboard naast een willekeurige app</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Dashboard %1$d indelen</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Update downloaden… %1$d%%</string>
     <string name="dash_update_installing">Installatie starten…</string>
     <string name="dash_menu_check_updates">Zoeken naar updates</string>
+    <string name="dash_menu_check_updates_detail">De nieuwste versie van Dashwheel ophalen</string>
     <string name="dash_update_checking">Zoeken naar updates…</string>
     <string name="dash_update_up_to_date">Dashwheel is up-to-date (v%1$s)</string>
     <string name="dash_update">Bijwerken</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">Systeem-app (geavanceerd)</string>
+    <string name="dash_system_app_detail">Installeert Dashwheel met root voor diepere app-integratie</string>
     <string name="dash_system_app_body">Installeer Dashwheel als geprivilegieerde systeem-app, zodat het de echte Google Maps-app – met navigatie – in de Maps-tegel kan insluiten, zoals fabriekslaunchers. Met Magisk gebeurt dat systemless (een Magisk-module – werkt ook als /system vol is); anders via su of de interne root-ADB (:%1$d). Start daarna opnieuw op om het te activeren.</string>
     <string name="dash_root_checking">Root controleren…</string>
     <string name="dash_root_available">Root (su) beschikbaar ✓ – gebruikt Magisk-module indien aanwezig</string>
