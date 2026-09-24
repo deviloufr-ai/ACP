@@ -28,13 +28,17 @@ internal enum class FaceLookKind { THEME, MINIMAL, LCD, AMBER, NEON, PAPER, GLAS
 
 /**
  * A tile's design. Names are persisted with the tile, so never rename an
- * entry; new designs go at the end. [layout] is null for [STANDARD].
+ * entry; new designs go at the end. [layout] is null for [STANDARD] and for
+ * the widget-specific designs, which draw their own picture of the reading
+ * (WidgetSignatures.kt) and exist only for the [kinds] they suit.
  */
 enum class WidgetDesign(
     @StringRes val titleRes: Int,
     @StringRes val descriptionRes: Int,
     internal val layout: FaceLayout?,
-    internal val look: FaceLookKind
+    internal val look: FaceLookKind,
+    /** The widgets a widget-specific design is made for; null for the generic ones, which suit every widget. */
+    internal val kinds: Set<BuiltinKind>? = null
 ) {
     STANDARD(R.string.design_standard, R.string.design_standard_desc, null, FaceLookKind.THEME),
     HERO(R.string.design_hero, R.string.design_hero_desc, FaceLayout.HERO, FaceLookKind.THEME),
@@ -51,9 +55,68 @@ enum class WidgetDesign(
     CARBON(R.string.design_carbon, R.string.design_carbon_desc, FaceLayout.BARS, FaceLookKind.CARBON),
     BLUEPRINT(R.string.design_blueprint, R.string.design_blueprint_desc, FaceLayout.DIAL, FaceLookKind.BLUEPRINT),
     CHRONO(R.string.design_chrono, R.string.design_chrono_desc, FaceLayout.DIAL, FaceLookKind.CHROME),
-    FLAP(R.string.design_flap, R.string.design_flap_desc, FaceLayout.FLAP, FaceLookKind.FLAP);
+    FLAP(R.string.design_flap, R.string.design_flap_desc, FaceLayout.FLAP, FaceLookKind.FLAP),
+
+    // Made for particular widgets: the shape comes from what the widget shows.
+    THERMOMETER(R.string.design_thermometer, R.string.design_thermometer_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.WARMUP, BuiltinKind.WEATHER)),
+    FUEL_TANK(R.string.design_fuel_tank, R.string.design_fuel_tank_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.RANGE, BuiltinKind.FUEL_TO_DEST)),
+    BATTERY_CELL(R.string.design_battery_cell, R.string.design_battery_cell_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.BATTERY)),
+    FADER(R.string.design_fader, R.string.design_fader_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.AUDIO, BuiltinKind.BATTERY, BuiltinKind.WARMUP, BuiltinKind.RANGE, BuiltinKind.BREAK_TIMER)),
+    SPEED_TAPE(R.string.design_speed_tape, R.string.design_speed_tape_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.SPEED_HUD, BuiltinKind.TELEMETRY)),
+    ROAD_SIGN(R.string.design_road_sign, R.string.design_road_sign_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.SPEED_HUD, BuiltinKind.PARKING, BuiltinKind.NAVIGATION, BuiltinKind.BREAK_TIMER, BuiltinKind.FUEL_TO_DEST, BuiltinKind.RANGE)),
+    TWIN_DIALS(R.string.design_twin_dials, R.string.design_twin_dials_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.TELEMETRY, BuiltinKind.OBD_ALL)),
+    SHIFT_LIGHTS(R.string.design_shift_lights, R.string.design_shift_lights_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.TELEMETRY, BuiltinKind.OBD_ALL)),
+    HEADING_TAPE(R.string.design_heading_tape, R.string.design_heading_tape_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.COMPASS)),
+    COMPASS_ROSE(R.string.design_compass_rose, R.string.design_compass_rose_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.COMPASS, BuiltinKind.PARKING)),
+    POINTER(R.string.design_pointer, R.string.design_pointer_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.COMPASS, BuiltinKind.PARKING)),
+    FRICTION_CIRCLE(R.string.design_friction_circle, R.string.design_friction_circle_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.GFORCE)),
+    G_BARS(R.string.design_g_bars, R.string.design_g_bars_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.GFORCE)),
+    SPIRIT_LEVEL(R.string.design_spirit_level, R.string.design_spirit_level_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.GFORCE)),
+    TURN_CARD(R.string.design_turn_card, R.string.design_turn_card_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.NAVIGATION)),
+    ROAD_AHEAD(R.string.design_road_ahead, R.string.design_road_ahead_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.NAVIGATION, BuiltinKind.TRIP, BuiltinKind.FUEL_TO_DEST)),
+    RADAR(R.string.design_radar, R.string.design_radar_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.PARKING)),
+    ODOMETER(R.string.design_odometer, R.string.design_odometer_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.TRIP, BuiltinKind.RANGE)),
+    PRINTOUT(R.string.design_printout, R.string.design_printout_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.TRIP, BuiltinKind.ECO_DRIVE, BuiltinKind.OBD_DTC, BuiltinKind.CAN_MON)),
+    WARNING_LAMP(R.string.design_warning_lamp, R.string.design_warning_lamp_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.OBD_DTC, BuiltinKind.FILTER_CARE, BuiltinKind.BATTERY, BuiltinKind.WARMUP, BuiltinKind.DOORS, BuiltinKind.RANGE, BuiltinKind.FUEL_TO_DEST)),
+    TRAFFIC_LIGHT(R.string.design_traffic_light, R.string.design_traffic_light_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.OBD_DTC, BuiltinKind.BATTERY, BuiltinKind.ECO_DRIVE, BuiltinKind.BREAK_TIMER, BuiltinKind.FILTER_CARE, BuiltinKind.DOORS, BuiltinKind.FUEL_TO_DEST)),
+    GAUGE_BANK(R.string.design_gauge_bank, R.string.design_gauge_bank_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.OBD_ALL, BuiltinKind.TELEMETRY)),
+    CAR_TOP(R.string.design_car_top, R.string.design_car_top_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.DOORS)),
+    DATA_RAIN(R.string.design_data_rain, R.string.design_data_rain_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.CAN_MON)),
+    SKY(R.string.design_sky, R.string.design_sky_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.WEATHER, BuiltinKind.CLOCK)),
+    SUN_PATH(R.string.design_sun_path, R.string.design_sun_path_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.CLOCK, BuiltinKind.WEATHER)),
+    BINARY_CLOCK(R.string.design_binary_clock, R.string.design_binary_clock_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.CLOCK)),
+    TIMELINE(R.string.design_timeline, R.string.design_timeline_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.CALENDAR, BuiltinKind.NOTIFICATIONS)),
+    DESK_CALENDAR(R.string.design_desk_calendar, R.string.design_desk_calendar_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.CALENDAR)),
+    CARD_STACK(R.string.design_card_stack, R.string.design_card_stack_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.NOTIFICATIONS, BuiltinKind.CALENDAR, BuiltinKind.QUICK_DIAL)),
+    ROTARY_PHONE(R.string.design_rotary_phone, R.string.design_rotary_phone_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.QUICK_DIAL)),
+    FACES(R.string.design_faces, R.string.design_faces_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.QUICK_DIAL)),
+    BADGE(R.string.design_badge, R.string.design_badge_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.NOTIFICATIONS)),
+    VINYL(R.string.design_vinyl, R.string.design_vinyl_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.MEDIA)),
+    CASSETTE(R.string.design_cassette, R.string.design_cassette_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.MEDIA)),
+    COVER_ART(R.string.design_cover_art, R.string.design_cover_art_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.MEDIA)),
+    VOLUME_KNOB(R.string.design_volume_knob, R.string.design_volume_knob_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.AUDIO)),
+    LEVEL_METER(R.string.design_level_meter, R.string.design_level_meter_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.AUDIO)),
+    FILTER_CELLS(R.string.design_filter_cells, R.string.design_filter_cells_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.FILTER_CARE)),
+    HOURGLASS(R.string.design_hourglass, R.string.design_hourglass_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.BREAK_TIMER)),
+    LEAF(R.string.design_leaf, R.string.design_leaf_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.ECO_DRIVE));
+
+    /** Drawn by its own renderer for the widgets in [kinds] (see WidgetSignatures.kt). */
+    internal val isSignature: Boolean get() = kinds != null
+
+    /** True when [kind] can wear this design: Standard always, generic ones on every redrawn widget, the rest on theirs. */
+    internal fun appliesTo(kind: BuiltinKind): Boolean = when {
+        this == STANDARD -> true
+        kinds != null -> kind in kinds
+        else -> true
+    }
 
     companion object {
+        /** The designs [kind] offers, in picker order: Standard, the ones made for it, then the generic ones. */
+        internal fun offeredFor(kind: BuiltinKind, framed: Boolean): List<WidgetDesign> {
+            val all = entries.filter { it.appliesTo(kind) && !(framed && it.isSignature) }
+            return listOf(STANDARD) + all.filter { it.isSignature } + all.filter { !it.isSignature && it != STANDARD }
+        }
+
         /** The saved design, or [STANDARD] for a blank or unknown name (a newer build's design after a downgrade). */
         fun fromName(name: String?): WidgetDesign =
             entries.firstOrNull { it.name == name } ?: STANDARD
@@ -79,6 +142,15 @@ internal class FaceRow(
     val badge: String? = null,
     val onClick: (() -> Unit)? = null
 )
+
+/** A small gauge: label, value, unit and how far round it goes (0..1). */
+internal class FaceGauge(val label: String, val value: String, val unit: String, val fraction: Float)
+
+/** Something at a time of day: an agenda event ([endMs] set) or a notification (a moment). */
+internal class FaceEvent(val startMs: Long, val endMs: Long?, val title: String)
+
+/** Which road sign a widget reads as. */
+internal enum class SignKind { SPEED, PARKING, DIRECTIONS, FUEL, REST }
 
 internal class FaceAction(
     val icon: ImageVector,
@@ -114,8 +186,35 @@ internal class WidgetFace(
     val art: ImageBitmap? = null,
     val clock: Triple<Int, Int, Int>? = null,
     val compass: Boolean = false,
-    val onClick: (() -> Unit)? = null
-)
+    val onClick: (() -> Unit)? = null,
+    // Readings only the widget-specific designs draw.
+    /** Low and high ends of the scale (thermometer, tank), e.g. "0°" / "90°". */
+    val scale: Pair<String, String>? = null,
+    /** The headline as a number (speed tape). */
+    val number: Float? = null,
+    /** A direction in degrees clockwise: the heading, or the way to the parked car relative to it. */
+    val angle: Float? = null,
+    /** Lateral and longitudinal g, and the peak. */
+    val point: Pair<Float, Float>? = null,
+    val peak: Float? = null,
+    /** 0 fine, 1 needs attention, 2 act now; null follows [alert]. */
+    val severity: Int? = null,
+    /** Front left, front right, rear left, rear right, tailgate, bonnet: open or not. */
+    val doors: List<Boolean>? = null,
+    val events: List<FaceEvent> = emptyList(),
+    val weatherCode: Int? = null,
+    /** Playing (the record and reels turn). */
+    val active: Boolean = false,
+    val gauges: List<FaceGauge> = emptyList(),
+    val sign: SignKind? = null,
+    /** Label at the far end of a road or scale (range, distance so far). */
+    val reach: String? = null,
+    /** Label on the marker along a road (the destination). */
+    val marker: String? = null
+) {
+    /** [severity], or 2 / 0 from [alert]. */
+    val level: Int get() = severity ?: if (alert) 2 else 0
+}
 
 // --- Materials ----------------------------------------------------------------
 
@@ -126,7 +225,7 @@ internal enum class LookDecoration { NONE, SCANLINES, CARBON, BLUEPRINT, CHROME,
  * Colours, type and shape of one material. [background] null means the
  * theme's own [Card]; a transparent brush means no card at all (Minimal).
  */
-internal class FaceLook(
+internal data class FaceLook(
     val kind: FaceLookKind,
     val background: Brush?,
     val ink: Color,

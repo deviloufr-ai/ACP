@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -102,7 +104,8 @@ internal fun WidgetDesignPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(WidgetDesign.entries, key = { it.name }) { design ->
+                    val offered = WidgetDesign.offeredFor(kind, framed = kind in FRAMED_KINDS)
+                    val choice: @Composable (WidgetDesign) -> Unit = { design ->
                         DesignChoice(design, design == current, aspect, onClick = { onPick(design) }) {
                             when {
                                 design == WidgetDesign.STANDARD -> standardPreview()
@@ -111,6 +114,16 @@ internal fun WidgetDesignPickerDialog(
                             }
                         }
                     }
+                    // Standard, then the designs made for this widget, then the ones every widget has.
+                    items(offered.filter { it == WidgetDesign.STANDARD || it.isSignature }, key = { it.name }) { choice(it) }
+                    item(key = "generic", span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            stringResource(R.string.design_section_generic).uppercase(),
+                            color = DashColors.Muted, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+                            style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                    items(offered.filter { it != WidgetDesign.STANDARD && !it.isSignature }, key = { it.name }) { choice(it) }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.apps_cancel), color = DashColors.Muted) }
@@ -151,6 +164,12 @@ private fun DesignChoice(
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
             Text(design.title, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1)
+            if (design.isSignature) Text(
+                stringResource(R.string.design_made_for_it).uppercase(),
+                color = DashColors.Accent2, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
             if (selected) Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.dash_selected), tint = DashColors.Accent, modifier = Modifier.size(18.dp))
         }
         Text(

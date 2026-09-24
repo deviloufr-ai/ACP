@@ -79,7 +79,7 @@ import kotlin.math.sin
  */
 
 /** Tile size in dp plus a "percent of the short side" unit, like CSS cqmin. */
-private class FaceMetrics(val w: Float, val h: Float, private val density: Density) {
+internal class FaceMetrics(val w: Float, val h: Float, private val density: Density) {
     val u = min(w, h) / 100f
     val pad: Float = (u * 6.5f).coerceIn(10f, 18f)
     val wide: Boolean get() = w / h >= 1.4f
@@ -93,6 +93,10 @@ private class FaceMetrics(val w: Float, val h: Float, private val density: Densi
 /** A built-in widget drawn in [design] (never [WidgetDesign.STANDARD]; that is the widget's own renderer). */
 @Composable
 internal fun DesignedFace(face: WidgetFace, design: WidgetDesign, modifier: Modifier = Modifier) {
+    if (design.isSignature) {
+        SignatureFace(face, design, modifier)
+        return
+    }
     val look = faceLook(design.look)
     FaceSurface(look, modifier.then(face.onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -114,7 +118,7 @@ internal fun DesignedFace(face: WidgetFace, design: WidgetDesign, modifier: Modi
 // --- Material surface ------------------------------------------------------------
 
 @Composable
-private fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composable () -> Unit) {
+internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composable () -> Unit) {
     val bg = look.background
     if (bg == null) {
         Card(modifier = modifier) { content() }
@@ -213,7 +217,7 @@ private fun DrawScope.drawDecoration(look: FaceLook) {
 // --- Shared pieces ----------------------------------------------------------------
 
 @Composable
-private fun FaceText(
+internal fun FaceText(
     text: String,
     look: FaceLook,
     size: TextUnit,
@@ -246,7 +250,7 @@ private fun FaceText(
 }
 
 @Composable
-private fun FaceHeader(f: WidgetFace, look: FaceLook, m: FaceMetrics, trailing: (@Composable RowScope.() -> Unit)? = null) {
+internal fun FaceHeader(f: WidgetFace, look: FaceLook, m: FaceMetrics, trailing: (@Composable RowScope.() -> Unit)? = null) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(f.icon, contentDescription = null, tint = look.accent, modifier = Modifier.size(m.dp(8.5f).coerceIn(14.dp, 22.dp)))
         Spacer(Modifier.width(6.dp))
@@ -260,7 +264,7 @@ private fun FaceHeader(f: WidgetFace, look: FaceLook, m: FaceMetrics, trailing: 
 
 /** The headline value with its unit, beside it or (when [stacked]) under it. LCD designs add unlit "8" segments behind. */
 @Composable
-private fun FaceValue(f: WidgetFace, look: FaceLook, m: FaceMetrics, sizeDp: Float, modifier: Modifier = Modifier, stacked: Boolean = false) {
+internal fun FaceValue(f: WidgetFace, look: FaceLook, m: FaceMetrics, sizeDp: Float, modifier: Modifier = Modifier, stacked: Boolean = false) {
     val size = m.sp(if (f.textValue) sizeDp * 0.45f else sizeDp)
     val numeral: @Composable (Modifier) -> Unit = { mod ->
         Box(modifier = mod) {
@@ -298,15 +302,15 @@ private fun FaceValue(f: WidgetFace, look: FaceLook, m: FaceMetrics, sizeDp: Flo
 }
 
 @Composable
-private fun FaceCaption(f: WidgetFace, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, align: TextAlign? = null) {
+internal fun FaceCaption(f: WidgetFace, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, align: TextAlign? = null) {
     if (f.caption.isEmpty()) return
     FaceText(f.caption, look, m.caption, modifier, color = if (f.alert) look.warn else look.dim, align = align)
 }
 
-private fun controlShape(look: FaceLook) = if (look.squareControls) RoundedCornerShape(6.dp) else CircleShape
+internal fun controlShape(look: FaceLook) = if (look.squareControls) RoundedCornerShape(6.dp) else CircleShape
 
 @Composable
-private fun FaceActions(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int = 3, small: Boolean = false) {
+internal fun FaceActions(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int = 3, small: Boolean = false) {
     if (f.actions.isEmpty()) return
     val s = if (small) m.dp(12f).coerceIn(32.dp, 42.dp) else m.dp(15f).coerceIn(36.dp, 52.dp)
     val shape = controlShape(look)
@@ -333,7 +337,7 @@ private fun FaceActions(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int 
 }
 
 @Composable
-private fun FaceStatBlock(stat: FaceStat, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, align: Alignment.Horizontal = Alignment.Start) {
+internal fun FaceStatBlock(stat: FaceStat, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, align: Alignment.Horizontal = Alignment.Start) {
     Column(modifier = modifier, horizontalAlignment = align) {
         FaceText(stat.label.uppercase(Locale.getDefault()), look, m.sp(max(m.u * 5.2f, 9f)), color = look.dim, weight = look.labelWeight, letterSpacing = 0.1.em)
         FaceText(stat.value, look, m.sp(max(m.u * 8.2f, 12f)), weight = look.numWeight.coerceAtLeast(FontWeight.Medium), family = look.numFont, italic = look.numItalic)
@@ -341,7 +345,7 @@ private fun FaceStatBlock(stat: FaceStat, look: FaceLook, m: FaceMetrics, modifi
 }
 
 @Composable
-private fun FaceRows(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int, modifier: Modifier = Modifier) {
+internal fun FaceRows(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int, modifier: Modifier = Modifier) {
     if (f.rows.isEmpty()) return
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(m.dp(1.8f).coerceAtLeast(3.dp))) {
         f.rows.take(max).forEach { r ->
@@ -375,7 +379,7 @@ private fun FaceRows(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int, mo
 }
 
 @Composable
-private fun FaceProgress(fraction: Float, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, alert: Boolean = false) {
+internal fun FaceProgress(fraction: Float, look: FaceLook, m: FaceMetrics, modifier: Modifier = Modifier, alert: Boolean = false) {
     Box(
         modifier = modifier
             .height(m.dp(1.6f).coerceAtLeast(3.dp))
@@ -393,7 +397,7 @@ private fun FaceProgress(fraction: Float, look: FaceLook, m: FaceMetrics, modifi
 }
 
 /** Point on a circle, angle in degrees clockwise from 12 o'clock. */
-private fun polar(c: Offset, r: Float, deg: Float): Offset {
+internal fun polarPoint(c: Offset, r: Float, deg: Float): Offset {
     val t = Math.toRadians(deg.toDouble())
     return Offset(c.x + r * sin(t).toFloat(), c.y - r * cos(t).toFloat())
 }
@@ -482,7 +486,7 @@ private fun DrawScope.drawGaugeArc(f: WidgetFace, look: FaceLook) {
             if (f.fullCircle && i == 24) break
             val a = a0 + span * i / 24f
             drawLine(
-                look.accent2.copy(alpha = 0.8f), polar(c, r * 0.99f, a), polar(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a),
+                look.accent2.copy(alpha = 0.8f), polarPoint(c, r * 0.99f, a), polarPoint(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a),
                 strokeWidth = if (i % 6 == 0) 2f else 1f
             )
         }
@@ -741,7 +745,7 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 if (full && i == n) break
                 val a = a0 + span * i / n
                 val major = i % 5 == 0
-                drawLine(look.ink, polar(c, tickOuter, a), polar(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
+                drawLine(look.ink, polarPoint(c, tickOuter, a), polarPoint(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
             }
             if (!full) {
                 val inset = c.x - (tickOuter - r * 0.03f)
@@ -753,16 +757,16 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             }
             val labelStyle = TextStyle(fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.16f / density / fontScale).sp)
             letters.forEachIndexed { i, l ->
-                val p = polar(c, r * 0.56f, i * 90f)
+                val p = polarPoint(c, r * 0.56f, i * 90f)
                 val layout = measurer.measure(l, labelStyle.copy(color = if (i == 0) look.accent else look.ink))
                 drawText(layout, topLeft = Offset(p.x - layout.size.width / 2f, p.y - layout.size.height / 2f))
             }
             val clock = f.clock
             if (clock != null) {
                 val (h, mi, s) = clock
-                drawLine(look.ink, c, polar(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
-                drawLine(look.ink, c, polar(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
-                drawLine(look.accent, polar(c, r * 0.15f, s * 6f + 180f), polar(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
+                drawLine(look.ink, c, polarPoint(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
+                drawLine(look.ink, c, polarPoint(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                drawLine(look.accent, polarPoint(c, r * 0.15f, s * 6f + 180f), polarPoint(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
             } else {
                 if (showValueInDial && dialValue.isNotEmpty()) {
                     val v = measurer.measure(dialValue, TextStyle(color = look.ink, fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.22f / density / fontScale).sp))
@@ -771,7 +775,7 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                     drawText(u, topLeft = Offset(c.x - u.size.width / 2f, c.y + r * 0.52f - u.size.height / 2f))
                 }
                 val a = a0 + span * (f.fraction ?: 0f).coerceIn(0f, 1f)
-                drawLine(look.accent, polar(c, r * 0.16f, a + 180f), polar(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                drawLine(look.accent, polarPoint(c, r * 0.16f, a + 180f), polarPoint(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
             }
             drawCircle(if (chrome) Color(0xFFC9CED5) else look.ink, r * 0.065f, c)
         }

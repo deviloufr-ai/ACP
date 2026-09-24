@@ -149,6 +149,19 @@ private fun grantAccessAction(): FaceAction {
 
 // --- Vehicle -----------------------------------------------------------------------
 
+/** The engine readings as small gauges (twin dials, shift lights, gauge bank). */
+@Composable
+private fun engineGauges(d: ObdData, rpmFirst: Boolean): List<FaceGauge> {
+    val speed = FaceGauge(stringResource(R.string.vehicle_speed), d.speedKmh.toString(), "km/h", d.speedKmh / 220f)
+    val rpm = FaceGauge(stringResource(R.string.vehicle_rpm), d.rpm.toString(), "rpm", d.rpm / 7000f)
+    return (if (rpmFirst) listOf(rpm, speed) else listOf(speed, rpm)) + listOf(
+        FaceGauge(stringResource(R.string.vehicle_coolant), d.coolantTempC.toString(), "°C", d.coolantTempC / 130f),
+        FaceGauge(stringResource(R.string.vehicle_battery), fmt("%.1f", d.voltage), "V", ((d.voltage - 11.0) / 4.0).toFloat()),
+        FaceGauge(stringResource(R.string.vehicle_load), d.engineLoadPct.toString(), "%", d.engineLoadPct / 100f),
+        FaceGauge(stringResource(R.string.vehicle_throttle), d.throttlePct.toString(), "%", d.throttlePct / 100f)
+    )
+}
+
 @Composable
 private fun telemetryFace(env: SkinTileEnv): WidgetFace {
     if (env.obdConnection != ObdConnectionState.CONNECTED) return obdIdle(BuiltinKind.TELEMETRY, env, "km/h")
@@ -160,6 +173,8 @@ private fun telemetryFace(env: SkinTileEnv): WidgetFace {
         caption = "${d.rpm} rpm",
         fraction = d.speedKmh / 220f,
         alert = d.speedKmh >= SPEED_WARNING_KMH || d.coolantTempC >= 110,
+        number = d.speedKmh.toFloat(),
+        gauges = engineGauges(d, rpmFirst = false),
         stats = listOf(
             FaceStat(stringResource(R.string.vehicle_rpm), d.rpm.toString()),
             FaceStat(stringResource(R.string.vehicle_coolant), "${d.coolantTempC} °C"),
@@ -179,6 +194,7 @@ private fun obdAllFace(env: SkinTileEnv): WidgetFace {
         value = d.rpm.toString(), unit = "rpm",
         caption = "${d.speedKmh} km/h",
         fraction = d.rpm / 7000f,
+        gauges = engineGauges(d, rpmFirst = true),
         stats = listOfNotNull(
             FaceStat(stringResource(R.string.vehicle_speed), "${d.speedKmh} km/h"),
             FaceStat(stringResource(R.string.vehicle_coolant), "${d.coolantTempC} °C"),
@@ -206,6 +222,9 @@ private fun rangeFace(env: SkinTileEnv): WidgetFace {
         caption = fmt("%d %% · %.1f L", fuel.percent, fuel.liters),
         fraction = fuel.percent / 100f,
         alert = fuel.percent <= 10,
+        severity = if (fuel.percent <= 10) 2 else if (fuel.percent <= 20) 1 else 0,
+        sign = SignKind.FUEL,
+        scale = "E" to "F",
         stats = listOf(
             FaceStat(stringResource(R.string.vehicle_fuel), "${fuel.percent} %"),
             FaceStat(stringResource(R.string.vehicle_in_tank), fmt("%.1f L", fuel.liters)),
@@ -247,6 +266,7 @@ private fun faultCodesFace(env: SkinTileEnv): WidgetFace {
         },
         fraction = if (codes.isEmpty()) 0f else 1f,
         alert = codes.isNotEmpty() || lampOn,
+        severity = if (codes.isNotEmpty()) 2 else if (lampOn) 1 else 0,
         rows = codes.mapIndexed { i, c ->
             FaceRow("$c ${titles[i]}", if (c in pending) stringResource(R.string.vehicle_pending) else "", alert = true)
         },
@@ -291,6 +311,8 @@ private fun doorsFace(): WidgetFace {
         caption = if (d.anyOpen) all.filter { it.second }.joinToString(" · ") { it.first } else stringResource(R.string.vehicle_doors_all_closed),
         fraction = openCount / all.size.toFloat(),
         alert = d.anyOpen,
+        severity = if (d.anyOpen) 1 else 0,
+        doors = listOf(d.frontLeft, d.frontRight, d.rearLeft, d.rearRight, d.tailgate, d.bonnet),
         // Open doors first, so every design shows them before the closed ones.
         rows = all.sortedByDescending { it.second }.map { (name, isOpen) -> FaceRow(name, if (isOpen) open else closed, alert = isOpen) }
     )
@@ -339,7 +361,9 @@ private fun speedFace(env: SkinTileEnv): WidgetFace {
         value = speed?.toString() ?: "--", unit = "km/h",
         caption = source,
         fraction = (speed ?: 0) / 200f,
-        alert = (speed ?: 0) >= SPEED_WARNING_KMH
+        alert = (speed ?: 0) >= SPEED_WARNING_KMH,
+        number = speed?.toFloat(),
+        sign = SignKind.SPEED
     )
 }
 
@@ -356,6 +380,7 @@ private fun compassFace(): WidgetFace {
         unit = h?.let { "${it.roundToInt()}°" } ?: "",
         caption = if (h == null) stringResource(R.string.info_compass_no_heading) else "",
         fraction = h?.let { ((it % 360f) + 360f) % 360f / 360f },
+        angle = h,
         fullCircle = true,
         compass = true,
         stats = listOf(
@@ -378,6 +403,7 @@ private fun tripFace(): WidgetFace {
         title = BuiltinKind.TRIP.label,
         value = if (km < 100) fmt("%.1f", km) else km.roundToInt().toString(), unit = "km",
         caption = stringResource(R.string.info_trip_since, formatClock(trip.startedAt)),
+        reach = stringResource(R.string.info_trip_since, formatClock(trip.startedAt)),
         stats = listOf(
             FaceStat(stringResource(R.string.info_trip_time), formatDuration(trip.elapsedMs)),
             FaceStat(stringResource(R.string.info_trip_average), "${trip.avgSpeedKmh.roundToInt()} km/h"),
@@ -403,6 +429,8 @@ private fun gForceFace(): WidgetFace {
         caption = fmt("%+.2f / %+.2f g", g.lateral, g.longitudinal),
         fraction = total / 1.2f,
         alert = total >= 1f,
+        point = g.lateral to g.longitudinal,
+        peak = maxOf(g.peakLateral, g.peakLongitudinal),
         stats = listOf(
             FaceStat(stringResource(R.string.info_gforce_lateral), fmt("%+.2f", g.lateral)),
             FaceStat(stringResource(R.string.info_gforce_accel_brake), fmt("%+.2f", g.longitudinal)),
@@ -436,6 +464,7 @@ private fun parkingFace(): WidgetFace {
     }
     val text = dist?.let { formatDistance(it) } ?: "--"
     val ago = formatAgo(s.savedAt)
+    val heading by LocationFeed.headingDeg.collectAsState()
     return WidgetFace(
         icon = Icons.Filled.LocalParking,
         title = BuiltinKind.PARKING.label,
@@ -444,6 +473,9 @@ private fun parkingFace(): WidgetFace {
         else stringResource(R.string.info_parking_parked, ago),
         // Closer is fuller: the last 2 km count down to the car.
         fraction = dist?.let { 1f - (it / 2000f).coerceIn(0f, 1f) },
+        // The way to the car relative to where the car points now (straight up = ahead).
+        angle = bearing?.let { ((it - (heading ?: 0f)) % 360f + 360f) % 360f },
+        sign = SignKind.PARKING,
         actions = listOf(
             FaceAction(Icons.Filled.DirectionsWalk, stringResource(R.string.info_parking_walk), primary = true, onClick = { walkTo(context, s) }),
             FaceAction(Icons.Filled.Close, stringResource(R.string.info_clear), onClick = { ParkingStore.clear(context) })
@@ -485,6 +517,12 @@ private fun directionsFace(env: SkinTileEnv): WidgetFace {
             FaceStat(label, part)
         },
         art = art,
+        sign = SignKind.DIRECTIONS,
+        // Closeness to the turn over its last kilometre (the turn card's bar).
+        fraction = value.replace(',', '.').toFloatOrNull()?.let { v ->
+            val metres = when (unit) { "km" -> v * 1000f; "mi" -> v * 1609f; "ft" -> v * 0.3048f; "yd" -> v * 0.9144f; else -> v }
+            1f - (metres / 1000f).coerceIn(0f, 1f)
+        },
         onClick = { openNavigationApp(env.context, nav) }
     )
 }
@@ -508,6 +546,7 @@ private fun mediaFace(env: SkinTileEnv): WidgetFace {
         caption = state.artist,
         fraction = fraction,
         art = art,
+        active = state.isPlaying,
         stats = if (state.durationMs > 0L) listOf(
             FaceStat(stringResource(R.string.design_elapsed), formatTrackTime(positionMs)),
             FaceStat(stringResource(R.string.design_length), formatTrackTime(state.durationMs))
@@ -613,6 +652,8 @@ private fun weatherFace(): WidgetFace {
         caption = w.condition,
         // -10 °C .. 40 °C across the gauge.
         fraction = ((w.tempC + 10.0) / 50.0).toFloat().coerceIn(0f, 1f),
+        scale = "-10°" to "40°",
+        weatherCode = w.code,
         stats = listOfNotNull(
             FaceStat(stringResource(R.string.design_feels_like), "${w.feelsC.roundToInt()}°"),
             FaceStat(stringResource(R.string.design_wind), "${w.windKmh.roundToInt()} km/h"),
@@ -668,6 +709,7 @@ private fun agendaFace(): WidgetFace {
         // The next event's approach over the coming 3 hours.
         fraction = 1f - (span / (3 * 3_600_000f)).coerceIn(0f, 1f),
         rows = list.map { e -> FaceRow(e.title.ifBlank { noTitle }, whenText(e), alert = e.begin <= now) },
+        events = list.filter { !it.allDay }.map { FaceEvent(it.begin, it.end, it.title.ifBlank { noTitle }) },
         onClick = openCalendar
     )
 }
@@ -730,6 +772,7 @@ private fun notificationsFace(env: SkinTileEnv): WidgetFace {
             FaceRow(n.title.ifEmpty { n.appLabel }, timeFmt.format(Date(n.postedAt)), onClick = { runCatching { n.contentIntent?.send() } })
         },
         stats = latest?.let { listOf(FaceStat(stringResource(R.string.design_latest), timeFmt.format(Date(it.postedAt)))) }.orEmpty(),
+        events = items.take(6).map { FaceEvent(it.postedAt, null, it.title.ifEmpty { it.appLabel }) },
         actions = if (items.isEmpty()) emptyList() else listOf(
             FaceAction(Icons.Filled.ClearAll, stringResource(R.string.info_clear), onClick = { NotificationFeed.dismissAll() })
         )
@@ -778,6 +821,7 @@ private fun filterFace(): WidgetFace {
             }
         ),
         alert = streak >= CareRules.FILTER_WARN_STREAK,
+        severity = if (streak >= 6) 2 else if (streak >= CareRules.FILTER_WARN_STREAK) 1 else 0,
         fraction = drive?.let { it.hotFastMs.toFloat() / CareRules.LONG_DRIVE_MS },
         rows = listOfNotNull(
             drive?.let {
@@ -810,7 +854,9 @@ private fun warmupFace(env: SkinTileEnv): WidgetFace {
             else -> stringResource(R.string.car_warmup_warm)
         },
         alert = t < car.coldC,
+        severity = if (t < car.coldC) 1 else 0,
         fraction = t.toFloat() / car.hotC,
+        scale = "0°" to "${car.hotC}°",
         rows = listOfNotNull(care.drive?.let { FaceRow(stringResource(R.string.car_running_for, formatDuration(now - it.startedAt)), "") })
     )
 }
@@ -840,6 +886,11 @@ private fun batteryFace(env: SkinTileEnv): WidgetFace {
         value = fmt("%.1f", v), unit = "V",
         caption = stringResource(status),
         alert = weak,
+        severity = when (status) {
+            R.string.car_battery_not_charging, R.string.car_battery_weak -> 2
+            R.string.car_battery_charging_low, R.string.car_battery_low -> 1
+            else -> 0
+        },
         fraction = ((v - 11.5) / (14.8 - 11.5)).toFloat().coerceIn(0f, 1f),
         rows = listOf(
             FaceRow(
@@ -872,6 +923,12 @@ private fun ecoFace(): WidgetFace {
             }
         ),
         alert = score != null && score < 60,
+        severity = when {
+            score == null -> 0
+            score < 60 -> 2
+            score < 80 -> 1
+            else -> 0
+        },
         fraction = score?.let { it / 100f },
         stats = listOfNotNull(
             drive.sweetPercent?.let { FaceStat(stringResource(R.string.car_eco_band, car.sweetBand.first, car.sweetBand.last), "$it %") },
@@ -899,7 +956,7 @@ private fun fuelToDestFace(): WidgetFace {
     val icon = kindIcon(BuiltinKind.FUEL_TO_DEST)
     val title = BuiltinKind.FUEL_TO_DEST.label
     if (verdict == null) {
-        return WidgetFace(icon = icon, title = title, value = range.toString(), unit = "km", caption = stringResource(R.string.car_fuel_dest_no_nav))
+        return WidgetFace(icon = icon, title = title, value = range.toString(), unit = "km", caption = stringResource(R.string.car_fuel_dest_no_nav), sign = SignKind.FUEL)
     }
     val km = toGo ?: 0.0
     return WidgetFace(
@@ -914,6 +971,15 @@ private fun fuelToDestFace(): WidgetFace {
             }
         ),
         alert = verdict != FuelVerdict.ENOUGH,
+        severity = when (verdict) {
+            FuelVerdict.ENOUGH -> 0
+            FuelVerdict.TIGHT -> 1
+            FuelVerdict.SHORT -> 2
+        },
+        sign = SignKind.FUEL,
+        scale = "E" to "F",
+        reach = "$range km",
+        marker = "${km.toInt()} km",
         fraction = (km / range).toFloat().coerceIn(0f, 1f),
         rows = listOf(FaceRow(stringResource(R.string.car_fuel_dest_detail, range, km.toInt()), ""))
     )
@@ -930,6 +996,8 @@ private fun breakFace(): WidgetFace {
         value = formatDuration(driving),
         caption = stringResource(if (driving >= due) R.string.car_break_due else R.string.car_break_ok),
         alert = driving >= due,
+        severity = if (driving >= due) 2 else if (driving >= due - 20 * 60_000L) 1 else 0,
+        sign = SignKind.REST,
         fraction = driving.toFloat() / due,
         rows = listOf(FaceRow(stringResource(R.string.car_break_hint), ""))
     )
