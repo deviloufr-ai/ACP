@@ -195,11 +195,34 @@ class DashboardStoreTest {
 
     @Test
     fun everyWidgetHasAtLeastTenDesigns() {
-        // Designs apply to every built-in kind: the standard renderer plus each face.
-        assertTrue(WidgetDesign.entries.size >= 11)
-        assertEquals(1, WidgetDesign.entries.count { it.layout == null })
-        // No two designs are the same layout in the same material.
-        assertEquals(WidgetDesign.entries.size, WidgetDesign.entries.map { it.layout to it.look }.toSet().size)
+        val generic = WidgetDesign.entries.filter { !it.isSignature }
+        // The standard renderer plus the generic faces apply to every built-in kind.
+        assertTrue(generic.size >= 11)
+        assertEquals(1, generic.count { it.layout == null })
+        // No two generic designs are the same layout in the same material.
+        assertEquals(generic.size, generic.map { it.layout to it.look }.toSet().size)
+        BuiltinKind.entries.forEach { kind -> assertTrue("$kind", WidgetDesign.offeredFor(kind, framed = false).size >= 10) }
+    }
+
+    @Test
+    fun widgetSpecificDesignsOnlyReachTheirWidgets() {
+        val framed = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D, BuiltinKind.MY_CAR)
+        // Every redrawn widget gets at least two designs made for it; live views get none.
+        BuiltinKind.entries.filter { it !in framed }.forEach { kind ->
+            assertTrue("$kind", WidgetDesign.entries.count { it.isSignature && it.appliesTo(kind) } >= 2)
+        }
+        framed.forEach { kind -> assertTrue(WidgetDesign.offeredFor(kind, framed = true).none { it.isSignature }) }
+        assertTrue(WidgetDesign.THERMOMETER.appliesTo(BuiltinKind.WARMUP))
+        assertFalse(WidgetDesign.THERMOMETER.appliesTo(BuiltinKind.MEDIA))
+        // Picker order: Standard, the widget's own designs, then the generic ones.
+        val offered = WidgetDesign.offeredFor(BuiltinKind.WARMUP, framed = false)
+        assertEquals(WidgetDesign.STANDARD, offered.first())
+        val firstGeneric = offered.indexOfFirst { !it.isSignature && it != WidgetDesign.STANDARD }
+        assertTrue(offered.drop(1).take(firstGeneric - 1).all { it.isSignature })
+        // A widget-specific design is saved and read back like any other.
+        val tank = widget(BuiltinKind.RANGE, 0, 0, 3, 3).copy(design = WidgetDesign.FUEL_TANK)
+        val pages = listOf(listOf(tank), emptyList(), emptyList())
+        assertEquals(pages, DashboardStore.parsePages(DashboardStore.serializePages(pages)))
     }
 
     @Test
