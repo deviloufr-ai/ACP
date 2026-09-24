@@ -95,5 +95,43 @@ class PidProbeTest {
     fun aRoundTripThroughJsonKeepsACandidate() {
         val back = PidCandidate.fromJson(soot.toJson())
         assertEquals(soot, back)
+        val psa = soot.copy(header = "6A8", replyAddress = "688", session = "10C0", request = "2181")
+        assertEquals(psa, PidCandidate.fromJson(psa.toJson()))
+        assertEquals("6A8→688 10C0 2181", psa.label)
+        assertEquals("7E0 221A5B", soot.label)
+    }
+
+    @Test
+    fun aLongAnswerSplitOverFramesIsReadInOrder() {
+        // 13 bytes: "61 81" then data; the "00D" count and "0:" / "1:" frame numbers are not data.
+        val block = soot.copy(header = "6A8", replyAddress = "688", request = "2181", formula = "C*256+D")
+        val r = PidProbe.read(block, "00D\r0: 61 81 01 02 03 04\r1: 05 06 07 08 09 0A 0B")
+        assertEquals(ProbeVerdict.IMPLAUSIBLE, r.verdict)
+        assertEquals(0x0304.toDouble(), r.value!!, 0.0)
+        assertEquals("61 81 01 02 03 04 05 06 07 08 09 0A 0B", PidProbe.frames("00D\r0: 61 81 01 02 03 04\r1: 05 06 07 08 09 0A 0B"))
+    }
+
+    @Test
+    fun busyThenAnsweredIsAnAnswer() {
+        assertEquals(ProbeVerdict.OK, PidProbe.read(soot, "7F 22 78\r62 1A 5B 80").verdict)
+        assertEquals(ProbeVerdict.REFUSED, PidProbe.read(soot, "7F 22 78\r7F 22 31").verdict)
+    }
+
+    @Test
+    fun ownAddressesAndOnlySafeSessionsAreKept() {
+        val list = PidProbe.readCandidates(
+            """{"items":[
+              {"reading":"SOOT_LOAD","header":"6A8","replyAddress":"688","session":"10C0","request":"2181","formula":"A","min":0,"max":100},
+              {"reading":"SOOT_LOAD","header":"6A8","replyAddress":"688","session":"1002","request":"2182","formula":"A","min":0,"max":100},
+              {"reading":"SOOT_LOAD","header":"6A8","replyAddress":"688","session":"1085","request":"2183","formula":"A","min":0,"max":100},
+              {"reading":"DPF_TEMP","header":"7E0","replyAddress":"","session":"","request":"22F40E","formula":"A","min":0,"max":900},
+              {"reading":"OIL_TEMP","header":"","replyAddress":"7E8","session":"1003","request":"22F434","formula":"A","min":0,"max":150}
+            ]}"""
+        )
+        assertEquals(listOf("2181", "22F40E"), list.map { it.request })
+        assertEquals("688", list[0].replyAddress)
+        assertEquals("10C0", list[0].session)
+        assertNull(list[1].replyAddress)
+        assertNull(list[1].session)
     }
 }

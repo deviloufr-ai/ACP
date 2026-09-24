@@ -84,7 +84,7 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(c.reading.labelRes), color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold)
                             Text(
-                                listOfNotNull(c.header, c.request, c.formula).joinToString(" · ") +
+                                listOf(c.label, c.formula).joinToString(" · ") +
                                     " · " + stringResource(if (c.fromAi) R.string.explore_source_ai else R.string.explore_source_standard),
                                 color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
@@ -128,7 +128,7 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                     state.results.forEach { r ->
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                stringResource(r.candidate.reading.labelRes) + " · " + listOfNotNull(r.candidate.header, r.candidate.request).joinToString(" "),
+                                stringResource(r.candidate.reading.labelRes) + " · " + r.candidate.label,
                                 color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                             )
@@ -138,6 +138,13 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                                 stringResource(r.verdict.labelRes) + (r.value?.takeIf { ok || r.verdict == ProbeVerdict.IMPLAUSIBLE || r.verdict == ProbeVerdict.UNSTABLE }
                                     ?.let { " (" + String.format(Locale.getDefault(), "%.1f", it) + ")" } ?: ""),
                                 color = if (ok) DashColors.Good else DashColors.Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1
+                            )
+                        }
+                        // What the adapter actually said: "NO DATA", "CAN ERROR", "?"... tells a silent car from a refused command.
+                        if (!ok) {
+                            Text(
+                                r.reply?.replace(Regex("\\s+"), " ")?.trim()?.ifEmpty { null } ?: stringResource(R.string.explore_silent),
+                                color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

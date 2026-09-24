@@ -364,15 +364,38 @@ object ObdBluetoothManager {
      * ("221A5B"), addressed to [header] (a CAN address such as 7E0) or to
      * everyone when null. The functional address is put back afterwards so the
      * regular polling is unaffected. Null when not connected or unanswered.
+     *
+     * A computer off the OBD addresses answers from its own [replyAddress]
+     * (6A8 answers on 688): the adapter only listens to 7E8-7EF unless told,
+     * and a long answer needs flow control sent back to [header]. A [session]
+     * ("10C0") is opened first; it lapses by itself a few seconds later.
      */
-    suspend fun query(header: String?, request: String, timeoutMs: Long = READ_TIMEOUT_MS): String? = withContext(Dispatchers.IO) {
+    suspend fun query(
+        header: String?,
+        request: String,
+        timeoutMs: Long = READ_TIMEOUT_MS,
+        replyAddress: String? = null,
+        session: String? = null
+    ): String? = withContext(Dispatchers.IO) {
         if (DemoMode.isOn || _connectionState.value != ObdConnectionState.CONNECTED) return@withContext null
         commandMutex.withLock {
             if (_connectionState.value != ObdConnectionState.CONNECTED) return@withLock null
+            val ownAddresses = header != null && replyAddress != null
             try {
                 if (header != null) sendCommand("ATSH$header", READ_TIMEOUT_MS)
+                if (ownAddresses) {
+                    sendCommand("ATCRA$replyAddress", READ_TIMEOUT_MS)
+                    sendCommand("ATFCSH$header", READ_TIMEOUT_MS)
+                    sendCommand("ATFCSD300000", READ_TIMEOUT_MS)
+                    sendCommand("ATFCSM1", READ_TIMEOUT_MS)
+                }
+                if (header != null && session != null) sendCommand(session, timeoutMs)
                 sendCommand(request, timeoutMs)
             } finally {
+                if (ownAddresses) {
+                    sendCommand("ATFCSM0", READ_TIMEOUT_MS)
+                    sendCommand("ATCRA", READ_TIMEOUT_MS)
+                }
                 if (header != null) sendCommand("ATSH7DF", READ_TIMEOUT_MS)
             }
         }

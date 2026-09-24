@@ -42,6 +42,11 @@ enum class ExtraReading(@StringRes val labelRes: Int, val unit: String) {
  * One request to try: an optional CAN [header] (the computer to address, e.g.
  * 7E0 for the engine), the [request] bytes, and the [formula] turning the
  * reply's data bytes A, B, C, D... into a value expected within [min]..[max].
+ *
+ * Many makers only serve their own requests on their own diagnostic addresses
+ * (PSA's engine computer listens on 6A8 and answers on 688, not 7E0/7E8), and
+ * only inside a diagnostic [session] ("10C0", "1003"): [replyAddress] is where
+ * the answer comes from, so the adapter listens there.
  */
 data class PidCandidate(
     val reading: ExtraReading,
@@ -50,7 +55,9 @@ data class PidCandidate(
     val formula: String,
     val min: Double,
     val max: Double,
-    val fromAi: Boolean
+    val fromAi: Boolean,
+    val replyAddress: String? = null,
+    val session: String? = null
 ) {
     /** How the reply starts: the request's first byte + 0x40, then the rest echoed ("221A5B" → "621A5B"). */
     val replyHeader: String
@@ -61,13 +68,19 @@ data class PidCandidate(
 
     fun toJson(): JSONObject = JSONObject().put("reading", reading.name).putOpt("header", header).put("request", request)
         .put("formula", formula).put("min", min).put("max", max).put("ai", fromAi)
+        .putOpt("reply", replyAddress).putOpt("session", session)
+
+    /** How the request is addressed, as shown: "6A8→688 10C0 2181", "7E0 22F40C", "015C". */
+    val label: String
+        get() = listOfNotNull(header?.let { h -> replyAddress?.let { "$h→$it" } ?: h }, session, request).joinToString(" ")
 
     companion object {
         fun fromJson(o: JSONObject): PidCandidate? {
             val reading = ExtraReading.entries.firstOrNull { it.name == o.optString("reading") } ?: return null
             return PidCandidate(
                 reading, o.optString("header").takeIf { it.isNotBlank() }, o.optString("request"), o.optString("formula"),
-                o.optDouble("min", Double.NEGATIVE_INFINITY), o.optDouble("max", Double.POSITIVE_INFINITY), o.optBoolean("ai")
+                o.optDouble("min", Double.NEGATIVE_INFINITY), o.optDouble("max", Double.POSITIVE_INFINITY), o.optBoolean("ai"),
+                o.optString("reply").takeIf { it.isNotBlank() }, o.optString("session").takeIf { it.isNotBlank() }
             )
         }
     }
@@ -158,17 +171,47 @@ object PidProbe {
      * value outside what the reading can be.
      */
     fun read(c: PidCandidate, reply: String?): ProbeResult {
-        val text = reply?.trim().orEmpty()
-        if (text.isEmpty() || text.contains("NO DATA", ignoreCase = true) || text.contains("UNABLE", ignoreCase = true)) {
-            return ProbeResult(c, ProbeVerdict.NO_ANSWER, reply = reply)
+        val text = frames(reply)
+        val bytes = ObdParser.dataBytes(text, c.replyHeader)
+        if (bytes == null) {
+            if (text.isEmpty() || text.contains("NO DATA", ignoreCase = true) || text.contains("UNABLE", ignoreCase = true)) {
+                return ProbeResult(c, ProbeVerdict.NO_ANSWER, reply = reply)
+            }
+            val hex = text.uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
+            if (hex.startsWith("7F") || hex.contains("7F" + c.request.take(2))) return ProbeResult(c, ProbeVerdict.REFUSED, reply = reply)
+            return ProbeResult(c, ProbeVerdict.UNREADABLE, reply = reply)
         }
-        val hex = text.uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
-        if (hex.startsWith("7F") || hex.contains("7F" + c.request.take(2))) return ProbeResult(c, ProbeVerdict.REFUSED, reply = reply)
-        val bytes = ObdParser.dataBytes(text, c.replyHeader) ?: return ProbeResult(c, ProbeVerdict.UNREADABLE, reply = reply)
         val value = Formula.eval(c.formula, bytes) ?: return ProbeResult(c, ProbeVerdict.UNREADABLE, reply = reply)
         if (value < c.min || value > c.max) return ProbeResult(c, ProbeVerdict.IMPLAUSIBLE, value, reply)
         return ProbeResult(c, ProbeVerdict.OK, value, reply)
     }
+
+    /**
+     * The reply's bytes as one line. A long answer (maker blocks such as
+     * "2181" run to dozens of bytes) comes from the adapter split over lines:
+     * the byte count first ("01B"), then each frame numbered ("0: 61 81 ...",
+     * "1: ..."). Those counters aren't data and would shift every byte after
+     * them, so they go; a "7F 22 78" (busy, answer follows) line goes too.
+     */
+    internal fun frames(reply: String?): String {
+        val lines = reply.orEmpty().split('\r', '\n').map { it.trim() }.filter { it.isNotEmpty() }
+        val multi = lines.any { MULTI_FRAME_LINE.containsMatchIn(it) }
+        return lines
+            .filterNot { multi && LENGTH_LINE.matches(it) }
+            .filterNot { it.uppercase(Locale.ROOT).replace(" ", "").let { l -> l.length == 6 && l.startsWith("7F") && l.endsWith("78") } }
+            .joinToString(" ") { if (multi) MULTI_FRAME_LINE.replace(it, "") else it }
+            .trim()
+    }
+
+    private val MULTI_FRAME_LINE = Regex("^[0-9A-F]:\\s*", RegexOption.IGNORE_CASE)
+    private val LENGTH_LINE = Regex("^[0-9A-F]{3}$", RegexOption.IGNORE_CASE)
+
+    /**
+     * Diagnostic sessions a candidate may open: default and extended ones
+     * only (UDS 01/03, KWP 81/92, PSA's C0). Never 02 or 85, the programming
+     * sessions, which can stop a running engine.
+     */
+    val SAFE_SESSIONS = setOf("1001", "1003", "1081", "1092", "10C0")
 
     /**
      * Two reads must both be plausible and agree within [tolerance] of the
@@ -198,6 +241,8 @@ object PidProbe {
                 .put("properties", JSONObject()
                     .put("reading", str().put("enum", JSONArray(ExtraReading.entries.map { it.name })))
                     .put("header", str())
+                    .put("replyAddress", str())
+                    .put("session", str())
                     .put("request", str())
                     .put("formula", str())
                     .put("min", num())
@@ -211,7 +256,8 @@ object PidProbe {
     fun prompt(car: String): String = buildString {
         appendLine("You are an automotive diagnostics reference. For this exact car, as sold in Europe: \"$car\", list the manufacturer-specific diagnostic requests, sent through an ELM327 adapter on the CAN bus, that read these values from the engine control unit:")
         appendLine(ExtraReading.entries.joinToString("\n") { "- ${it.name}" + if (it.unit.isNotEmpty()) " (${it.unit})" else " (0 = no, 1 = yes)" })
-        appendLine("For each: header = the CAN request address to set with ATSH (e.g. 7E0 for the engine ECU); request = the request bytes as hex without spaces (UDS ReadDataByIdentifier \"22\" + 2-byte DID, or the older \"21\" + local identifier); formula = how to turn the data bytes that follow the positive response echo into the value, using the letters A, B, C, D for those bytes (e.g. \"(A*256+B)/10-40\" or \"A*100/255\"); min and max = the plausible range of the value.")
+        appendLine("For each: header = the CAN request address to set with ATSH; replyAddress = the CAN address the computer answers from; session = the diagnostic session request to send first (\"10C0\", \"1003\", \"1081\"...), or empty when none is needed; request = the request bytes as hex without spaces (UDS ReadDataByIdentifier \"22\" + 2-byte DID, or the older \"21\" + local identifier); formula = how to turn the data bytes that follow the positive response echo into the value, using the letters A, B, C, D for those bytes (e.g. \"(A*256+B)/10-40\" or \"A*100/255\"); min and max = the plausible range of the value.")
+        appendLine("Use the addresses and session the manufacturer's own workshop tool uses for this computer, not the generic OBD ones (7E0 answering on 7E8), unless this car really serves these requests there: many makers don't. For example, PSA (Peugeot, Citroën, DS) engine computers are reached on their own diagnostic addresses and need a diagnostic session opened first. If a value lives in another computer (e.g. the particle-filter additive module), give that computer's addresses.")
         appendLine("Give several candidates for a value when the identifier differs between software versions. Only give requests you have real grounds for (workshop tool data, community-documented PIDs for this engine family); leave out readings you don't know. Every candidate is tested on the car and rejected if it doesn't answer sensibly, so a wrong guess costs little, but do not invent identifiers.")
     }
 
@@ -226,10 +272,18 @@ object PidProbe {
             // Only reads: modes 01 (live data), 21 and 22 (maker data). Nothing that writes or resets.
             if (request.take(2) !in setOf("01", "21", "22")) return@mapNotNull null
             val header = it.optString("header").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "").takeIf { h -> h.length in 3..8 }
+            val replyAddress = it.optString("replyAddress").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
+                .takeIf { a -> header != null && (a.length == 3 || a.length == 8) }
+            val session = it.optString("session").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "").takeIf { s -> s.isNotEmpty() }
+            // Anything but a known-safe session is dropped along with its request: it may only answer inside it.
+            if (session != null && (session !in SAFE_SESSIONS || header == null)) return@mapNotNull null
             val formula = it.optString("formula").takeIf { f -> f.isNotBlank() } ?: return@mapNotNull null
             if (Formula.eval(formula, List(8) { 1 }) == null) return@mapNotNull null
-            PidCandidate(reading, header, request, formula, it.optDouble("min", Double.NEGATIVE_INFINITY), it.optDouble("max", Double.POSITIVE_INFINITY), fromAi = true)
-        }.distinctBy { it.header to it.request }
+            PidCandidate(
+                reading, header, request, formula, it.optDouble("min", Double.NEGATIVE_INFINITY), it.optDouble("max", Double.POSITIVE_INFINITY),
+                fromAi = true, replyAddress = replyAddress, session = session
+            )
+        }.distinctBy { listOf(it.header, it.replyAddress, it.session, it.request) }
     }
 }
 
@@ -346,10 +400,10 @@ object PidExplorer {
 
     /** Two reads a moment apart; both must make sense and agree. */
     private suspend fun probe(c: PidCandidate): ProbeResult {
-        val first = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS))
+        val first = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS, c.replyAddress, c.session))
         if (first.verdict != ProbeVerdict.OK) return first
         delay(400)
-        val second = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS))
+        val second = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS, c.replyAddress, c.session))
         return PidProbe.stable(first, second)
     }
 
@@ -370,7 +424,7 @@ object PidExplorer {
                     val now = System.currentTimeMillis()
                     val fresh = _readings.value.toMutableMap()
                     for (c in list) {
-                        val r = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS))
+                        val r = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS, c.replyAddress, c.session))
                         if (r.verdict == ProbeVerdict.OK && r.value != null) fresh[c.reading] = ExtraValue(r.value, now)
                     }
                     _readings.value = fresh

@@ -23,6 +23,7 @@
     <string name="explore_v_implausible">invraisemblable</string>
     <string name="explore_v_unstable">instable</string>
     <string name="explore_v_ok">confirmée</string>
+    <string name="explore_silent">l\'adaptateur n\'a rien dit</string>
     <string name="explore_not_in_demo">Indisponible en mode démo</string>
     <string name="explore_nothing_found">Rien de confirmé. Cette voiture ne les donne peut-être qu\'à une valise d\'atelier.</string>
     <string name="explore_source_standard">standard</string>

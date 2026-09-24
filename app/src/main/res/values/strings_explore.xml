@@ -23,6 +23,7 @@
     <string name="explore_v_implausible">implausible</string>
     <string name="explore_v_unstable">unsteady</string>
     <string name="explore_v_ok">confirmed</string>
+    <string name="explore_silent">adapter said nothing</string>
     <string name="explore_not_in_demo">Not available in demo mode</string>
     <string name="explore_nothing_found">Nothing confirmed. This car may only give these to a workshop tool.</string>
     <string name="explore_source_standard">standard</string>

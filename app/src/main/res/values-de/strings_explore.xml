@@ -23,6 +23,7 @@
     <string name="explore_v_implausible">unplausibel</string>
     <string name="explore_v_unstable">instabil</string>
     <string name="explore_v_ok">bestätigt</string>
+    <string name="explore_silent">Adapter sagte nichts</string>
     <string name="explore_not_in_demo">Im Demomodus nicht verfügbar</string>
     <string name="explore_nothing_found">Nichts bestätigt. Dieses Auto gibt sie vielleicht nur einem Werkstatttester preis.</string>
     <string name="explore_source_standard">Standard</string>
