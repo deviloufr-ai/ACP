@@ -150,6 +150,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
     // (page, index) of the launch bar whose apps are being edited.
     var launchBarEditor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    // (page, tile index) whose design picker is open.
+    var designPicker by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val pagerState = rememberPagerState(pageCount = { DashboardStore.PAGE_COUNT })
 
     var showAllApps by remember { mutableStateOf(false) }
@@ -595,7 +597,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     canMove = { index, x, y ->
                         DashboardStore.moveResolving(pages[page], index, x, y) != null
                     },
-                    onAdd = { onAdd(page) }
+                    onAdd = { onAdd(page) },
+                    onDesign = { index -> designPicker = page to index }
                 )
             }
             if (dockSide == Alignment.End) { divider(); mapsDock() }
@@ -735,6 +738,41 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
             )
         }
+        }
+    }
+
+    designPicker?.let { (page, index) ->
+        val tile = pages.getOrNull(page)?.getOrNull(index) as? DashboardItem.BuiltinWidget
+        if (tile == null) {
+            designPicker = null
+        } else {
+            val env = SkinTileEnv(
+                editing = false, appsByPackage = appsByPackage, mediaState = mediaState, mediaController = mediaController,
+                hasMediaAccess = hasMediaAccess, context = context, obdData = obdData, obdConnection = obdConnection,
+                onConnectObd = onConnectObd, onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onEditLaunchBar = {}
+            )
+            WidgetDesignPickerDialog(
+                kind = tile.kind,
+                current = tile.design,
+                // Grid cells on the head unit are a little wider than tall.
+                aspect = (tile.w * 1.1f) / tile.h,
+                env = env,
+                standardPreview = {
+                    // Arranging mode: view-hosting tiles show their placeholder, not a second live map.
+                    TileContent(
+                        item = tile.copy(design = WidgetDesign.STANDARD), editing = true, appsByPackage = appsByPackage,
+                        mediaState = mediaState, mediaController = mediaController, hasMediaAccess = hasMediaAccess,
+                        context = context, obdData = obdData, obdConnection = obdConnection, onConnectObd = onConnectObd,
+                        onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onLaunchSplitPair = onLaunchSplitPair,
+                        onEditLaunchBar = {}, onModelTouch = {}
+                    )
+                },
+                onPick = { design ->
+                    updateItem(page, index, tile.copy(design = design))
+                    designPicker = null
+                },
+                onDismiss = { designPicker = null }
+            )
         }
     }
 

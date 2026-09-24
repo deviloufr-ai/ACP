@@ -158,6 +158,50 @@ class DashboardStoreTest {
         assertTrue(saved.contains("com.example.a"))
     }
 
+    // --- tile designs ---------------------------------------------------------
+
+    @Test
+    fun tileDesignRoundTripsAndSurvivesMovesAndResizes() {
+        val gauge = widget(BuiltinKind.SPEED_HUD, 0, 0, 3, 2).copy(design = WidgetDesign.GAUGE)
+        val pages = listOf(listOf(gauge, widget(BuiltinKind.CLOCK, 3, 0, 3, 2)), emptyList(), emptyList())
+        assertEquals(pages, DashboardStore.parsePages(DashboardStore.serializePages(pages)))
+
+        val moved = DashboardStore.moveResolving(pages[0], 0, 6, 3)!!
+        assertEquals(WidgetDesign.GAUGE, (moved[0] as DashboardItem.BuiltinWidget).design)
+        assertEquals(WidgetDesign.GAUGE, (gauge.withCell(0, 0, 5, 3) as DashboardItem.BuiltinWidget).design)
+    }
+
+    @Test
+    fun standardDesignIsNotWrittenSoOlderBuildsSeeTheSameJson() {
+        val json = DashboardStore.serializePages(listOf(listOf(widget(BuiltinKind.CLOCK, 0, 0, 3, 2)), emptyList(), emptyList()))
+        assertFalse(json.contains("\"d\""))
+        val styled = DashboardStore.serializePages(
+            listOf(listOf(widget(BuiltinKind.CLOCK, 0, 0, 3, 2).copy(design = WidgetDesign.FLAP)), emptyList(), emptyList())
+        )
+        assertTrue(styled.contains("\"d\":\"FLAP\""))
+    }
+
+    @Test
+    fun unknownOrMissingDesignFallsBackToStandard() {
+        val pages = DashboardStore.parsePages(
+            """{"v":1,"pages":[[{"t":"builtin","k":"CLOCK","d":"HOLOGRAM","gx":0,"gy":0,"gw":3,"gh":2},
+               {"t":"builtin","k":"WEATHER","gx":3,"gy":0,"gw":4,"gh":2}]]}"""
+        )!!
+        assertEquals(WidgetDesign.STANDARD, (pages[0][0] as DashboardItem.BuiltinWidget).design)
+        assertEquals(WidgetDesign.STANDARD, (pages[0][1] as DashboardItem.BuiltinWidget).design)
+        assertEquals(WidgetDesign.STANDARD, WidgetDesign.fromName(null))
+        assertEquals(WidgetDesign.NEON, WidgetDesign.fromName("NEON"))
+    }
+
+    @Test
+    fun everyWidgetHasAtLeastTenDesigns() {
+        // Designs apply to every built-in kind: the standard renderer plus each face.
+        assertTrue(WidgetDesign.entries.size >= 11)
+        assertEquals(1, WidgetDesign.entries.count { it.layout == null })
+        // No two designs are the same layout in the same material.
+        assertEquals(WidgetDesign.entries.size, WidgetDesign.entries.map { it.layout to it.look }.toSet().size)
+    }
+
     @Test
     fun garbageIsRejectedNotDefaulted() {
         assertNull(DashboardStore.parsePages("not json at all"))

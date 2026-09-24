@@ -1,0 +1,631 @@
+<title>Dashwheel Widget Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Roboto+Condensed:ital,wght@0,400;0,700;1,700;1,800&family=Roboto+Mono:wght@500;700&family=Roboto:wght@200;300;400;500;700;900&family=Share+Tech+Mono&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Page chrome: the head unit's own night palette (DashTheme AutoDark), one dark world on purpose. */
+:root {
+  color-scheme: dark;
+  --bg: #0B0D11;
+  --panel: #13171E;
+  --panel2: #1A1F28;
+  --line: #262D3A;
+  --ink: #E8EAED;
+  --muted: #8E97A8;
+  --acc: #8AB4F8;
+  --acc2: #C58AF9;
+  --warn: #F28B82;
+  --cond: "Roboto Condensed", "Arial Narrow", sans-serif;
+  --sans: Roboto, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); padding-inline: 16px; padding-block: 28px 64px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 36px; }
+h1, h2 { font-family: var(--cond); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: .01em; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.05; }
+h2 { font-size: 22px; }
+.lede { color: var(--muted); max-width: 68ch; line-height: 1.55; margin: 10px 0 0; font-size: 15px; }
+.eyebrow { font: 700 11px/1 var(--cond); letter-spacing: .16em; color: var(--acc); text-transform: uppercase; }
+.intro { display: grid; gap: 8px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.fact { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+.fact b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Head unit mock */
+.unit { background: #050608; border-radius: 26px; padding: 14px; box-shadow: 0 0 0 1px #1c212b, 0 30px 60px -30px #000; }
+.screen { position: relative; aspect-ratio: 1024 / 600; max-width: 100%; border-radius: 12px; overflow: hidden;
+  background: radial-gradient(120% 90% at 20% 0%, #121a2b 0%, #0B0C0F 55%), #0B0C0F; }
+.bar { position: absolute; inset: 0 0 auto 0; height: 8.5%; display: flex; align-items: center; justify-content: space-between; padding: 0 2.2%;
+  font: 500 clamp(9px, 1.6vw, 16px) var(--sans); color: var(--ink); }
+.bar .dots { display: flex; gap: 6px; }
+.bar .dots i { width: 6px; height: 6px; border-radius: 50%; background: #3a4150; }
+.bar .dots i:first-child { background: var(--acc); }
+.bar .editbtn { font: 700 clamp(8px, 1.2vw, 12px) var(--cond); letter-spacing: .12em; color: var(--acc); border: 1px solid #2c3445; border-radius: 999px; padding: .35em .9em; background: none; cursor: pointer; }
+.grid { position: absolute; inset: 8.5% .6% .6% .6%; }
+.cell { position: absolute; padding: .35%; }
+.cell .tile { cursor: pointer; }
+.cell.sel .tile { outline: 2px solid var(--acc); outline-offset: 1px; }
+.designbtn { position: absolute; bottom: 7%; left: 5%; opacity: .92; width: clamp(18px, 3.2vw, 34px); height: clamp(18px, 3.2vw, 34px); border-radius: 50%; border: 0;
+  background: var(--acc); color: #0b1220; display: grid; place-items: center; cursor: pointer; z-index: 3; box-shadow: 0 2px 8px #0008; }
+.designbtn svg { width: 58%; height: 58%; fill: currentColor; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+/* Controls */
+.controls { display: grid; gap: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); }
+.seg button { border: 0; background: none; color: var(--muted); font: 500 14px var(--sans); padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--panel2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.chips { display: grid; gap: 10px; }
+.chipgroup { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chipgroup .cat { font: 700 11px var(--cond); letter-spacing: .14em; color: var(--muted); width: 100%; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 10px; padding: 7px 11px; font: 400 13px var(--sans);
+  cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip svg { width: 15px; height: 15px; fill: var(--acc); }
+.chip[aria-pressed="true"] { background: #1d2a44; border-color: var(--acc); }
+button:focus-visible, .card:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+/* Gallery */
+.galhead { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: baseline; justify-content: space-between; }
+.galhead p { margin: 0; color: var(--muted); font-size: 14px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: grid; gap: 10px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.card.on { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
+.card .stage { display: grid; place-items: center; background: radial-gradient(100% 100% at 30% 0%, #141c2c, #0b0c0f 70%); border-radius: 10px; padding: 12px; }
+.card .box { width: 100%; max-width: 100%; }
+.card .meta { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 0 4px 2px; }
+.card .meta b { font: 700 15px var(--cond); letter-spacing: .02em; }
+.card .meta span { font: 400 12px var(--sans); color: var(--muted); }
+.card .desc { font-size: 12.5px; color: var(--muted); padding: 0 4px 4px; line-height: 1.45; margin: 0; }
+.tag { font: 700 10px var(--cond); letter-spacing: .12em; color: var(--acc); border: 1px solid #2c3a55; border-radius: 6px; padding: 2px 6px; }
+
+/* ============ Tiles ============ */
+.tile { position: relative; width: 100%; height: 100%; container-type: size; overflow: hidden; border-radius: var(--t-r); background: var(--t-bg);
+  color: var(--t-ink); font-family: var(--t-font); border: var(--t-border); box-shadow: var(--t-shadow); isolation: isolate; }
+.tile .in { position: absolute; inset: 0; padding: 6cqmin 7cqmin; display: flex; flex-direction: column; gap: 3cqmin; }
+.ic { width: 1em; height: 1em; fill: currentColor; flex: none; }
+.hd { display: flex; align-items: center; gap: 2.4cqmin; font: var(--t-hdw) max(7px, 7cqmin)/1 var(--t-hdfont); letter-spacing: .14em; color: var(--t-dim); text-transform: uppercase; white-space: nowrap; }
+.hd .ic { color: var(--t-acc); font-size: 1.25em; }
+.hd .sp { flex: 1; }
+.val { display: flex; align-items: baseline; gap: 1.8cqmin; font-family: var(--t-num); font-weight: var(--t-numw); line-height: .9; color: var(--t-ink); text-shadow: var(--t-glow); font-variant-numeric: tabular-nums; font-style: var(--t-nums); min-width: 0; }
+.val .v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.val .u { font-size: .32em; font-weight: 500; color: var(--t-dim); letter-spacing: .04em; text-shadow: none; font-style: normal; white-space: nowrap; }
+.val.txt { line-height: 1.05; }
+.cap { color: var(--t-dim); font-size: max(7px, 7.5cqmin); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alert .cap, .alertc { color: var(--t-warn) !important; }
+.acts { display: flex; gap: 3cqmin; align-items: center; }
+.act { width: 15cqmin; height: 15cqmin; min-width: 14px; min-height: 14px; border-radius: var(--t-btnr); display: grid; place-items: center; background: var(--t-btn); color: var(--t-btnink); border: var(--t-btnborder); }
+.act .ic { width: 58%; height: 58%; }
+.act.main { background: var(--t-acc); color: var(--t-onacc); border: 0; box-shadow: var(--t-accglow); }
+.stat { display: grid; gap: .8cqmin; min-width: 0; }
+.stat .l { font: 500 max(6px, 5.2cqmin)/1 var(--t-hdfont); letter-spacing: .1em; color: var(--t-dim); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .n { font: var(--t-numw) max(8px, 8.5cqmin)/1 var(--t-num); color: var(--t-ink); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: var(--t-nums); }
+.rows { display: grid; gap: 2cqmin; min-height: 0; overflow: hidden; }
+.row { display: flex; gap: 3cqmin; align-items: center; font-size: max(7px, 6.8cqmin); min-width: 0; padding: 1.8cqmin 2.6cqmin; border-radius: calc(var(--t-r) * .45); background: var(--t-rowbg); }
+.row .t { color: var(--t-ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.row .d { color: var(--t-dim); white-space: nowrap; }
+.row .dot { width: 1.6cqmin; min-width: 3px; height: 5cqmin; border-radius: 9px; background: var(--t-acc); }
+.row.alert .dot { background: var(--t-warn); }
+.row .av { width: 9cqmin; height: 9cqmin; min-width: 12px; min-height: 12px; border-radius: 50%; background: linear-gradient(135deg, var(--t-acc), var(--t-acc2)); color: var(--t-onacc); font: 700 max(6px, 4cqmin)/1 var(--t-hdfont); display: grid; place-items: center; }
+.fill { flex: 1; min-height: 0; }
+.prog { height: 1.6cqmin; min-height: 2px; border-radius: 9px; background: var(--t-track); overflow: hidden; }
+.prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--t-acc), var(--t-acc2)); border-radius: inherit; box-shadow: var(--t-accglow); }
+.art { border-radius: calc(var(--t-r) * .5); background: conic-gradient(from 210deg, #ff7a59, #c58af9, #5ad0ff, #ff7a59); display: grid; place-items: center; color: #fff; }
+.art .ic { width: 45%; height: 45%; opacity: .9; }
+.gv { overflow: visible; }
+
+/* layout: standard (today's tile) */
+.L-std .body { flex: 1; display: flex; align-items: center; gap: 5cqmin; min-height: 0; }
+.L-std .big-ic { font-size: 22cqmin; color: var(--t-acc); display: grid; }
+.L-std .col { display: grid; gap: 2cqmin; min-width: 0; flex: 1; }
+.L-std .val { font-size: min(26cqh, 20cqw); }
+.L-std .val.txt { font-size: min(12cqh, 9cqw); font-weight: 700; }
+.L-std .line { font-size: max(6px, 5.8cqmin); color: var(--t-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* layout: hero (also minimal and LCD) */
+.L-hero .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2.5cqmin; min-height: 0; }
+.L-hero .val { font-size: min(44cqh, 30cqw); }
+.L-hero .val.txt { font-size: min(17cqh, 11cqw); white-space: nowrap; }
+.L-hero .foot { display: flex; align-items: center; gap: 4cqmin; }
+.L-hero .foot .prog { flex: 1; }
+.L-hero .rows { display: none; }
+@container (min-height: 190px) { .L-hero .rows { display: grid; } }
+.L-hero .ghost { position: relative; }
+.L-hero .ghost::before { content: attr(data-g); position: absolute; left: 0; top: 0; color: var(--t-ghost); text-shadow: none; z-index: -1; }
+
+/* layout: arc gauge */
+.L-arc { flex-direction: row !important; align-items: center; }
+.L-arc .g { position: relative; height: 100%; aspect-ratio: 1; max-width: 100%; margin: 0 auto; flex: none; }
+.L-arc .g svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.L-arc .gc { position: absolute; inset: 26% 20% 20%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqmin; text-align: center; }
+.L-arc .gc .val { font-size: min(19cqh, 15cqw); flex-direction: column; align-items: center; gap: .5cqmin; }
+.L-arc .gc .val.txt { font-size: min(8cqh, 7cqw); max-width: 100%; }
+.L-arc .gc .val .u { font-size: .34em; }
+.L-arc .gc .hd { justify-content: center; font-size: max(6px, 5.5cqmin); }
+.L-arc .side { display: none; flex: 1; flex-direction: column; justify-content: center; gap: 4cqmin; min-width: 0; padding-left: 3cqmin; }
+@container (min-aspect-ratio: 7/5) { .L-arc .side { display: flex; } .L-arc .g { margin: 0; } }
+
+/* layout: ring */
+.L-ring { flex-direction: row !important; align-items: center; gap: 6cqmin !important; }
+.L-ring .g { position: relative; height: 88%; aspect-ratio: 1; flex: none; max-width: 48%; }
+.L-ring .g svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.L-ring .g .inner { position: absolute; inset: 18%; border-radius: 50%; display: grid; place-items: center; overflow: hidden; color: var(--t-acc); }
+.L-ring .g .inner .ic { width: 50%; height: 50%; }
+.L-ring .g .inner .art { width: 100%; height: 100%; border-radius: 50%; }
+.L-ring .g .inner b { font: var(--t-numw) min(13cqh, 9cqw)/1 var(--t-num); color: var(--t-ink); }
+.L-ring .col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2.4cqmin; justify-content: center; }
+.L-ring .val { font-size: min(24cqh, 14cqw); }
+.L-ring .val.txt { font-size: min(11cqh, 7.5cqw); }
+.L-ring .stats { display: flex; gap: 5cqmin; }
+
+/* layout: segmented bars */
+.L-bars .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 4cqmin; min-height: 0; flex: 1; }
+.L-bars .val { font-size: min(36cqh, 22cqw); }
+.L-bars .val.txt { font-size: min(14cqh, 9cqw); }
+.L-bars .segs { display: grid; grid-template-columns: repeat(24, 1fr); gap: .9cqmin; height: 7cqmin; min-height: 5px; }
+.L-bars .segs i { background: var(--t-track); border-radius: var(--t-segr); transform: var(--t-skew); }
+.L-bars .segs i.on { background: var(--t-acc); box-shadow: var(--t-accglow); }
+.L-bars .segs i.on.hot { background: var(--t-warn); }
+.L-bars .chips { display: flex; gap: 2.5cqmin; flex-wrap: nowrap; overflow: hidden; }
+.L-bars .chips .stat { padding: 1.8cqmin 3cqmin; border-radius: var(--t-btnr); background: var(--t-rowbg); }
+
+/* layout: stats grid */
+.L-stats .cells { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: var(--t-cellgap); min-height: 0; overflow: hidden; }
+.L-stats .c { background: var(--t-cellbg); border: var(--t-cellborder); border-radius: calc(var(--t-r) * .45); padding: 3cqmin 3.4cqmin; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; overflow: hidden; }
+.L-stats .c.p { grid-column: span 2; grid-row: span 2; }
+.L-stats .c.p .val { font-size: min(26cqh, 16cqw); }
+.L-stats .c.p .val.txt { font-size: min(10cqh, 7cqw); white-space: normal; }
+.L-stats .c .n { font-size: max(8px, 9cqmin); }
+.L-stats .c.r .n { font-size: max(7px, 6.5cqmin); font-family: var(--t-font); font-weight: 600; }
+@container (max-aspect-ratio: 1/1) { .L-stats .cells { grid-template-columns: repeat(2, 1fr); } .L-stats .c.p { grid-column: span 2; grid-row: span 1; } }
+
+/* layout: terminal */
+.L-term { gap: 1.6cqmin !important; font-size: max(7px, 6.6cqmin); line-height: 1.3; }
+.L-term .ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--t-ink); text-shadow: var(--t-glow); }
+.L-term .ln.dim { color: var(--t-dim); }
+.L-term .ln.big { font-size: min(22cqh, 15cqw); line-height: 1; font-weight: 600; }
+.L-term .ln.big small { font-size: .38em; margin-left: .4em; color: var(--t-dim); }
+.L-term .kv { display: flex; gap: 1ch; }
+.L-term .kv .dots { flex: 1; overflow: hidden; color: var(--t-dim); }
+.L-term .cur { display: inline-block; width: .6em; height: 1em; background: var(--t-ink); vertical-align: -0.15em; animation: blink 1s steps(1) infinite; box-shadow: var(--t-accglow); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* layout: analogue dial */
+.L-dial { flex-direction: row !important; align-items: center; gap: 5cqmin !important; }
+.L-dial .g { position: relative; height: 100%; aspect-ratio: 1; flex: none; max-width: 100%; margin: 0 auto; }
+.L-dial .g svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.L-dial .side { display: none; flex: 1; flex-direction: column; justify-content: center; gap: 3.4cqmin; min-width: 0; }
+.L-dial .side .val { font-size: min(18cqh, 11cqw); }
+.L-dial .side .val.txt { font-size: min(9cqh, 6.5cqw); }
+@container (min-aspect-ratio: 7/5) { .L-dial .side { display: flex; } .L-dial .g { margin: 0; } }
+
+/* layout: split-flap */
+.L-flap .flaps { flex: 1; display: flex; gap: 1.4cqmin; align-items: center; min-height: 0; }
+.L-flap .f { position: relative; flex: 0 1 auto; height: min(52cqh, 100%); aspect-ratio: .68; background: var(--t-cellbg); border-radius: 1.6cqmin; display: grid; place-items: center;
+  font: 700 min(38cqh, 17cqw)/1 var(--t-num); color: var(--t-ink); box-shadow: inset 0 -1px 0 #000, 0 1px 0 #ffffff10; overflow: hidden; }
+.L-flap .f::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #000; box-shadow: 0 1px 0 #ffffff14; }
+.L-flap .f.u { aspect-ratio: auto; padding: 0 1.8cqmin; font-size: min(14cqh, 8cqw); color: var(--t-acc); }
+.L-flap .mini { display: flex; gap: 4cqmin; align-items: center; overflow: hidden; }
+.L-flap .mini .stat .n { background: var(--t-cellbg); padding: .6cqmin 1.4cqmin; border-radius: 1cqmin; }
+.L-flap.txtv .f { font-size: min(20cqh, 8cqw); aspect-ratio: .62; height: min(30cqh, 100%); }
+
+/* frame widgets (map, maps window, 3D car) */
+.L-frame { padding: var(--t-framepad) !important; }
+.L-frame .content { position: relative; flex: 1; border-radius: var(--t-framer); overflow: hidden; border: var(--t-frameborder); box-shadow: var(--t-frameshadow); background: #0f1319; }
+.L-frame .content svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.L-frame .label { position: relative; z-index: 2; align-self: flex-start; flex: none; display: flex; gap: 2.4cqmin; align-items: center; font: var(--t-hdw) max(7px, 5.6cqmin)/1 var(--t-hdfont); letter-spacing: .12em; text-transform: uppercase;
+  padding: 1.8cqmin 3cqmin; background: var(--t-labelbg); color: var(--t-labelink); border-radius: var(--t-btnr); border: var(--t-btnborder); text-shadow: var(--t-glow); }
+
+.L-frame .brk { position: absolute; width: 9cqmin; height: 9cqmin; border: 2px solid var(--t-acc); z-index: 2; }
+.L-frame .brk.a { top: 2cqmin; left: 2cqmin; border-right: 0; border-bottom: 0; }
+.L-frame .brk.b { top: 2cqmin; right: 2cqmin; border-left: 0; border-bottom: 0; }
+.L-frame .brk.c { bottom: 2cqmin; left: 2cqmin; border-right: 0; border-top: 0; }
+.L-frame .brk.d { bottom: 2cqmin; right: 2cqmin; border-left: 0; border-top: 0; }
+
+/* ============ Looks ============ */
+.k-theme { --t-bg: #1E2024; --t-ink: #E8EAED; --t-dim: #9AA0A6; --t-acc: #8AB4F8; --t-acc2: #C58AF9; --t-warn: #F28B82; --t-track: #ffffff14; --t-font: Roboto, sans-serif;
+  --t-num: Roboto, sans-serif; --t-numw: 700; --t-nums: normal; --t-hdfont: Roboto, sans-serif; --t-hdw: 700; --t-r: 22px; --t-border: 1px solid #ffffff12; --t-shadow: none; --t-glow: 0 0 18px #8ab4f833;
+  --t-btn: #2A2D33; --t-btnink: #E8EAED; --t-btnr: 999px; --t-btnborder: 0; --t-onacc: #07121f; --t-accglow: 0 0 10px #8ab4f855; --t-rowbg: #2A2D33; --t-cellbg: #2A2D33; --t-cellborder: 0; --t-cellgap: 2.2cqmin;
+  --t-segr: 3px; --t-skew: none; --t-ghost: transparent; --t-framepad: 2.5cqmin; --t-framer: 16px; --t-frameborder: 0; --t-frameshadow: none; --t-labelbg: #1E2024e6; --t-labelink: #E8EAED; }
+.k-minimal { --t-bg: transparent; --t-ink: #F5F7FA; --t-dim: #8A94A6; --t-acc: #7CC4FF; --t-acc2: #B38CFF; --t-warn: #FF6B6B; --t-track: #ffffff12; --t-font: Roboto, sans-serif;
+  --t-num: Roboto, sans-serif; --t-numw: 200; --t-nums: normal; --t-hdfont: Roboto, sans-serif; --t-hdw: 400; --t-r: 0px; --t-border: 0; --t-shadow: none; --t-glow: none;
+  --t-btn: transparent; --t-btnink: #F5F7FA; --t-btnr: 999px; --t-btnborder: 1px solid #ffffff2a; --t-onacc: #06121f; --t-accglow: none; --t-rowbg: transparent; --t-cellbg: transparent; --t-cellborder: 0; --t-cellgap: 1cqmin;
+  --t-segr: 1px; --t-skew: none; --t-ghost: transparent; --t-framepad: 0px; --t-framer: 4px; --t-frameborder: 0; --t-frameshadow: none; --t-labelbg: transparent; --t-labelink: #F5F7FA; }
+.k-lcd { --t-bg: #0E1A0B; --t-ink: #A6FF6E; --t-dim: #5E9A3C; --t-acc: #A6FF6E; --t-acc2: #D8FF9E; --t-warn: #FFD84A; --t-track: #a6ff6e1a; --t-font: "Share Tech Mono", ui-monospace, monospace;
+  --t-num: "Share Tech Mono", ui-monospace, monospace; --t-numw: 400; --t-nums: normal; --t-hdfont: "Share Tech Mono", monospace; --t-hdw: 400; --t-r: 10px; --t-border: 3px solid #1f2b1a; --t-shadow: inset 0 0 30px #000c;
+  --t-glow: 0 0 8px #a6ff6e99; --t-btn: #16260f; --t-btnink: #A6FF6E; --t-btnr: 4px; --t-btnborder: 1px solid #a6ff6e44; --t-onacc: #0E1A0B; --t-accglow: 0 0 8px #a6ff6e88; --t-rowbg: #a6ff6e0d; --t-cellbg: #a6ff6e0d; --t-cellborder: 0; --t-cellgap: 2cqmin;
+  --t-segr: 0; --t-skew: none; --t-ghost: #a6ff6e14; --t-framepad: 3cqmin; --t-framer: 4px; --t-frameborder: 1px solid #a6ff6e55; --t-frameshadow: none; --t-labelbg: #0E1A0B; --t-labelink: #A6FF6E; }
+.k-lcd::after, .k-amber::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background: repeating-linear-gradient(0deg, #0000 0 2px, #00000038 2px 3px); }
+.k-amber { --t-bg: radial-gradient(120% 120% at 50% 40%, #1a1206 0%, #070503 70%); --t-ink: #FFB23F; --t-dim: #9A6A22; --t-acc: #FFB23F; --t-acc2: #FFD27F; --t-warn: #FF5A36; --t-track: #ffb23f1f;
+  --t-font: "IBM Plex Mono", ui-monospace, monospace; --t-num: "IBM Plex Mono", ui-monospace, monospace; --t-numw: 600; --t-nums: normal; --t-hdfont: "IBM Plex Mono", monospace; --t-hdw: 600; --t-r: 8px; --t-border: 1px solid #3a2a12;
+  --t-shadow: none; --t-glow: 0 0 6px #ffb23f88; --t-btn: transparent; --t-btnink: #FFB23F; --t-btnr: 3px; --t-btnborder: 1px solid #ffb23f66; --t-onacc: #070503; --t-accglow: 0 0 8px #ffb23f88; --t-rowbg: transparent; --t-cellbg: transparent; --t-cellborder: 1px dashed #ffb23f44; --t-cellgap: 2cqmin;
+  --t-segr: 0; --t-skew: none; --t-ghost: transparent; --t-framepad: 3cqmin; --t-framer: 2px; --t-frameborder: 1px solid #ffb23f77; --t-frameshadow: 0 0 12px #ffb23f33; --t-labelbg: #070503; --t-labelink: #FFB23F; }
+.k-neon { --t-bg: radial-gradient(90% 90% at 80% 0%, #2a0a3a 0%, #07030F 60%); --t-ink: #F6F0FF; --t-dim: #A99BC9; --t-acc: #FF2BD6; --t-acc2: #25F4EE; --t-warn: #FF4D6D; --t-track: #ffffff12;
+  --t-font: Roboto, sans-serif; --t-num: "Roboto Condensed", sans-serif; --t-numw: 700; --t-nums: normal; --t-hdfont: "Roboto Condensed", sans-serif; --t-hdw: 700; --t-r: 20px; --t-border: 1.5px solid #ff2bd6;
+  --t-shadow: 0 0 14px #ff2bd666, inset 0 0 18px #ff2bd633; --t-glow: 0 0 10px #ff2bd6, 0 0 22px #ff2bd666; --t-btn: transparent; --t-btnink: #25F4EE; --t-btnr: 999px; --t-btnborder: 1px solid #25f4ee; --t-onacc: #07030F;
+  --t-accglow: 0 0 12px #ff2bd6; --t-rowbg: #ffffff08; --t-cellbg: #ffffff06; --t-cellborder: 1px solid #25f4ee55; --t-cellgap: 2.4cqmin; --t-segr: 99px; --t-skew: none; --t-ghost: transparent;
+  --t-framepad: 2.5cqmin; --t-framer: 14px; --t-frameborder: 1.5px solid #25f4ee; --t-frameshadow: 0 0 14px #25f4ee88; --t-labelbg: #07030Fd9; --t-labelink: #FF2BD6; }
+.k-paper { --t-bg: #E3E3DD; --t-ink: #151515; --t-dim: #5C5C57; --t-acc: #151515; --t-acc2: #151515; --t-warn: #151515; --t-track: #1515151f; --t-font: "Source Serif 4", Georgia, serif;
+  --t-num: "Source Serif 4", Georgia, serif; --t-numw: 600; --t-nums: normal; --t-hdfont: Roboto, sans-serif; --t-hdw: 700; --t-r: 6px; --t-border: 1px solid #c9c9c1; --t-shadow: none; --t-glow: none;
+  --t-btn: transparent; --t-btnink: #151515; --t-btnr: 4px; --t-btnborder: 1.5px solid #151515; --t-onacc: #E3E3DD; --t-accglow: none; --t-rowbg: transparent; --t-cellbg: transparent; --t-cellborder: 0; --t-cellgap: 0;
+  --t-segr: 0; --t-skew: none; --t-ghost: transparent; --t-framepad: 4cqmin; --t-framer: 2px; --t-frameborder: 1.5px solid #151515; --t-frameshadow: none; --t-labelbg: #E3E3DD; --t-labelink: #151515; }
+.k-paper .L-stats .c { border-top: 1px solid #15151533; border-radius: 0; }
+.k-paper .L-stats .c.p { border-top: 2px solid #151515; }
+.k-paper .alert .cap, .k-paper .alertc { text-decoration: underline; }
+.k-glass { --t-bg: radial-gradient(60% 80% at 15% 20%, #5ad0ff55, transparent 70%), radial-gradient(60% 80% at 90% 90%, #9b7bff66, transparent 70%), linear-gradient(160deg, #1a2748, #0c1226);
+  --t-ink: #FFFFFF; --t-dim: #C3CDE6; --t-acc: #7FE3FF; --t-acc2: #B7A2FF; --t-warn: #FF8FA3; --t-track: #ffffff22; --t-font: Roboto, sans-serif; --t-num: Roboto, sans-serif; --t-numw: 300; --t-nums: normal;
+  --t-hdfont: Roboto, sans-serif; --t-hdw: 500; --t-r: 26px; --t-border: 1px solid #ffffff30; --t-shadow: inset 0 1px 0 #ffffff40, 0 12px 30px -12px #000a; --t-glow: none;
+  --t-btn: #ffffff1f; --t-btnink: #fff; --t-btnr: 999px; --t-btnborder: 1px solid #ffffff30; --t-onacc: #0c1226; --t-accglow: 0 0 14px #7fe3ff88; --t-rowbg: #ffffff14; --t-cellbg: #ffffff14; --t-cellborder: 1px solid #ffffff22; --t-cellgap: 2.2cqmin;
+  --t-segr: 99px; --t-skew: none; --t-ghost: transparent; --t-framepad: 2.5cqmin; --t-framer: 20px; --t-frameborder: 1px solid #ffffff40; --t-frameshadow: none; --t-labelbg: #ffffff26; --t-labelink: #fff; }
+.k-carbon::before { content: ""; position: absolute; top: 0; right: 0; width: 24cqmin; height: 24cqmin; pointer-events: none;
+  background: linear-gradient(135deg, #0000 0 42%, #ff2e3f 42% 50%, #0000 50% 56%, #ff2e3f 56% 60%, #0000 60%); }
+.k-carbon { --t-bg: repeating-linear-gradient(45deg, #161616 0 4px, #1f1f1f 4px 8px), #121212;
+  --t-ink: #F4F4F4; --t-dim: #9A9A9A; --t-acc: #FF2E3F; --t-acc2: #FF8A3D; --t-warn: #FFD23F; --t-track: #ffffff14; --t-font: "Roboto Condensed", sans-serif; --t-num: "Roboto Condensed", sans-serif;
+  --t-numw: 800; --t-nums: italic; --t-hdfont: "Roboto Condensed", sans-serif; --t-hdw: 700; --t-r: 12px; --t-border: 1px solid #2a2a2a; --t-shadow: inset 0 1px 0 #ffffff12; --t-glow: none;
+  --t-btn: #242424; --t-btnink: #F4F4F4; --t-btnr: 6px; --t-btnborder: 1px solid #333; --t-onacc: #fff; --t-accglow: 0 0 8px #ff2e3f66; --t-rowbg: #ffffff0a; --t-cellbg: #ffffff0a; --t-cellborder: 0; --t-cellgap: 2cqmin;
+  --t-segr: 1px; --t-skew: skewX(-18deg); --t-ghost: transparent; --t-framepad: 2cqmin; --t-framer: 8px; --t-frameborder: 2px solid #ff2e3f; --t-frameshadow: none; --t-labelbg: #FF2E3F; --t-labelink: #fff; }
+.k-blueprint { --t-bg: linear-gradient(#ffffff0f 1px, transparent 1px) 0 0 / 10cqmin 10cqmin, linear-gradient(90deg, #ffffff0f 1px, transparent 1px) 0 0 / 10cqmin 10cqmin, #123E78;
+  --t-ink: #F2F7FF; --t-dim: #A9C4EA; --t-acc: #FFFFFF; --t-acc2: #9FD0FF; --t-warn: #FFC94A; --t-track: #ffffff26; --t-font: "Roboto Mono", ui-monospace, monospace; --t-num: "Roboto Mono", monospace;
+  --t-numw: 500; --t-nums: normal; --t-hdfont: "Roboto Mono", monospace; --t-hdw: 500; --t-r: 4px; --t-border: 1px solid #ffffff55; --t-shadow: none; --t-glow: none; --t-btn: transparent; --t-btnink: #fff;
+  --t-btnr: 2px; --t-btnborder: 1px dashed #ffffffaa; --t-onacc: #123E78; --t-accglow: none; --t-rowbg: transparent; --t-cellbg: transparent; --t-cellborder: 1px dashed #ffffff55; --t-cellgap: 2cqmin;
+  --t-segr: 0; --t-skew: none; --t-ghost: transparent; --t-framepad: 5cqmin; --t-framer: 0; --t-frameborder: 1px solid #fff; --t-frameshadow: none; --t-labelbg: #123E78; --t-labelink: #fff; }
+.k-chrome { --t-bg: radial-gradient(circle at 50% 0%, #2a2f36, #121417 70%); --t-ink: #F3F3F3; --t-dim: #9CA3AD; --t-acc: #FF6A2B; --t-acc2: #FFB36B; --t-warn: #FF3B30; --t-track: #ffffff1a;
+  --t-font: "Roboto Condensed", sans-serif; --t-num: "Roboto Condensed", sans-serif; --t-numw: 700; --t-nums: normal; --t-hdfont: "Roboto Condensed", sans-serif; --t-hdw: 700; --t-r: 24px;
+  --t-border: 4px solid transparent; --t-shadow: 0 0 0 1px #000, inset 0 0 0 1px #ffffff14; --t-glow: none; --t-btn: linear-gradient(#3a3f46, #1c1f23); --t-btnink: #eee; --t-btnr: 999px; --t-btnborder: 1px solid #555c66;
+  --t-onacc: #121417; --t-accglow: none; --t-rowbg: #ffffff0a; --t-cellbg: #ffffff0a; --t-cellborder: 1px solid #ffffff14; --t-cellgap: 2cqmin; --t-segr: 2px; --t-skew: none; --t-ghost: transparent;
+  --t-framepad: 3.5cqmin; --t-framer: 16px; --t-frameborder: 3px solid #9aa1ab; --t-frameshadow: inset 0 0 0 1px #000, 0 0 0 1px #000; --t-labelbg: linear-gradient(#e3e6ea, #9aa1ab); --t-labelink: #16181b; }
+.k-chrome { background: linear-gradient(var(--t-bg-solid, #16191d), #16191d) padding-box, linear-gradient(160deg, #eef0f3, #7c838c 40%, #d9dde2 60%, #5d636b) border-box; }
+.k-chrome.L-dialhost { background: radial-gradient(circle at 50% 0%, #2a2f36, #121417 70%) padding-box, linear-gradient(160deg, #eef0f3, #7c838c 40%, #d9dde2 60%, #5d636b) border-box; }
+.k-flap { --t-bg: #0d0d0d; --t-ink: #F2F2F2; --t-dim: #8d8d8d; --t-acc: #FFD23F; --t-acc2: #FFE58A; --t-warn: #FF5A4E; --t-track: #ffffff14; --t-font: "Roboto Condensed", sans-serif; --t-num: "Roboto Mono", monospace;
+  --t-numw: 700; --t-nums: normal; --t-hdfont: "Roboto Condensed", sans-serif; --t-hdw: 700; --t-r: 10px; --t-border: 1px solid #262626; --t-shadow: none; --t-glow: none; --t-btn: #1d1d1d; --t-btnink: #F2F2F2;
+  --t-btnr: 4px; --t-btnborder: 1px solid #2c2c2c; --t-onacc: #0d0d0d; --t-accglow: none; --t-rowbg: #1a1a1a; --t-cellbg: linear-gradient(#262626 0 50%, #1c1c1c 50%); --t-cellborder: 0; --t-cellgap: 1.5cqmin;
+  --t-segr: 1px; --t-skew: none; --t-ghost: transparent; --t-framepad: 2.5cqmin; --t-framer: 6px; --t-frameborder: 1px solid #333; --t-frameshadow: none; --t-labelbg: linear-gradient(#262626 0 50%, #1c1c1c 50%); --t-labelink: #FFD23F; }
+
+@media (prefers-reduced-motion: reduce) { .L-term .cur { animation: none; } }
+@media (max-width: 560px) { .bar .editbtn { display: none; } }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <span class="eyebrow">Dashwheel · widget designs</span>
+    <h1>Every widget, sixteen ways</h1>
+    <p class="lede">Each built-in tile on the dashboard now carries its own design. In edit mode, tap the palette button on a tile to open the design picker; the choice is saved with that tile, so two clocks can look different. The previews below use sample values; on the head unit every design shows the same live data as today's tile.</p>
+    <div class="facts">
+      <span class="fact"><b>22</b> widgets</span>
+      <span class="fact"><b>16</b> designs each (Standard + 15 new)</span>
+      <span class="fact"><b>9</b> layouts × <b>10</b> material looks</span>
+      <span class="fact">Map, Maps window and 3D car get <b>framed</b> versions</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="try">
+    <h2 id="try">Try it on the dashboard</h2>
+    <p class="hint">Tap a tile (or its palette button) to pick it, then choose a design below. This mirrors the in-app flow: Edit → palette button → design picker.</p>
+    <div class="unit" style="margin-top:12px">
+      <div class="screen" id="screen">
+        <div class="bar"><span id="barclock">14:32</span><span class="dots"><i></i><i></i><i></i></span><button class="editbtn" type="button" id="editbtn">DONE</button></div>
+        <div class="grid" id="dash"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="controls" aria-labelledby="gal">
+    <div class="galhead">
+      <h2 id="gal">Design picker</h2>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="byWidget" aria-pressed="true">By widget</button>
+        <button type="button" id="byDesign" aria-pressed="false">By design</button>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="galhead"><p id="galnote"></p></div>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+
+<script>
+/* ---------- icons (Material-style, 24px) ---------- */
+const P = {
+  nav: "M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z",
+  turn: "M9 5v2h6.6L4 18.6 5.4 20 17 8.4V15h2V5z",
+  music: "M12 3v10.6A4 4 0 1 0 14 17V7h4V3z",
+  speed: "M20.4 8.6 19 10a8 8 0 0 1-.9 8H5.9A8 8 0 0 1 16 6.1l1.4-1.4A10 10 0 0 0 4.3 20h15.4a10 10 0 0 0 .7-11.4zM10.6 15.4a2 2 0 0 0 2.8 0l5.7-8.5-8.5 5.7a2 2 0 0 0 0 2.8z",
+  warn: "M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z",
+  sensors: "M7.8 16.2A6 6 0 0 1 6 12c0-1.7.7-3.2 1.8-4.2L6.3 6.3A8 8 0 0 0 4 12c0 2.2.9 4.2 2.3 5.7zm8.4 0 1.5 1.5A8 8 0 0 0 20 12c0-2.2-.9-4.2-2.3-5.7l-1.5 1.5A6 6 0 0 1 18 12c0 1.7-.7 3.2-1.8 4.2zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
+  fuel: "M19.8 7.2 16.1 3.5 15 4.6l2.1 2.1A2.5 2.5 0 0 0 17.5 11.5V19a1 1 0 0 1-2 0v-4.5A1.5 1.5 0 0 0 14 13h-1V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16h10v-6.5h1.5V19a2.5 2.5 0 0 0 5 0V9.5c0-.9-.3-1.7-.7-2.3zM11 10H5V5h6z",
+  car: "M18.9 6c-.2-.6-.8-1-1.4-1h-11c-.7 0-1.2.4-1.4 1L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8zM6.5 16A1.5 1.5 0 1 1 8 14.5 1.5 1.5 0 0 1 6.5 16zm11 0a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zM5 11l1.5-4.5h11L19 11z",
+  door: "M18 4v16h2v2H4v-2h2V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2zm-3 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
+  compass: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm2.2 12.2L6 18l3.8-8.2L18 6z",
+  trip: "M3.5 18.5 9.5 12.5l4 4L22 6.9 20.6 5.5l-7.1 8-4-4L2 17z",
+  gforce: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
+  parking: "M13 3H6v18h4v-6h3a6 6 0 0 0 0-12zm.2 8H10V7h3.2a2 2 0 0 1 0 4z",
+  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z",
+  sun: "M6.8 4.8 5 3 3.6 4.4l1.8 1.8zM4 10.5H1v2h3zm9-9.9h-2v3h2zm7.5 3.8L19 3l-1.8 1.8 1.4 1.4zM17.2 18.2l1.8 1.8 1.4-1.4-1.8-1.8zM20 10.5v2h3v-2zM12 5.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM11 22.5h2v-3h-2zm-7.5-3.9L5 20l1.8-1.8-1.4-1.4z",
+  event: "M17 12h-5v5h5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1zm3 18H5V8h14z",
+  call: "M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.2 11.4 11.4 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.3.2 2.5.6 3.6a1 1 0 0 1-.3 1z",
+  bell: "M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.1-1.6-5.6-4.5-6.3V4a1.5 1.5 0 0 0-3 0v.7C7.6 5.4 6 7.9 6 11v5l-2 2v1h16v-1z",
+  vol: "M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z",
+  mute: "M16.5 12A4.5 4.5 0 0 0 14 8v2.2l2.5 2.5V12zm2.5 0a7 7 0 0 1-.5 2.6l1.5 1.5A9 9 0 0 0 14 3.2v2.1a7 7 0 0 1 5 6.7zM4.3 3 3 4.3 7.7 9H3v6h4l5 5v-6.7l4.3 4.3a7 7 0 0 1-2.3 1.2v2.1a9 9 0 0 0 3.7-1.8l2 2 1.3-1.3zM12 4 9.9 6.1 12 8.2z",
+  play: "M8 5v14l11-7z",
+  pause: "M6 19h4V5H6zm8-14v14h4V5z",
+  prev: "M6 6h2v12H6zm3.5 6 8.5 6V6z",
+  next: "M6 18l8.5-6L6 6zM16 6v12h2V6z",
+  reset: "M17.7 6.3A8 8 0 1 0 19.7 14h-2.1A6 6 0 1 1 12 6a6 6 0 0 1 4.2 1.8L13 11h7V4z",
+  plus: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z",
+  minus: "M19 13H5v-2h14z",
+  pin: "M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z",
+  walk: "M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 19 13v-2a5 5 0 0 1-4.3-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5 0-.8.1L6 8.3V13h2V9.6z",
+  pip: "M19 7h-8v6h8zm2-4H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H3V5h18z",
+  map: "M20.5 3 15 5.1 9 3 3.4 4.9a.5.5 0 0 0-.4.5v15.1a.5.5 0 0 0 .7.5L9 18.9l6 2.1 5.6-1.9a.5.5 0 0 0 .4-.5V3.5a.5.5 0 0 0-.5-.5zM15 19l-6-2.1V5l6 2.1z",
+  palette: "M12 3a9 9 0 0 0 0 18 1.5 1.5 0 0 0 1.1-2.5 1.5 1.5 0 0 1 1.1-2.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zm-5.5 9A1.5 1.5 0 1 1 8 10.5 1.5 1.5 0 0 1 6.5 12zm3-4A1.5 1.5 0 1 1 11 6.5 1.5 1.5 0 0 1 9.5 8zm5 0A1.5 1.5 0 1 1 16 6.5 1.5 1.5 0 0 1 14.5 8zm3 4a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5z",
+  search: "M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z",
+  trash: "M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z",
+  refresh: "M17.7 6.3A8 8 0 1 0 19.7 14h-2.1A6 6 0 1 1 12 6a6 6 0 0 1 4.2 1.8L13 11h7V4z",
+  bt: "M17.7 7.7 12 2h-1v7.6L6.4 5 5 6.4l5.6 5.6L5 17.6 6.4 19l4.6-4.6V22h1l5.7-5.7-4.3-4.3zM13 5.8l1.9 1.9L13 9.6zm1.9 10.5L13 18.2v-3.8z",
+  dialer: "M12 19a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM6 1a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-6 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
+};
+const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n] || P.nav}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+/* ---------- the 22 widgets, with sample readings ---------- */
+const CATS = { DRIVING: "Driving", NAVIGATION: "Navigation", VEHICLE: "Vehicle", INFO: "Info & comms", APPS: "Media & apps" };
+const W = [
+  { id: "NAVMAP", name: "Map", cat: "NAVIGATION", w: 5, h: 3, f: { icon: "map", title: "Map", frame: "map" } },
+  { id: "NAVIGATION", name: "Directions", cat: "NAVIGATION", w: 4, h: 3, f: { icon: "turn", title: "Directions", value: "300", unit: "m", caption: "Turn right onto Rue de Rivoli", fraction: .7, stats: [["Time", "12 min"], ["Distance", "6.4 km"], ["Arrival", "09:48"]], rows: [{ t: "Then keep left", d: "1.2 km" }] } },
+  { id: "PIP_ANCHOR", name: "Maps window", cat: "NAVIGATION", w: 4, h: 3, f: { icon: "pip", title: "Maps window", frame: "pip" } },
+  { id: "PARKING", name: "Parking spot", cat: "NAVIGATION", w: 4, h: 2, f: { icon: "parking", title: "Parking", value: "350", unit: "m", caption: "Saved 09:14 · 2 h ago", fraction: .35, stats: [["Direction", "NW"], ["Walk", "4 min"]], actions: ["pin", "walk"] } },
+  { id: "SPEED_HUD", name: "Speed", cat: "DRIVING", w: 3, h: 2, f: { icon: "speed", title: "Speed", value: "87", unit: "km/h", caption: "OBD", fraction: 87 / 200, stats: [["Source", "OBD"], ["Limit", "90"]] } },
+  { id: "COMPASS", name: "Compass", cat: "DRIVING", w: 3, h: 3, f: { icon: "compass", title: "Compass", value: "NE", unit: "47°", caption: "Heading north-east", fraction: 47 / 360, full: true, compass: true, stats: [["Altitude", "132 m"], ["GPS speed", "86 km/h"], ["Accuracy", "±4 m"]] } },
+  { id: "TRIP", name: "Trip computer", cat: "DRIVING", w: 4, h: 2, f: { icon: "trip", title: "Trip", value: "128.4", unit: "km", caption: "Since 08:12", stats: [["Time", "1:42"], ["Average", "76 km/h"], ["Top", "131 km/h"]], actions: ["reset"] } },
+  { id: "GFORCE", name: "G-force", cat: "DRIVING", w: 4, h: 2, f: { icon: "gforce", title: "G-force", value: "0.32", unit: "g", caption: "Braking, turning right", fraction: .32, stats: [["Lateral", "0.28"], ["Long.", "−0.15"], ["Peak", "0.74"]], actions: ["reset"] } },
+  { id: "TELEMETRY", name: "Telemetry", cat: "VEHICLE", w: 5, h: 3, f: { icon: "speed", title: "Engine", value: "87", unit: "km/h", caption: "2 450 rpm", fraction: 87 / 220, stats: [["RPM", "2450"], ["Coolant", "90 °C"], ["Battery", "14.1 V"], ["Load", "32 %"]] } },
+  { id: "OBD_DTC", name: "Fault codes", cat: "VEHICLE", w: 3, h: 2, f: { icon: "warn", title: "Fault codes", value: "2", unit: "codes", caption: "P0301 · Cylinder 1 misfire", alert: true, fraction: 1, rows: [{ t: "P0301 Cylinder 1 misfire", d: "Stored", alert: true }, { t: "P0420 Catalyst efficiency", d: "Pending", alert: true }], stats: [["Engine lamp", "On"], ["Stored", "2"]], actions: ["search", "trash"] } },
+  { id: "OBD_ALL", name: "All OBD data", cat: "VEHICLE", w: 5, h: 3, f: { icon: "sensors", title: "All sensors", value: "2450", unit: "rpm", caption: "7 live values", fraction: 2450 / 7000, stats: [["Speed", "87 km/h"], ["Coolant", "90 °C"], ["Intake", "31 °C"], ["Throttle", "18 %"], ["Load", "32 %"], ["Battery", "14.1 V"]] } },
+  { id: "RANGE", name: "Fuel & range", cat: "VEHICLE", w: 3, h: 3, f: { icon: "fuel", title: "Range", value: "412", unit: "km", caption: "58 % · 34.8 L", fraction: .58, stats: [["Fuel", "58 %"], ["In tank", "34.8 L"], ["Average", "6.4 L/100"]] } },
+  { id: "CAR3D", name: "3D car", cat: "VEHICLE", w: 4, h: 3, f: { icon: "car", title: "3D car", frame: "car" } },
+  { id: "DOORS", name: "Doors", cat: "VEHICLE", w: 3, h: 2, f: { icon: "door", title: "Doors", value: "1", unit: "open", caption: "Tailgate open", alert: true, fraction: 1 / 6, rows: [{ t: "Tailgate", d: "Open", alert: true }, { t: "Front left", d: "Closed" }, { t: "Front right", d: "Closed" }, { t: "Rear left", d: "Closed" }, { t: "Rear right", d: "Closed" }, { t: "Bonnet", d: "Closed" }], stats: [["Front", "Closed"], ["Rear", "Closed"], ["Tailgate", "Open"]] } },
+  { id: "CAN_MON", name: "CAN monitor", cat: "VEHICLE", w: 4, h: 3, f: { icon: "sensors", title: "CAN monitor", value: "48", unit: "IDs", caption: "3 changed in the last second", fraction: .3, rows: [{ t: "65.0C  41 FD 0C 38 80 00", d: "0.2 s" }, { t: "65.05  41 FD 05 12 7F", d: "0.8 s" }, { t: "33     02 1A 00 64", d: "3 s" }], stats: [["Frames/s", "212"], ["Changed", "3"], ["IDs", "48"]] } },
+  { id: "CLOCK", name: "Clock", cat: "INFO", w: 3, h: 2, f: { icon: "clock", title: "Clock", value: "14:32", caption: "Thursday 24 September", fraction: 27 / 60, full: true, clock: [14, 32, 27], stats: [["Seconds", "27"], ["Week", "39"]] } },
+  { id: "WEATHER", name: "Weather", cat: "INFO", w: 4, h: 2, f: { icon: "sun", title: "Weather", value: "18", unit: "°C", caption: "Partly cloudy", fraction: (18 + 10) / 50, stats: [["Feels", "16°"], ["Wind", "12 km/h"], ["Low / high", "11° / 21°"]], actions: ["refresh"] } },
+  { id: "CALENDAR", name: "Agenda", cat: "INFO", w: 4, h: 3, f: { icon: "event", title: "Agenda", value: "14:30", caption: "Dentist · Rue Oberkampf", fraction: .6, rows: [{ t: "Dentist", d: "14:30" }, { t: "Football training", d: "18:00" }, { t: "Stand-up", d: "Fri 09:00" }], stats: [["In", "1 h 58"], ["Today", "2 events"]] } },
+  { id: "QUICK_DIAL", name: "Quick dial", cat: "INFO", w: 4, h: 2, f: { icon: "call", title: "Quick dial", value: "Mum", text: true, caption: "4 favourites · tap to call", rows: [{ t: "Mum", d: "Mobile", av: "M" }, { t: "Alex Martin", d: "Mobile", av: "AM" }, { t: "Office", d: "Work", av: "O" }, { t: "Sam", d: "Mobile", av: "S" }], stats: [["Next", "Alex"], ["Then", "Office"]], actions: ["call", "dialer"] } },
+  { id: "NOTIFICATIONS", name: "Notifications", cat: "INFO", w: 4, h: 3, f: { icon: "bell", title: "Notifications", value: "3", unit: "new", caption: "Alex: On my way, 10 min", fraction: .3, rows: [{ t: "Alex: On my way, 10 min", d: "14:28" }, { t: "Parcel delivered", d: "13:02" }, { t: "Battery saver on", d: "12:40" }], stats: [["Latest", "14:28"], ["Apps", "3"]], actions: ["trash"] } },
+  { id: "MEDIA", name: "Music player", cat: "APPS", w: 5, h: 3, f: { icon: "music", title: "Now playing", value: "Midnight City", text: true, caption: "M83 · Hurry Up, We're Dreaming", fraction: .42, art: true, stats: [["Elapsed", "1:47"], ["Length", "4:03"]], actions: ["prev", "pause", "next"] } },
+  { id: "AUDIO", name: "Audio", cat: "APPS", w: 3, h: 2, f: { icon: "vol", title: "Audio", value: "65", unit: "%", caption: "Media volume", fraction: .65, stats: [["Output", "Speakers"], ["Bluetooth", "On"]], actions: ["mute", "minus", "plus"] } }
+];
+const WBY = Object.fromEntries(W.map(w => [w.id, w]));
+
+/* ---------- the 16 designs: a layout plus a material look ---------- */
+const D = [
+  { id: "STANDARD", name: "Standard", layout: "std", look: "theme", desc: "Today's tile. Follows the dashboard theme." },
+  { id: "HERO", name: "Hero", layout: "hero", look: "theme", desc: "One huge number; everything else whispers." },
+  { id: "GAUGE", name: "Gauge", layout: "arc", look: "theme", desc: "A 240° sweep around the reading." },
+  { id: "RING", name: "Ring", layout: "ring", look: "theme", desc: "Progress ring on the left, details on the right." },
+  { id: "BARS", name: "Level bars", layout: "bars", look: "theme", desc: "Segmented level meter with stat chips." },
+  { id: "STATS", name: "Stats grid", layout: "stats", look: "theme", desc: "Every reading in its own cell." },
+  { id: "MINIMAL", name: "Minimal", layout: "hero", look: "minimal", desc: "No card, thin type, lots of air." },
+  { id: "LCD", name: "LCD", layout: "hero", look: "lcd", desc: "Backlit segment display with ghost digits." },
+  { id: "AMBER", name: "Amber terminal", layout: "term", look: "amber", desc: "Old trip computer: amber text, line by line." },
+  { id: "NEON", name: "Neon", layout: "arc", look: "neon", desc: "Glowing magenta rim and cyan controls." },
+  { id: "PAPER", name: "E-ink", layout: "stats", look: "paper", desc: "Matte, black on grey. Readable in full sun." },
+  { id: "GLASS", name: "Glass", layout: "ring", look: "glass", desc: "Frosted panel over soft colour light." },
+  { id: "CARBON", name: "Carbon sport", layout: "bars", look: "carbon", desc: "Carbon weave, red stripe, slanted numerals." },
+  { id: "BLUEPRINT", name: "Blueprint", layout: "dial", look: "blueprint", desc: "Drafting grid, white linework, ticked dial." },
+  { id: "CHRONO", name: "Chronograph", layout: "dial", look: "chrome", desc: "Brushed bezel and a needle, like a watch." },
+  { id: "FLAP", name: "Split-flap", layout: "flap", look: "flap", desc: "Station departure board, one card per digit." }
+];
+const DBY = Object.fromEntries(D.map(d => [d.id, d]));
+
+/* ---------- drawing helpers ---------- */
+const pt = (cx, cy, r, a) => { const t = a * Math.PI / 180; return [cx + r * Math.sin(t), cy - r * Math.cos(t)]; };
+function arcD(cx, cy, r, a0, a1) {
+  if (a1 - a0 >= 359.9) a1 = a0 + 359.9;
+  const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+let gid = 0;
+const valHtml = (f, extra = "") => {
+  if (!f.value) return "";
+  const ghost = extra === "ghost" ? ` ghost" data-g="${esc(f.value.replace(/[0-9]/g, "8"))}` : "";
+  return `<div class="val${f.text ? " txt" : ""}"><span class="v${ghost}">${esc(f.value)}</span>${f.unit ? `<span class="u">${esc(f.unit)}</span>` : ""}</div>`;
+};
+const hd = (f, right = "") => `<div class="hd">${ic(f.icon)}<span>${esc(f.title)}</span><span class="sp"></span>${right}</div>`;
+const cap = f => f.caption ? `<div class="cap">${esc(f.caption)}</div>` : "";
+const acts = (f, n = 3) => f.actions ? `<div class="acts">${f.actions.slice(0, n).map((a, i) => `<span class="act${(a === "pause" || a === "play" || (f.actions.length === 1 || i === 0) && a !== "prev") ? " main" : ""}">${ic(a)}</span>`).join("")}</div>` : "";
+const stats = (f, n = 3) => (f.stats || []).slice(0, n).map(([l, v]) => `<div class="stat"><span class="l">${esc(l)}</span><span class="n">${esc(v)}</span></div>`).join("");
+const rows = (f, n = 3) => f.rows ? `<div class="rows">${f.rows.slice(0, n).map(r => `<div class="row${r.alert ? " alert" : ""}">${r.av ? `<span class="av">${esc(r.av)}</span>` : `<span class="dot"></span>`}<span class="t">${esc(r.t)}</span><span class="d${r.alert ? " alertc" : ""}">${esc(r.d)}</span></div>`).join("")}</div>` : "";
+const prog = f => f.fraction != null ? `<div class="prog"><i style="width:${Math.round(f.fraction * 100)}%"></i></div>` : "";
+
+/* ---------- layouts ---------- */
+const L = {
+  std(f) {
+    const line = (f.stats || []).map(s => `${s[0]} ${s[1]}`).join(" · ");
+    const body = f.rows && !f.unit && f.text ? rows(f, 3) :
+      `<div class="body">${f.art ? `<div class="art" style="height:62%;aspect-ratio:1">${ic("music")}</div>` : `<span class="big-ic">${ic(f.icon)}</span>`}
+        <div class="col">${valHtml(f)}${cap(f)}<div class="line">${esc(line)}</div></div></div>`;
+    return `<div class="in L-std${f.alert ? " alert" : ""}">${hd(f)}${body}${f.actions && f.art ? `<div style="display:flex;justify-content:center">${acts(f)}</div>` : ""}</div>`;
+  },
+  hero(f, look) {
+    return `<div class="in L-hero${f.alert ? " alert" : ""}">${hd(f)}<div class="mid">${valHtml(f, look === "lcd" ? "ghost" : "")}${cap(f)}${rows(f, 2)}</div>
+      ${(f.fraction != null || f.actions) ? `<div class="foot">${prog(f) || '<span class="fill"></span>'}${acts(f)}</div>` : ""}</div>`;
+  },
+  arc(f, look) {
+    const id = "g" + (++gid), full = f.full, a0 = full ? 0 : -120, span = full ? 360 : 240;
+    const fr = f.fraction ?? 0, a1 = a0 + span * fr;
+    let ticks = "";
+    if (look === "neon") for (let i = 0; i <= 24; i++) { const a = a0 + span * i / 24, [x0, y0] = pt(50, 50, 47, a), [x1, y1] = pt(50, 50, i % 6 ? 45 : 43, a); ticks += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--t-acc2)" stroke-width="${i % 6 ? .6 : 1.2}" opacity=".8"/>`; }
+    const svg = `<svg viewBox="0 0 100 100" class="gv"><defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="var(--t-acc)"/><stop offset="1" stop-color="var(--t-acc2)"/></linearGradient></defs>
+      <path d="${arcD(50, 50, 39, a0, a0 + span)}" fill="none" stroke="var(--t-track)" stroke-width="7" stroke-linecap="round"/>
+      ${fr > 0 ? `<path d="${arcD(50, 50, 39, a0, a1)}" fill="none" stroke="${f.alert ? "var(--t-warn)" : `url(#${id})`}" stroke-width="7" stroke-linecap="round" style="filter:${look === "neon" ? "drop-shadow(0 0 3px var(--t-acc))" : "none"}"/>` : ""}
+      ${ticks}</svg>`;
+    return `<div class="in L-arc${f.alert ? " alert" : ""}"><div class="g">${svg}<div class="gc">${valHtml(f)}</div></div>
+      <div class="side">${hd(f)}${cap(f)}${stats(f, 3)}${acts(f)}</div></div>`;
+  },
+  ring(f) {
+    const id = "r" + (++gid), fr = f.fraction ?? 0;
+    const inner = f.art ? `<div class="art">${ic("music")}</div>` : f.clock ? `<b>${f.clock[2]}</b>` : ic(f.icon);
+    const svg = `<svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--t-acc)"/><stop offset="1" stop-color="var(--t-acc2)"/></linearGradient></defs>
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--t-track)" stroke-width="7"/>
+      ${fr > 0 ? `<path d="${arcD(50, 50, 42, 0, 360 * fr)}" fill="none" stroke="${f.alert ? "var(--t-warn)" : `url(#${id})`}" stroke-width="7" stroke-linecap="round"/>` : ""}</svg>`;
+    return `<div class="in L-ring${f.alert ? " alert" : ""}"><div class="g">${svg}<div class="inner">${inner}</div></div>
+      <div class="col">${hd(f)}${valHtml(f)}${cap(f)}<div class="stats">${stats(f, 2)}</div>${acts(f)}</div></div>`;
+  },
+  bars(f, look) {
+    const n = 24, on = Math.round((f.fraction ?? 0) * n);
+    const segs = f.fraction != null ? `<div class="segs">${Array.from({ length: n }, (_, i) => `<i class="${i < on ? "on" : ""}${i < on && (f.alert || (look === "carbon" && i >= n * .8)) ? " hot" : ""}"></i>`).join("")}</div>` : "";
+    return `<div class="in L-bars${f.alert ? " alert" : ""}">${hd(f, acts(f))}<div class="top"><div style="min-width:0;display:grid;gap:1.5cqmin">${valHtml(f)}${cap(f)}</div></div>${segs}<div class="chips">${stats(f, 3)}</div></div>`;
+  },
+  stats(f) {
+    const cells = [`<div class="c p">${hd(f)}${valHtml(f)}${cap(f)}</div>`];
+    (f.stats || []).slice(0, 4).forEach(([l, v]) => cells.push(`<div class="c"><span class="stat"><span class="l">${esc(l)}</span></span><span class="stat"><span class="n">${esc(v)}</span></span></div>`));
+    if (cells.length < 5) (f.rows || []).slice(0, 5 - cells.length).forEach(r => cells.push(`<div class="c r${r.alert ? " alert" : ""}"><span class="stat"><span class="l${r.alert ? " alertc" : ""}">${esc(r.d)}</span></span><span class="stat"><span class="n">${esc(r.t)}</span></span></div>`));
+    return `<div class="in L-stats${f.alert ? " alert" : ""}"><div class="cells">${cells.join("")}</div></div>`;
+  },
+  term(f) {
+    const kv = (f.stats || []).slice(0, 3).map(([l, v]) => `<div class="ln kv"><span>${esc(l.toUpperCase())}</span><span class="dots">${".".repeat(40)}</span><span>${esc(v)}</span></div>`).join("");
+    const rl = (f.rows || []).slice(0, 2).map(r => `<div class="ln${r.alert ? " alertc" : ""}">- ${esc(r.t)}  ${esc(r.d)}</div>`).join("");
+    return `<div class="in L-term${f.alert ? " alert" : ""}"><div class="ln dim">&gt; ${esc(f.title.toUpperCase())}</div>
+      <div class="ln big">${esc(f.value || "")}<small>${esc(f.unit || "")}</small></div>
+      ${f.caption ? `<div class="ln${f.alert ? " alertc" : " dim"}">${esc(f.caption)}</div>` : ""}${kv}${rl}<div class="ln"><span class="cur"></span></div></div>`;
+  },
+  dial(f, look) {
+    const full = f.full, a0 = full ? 0 : -135, span = full ? 360 : 270, fr = f.fraction ?? 0;
+    const ink = "var(--t-ink)", acc = "var(--t-acc)";
+    let s = `<circle cx="50" cy="50" r="46" fill="${look === "chrome" ? "#0d0f12" : "none"}" stroke="${look === "chrome" ? "#ffffff22" : "var(--t-ink)"}" stroke-width="${look === "chrome" ? 1 : .6}" ${look === "blueprint" ? 'stroke-dasharray="2 1.5"' : ""}/>`;
+    const N = full ? 60 : 40;
+    for (let i = 0; i <= N; i++) {
+      if (full && i === N) break;
+      const a = a0 + span * i / N, major = i % (full ? 5 : 5) === 0;
+      const [x0, y0] = pt(50, 50, 43, a), [x1, y1] = pt(50, 50, major ? 36 : 40, a);
+      s += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${ink}" stroke-width="${major ? 1.3 : .5}"/>`;
+    }
+    if (!full) { const [x0, y0] = pt(50, 50, 43, a0 + span * .8), [x1, y1] = pt(50, 50, 43, a0 + span); s += `<path d="${arcD(50, 50, 41.5, a0 + span * .8, a0 + span)}" fill="none" stroke="var(--t-warn)" stroke-width="3"/>`; }
+    if (f.compass) ["N", "E", "S", "W"].forEach((c, i) => { const [x, y] = pt(50, 50, 29, i * 90); s += `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="8" fill="${i ? ink : acc}" font-family="var(--t-num)" font-weight="700">${c}</text>`; });
+    if (f.clock) {
+      const [h, m, sec] = f.clock;
+      const hand = (a, r, w, c) => { const [x, y] = pt(50, 50, r, a); return `<line x1="50" y1="50" x2="${x}" y2="${y}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`; };
+      s += hand((h % 12 + m / 60) * 30, 22, 3, ink) + hand(m * 6, 33, 2, ink) + hand(sec * 6, 37, .8, acc);
+    } else {
+      const a = a0 + span * fr, [x, y] = pt(50, 50, 38, a), [bx, by] = pt(50, 50, 8, a + 180);
+      s += `<line x1="${bx}" y1="${by}" x2="${x}" y2="${y}" stroke="${acc}" stroke-width="2" stroke-linecap="round"/>`;
+      if (!f.compass) s += `<text x="50" y="74" text-anchor="middle" font-size="10" fill="${ink}" font-family="var(--t-num)" font-weight="700">${esc(f.text ? "" : (f.value || ""))}</text><text x="50" y="82" text-anchor="middle" font-size="4.5" fill="var(--t-dim)" font-family="var(--t-hdfont)" letter-spacing=".6">${esc((f.unit || f.title).toUpperCase())}</text>`;
+    }
+    s += `<circle cx="50" cy="50" r="3.2" fill="${look === "chrome" ? "#c9ced5" : ink}"/>`;
+    return `<div class="in L-dial${f.alert ? " alert" : ""}"><div class="g"><svg viewBox="0 0 100 100">${s}</svg></div>
+      <div class="side">${hd(f)}${valHtml(f)}${cap(f)}${stats(f, 2)}${acts(f)}</div></div>`;
+  },
+  flap(f) {
+    const v = (f.value || "").toUpperCase().slice(0, f.text ? 10 : 6);
+    const cards = [...v].map(ch => `<span class="f">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("") + (f.unit ? `<span class="f u">${esc(f.unit.toUpperCase())}</span>` : "");
+    return `<div class="in L-flap${f.text ? " txtv" : ""}${f.alert ? " alert" : ""}">${hd(f, acts(f))}<div class="flaps">${cards}</div>${cap(f)}<div class="mini">${stats(f, 3)}</div></div>`;
+  }
+};
+
+/* ---------- framed live content (map, Maps window, 3D car) ---------- */
+function frameContent(kind) {
+  if (kind === "map") return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice"><rect width="200" height="120" fill="#1b2230"/>
+    <path d="M0 80 C40 70 60 90 100 76 S160 40 200 50" stroke="#2b3547" stroke-width="10" fill="none"/>
+    <path d="M30 0 L60 120 M120 0 L110 120 M0 30 L200 20 M150 0 L190 120" stroke="#29313f" stroke-width="3" fill="none"/>
+    <path d="M0 95 C50 88 70 60 110 58 S170 70 200 64" stroke="#3a4a66" stroke-width="3" fill="none"/>
+    <path d="M58 118 L70 84 L112 58 L140 30" stroke="#8AB4F8" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <circle cx="70" cy="84" r="5" fill="#8AB4F8"/><circle cx="70" cy="84" r="2.2" fill="#fff"/><rect x="0" y="0" width="200" height="120" fill="url(#vg)" opacity=".0"/></svg>`;
+  if (kind === "pip") return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice"><rect width="200" height="120" fill="#e8eaed"/>
+    <path d="M0 70 C50 60 90 90 140 60 S190 30 200 35" stroke="#fff" stroke-width="12" fill="none"/>
+    <path d="M20 0 L50 120 M140 0 L120 120 M0 25 L200 18" stroke="#fff" stroke-width="5" fill="none"/>
+    <path d="M50 120 L62 80 L118 64 L150 20" stroke="#1a73e8" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <rect x="8" y="8" width="96" height="22" rx="4" fill="#0f5f36"/><text x="16" y="23" font-size="10" fill="#fff" font-family="Roboto" font-weight="700">↱ 300 m Rue de Rivoli</text></svg>`;
+  return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet"><defs><radialGradient id="flo" cx=".5" cy=".85" r=".6"><stop offset="0" stop-color="#8ab4f833"/><stop offset="1" stop-color="#0000"/></radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7dbe2"/><stop offset="1" stop-color="#6b7280"/></linearGradient></defs>
+    <rect width="200" height="120" fill="#10141b"/><ellipse cx="100" cy="98" rx="80" ry="14" fill="url(#flo)"/>
+    <path d="M30 86 L36 66 Q44 56 64 54 L84 38 Q96 32 124 34 L146 50 Q168 54 172 66 L174 86 Z" fill="url(#body)"/>
+    <path d="M88 42 Q98 38 120 39 L136 52 L78 54 Z" fill="#1b2433"/><circle cx="64" cy="88" r="12" fill="#111"/><circle cx="64" cy="88" r="6" fill="#9aa0a6"/>
+    <circle cx="146" cy="88" r="12" fill="#111"/><circle cx="146" cy="88" r="6" fill="#9aa0a6"/></svg>`;
+}
+function frame(f, d) {
+  const look = d.look, lay = d.layout;
+  const label = lay === "std" || look === "minimal" ? "" :
+    `<div class="label ${["bars", "stats", "term"].includes(lay) ? "bot" : "top"}">${ic(f.icon)}<span>${esc(f.title)}</span><span style="opacity:.7">· 14:32</span></div>`;
+  const brk = look === "blueprint" ? '<span class="brk a"></span><span class="brk b"></span><span class="brk c"></span><span class="brk d"></span>' : "";
+  const bottom = ["bars", "stats", "term"].includes(lay);
+  return `<div class="in L-frame">${brk}${bottom ? "" : label}<div class="content">${frameContent(f.frame)}</div>${bottom ? label : ""}</div>`;
+}
+
+function tileHtml(wid, did) {
+  const w = WBY[wid], d = DBY[did];
+  const body = w.f.frame ? frame(w.f, d) : L[d.layout](w.f, d.look);
+  return `<div class="tile k-${d.look}${d.layout === "dial" ? " L-dialhost" : ""}" role="img" aria-label="${esc(w.name)} in the ${esc(d.name)} design">${body}</div>`;
+}
+
+/* ---------- dashboard mock ---------- */
+const dash = [
+  { k: "NAVMAP", x: 0, y: 0, w: 5, h: 4, d: "STANDARD" },
+  { k: "SPEED_HUD", x: 5, y: 0, w: 3, h: 2, d: "GAUGE" },
+  { k: "CLOCK", x: 8, y: 0, w: 4, h: 2, d: "FLAP" },
+  { k: "RANGE", x: 5, y: 2, w: 3, h: 2, d: "CARBON" },
+  { k: "WEATHER", x: 8, y: 2, w: 4, h: 2, d: "GLASS" },
+  { k: "MEDIA", x: 0, y: 4, w: 5, h: 3, d: "HERO" },
+  { k: "TELEMETRY", x: 5, y: 4, w: 4, h: 3, d: "CHRONO" },
+  { k: "AUDIO", x: 9, y: 4, w: 3, h: 3, d: "RING" }
+];
+let sel = 1, view = "widget", curWidget = dash[sel].k, curDesign = "GAUGE", editing = true;
+try { const s = JSON.parse(localStorage.getItem("dw-designs") || "null"); if (Array.isArray(s) && s.length === dash.length) s.forEach((d, i) => { if (DBY[d]) dash[i].d = d; }); } catch (e) {}
+const save = () => { try { localStorage.setItem("dw-designs", JSON.stringify(dash.map(t => t.d))); } catch (e) {} };
+
+function renderDash() {
+  const el = document.getElementById("dash");
+  el.innerHTML = dash.map((t, i) => `<div class="cell${i === sel && editing ? " sel" : ""}" data-i="${i}" style="left:${t.x / 12 * 100}%;top:${t.y / 7 * 100}%;width:${t.w / 12 * 100}%;height:${t.h / 7 * 100}%">
+    ${tileHtml(t.k, t.d)}${editing ? `<button class="designbtn" type="button" data-i="${i}" aria-label="Change the ${esc(WBY[t.k].name)} design">${ic("palette")}</button>` : ""}</div>`).join("");
+}
+document.getElementById("dash").addEventListener("click", e => {
+  const c = e.target.closest("[data-i]"); if (!c || !editing) return;
+  sel = +c.dataset.i; curWidget = dash[sel].k; view = "widget"; renderAll();
+  document.getElementById("gal").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
+document.getElementById("editbtn").addEventListener("click", e => { editing = !editing; e.target.textContent = editing ? "DONE" : "EDIT"; renderDash(); });
+
+/* ---------- picker ---------- */
+function renderChips() {
+  const el = document.getElementById("chips");
+  if (view === "widget") {
+    el.innerHTML = Object.entries(CATS).map(([c, name]) => `<div class="chipgroup"><span class="cat">${esc(name.toUpperCase())}</span>${W.filter(w => w.cat === c).map(w =>
+      `<button class="chip" type="button" data-w="${w.id}" aria-pressed="${w.id === curWidget}">${ic(w.f.icon)}${esc(w.name)}</button>`).join("")}</div>`).join("");
+  } else {
+    el.innerHTML = `<div class="chipgroup"><span class="cat">DESIGN</span>${D.map(d => `<button class="chip" type="button" data-d="${d.id}" aria-pressed="${d.id === curDesign}">${esc(d.name)}</button>`).join("")}</div>`;
+  }
+}
+function aspect(w) { return (w.w * 85) / (w.h * 78); }
+function renderGallery() {
+  const g = document.getElementById("gallery"), note = document.getElementById("galnote");
+  const target = dash[sel];
+  if (view === "widget") {
+    const w = WBY[curWidget], applies = target.k === w.id;
+    note.textContent = applies ? `${w.name}: ${D.length} designs. Tap one to apply it to the selected tile.` : `${w.name}: ${D.length} designs. Select a ${w.name} tile on the dashboard to apply one.`;
+    g.innerHTML = D.map(d => `<button class="card${applies && target.d === d.id ? " on" : ""}" type="button" data-apply="${d.id}">
+      <div class="stage"><div class="box" style="aspect-ratio:${aspect(w).toFixed(3)}">${tileHtml(w.id, d.id)}</div></div>
+      <div class="meta"><b>${esc(d.name)}</b>${d.id === "STANDARD" ? '<span class="tag">CURRENT</span>' : `<span>${esc(layoutName(d.layout))}</span>`}</div><p class="desc">${esc(d.desc)}</p></button>`).join("");
+  } else {
+    const d = DBY[curDesign];
+    note.textContent = `${d.name}: ${d.desc} Shown on all ${W.length} widgets.`;
+    g.innerHTML = W.map(w => `<button class="card${target.k === w.id && target.d === d.id ? " on" : ""}" type="button" data-w2="${w.id}">
+      <div class="stage"><div class="box" style="aspect-ratio:${aspect(w).toFixed(3)}">${tileHtml(w.id, d.id)}</div></div>
+      <div class="meta"><b>${esc(w.name)}</b><span>${w.w}×${w.h}</span></div></button>`).join("");
+  }
+}
+const layoutName = l => ({ hero: "Hero layout", arc: "Gauge layout", ring: "Ring layout", bars: "Bars layout", stats: "Grid layout", term: "Terminal layout", dial: "Dial layout", flap: "Flap layout", std: "" })[l];
+document.getElementById("chips").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.w) { curWidget = b.dataset.w; const i = dash.findIndex(t => t.k === curWidget); if (i >= 0) sel = i; }
+  if (b.dataset.d) curDesign = b.dataset.d;
+  renderAll();
+});
+document.getElementById("gallery").addEventListener("click", e => {
+  const b = e.target.closest("button.card"); if (!b) return;
+  if (b.dataset.apply && dash[sel].k === curWidget) { dash[sel].d = b.dataset.apply; save(); renderAll(); }
+  if (b.dataset.w2) { curWidget = b.dataset.w2; view = "widget"; const i = dash.findIndex(t => t.k === curWidget); if (i >= 0) { sel = i; dash[i].d = curDesign; save(); } renderAll(); }
+});
+function setView(v) { view = v; document.getElementById("byWidget").setAttribute("aria-pressed", v === "widget"); document.getElementById("byDesign").setAttribute("aria-pressed", v === "design"); renderChips(); renderGallery(); }
+document.getElementById("byWidget").addEventListener("click", () => setView("widget"));
+document.getElementById("byDesign").addEventListener("click", () => { if (DBY[dash[sel].d]) curDesign = dash[sel].d; setView("design"); });
+function renderAll() { renderDash(); setView(view); }
+renderAll();
+</script>
