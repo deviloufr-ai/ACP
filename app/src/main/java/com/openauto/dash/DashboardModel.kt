@@ -99,10 +99,12 @@ sealed interface DashboardItem {
         override val w: Int = 8, override val h: Int = 1
     ) : DashboardItem
 
+    /** [design] is this tile's own look (see WidgetDesigns.kt); two clocks may differ. */
     data class BuiltinWidget(
         val kind: BuiltinKind,
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 5, override val h: Int = 3
+        override val w: Int = 5, override val h: Int = 3,
+        val design: WidgetDesign = WidgetDesign.STANDARD
     ) : DashboardItem
 
     data class SystemWidget(
@@ -185,7 +187,9 @@ object DashboardStore {
      * a layout.
      *
      *  1: `{"v":1,"pages":[[tile...], ...]}`. Before v1 the value was the bare
-     *     pages array, which is still accepted.
+     *     pages array, which is still accepted. A built-in tile may carry an
+     *     optional `"d"` (its WidgetDesign name); absent means the standard
+     *     design, so older builds simply ignore it.
      */
     private const val SCHEMA_VERSION = 1
 
@@ -489,6 +493,7 @@ object DashboardStore {
             is DashboardItem.LaunchBar ->
                 JSONObject().put("t", "bar").put("pkgs", JSONArray(packages))
             is DashboardItem.BuiltinWidget -> JSONObject().put("t", "builtin").put("k", kind.name)
+                .apply { if (design != WidgetDesign.STANDARD) put("d", design.name) }
             is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
             is DashboardItem.AppWindow -> JSONObject().put("t", "appwin").put("pkg", packageName)
         }
@@ -529,7 +534,7 @@ object DashboardStore {
             // Default span comes from the kind (a clock is 3x2, a map 5x3), so a
             // legacy tile without coordinates is re-flowed at its proper size.
             "builtin" -> runCatching { BuiltinKind.valueOf(optString("k")) }.getOrNull()
-                ?.let { place(DashboardItem.BuiltinWidget(it, w = it.defaultW, h = it.defaultH)) }
+                ?.let { place(DashboardItem.BuiltinWidget(it, w = it.defaultW, h = it.defaultH, design = WidgetDesign.fromName(optString("d")))) }
             "widget" -> optInt("id", -1).takeIf { it != -1 }
                 ?.let { place(DashboardItem.SystemWidget(it)) }
             "appwin" -> optString("pkg").takeIf { it.isNotBlank() }

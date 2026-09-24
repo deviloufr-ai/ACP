@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -104,7 +105,9 @@ internal fun DashboardPage(
     onResizeCell: (Int, Int, Int) -> Unit,
     canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     canMove: (Int, Int, Int) -> Boolean,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    /** Opens the design picker for the built-in tile at this index. */
+    onDesign: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -227,6 +230,7 @@ internal fun DashboardPage(
                     canPlace = canPlace,
                     canMove = canMove,
                     onRemove = onRemove,
+                    onDesign = onDesign,
                     onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
                     onPreviewClear = { preview = null },
                     content = {
@@ -276,6 +280,7 @@ internal fun GridTile(
     canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     canMove: (Int, Int, Int) -> Boolean,
     onRemove: (Int) -> Unit,
+    onDesign: (Int) -> Unit,
     onPreview: (Int, Int, Int, Int, Boolean) -> Unit,
     onPreviewClear: () -> Unit,
     content: @Composable () -> Unit
@@ -363,6 +368,19 @@ internal fun GridTile(
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(18.dp))
             }
 
+            // Bottom-left: this built-in tile's design (Hero, Gauge, LCD, ...).
+            if (item is DashboardItem.BuiltinWidget) {
+                FilledIconButton(
+                    onClick = { onDesign(index) },
+                    modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
+                    )
+                ) {
+                    Icon(Icons.Filled.Palette, contentDescription = stringResource(R.string.design_change, item.describe()), modifier = Modifier.size(18.dp))
+                }
+            }
+
             // Bottom-right resize handle: drag to change the cell span.
             Box(
                 modifier = Modifier
@@ -432,6 +450,18 @@ internal fun TileContent(
         editing, appsByPackage, mediaState, mediaController, hasMediaAccess, context,
         obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
     )
+    // A tile's own design beats the skin; its standard look is this same
+    // routing with the design cleared (the skin's tile under a skin).
+    if (item is DashboardItem.BuiltinWidget && item.design != WidgetDesign.STANDARD) {
+        DesignedTile(item, env) {
+            TileContent(
+                item.copy(design = WidgetDesign.STANDARD), editing, appsByPackage, mediaState, mediaController, hasMediaAccess,
+                context, obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onLaunchSplitPair, onEditLaunchBar,
+                onModelTouch, onFitToWindow
+            )
+        }
+        return
+    }
     if (skinHandles(item)) {
         SkinTile(item, env)
         return
@@ -578,7 +608,7 @@ internal fun AddTile(onClick: () -> Unit) {
 
 /** Short spoken name for a tile, for the edit controls' accessibility labels. */
 @Composable
-private fun DashboardItem.describe(): String = when (this) {
+internal fun DashboardItem.describe(): String = when (this) {
     is DashboardItem.BuiltinWidget -> kind.label
     is DashboardItem.AppShortcut -> packageName.substringAfterLast('.')
     is DashboardItem.SplitPair -> stringResource(R.string.dash_describe_split_pair)

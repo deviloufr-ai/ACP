@@ -308,7 +308,7 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
 
 internal data class AgendaEvent(val title: String, val begin: Long, val end: Long, val allDay: Boolean, val location: String)
 
-private fun loadAgenda(context: Context, hours: Int = 36): List<AgendaEvent> {
+internal fun loadAgenda(context: Context, hours: Int = 36): List<AgendaEvent> {
     val now = System.currentTimeMillis()
     val until = now + hours * 3_600_000L
     val uri = ContentUris.appendId(ContentUris.appendId(CalendarContract.Instances.CONTENT_URI.buildUpon(), now), until).build()
@@ -426,7 +426,7 @@ private fun AgendaRow(e: AgendaEvent) {
 
 internal data class Favourite(val name: String, val number: String?, val photo: Bitmap?)
 
-private fun loadFavourites(context: Context, limit: Int = 8): List<Favourite> {
+internal fun loadFavourites(context: Context, limit: Int = 8): List<Favourite> {
     val cr = context.contentResolver
     val out = mutableListOf<Favourite>()
     runCatching {

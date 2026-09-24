@@ -289,7 +289,7 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
 
 /** Eight-point compass direction for a bearing, as a localized abbreviation. */
 @StringRes
-private fun cardinalRes(deg: Float): Int {
+internal fun cardinalRes(deg: Float): Int {
     val dirs = listOf(
         R.string.info_dir_n, R.string.info_dir_ne, R.string.info_dir_e, R.string.info_dir_se,
         R.string.info_dir_s, R.string.info_dir_sw, R.string.info_dir_w, R.string.info_dir_nw
@@ -556,7 +556,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
     }
 }
 
-private fun walkTo(context: Context, spot: ParkingSpot) {
+internal fun walkTo(context: Context, spot: ParkingSpot) {
     val uri = Uri.parse(String.format(Locale.US, "google.navigation:q=%.6f,%.6f&mode=w", spot.lat, spot.lng))
     val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }.onFailure {
