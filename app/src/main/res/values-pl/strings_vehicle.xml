@@ -189,4 +189,14 @@
     <string name="vehicle_dtc_area_computer">sterownik / wyjścia</string>
     <string name="vehicle_dtc_area_transmission">skrzynia biegów</string>
     <string name="vehicle_dtc_area_system">układ</string>
+
+    <!-- Why the adapter is not connected -->
+    <string name="vehicle_obd_connecting_to">Łączenie z %1$s…</string>
+    <string name="vehicle_obd_adapter">Adapter: %1$s</string>
+    <string name="vehicle_choose_adapter">Wybierz adapter</string>
+    <string name="vehicle_err_bt_off">Bluetooth radia jest wyłączony</string>
+    <string name="vehicle_err_not_paired">%1$s nie jest sparowany z radiem</string>
+    <string name="vehicle_err_refused">%1$s odrzucił połączenie: zajęty przez telefon lub inną aplikację, bez zasilania albo poza zasięgiem</string>
+    <string name="vehicle_err_silent">%1$s połączył się, ale nigdy nie odpowiedział</string>
+    <string name="vehicle_err_permission">Brak uprawnienia Bluetooth</string>
 </resources>

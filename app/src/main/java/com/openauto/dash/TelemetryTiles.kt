@@ -104,13 +104,32 @@ internal fun batteryColor(voltage: Double): Color =
 
 /** The "connect first" body shared by the OBD cards. */
 @Composable
-internal fun ObdNotConnected(onConnect: () -> Unit) {
-    Text(stringResource(R.string.vehicle_obd_not_connected), color = DashColors.Muted)
+internal fun ObdNotConnected(connection: ObdConnectionState, onConnect: () -> Unit, onPickDevice: (() -> Unit)? = null) {
+    val connecting = connection == ObdConnectionState.CONNECTING
+    val lastError by ObdBluetoothManager.lastError.collectAsState()
+    // Looked up again on every state change: the name appears once the adapter is paired.
+    val adapter = remember(connection) { ObdBluetoothManager.savedDeviceLabel() }
+    if (connecting) {
+        Text(stringResource(R.string.vehicle_obd_connecting_to, adapter ?: "OBD"), color = DashColors.Speed)
+    } else {
+        Text(stringResource(R.string.vehicle_obd_not_connected), color = DashColors.Muted)
+        // What the last attempt ran into, so a silent adapter is not a mystery.
+        lastError?.let { Text(it, color = DashColors.Warning, style = MaterialTheme.typography.bodySmall) }
+        adapter?.let { Text(stringResource(R.string.vehicle_obd_adapter, it), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall) }
+    }
     Spacer(Modifier.height(10.dp))
-    Button(
-        onClick = onConnect,
-        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-    ) { Text(stringResource(R.string.vehicle_connect)) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(
+            onClick = onConnect,
+            enabled = !connecting,
+            colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+        ) { Text(if (connecting) "\u2026" else stringResource(R.string.vehicle_connect)) }
+        if (onPickDevice != null) {
+            TextButton(onClick = onPickDevice, enabled = !connecting) {
+                Text(stringResource(R.string.vehicle_choose_adapter), color = DashColors.Accent)
+            }
+        }
+    }
 }
 
 @Composable
@@ -641,7 +660,8 @@ internal fun ObdAllCard(
     obdData: ObdData,
     connection: ObdConnectionState,
     onConnect: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPickDevice: (() -> Unit)? = null
 ) {
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
@@ -649,7 +669,7 @@ internal fun ObdAllCard(
             Text(stringResource(R.string.vehicle_obd_data_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
             if (!connected) {
-                ObdNotConnected(onConnect)
+                ObdNotConnected(connection, onConnect, onPickDevice)
             } else {
                 MeterChip(stringResource(R.string.vehicle_speed), "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))

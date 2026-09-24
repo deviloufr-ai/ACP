@@ -91,7 +91,8 @@ import kotlinx.coroutines.launch
 internal fun ObdDtcCard(
     connection: ObdConnectionState,
     onConnect: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPickDevice: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -127,7 +128,7 @@ internal fun ObdDtcCard(
             Spacer(Modifier.height(10.dp))
 
             if (!connected) {
-                ObdNotConnected(onConnect)
+                ObdNotConnected(connection, onConnect, onPickDevice)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(

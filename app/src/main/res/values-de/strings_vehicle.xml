@@ -189,4 +189,14 @@
     <string name="vehicle_dtc_area_computer">Steuergerät / Ausgänge</string>
     <string name="vehicle_dtc_area_transmission">Getriebe</string>
     <string name="vehicle_dtc_area_system">System</string>
+
+    <!-- Why the adapter is not connected -->
+    <string name="vehicle_obd_connecting_to">Verbinde mit %1$s…</string>
+    <string name="vehicle_obd_adapter">Adapter: %1$s</string>
+    <string name="vehicle_choose_adapter">Adapter wählen</string>
+    <string name="vehicle_err_bt_off">Bluetooth des Radios ist aus</string>
+    <string name="vehicle_err_not_paired">%1$s ist nicht mit dem Radio gekoppelt</string>
+    <string name="vehicle_err_refused">%1$s hat die Verbindung abgelehnt: von einem Handy oder einer anderen App belegt, ohne Strom oder außer Reichweite</string>
+    <string name="vehicle_err_silent">%1$s hat sich verbunden, aber nie geantwortet</string>
+    <string name="vehicle_err_permission">Bluetooth-Berechtigung nicht erteilt</string>
 </resources>

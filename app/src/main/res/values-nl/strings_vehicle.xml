@@ -189,4 +189,14 @@
     <string name="vehicle_dtc_area_computer">regeleenheid / uitgangen</string>
     <string name="vehicle_dtc_area_transmission">transmissie</string>
     <string name="vehicle_dtc_area_system">systeem</string>
+
+    <!-- Why the adapter is not connected -->
+    <string name="vehicle_obd_connecting_to">Verbinden met %1$s…</string>
+    <string name="vehicle_obd_adapter">Adapter: %1$s</string>
+    <string name="vehicle_choose_adapter">Adapter kiezen</string>
+    <string name="vehicle_err_bt_off">Bluetooth van de radio staat uit</string>
+    <string name="vehicle_err_not_paired">%1$s is niet gekoppeld met de radio</string>
+    <string name="vehicle_err_refused">%1$s weigerde de verbinding: in gebruik door een telefoon of andere app, zonder stroom, of buiten bereik</string>
+    <string name="vehicle_err_silent">%1$s verbond wel maar antwoordde nooit</string>
+    <string name="vehicle_err_permission">Bluetooth-toestemming niet verleend</string>
 </resources>

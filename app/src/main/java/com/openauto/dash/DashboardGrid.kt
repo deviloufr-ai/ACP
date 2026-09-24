@@ -489,13 +489,15 @@ internal fun TileContent(
             BuiltinKind.OBD_DTC -> ObdDtcCard(
                 connection = obdConnection,
                 onConnect = onConnectObd,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onPickDevice = onPickDevice
             )
             BuiltinKind.OBD_ALL -> ObdAllCard(
                 obdData = obdData,
                 connection = obdConnection,
                 onConnect = onConnectObd,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onPickDevice = onPickDevice
             )
             BuiltinKind.DOORS -> DoorsCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.CAN_MON -> CanMonitorCard(modifier = Modifier.fillMaxSize())

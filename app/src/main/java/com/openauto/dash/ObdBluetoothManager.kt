@@ -89,6 +89,22 @@ object ObdBluetoothManager {
     private val _pending = MutableStateFlow<Set<String>>(emptySet())
     val pending: StateFlow<Set<String>> = _pending.asStateFlow()
 
+    /** Why the last connection attempt failed, in the user's language; null after a success or before any attempt. */
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
+    private fun fail(@StringRes reason: Int, vararg args: Any): Boolean {
+        _lastError.value = appContext?.let { if (args.isEmpty()) it.getString(reason) else it.getString(reason, *args) }
+        return false
+    }
+
+    /** The saved adapter as the picker showed it: its Bluetooth name, else its address; null when none was chosen. */
+    @SuppressLint("MissingPermission")
+    fun savedDeviceLabel(): String? {
+        val address = savedDeviceAddress() ?: return null
+        return bondedDevices().firstOrNull { it.second == address }?.first ?: address
+    }
+
     fun setContext(context: Context) {
         appContext = context.applicationContext
     }
@@ -114,11 +130,15 @@ object ObdBluetoothManager {
                 // No poll or fault-code scan may talk to the link being replaced.
                 commandMutex.withLock {
                     runCatching { open(deviceAddress) }
-                        .onFailure { Log.w(TAG, "connect failed", it) }
+                        .onFailure {
+                            Log.w(TAG, "connect failed", it)
+                            if (it is SecurityException) fail(R.string.vehicle_err_permission)
+                            else _lastError.value = it.message ?: it.javaClass.simpleName
+                        }
                         .getOrDefault(false)
                 }
             }
-            if (!ok) closeQuietly()
+            if (!ok) closeQuietly() else _lastError.value = null
             _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
             return ok
         } finally {
@@ -137,18 +157,24 @@ object ObdBluetoothManager {
     @SuppressLint("MissingPermission")
     private fun open(deviceAddress: String): Boolean {
         val context = appContext ?: return false
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return false
-        val adapter = manager.adapter ?: return false
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = manager?.adapter ?: return fail(R.string.vehicle_err_bt_off)
         if (!adapter.isEnabled) {
             Log.w(TAG, "Bluetooth is off")
-            return false
+            return fail(R.string.vehicle_err_bt_off)
         }
         closeQuietly()
         val device = adapter.getRemoteDevice(deviceAddress)
+        val label = runCatching { device.name }.getOrNull() ?: deviceAddress
+        // Only a paired adapter can be reached; an unpaired one fails slowly and says nothing.
+        if (adapter.bondedDevices.none { it.address == deviceAddress }) {
+            Log.w(TAG, "$deviceAddress is not paired")
+            return fail(R.string.vehicle_err_not_paired, label)
+        }
         runCatching { adapter.cancelDiscovery() }
         val newSocket = openSocket(device) ?: run {
             Log.w(TAG, "no RFCOMM channel to $deviceAddress accepted the connection")
-            return false
+            return fail(R.string.vehicle_err_refused, label)
         }
         socket = newSocket
         inputStream = newSocket.inputStream
@@ -156,7 +182,7 @@ object ObdBluetoothManager {
         // A socket nothing answers on is no adapter: fail, so it is tried again.
         if (!initializeAdapter()) {
             Log.w(TAG, "$deviceAddress connected but never answered")
-            return false
+            return fail(R.string.vehicle_err_silent, label)
         }
         return true
     }
@@ -179,17 +205,37 @@ object ObdBluetoothManager {
         return tryConnect(reflected)
     }
 
+    /**
+     * [BluetoothSocket.connect] has no timeout of its own and can sit for half
+     * a minute on an adapter that is unpowered or taken: a watchdog closes the
+     * socket after [CONNECT_TIMEOUT_MS], which makes the connect return.
+     */
     @SuppressLint("MissingPermission")
     private fun tryConnect(candidate: BluetoothSocket?): BluetoothSocket? {
         candidate ?: return null
+        val watchdog = Thread {
+            try {
+                Thread.sleep(CONNECT_TIMEOUT_MS)
+                Log.w(TAG, "connect timed out after ${CONNECT_TIMEOUT_MS} ms")
+                runCatching { candidate.close() }
+            } catch (e: InterruptedException) {
+                // The connect returned first: nothing to close.
+            }
+        }.apply { isDaemon = true; start() }
         return try {
             candidate.connect()
-            candidate
+            watchdog.interrupt()
+            if (candidate.isConnected) candidate else null
         } catch (e: IOException) {
+            watchdog.interrupt()
+            Log.w(TAG, "connect: ${e.message}")
             runCatching { candidate.close() }
             null
         }
     }
+
+    /** Per RFCOMM channel tried; three channels, so an attempt takes at most three times this. */
+    private const val CONNECT_TIMEOUT_MS = 8_000L
 
     /** Sends the standard ELM327 initialization sequence; false if the adapter said nothing at all. */
     private fun initializeAdapter(): Boolean {
