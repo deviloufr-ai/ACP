@@ -174,7 +174,22 @@ fun DashboardItem.overlaps(other: DashboardItem): Boolean =
  */
 object DashboardStore {
 
-    const val PAGE_COUNT = 3
+    /**
+     * Dashboards form a cross: three side by side (pages 0-2), and the middle
+     * one also has two above and two below (pages 3-6). New pages were added
+     * after the first three so older saved layouts keep their page numbers.
+     */
+    const val PAGE_COUNT = 7
+
+    /** The pages swiped left/right, in order. */
+    val ROW = listOf(0, 1, 2)
+
+    /** The middle page of [ROW], the only one with pages above and below. */
+    const val CENTER = 1
+
+    /** The pages swiped up/down from [CENTER], top to bottom; [CENTER] sits at [COLUMN_HOME]. */
+    val COLUMN = listOf(3, 4, CENTER, 5, 6)
+    const val COLUMN_HOME = 2
 
     private const val PREFS = "dashboard_layout_prefs"
     private const val KEY_PAGES = "pages"
@@ -213,9 +228,7 @@ object DashboardStore {
                 DashboardItem.BuiltinWidget(BuiltinKind.MEDIA)
             )
         ),
-        emptyList(),
-        emptyList()
-    )
+    ) + List(PAGE_COUNT - 1) { emptyList() }
 
     /**
      * Layout variants keep separate arrangements: the full-width dashboard and

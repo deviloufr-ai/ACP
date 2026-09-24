@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -77,6 +79,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -110,7 +113,6 @@ internal class TopBarModel(
      */
     val merged: Boolean = false,
     val page: Int = 0,
-    val pageCount: Int = 0,
     val onPage: (Int) -> Unit = {}
 )
 
@@ -134,13 +136,12 @@ internal fun TopBar(
     onCheckUpdates: () -> Unit,
     merged: Boolean = false,
     page: Int = 0,
-    pageCount: Int = 0,
     onPage: (Int) -> Unit = {}
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
         onApps, onConnectObd, onSplit, onToggleEdit, onTheme, onAi, onSystem,
-        onLanguage, onCheckUpdates, merged, page, pageCount, onPage
+        onLanguage, onCheckUpdates, merged, page, onPage
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -578,34 +579,76 @@ internal fun EditBar(
 }
 
 @Composable
-internal fun PageDots(count: Int, current: Int, onSelect: (Int) -> Unit) {
-    PageDotRow(count, current, onSelect, Modifier.fillMaxWidth().padding(vertical = 10.dp))
+internal fun PageDots(current: Int, onSelect: (Int) -> Unit) {
+    PageDotRow(current, onSelect, Modifier.fillMaxWidth().padding(vertical = 2.dp))
 }
 
 /** The page dots inside a bar, in the clock's place while the head unit's status bar shows the time. */
 @Composable
 internal fun BarPageDots(m: TopBarModel) {
-    PageDotRow(m.pageCount, m.page, m.onPage, Modifier)
+    PageDotRow(m.page, m.onPage, Modifier)
 }
 
+/**
+ * The dashboards drawn as the cross they form: the row of pages swiped
+ * sideways, with the middle dot's column of smaller dots for the pages above
+ * and below it.
+ */
 @Composable
-private fun PageDotRow(count: Int, current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
+private fun PageDotRow(current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(count) { index ->
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(width = if (index == current) 22.dp else 8.dp, height = 8.dp)
-                    .clip(CircleShape)
-                    .background(if (index == current) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
-                    .clickable { onSelect(index) }
-            )
+        DashboardStore.ROW.forEach { page ->
+            if (page == DashboardStore.CENTER) {
+                // The column is one tap area, 48 dp wide, and the nearest dot
+                // wins: the small dots are too close together to aim at.
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.pointerInput(onSelect) {
+                        detectTapGestures { tap ->
+                            val row = (tap.y * DashboardStore.COLUMN.size / size.height).toInt()
+                            onSelect(DashboardStore.COLUMN[row.coerceIn(0, DashboardStore.COLUMN.size - 1)])
+                        }
+                    }
+                ) {
+                    DashboardStore.COLUMN.forEach { p ->
+                        if (p == DashboardStore.CENTER) {
+                            PageDot(p == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 2.dp))
+                        } else {
+                            PageDot(p == current, width = 5.dp, height = 11.dp, PaddingValues(horizontal = 22.dp, vertical = 1.dp))
+                        }
+                    }
+                }
+            } else {
+                // 48 x 48 dp to tap, whatever the dot's size.
+                PageDot(page == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 20.dp)) { onSelect(page) }
+            }
         }
     }
+}
+
+/**
+ * One page dot: [width] x [height] is its stretched "you are here" shape, the
+ * smaller side its round one. [touch] widens the tap area around the dot;
+ * without [onClick] the dot is drawn only, and something around it takes the tap.
+ */
+@Composable
+private fun PageDot(selected: Boolean, width: Dp, height: Dp, touch: PaddingValues, onClick: (() -> Unit)? = null) {
+    val round = minOf(width, height)
+    Box(
+        modifier = Modifier
+            .then(
+                if (onClick != null) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+                else Modifier
+            )
+            .padding(touch)
+            .size(width = if (selected) width else round, height = if (selected) height else round)
+            .clip(CircleShape)
+            .background(if (selected) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
+    )
 }
 
 /**

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -54,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,6 +71,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
@@ -160,7 +163,32 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var launchBarEditor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     // (page, tile index) whose design picker is open.
     var designPicker by remember { mutableStateOf<Pair<Int, Int>?>(null) }
-    val pagerState = rememberPagerState(pageCount = { DashboardStore.PAGE_COUNT })
+    // Pages 0-2 swipe sideways; the middle one also swipes up/down (see DashboardStore.COLUMN).
+    val pagerState = rememberPagerState(pageCount = { DashboardStore.ROW.size })
+    val columnState = rememberPagerState(
+        initialPage = DashboardStore.COLUMN_HOME,
+        pageCount = { DashboardStore.COLUMN.size }
+    )
+    /** The dashboard on screen, as an index into pages. */
+    val currentPage by remember {
+        derivedStateOf {
+            if (pagerState.currentPage == DashboardStore.CENTER) DashboardStore.COLUMN[columnState.currentPage]
+            else DashboardStore.ROW[pagerState.currentPage]
+        }
+    }
+    /** Brings [page] on screen: back to the middle row first when it is above or below, and the reverse. */
+    fun showPage(page: Int) {
+        scope.launch {
+            val row = DashboardStore.COLUMN.indexOf(page)
+            if (row >= 0 && page != DashboardStore.CENTER) {
+                pagerState.animateScrollToPage(DashboardStore.CENTER)
+                columnState.animateScrollToPage(row)
+            } else {
+                columnState.animateScrollToPage(DashboardStore.COLUMN_HOME)
+                pagerState.animateScrollToPage(DashboardStore.ROW.indexOf(page))
+            }
+        }
+    }
 
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
@@ -192,7 +220,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // aside. A page swipe must take the pages' windows along at once, but the
     // Maps dock beside the pages does not move with them and stays put.
     LaunchedEffect(showAllApps) { PipAnchor.steppedAside.value = showAllApps }
-    LaunchedEffect(pagerState.isScrollInProgress) { PipAnchor.pageSwiping.value = pagerState.isScrollInProgress }
+    val pageSwiping = pagerState.isScrollInProgress || columnState.isScrollInProgress
+    LaunchedEffect(pageSwiping) { PipAnchor.pageSwiping.value = pageSwiping }
 
     /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
     fun windowApps(items: List<DashboardItem>): Set<String> = items.mapNotNull {
@@ -216,9 +245,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // tile is not on the new page; waiting for the old page to be disposed left
     // a strip of the window visible for a few seconds after the swipe. They are
     // parked aside, still running, so a navigation or a song goes on.
-    LaunchedEffect(pagerState.currentPage, pages, layout) {
+    LaunchedEffect(currentPage, pages, layout) {
         PipAnchor.placedPackages.value = windowAppsEverywhere()
-        PipAnchor.stashAllExcept(context, windowApps(pages.getOrNull(pagerState.currentPage).orEmpty()))
+        PipAnchor.stashAllExcept(context, windowApps(pages.getOrNull(currentPage).orEmpty()))
     }
     var rootChecked by remember { mutableStateOf(false) }
     var rootAvailable by remember { mutableStateOf(false) }
@@ -586,11 +615,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
             Row(modifier = Modifier.fillMaxSize().onSizeChanged { rowWidthPx = it.width }) {
             if (dockSide == Alignment.Start) { mapsDock(dockSide); divider() }
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = !blockPagerSwipe,
-                modifier = Modifier.weight(if (dockSide == null) 1f else 1f - dockFraction).fillMaxHeight()
-            ) { page ->
+            /** One dashboard, by its index into pages. */
+            val dashboardPage: @Composable (Int) -> Unit = { page ->
                 DashboardPage(
                     pageItems = pages[page],
                     editing = editing,
@@ -619,6 +645,38 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onAdd = { onAdd(page) },
                     onDesign = { index -> designPicker = page to index }
                 )
+            }
+            // Sideways swipes only from the middle row: the pages above and
+            // below the centre one have nothing beside them.
+            val onHomeRow = columnState.currentPage == DashboardStore.COLUMN_HOME && !columnState.isScrollInProgress
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = !blockPagerSwipe && onHomeRow,
+                modifier = Modifier.weight(if (dockSide == null) 1f else 1f - dockFraction).fillMaxHeight()
+            ) { index ->
+                val page = DashboardStore.ROW[index]
+                if (page == DashboardStore.CENTER) {
+                    VerticalPager(
+                        state = columnState,
+                        userScrollEnabled = !blockPagerSwipe && !pagerState.isScrollInProgress,
+                        // Off the home row a sideways swipe heads back to it: the
+                        // row is the only way sideways, and a dead swipe feels broken.
+                        modifier = Modifier.fillMaxSize().pointerInput(onHomeRow, blockPagerSwipe) {
+                            if (onHomeRow || blockPagerSwipe) return@pointerInput
+                            var dragged = 0f
+                            val threshold = 48.dp.toPx()
+                            detectHorizontalDragGestures(
+                                onDragStart = { dragged = 0f },
+                                onDragEnd = { if (abs(dragged) >= threshold) showPage(DashboardStore.CENTER) }
+                            ) { change, dx ->
+                                dragged += dx
+                                change.consume()
+                            }
+                        }
+                    ) { row -> dashboardPage(DashboardStore.COLUMN[row]) }
+                } else {
+                    dashboardPage(page)
+                }
             }
             if (dockSide == Alignment.End) { divider(); mapsDock(dockSide) }
             }
@@ -674,11 +732,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         // reason: the OS status bar can cover the top strip and swallow its taps.
         if (editing && !inSplitMode) {
             EditBar(
-                page = pagerState.currentPage,
+                page = currentPage,
                 canUndo = history.isNotEmpty(),
-                onAdd = { onAdd(pagerState.currentPage) },
+                onAdd = { onAdd(currentPage) },
                 onUndo = { undo() },
-                onReset = { resetPage(pagerState.currentPage) },
+                onReset = { resetPage(currentPage) },
                 onDone = { editing = false }
             )
         }
@@ -712,9 +770,15 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                                 dragged >= threshold -> -1
                                 else -> 0
                             }
+                            // Sideways along the middle row; from a page above or
+                            // below the centre that means back to the row first.
                             if (step != 0) {
-                                val next = (pagerState.currentPage + step).coerceIn(0, DashboardStore.PAGE_COUNT - 1)
-                                scope.launch { pagerState.animateScrollToPage(next) }
+                                if (columnState.currentPage != DashboardStore.COLUMN_HOME) {
+                                    showPage(DashboardStore.CENTER)
+                                } else {
+                                    val next = (pagerState.currentPage + step).coerceIn(0, DashboardStore.ROW.size - 1)
+                                    scope.launch { pagerState.animateScrollToPage(next) }
+                                }
                             }
                         }
                     ) { change, dx ->
@@ -744,18 +808,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onLanguage = { showLanguagePicker = true },
             onCheckUpdates = checkForUpdates,
             merged = barForced,
-            page = pagerState.currentPage,
-            pageCount = DashboardStore.PAGE_COUNT,
-            onPage = { scope.launch { pagerState.animateScrollToPage(it) } }
+            page = currentPage,
+            onPage = ::showPage
         )
 
         // With the status bar up the dots sit in the launcher bar instead.
         if (!barForced) {
-            PageDots(
-                count = DashboardStore.PAGE_COUNT,
-                current = pagerState.currentPage,
-                onSelect = { scope.launch { pagerState.animateScrollToPage(it) } }
-            )
+            PageDots(current = currentPage, onSelect = ::showPage)
         }
         }
     }
