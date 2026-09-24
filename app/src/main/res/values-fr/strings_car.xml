@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">Ma voiture</string>
+    <string name="car_menu_detail">Modèle, moteur et fiche technique, remplis par l\'IA</string>
     <string name="car_my_car_title_dialog">Ma voiture</string>
     <string name="car_settings_explanation">Nommez votre voiture le plus précisément possible (modèle, moteur, version, année, boîte). L\'IA remplit la fiche ; vérifiez-la, corrigez si besoin, puis enregistrez. Les tuiles et le Mécanicien IA s\'en servent.</string>
     <string name="car_name">Voiture</string>

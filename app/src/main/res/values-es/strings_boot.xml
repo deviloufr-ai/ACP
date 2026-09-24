@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Logo de arranque</string>
+    <string name="boot_menu_detail">La marca de tu coche en la pantalla de arranque de la unidad</string>
     <string name="boot_title">Logo de arranque</string>
     <string name="boot_search">Buscar entre %1$d marcas</string>
     <string name="boot_no_match">Ninguna marca coincide.</string>

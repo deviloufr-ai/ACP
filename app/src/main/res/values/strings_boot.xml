@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Boot logo</string>
+    <string name="boot_menu_detail">Your car\'s brand on the unit\'s start-up screen</string>
     <string name="boot_title">Boot logo</string>
     <string name="boot_search">Search %1$d car brands</string>
     <string name="boot_no_match">No brand matches.</string>

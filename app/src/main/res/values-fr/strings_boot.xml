@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Logo de démarrage</string>
+    <string name="boot_menu_detail">La marque de votre voiture à l\'allumage de l\'autoradio</string>
     <string name="boot_title">Logo de démarrage</string>
     <string name="boot_search">Rechercher parmi %1$d marques</string>
     <string name="boot_no_match">Aucune marque ne correspond.</string>

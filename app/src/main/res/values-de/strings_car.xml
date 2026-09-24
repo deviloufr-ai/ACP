@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">Mein Auto</string>
+    <string name="car_menu_detail">Modell, Motor und Daten, von der KI ausgefüllt</string>
     <string name="car_my_car_title_dialog">Mein Auto</string>
     <string name="car_settings_explanation">Geben Sie Ihr Auto so genau wie möglich an (Modell, Motor, Version, Baujahr, Getriebe). Die KI füllt die Daten aus; prüfen, bei Bedarf korrigieren, dann speichern. Die Kacheln und der KI-Mechaniker nutzen sie.</string>
     <string name="car_name">Auto</string>

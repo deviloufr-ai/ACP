@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Logótipo de arranque</string>
+    <string name="boot_menu_detail">A marca do seu carro no ecrã de arranque da unidade</string>
     <string name="boot_title">Logótipo de arranque</string>
     <string name="boot_search">Pesquisar %1$d marcas</string>
     <string name="boot_no_match">Nenhuma marca corresponde.</string>

@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Terminer la modification</string>
     <string name="dash_menu_theme">Thème</string>
     <string name="dash_menu_split_screen">Écran partagé avec une appli</string>
+    <string name="dash_menu_section_dashboard">Tableau de bord</string>
+    <string name="dash_menu_section_car">Voiture</string>
+    <string name="dash_menu_section_settings">Réglages</string>
+    <string name="dash_menu_edit_dashboards_detail">Déplacer, redimensionner, ajouter ou retirer des tuiles</string>
+    <string name="dash_menu_done_editing_detail">Garder cette disposition</string>
+    <string name="dash_menu_theme_detail">Habillage et couleurs du tableau de bord</string>
+    <string name="dash_menu_split_screen_detail">Le tableau de bord à côté d\'une appli</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Organisation du tableau de bord %1$d</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Téléchargement de la mise à jour… %1$d %%</string>
     <string name="dash_update_installing">Lancement de l\'installation…</string>
     <string name="dash_menu_check_updates">Rechercher des mises à jour</string>
+    <string name="dash_menu_check_updates_detail">Récupérer la dernière version de Dashwheel</string>
     <string name="dash_update_checking">Recherche de mises à jour…</string>
     <string name="dash_update_up_to_date">Dashwheel est à jour (v%1$s)</string>
     <string name="dash_update">Mettre à jour</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">Appli système (avancé)</string>
+    <string name="dash_system_app_detail">Installe Dashwheel avec root pour une intégration plus poussée des applis</string>
     <string name="dash_system_app_body">Installez Dashwheel comme appli système privilégiée pour intégrer la vraie appli Google Maps — avec la navigation — dans la tuile Maps, comme les launchers d\'origine. Avec Magisk, l\'installation est systemless (un module Magisk, qui fonctionne même si /system est plein) ; sinon elle passe par su ou par l\'ADB root interne (:%1$d). Redémarrez ensuite pour l\'activer.</string>
     <string name="dash_root_checking">Vérification du root…</string>
     <string name="dash_root_available">Root (su) disponible ✓ — module Magisk utilisé s\'il est présent</string>

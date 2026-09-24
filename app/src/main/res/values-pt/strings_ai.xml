@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mecânico IA</string>
+    <string name="ai_menu_detail">Pergunte sobre uma avaria ou um ruído; chave Gemini</string>
     <string name="ai_explanation">Quando o adaptador OBD se liga, o Dashwheel procura códigos de avaria sozinho. Cada código novo é explicado pelo Google Gemini e dito em voz alta; os detalhes aparecem no bloco Códigos de avaria. Só são enviados os códigos, as leituras do motor e o modelo do carro.</string>
     <string name="ai_activation_code">Código de ativação</string>
     <string name="ai_activation_hint">Desbloqueia a chave integrada</string>

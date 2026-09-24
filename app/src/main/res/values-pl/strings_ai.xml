@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mechanik AI</string>
+    <string name="ai_menu_detail">Zapytaj o usterkę lub hałas; klucz Gemini</string>
     <string name="ai_explanation">Po połączeniu adaptera OBD Dashwheel sam sprawdza kody błędów. Nowy kod jest objaśniany przez Google Gemini i odczytywany na głos; szczegóły pojawiają się na kafelku Kody błędów. Wysyłane są tylko kody, odczyty silnika i model auta.</string>
     <string name="ai_activation_code">Kod aktywacyjny</string>
     <string name="ai_activation_hint">Odblokowuje wbudowany klucz</string>

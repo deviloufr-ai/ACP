@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Fine modifica</string>
     <string name="dash_menu_theme">Tema</string>
     <string name="dash_menu_split_screen">Schermo diviso con un\'app</string>
+    <string name="dash_menu_section_dashboard">Cruscotto</string>
+    <string name="dash_menu_section_car">Auto</string>
+    <string name="dash_menu_section_settings">Impostazioni</string>
+    <string name="dash_menu_edit_dashboards_detail">Sposta, ridimensiona, aggiungi o togli i riquadri</string>
+    <string name="dash_menu_done_editing_detail">Mantieni questa disposizione</string>
+    <string name="dash_menu_theme_detail">Aspetto e colori del cruscotto</string>
+    <string name="dash_menu_split_screen_detail">Il cruscotto accanto a un\'app qualsiasi</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Disposizione cruscotto %1$d</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Download aggiornamento… %1$d%%</string>
     <string name="dash_update_installing">Avvio dell\'installazione…</string>
     <string name="dash_menu_check_updates">Cerca aggiornamenti</string>
+    <string name="dash_menu_check_updates_detail">Scarica l\'ultima versione di Dashwheel</string>
     <string name="dash_update_checking">Ricerca di aggiornamenti…</string>
     <string name="dash_update_up_to_date">Dashwheel è aggiornato (v%1$s)</string>
     <string name="dash_update">Aggiorna</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">App di sistema (avanzato)</string>
+    <string name="dash_system_app_detail">Installa Dashwheel con root per un\'integrazione più profonda delle app</string>
     <string name="dash_system_app_body">Installa Dashwheel come app di sistema privilegiata per incorporare la vera app Google Maps, con navigazione, nel riquadro Maps, come i launcher di serie. Con Magisk si installa in modalità systemless (un modulo Magisk, funziona anche se /system è pieno); altrimenti usa su o l\'ADB root interno (:%1$d). Poi riavvia per attivarla.</string>
     <string name="dash_root_checking">Verifica root…</string>
     <string name="dash_root_available">Root (su) disponibile ✓ – userà il modulo Magisk se presente</string>

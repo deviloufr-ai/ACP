@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="boot_menu">Opstartlogo</string>
+    <string name="boot_menu_detail">Het merk van uw auto op het opstartscherm van het toestel</string>
     <string name="boot_title">Opstartlogo</string>
     <string name="boot_search">Zoek in %1$d automerken</string>
     <string name="boot_no_match">Geen merk gevonden.</string>

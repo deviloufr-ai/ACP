@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mécanicien IA</string>
+    <string name="ai_menu_detail">Une panne, un bruit ? Posez la question ; clé Gemini</string>
     <string name="ai_explanation">Quand l\'adaptateur OBD se connecte, Dashwheel recherche lui-même les codes défaut. Un nouveau code est expliqué par Google Gemini et annoncé à voix haute ; le détail s\'affiche sur la tuile Codes défaut. Seuls les codes, les mesures moteur et le modèle de voiture sont envoyés.</string>
     <string name="ai_activation_code">Code d\'activation</string>
     <string name="ai_activation_hint">Déverrouille la clé intégrée</string>

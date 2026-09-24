@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Zakończ edycję</string>
     <string name="dash_menu_theme">Motyw</string>
     <string name="dash_menu_split_screen">Podzielony ekran z aplikacją</string>
+    <string name="dash_menu_section_dashboard">Pulpit</string>
+    <string name="dash_menu_section_car">Samochód</string>
+    <string name="dash_menu_section_settings">Ustawienia</string>
+    <string name="dash_menu_edit_dashboards_detail">Przesuwaj, zmieniaj rozmiar, dodawaj lub usuwaj kafelki</string>
+    <string name="dash_menu_done_editing_detail">Zachowaj ten układ</string>
+    <string name="dash_menu_theme_detail">Wygląd i kolory pulpitu</string>
+    <string name="dash_menu_split_screen_detail">Pulpit obok dowolnej aplikacji</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Układanie pulpitu %1$d</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Pobieranie aktualizacji… %1$d%%</string>
     <string name="dash_update_installing">Uruchamianie instalatora…</string>
     <string name="dash_menu_check_updates">Sprawdź aktualizacje</string>
+    <string name="dash_menu_check_updates_detail">Pobierz najnowszą wersję Dashwheel</string>
     <string name="dash_update_checking">Sprawdzanie aktualizacji…</string>
     <string name="dash_update_up_to_date">Dashwheel jest aktualny (v%1$s)</string>
     <string name="dash_update">Aktualizuj</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">Aplikacja systemowa (zaawansowane)</string>
+    <string name="dash_system_app_detail">Instaluje Dashwheel z rootem dla głębszej integracji aplikacji</string>
     <string name="dash_system_app_body">Zainstaluj Dashwheel jako uprzywilejowaną aplikację systemową, aby osadzić prawdziwą aplikację Google Maps – z nawigacją – w kafelku Maps, jak w fabrycznych launcherach. Z Magiskiem instaluje się bez modyfikacji systemu (moduł Magisk – działa nawet przy pełnym /system); w przeciwnym razie przez su lub wewnętrzne root ADB (:%1$d). Następnie uruchom ponownie, aby aktywować.</string>
     <string name="dash_root_checking">Sprawdzanie roota…</string>
     <string name="dash_root_available">Root (su) dostępny ✓ – użyje modułu Magisk, jeśli jest</string>

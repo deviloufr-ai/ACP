@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">Mi coche</string>
+    <string name="car_menu_detail">Modelo, motor y ficha técnica, rellenados por la IA</string>
     <string name="car_my_car_title_dialog">Mi coche</string>
     <string name="car_settings_explanation">Indica tu coche con la mayor precisión posible (modelo, motor, versión, año, cambio). La IA rellena la ficha; revísala, corrige lo necesario y guarda. Las tarjetas y el Mecánico IA la usan.</string>
     <string name="car_name">Coche</string>

@@ -2,6 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI-monteur</string>
+    <string name="ai_menu_detail">Vraag naar een storing of een geluid; Gemini-sleutel</string>
     <string name="ai_explanation">Zodra de OBD-adapter verbinding maakt, zoekt Dashwheel zelf naar foutcodes. Een nieuwe code wordt door Google Gemini uitgelegd en hardop voorgelezen; de details staan op de tegel Foutcodes. Alleen de codes, de motorwaarden en het automodel worden verstuurd.</string>
     <string name="ai_activation_code">Activeringscode</string>
     <string name="ai_activation_hint">Ontgrendelt de ingebouwde sleutel</string>

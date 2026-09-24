@@ -10,6 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,6 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +71,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -281,7 +286,25 @@ internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: D
     }
 }
 
-/** Menu around any [anchor] a skin draws: edit, theme, AI mechanic, split screen, system install, and the version. */
+/** One line of the ⋮ menu: what it opens, and in a few words what that is for. */
+private class MenuEntry(val title: String, val detail: String, val icon: ImageVector, val onClick: () -> Unit)
+
+/** A titled group of the ⋮ menu: what the entries have in common, so the eye finds the right one. */
+private class MenuSection(@StringRes val title: Int, val entries: List<MenuEntry>)
+
+/** Column width of a menu section; DropdownMenuItem lays its content out at most this wide anyway. */
+private val MenuSectionWidth = 264.dp
+
+/** Screens at least this wide show the three sections side by side; narrower ones stack them. */
+private const val MenuSideBySideMinWidthDp = 840
+
+/**
+ * The ⋮ menu around any [anchor] a skin draws. Its entries are grouped under
+ * three headings — the dashboard, the car, and the app itself — and each one
+ * says in a line what it does, so nothing has to be opened to find out. On a
+ * head unit's wide screen the three groups sit side by side, all visible at
+ * once; on a narrow screen they stack.
+ */
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
@@ -295,27 +318,57 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             action()
         }
     }
+    val sections = listOf(
+        MenuSection(
+            R.string.dash_menu_section_dashboard,
+            listOf(
+                if (m.editing) {
+                    MenuEntry(stringResource(R.string.dash_menu_done_editing), stringResource(R.string.dash_menu_done_editing_detail), Icons.Filled.Done, pick(m.onToggleEdit))
+                } else {
+                    MenuEntry(stringResource(R.string.dash_menu_edit_dashboards), stringResource(R.string.dash_menu_edit_dashboards_detail), Icons.Filled.Edit, pick(m.onToggleEdit))
+                },
+                MenuEntry(stringResource(R.string.dash_menu_theme), stringResource(R.string.dash_menu_theme_detail), Icons.Filled.Palette, pick(m.onTheme)),
+                MenuEntry(stringResource(R.string.dash_menu_split_screen), stringResource(R.string.dash_menu_split_screen_detail), Icons.Filled.Splitscreen, pick(m.onSplit)),
+            )
+        ),
+        MenuSection(
+            R.string.dash_menu_section_car,
+            listOf(
+                MenuEntry(stringResource(R.string.car_menu), stringResource(R.string.car_menu_detail), Icons.Filled.DirectionsCar, pick { carSettings = true }),
+                MenuEntry(stringResource(R.string.upkeep_dialog_title), stringResource(R.string.upkeep_settings_detail), Icons.Filled.Handyman, pick { upkeep = true }),
+                MenuEntry(stringResource(R.string.ai_title), stringResource(R.string.ai_menu_detail), Icons.Filled.AutoAwesome, pick(m.onAi)),
+                MenuEntry(stringResource(R.string.explore_title), stringResource(R.string.explore_settings_detail), Icons.Filled.Science, pick { explorer = true }),
+            )
+        ),
+        MenuSection(
+            R.string.dash_menu_section_settings,
+            listOfNotNull(
+                MenuEntry(stringResource(R.string.language_menu), stringResource(R.string.language_menu_detail), Icons.Filled.Language, pick(m.onLanguage)),
+                // Only on the QF001 / K706 firmware the feature was built for.
+                if (BootLogoSupport.available) {
+                    MenuEntry(stringResource(R.string.boot_menu), stringResource(R.string.boot_menu_detail), Icons.Filled.PowerSettingsNew, pick { bootLogo = true })
+                } else null,
+                MenuEntry(stringResource(R.string.dash_system_app_title), stringResource(R.string.dash_system_app_detail), Icons.Filled.Build, pick(m.onSystem)),
+                MenuEntry(stringResource(R.string.dash_menu_check_updates), stringResource(R.string.dash_menu_check_updates_detail), Icons.Filled.SystemUpdate, pick(m.onCheckUpdates)),
+            )
+        ),
+    )
     Box {
         anchor { open = true }
         DashMenu(open, onDismiss = { open = false }) {
-            DashMenuItem(
-                text = stringResource(if (m.editing) R.string.dash_menu_done_editing else R.string.dash_menu_edit_dashboards),
-                leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
-                onClick = pick(m.onToggleEdit)
-            )
-            DashMenuItem(stringResource(R.string.dash_menu_theme), leading = { MenuIcon(Icons.Filled.Palette) }, onClick = pick(m.onTheme))
-            DashMenuItem(stringResource(R.string.language_menu), leading = { MenuIcon(Icons.Filled.Language) }, onClick = pick(m.onLanguage))
-            DashMenuItem(stringResource(R.string.ai_title), leading = { MenuIcon(Icons.Filled.AutoAwesome) }, onClick = pick(m.onAi))
-            DashMenuItem(stringResource(R.string.car_menu), leading = { MenuIcon(Icons.Filled.DirectionsCar) }, onClick = pick { carSettings = true })
-            DashMenuItem(stringResource(R.string.upkeep_dialog_title), leading = { MenuIcon(Icons.Filled.Handyman) }, onClick = pick { upkeep = true })
-            DashMenuItem(stringResource(R.string.explore_title), leading = { MenuIcon(Icons.Filled.Science) }, onClick = pick { explorer = true })
-            // Only on the QF001 / K706 firmware the feature was built for.
-            if (BootLogoSupport.available) {
-                DashMenuItem(stringResource(R.string.boot_menu), leading = { MenuIcon(Icons.Filled.PowerSettingsNew) }, onClick = pick { bootLogo = true })
+            if (LocalConfiguration.current.screenWidthDp >= MenuSideBySideMinWidthDp) {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    sections.forEachIndexed { i, section ->
+                        if (i > 0) VerticalDivider(color = DashColors.Line, modifier = Modifier.fillMaxHeight())
+                        MenuSectionColumn(section)
+                    }
+                }
+            } else {
+                sections.forEachIndexed { i, section ->
+                    if (i > 0) HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
+                    MenuSectionColumn(section)
+                }
             }
-            DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
-            DashMenuItem(stringResource(R.string.dash_system_app_title), leading = { MenuIcon(Icons.Filled.Build) }, onClick = pick(m.onSystem))
-            DashMenuItem(stringResource(R.string.dash_menu_check_updates), leading = { MenuIcon(Icons.Filled.SystemUpdate) }, onClick = pick(m.onCheckUpdates))
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
             Text(
                 "Dashwheel v${m.versionName}",
@@ -329,6 +382,39 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
     if (carSettings) CarSettingsDialog(onDismiss = { carSettings = false })
     if (upkeep) UpkeepDialog(onDismiss = { upkeep = false })
     if (explorer) PidExplorerDialog(onDismiss = { explorer = false })
+}
+
+/** A section of the ⋮ menu: its heading, then its entries. */
+@Composable
+private fun MenuSectionColumn(section: MenuSection) {
+    Column(modifier = Modifier.width(MenuSectionWidth)) {
+        Text(
+            stringResource(section.title).uppercase(),
+            color = DashColors.Muted,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.08.em,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp)
+        )
+        section.entries.forEach { entry ->
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text(entry.title, color = DashColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            entry.detail,
+                            color = DashColors.Muted,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                },
+                leadingIcon = { MenuIcon(entry.icon) },
+                onClick = entry.onClick
+            )
+        }
+    }
 }
 
 @Composable

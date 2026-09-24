@@ -25,6 +25,13 @@
     <string name="dash_menu_done_editing">Bearbeiten beenden</string>
     <string name="dash_menu_theme">Design</string>
     <string name="dash_menu_split_screen">Geteilter Bildschirm mit App</string>
+    <string name="dash_menu_section_dashboard">Dashboard</string>
+    <string name="dash_menu_section_car">Auto</string>
+    <string name="dash_menu_section_settings">Einstellungen</string>
+    <string name="dash_menu_edit_dashboards_detail">Kacheln verschieben, vergrößern, hinzufügen oder entfernen</string>
+    <string name="dash_menu_done_editing_detail">Diese Anordnung behalten</string>
+    <string name="dash_menu_theme_detail">Skin und Farben des Dashboards</string>
+    <string name="dash_menu_split_screen_detail">Das Dashboard neben einer beliebigen App</string>
 
     <!-- Edit bar (arranging a dashboard) -->
     <string name="dash_arranging_dashboard">Dashboard %1$d anordnen</string>
@@ -37,6 +44,7 @@
     <string name="dash_update_downloading">Update wird geladen… %1$d %%</string>
     <string name="dash_update_installing">Installation wird gestartet…</string>
     <string name="dash_menu_check_updates">Nach Updates suchen</string>
+    <string name="dash_menu_check_updates_detail">Die neueste Version von Dashwheel holen</string>
     <string name="dash_update_checking">Suche nach Updates…</string>
     <string name="dash_update_up_to_date">Dashwheel ist aktuell (v%1$s)</string>
     <string name="dash_update">Aktualisieren</string>
@@ -78,6 +86,7 @@
 
     <!-- System app install (root) -->
     <string name="dash_system_app_title">System-App (erweitert)</string>
+    <string name="dash_system_app_detail">Installiert Dashwheel mit Root für eine tiefere App-Integration</string>
     <string name="dash_system_app_body">Dashwheel als privilegierte System-App installieren, damit es die echte Google-Maps-App – mit Navigation – in der Maps-Kachel einbetten kann, wie Hersteller-Launcher. Mit Magisk wird systemlos installiert (ein Magisk-Modul – funktioniert auch bei vollem /system), sonst per su oder über das interne Root-ADB (:%1$d). Danach neu starten, um es zu aktivieren.</string>
     <string name="dash_root_checking">Root wird geprüft…</string>
     <string name="dash_root_available">Root (su) verfügbar ✓ – nutzt Magisk-Modul, falls vorhanden</string>

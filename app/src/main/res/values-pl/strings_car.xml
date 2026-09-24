@@ -110,6 +110,7 @@
 
     <!-- My car settings -->
     <string name="car_menu">Mój samochód</string>
+    <string name="car_menu_detail">Model, silnik i dane techniczne, uzupełnione przez AI</string>
     <string name="car_my_car_title_dialog">Mój samochód</string>
     <string name="car_settings_explanation">Opisz swój samochód jak najdokładniej (model, silnik, wersja, rok, skrzynia biegów). AI uzupełni dane; sprawdź je, popraw w razie potrzeby i zapisz. Korzystają z nich kafelki i Mechanik AI.</string>
     <string name="car_name">Samochód</string>

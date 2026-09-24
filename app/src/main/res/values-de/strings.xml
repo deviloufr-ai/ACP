@@ -4,6 +4,7 @@
 
     <!-- Language picker; each language is listed under its own name. -->
     <string name="language_menu">Sprache</string>
+    <string name="language_menu_detail">Die Sprache, die Dashwheel anzeigt und spricht</string>
     <string name="language_title">Sprache</string>
     <string name="language_system">System (%1$s)</string>
     <string name="language_close">Schließen</string>
