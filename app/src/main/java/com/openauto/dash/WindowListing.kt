@@ -106,6 +106,22 @@ object WindowListing {
         return found
     }
 
+    /**
+     * The id of a fullscreen stack for ordinary apps: the one holding the
+     * dashboard's own task when it is listed, else any other. A floating task
+     * moved there leaves freeform and shows full screen, still running. Null
+     * when the listing has no such stack (the Home stack never counts: it only
+     * takes home activities).
+     */
+    internal fun fullscreenStackId(output: String, selfPackage: String = "com.openauto.dash"): Int? {
+        val candidates = stackBlocks(output).filter {
+            windowingMode(it) == "fullscreen" && !it.contains("ActivityType=home")
+        }
+        val block = candidates.firstOrNull { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+            ?: candidates.firstOrNull()
+        return block?.takeWhile { it.isDigit() }?.toIntOrNull()
+    }
+
     /** "mode package" per stack, for the tile's diagnostic line. */
     internal fun summarizeStacks(output: String): String? {
         val parts = stackBlocks(output).mapNotNull { block ->

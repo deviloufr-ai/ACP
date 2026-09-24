@@ -9,6 +9,11 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Opens an app alongside the dashboard, preferring the system's real
@@ -64,33 +69,48 @@ object SplitLauncher {
      */
     private const val PRIMARY_SETTLE_MS = 700L
 
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     /**
      * Open a preselected pair of apps in split-screen: launch [primary] full
      * screen, dock it once it's foreground, then fill the other half with
      * [secondary]. Falls back to a freeform floating [secondary] window when the
-     * accessibility service isn't enabled. Returns true if [primary] launched.
+     * accessibility service isn't enabled.
+     *
+     * Either app may already be running in a dashboard tile's floating window
+     * (a "Maps window" tile on some page). Launched over that, the pair never
+     * split: the launch reused the app's freeform task instead of opening it
+     * full screen, so there was nothing for SystemUI to dock, and the tiles then
+     * parked both windows into the bottom-right corner. So the windows are
+     * first handed over to the split ([PipAnchor.lendToSplit]) — moved out of
+     * freeform, still running, or closed when the system refuses — and the
+     * tiles leave the two apps alone while the split comes up.
+     *
+     * Returns true when [primary] can be launched; the launch itself follows
+     * once the windows are dealt with.
      */
     fun launchSplitPair(context: Context, primary: String, secondary: String): Boolean {
         val primaryIntent = context.packageManager.getLaunchIntentForPackage(primary)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         } ?: return false
 
-        val launched = runCatching {
-            context.startActivity(primaryIntent)
-            true
-        }.onFailure { Log.e(TAG, "primary launch failed", it) }.getOrDefault(false)
-        if (!launched) return false
+        scope.launch {
+            PipAnchor.lendToSplit(context, listOf(primary, secondary))
 
-        Handler(Looper.getMainLooper()).postDelayed({
+            val launched = runCatching {
+                context.startActivity(primaryIntent)
+                true
+            }.onFailure { Log.e(TAG, "primary launch failed", it) }.getOrDefault(false)
+            if (!launched) return@launch
+
+            delay(PRIMARY_SETTLE_MS)
             if (SplitAccessibilityService.requestSplit()) {
-                Handler(Looper.getMainLooper()).postDelayed(
-                    { launchIntoAdjacent(context, secondary) },
-                    SPLIT_SETTLE_MS
-                )
+                delay(SPLIT_SETTLE_MS)
+                launchIntoAdjacent(context, secondary)
             } else {
                 launchFreeform(context, secondary)
             }
-        }, PRIMARY_SETTLE_MS)
+        }
         return true
     }
 

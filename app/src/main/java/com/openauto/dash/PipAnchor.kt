@@ -166,6 +166,7 @@ object PipAnchor {
      */
     private suspend fun handleStrays(context: Context, listing: String) {
         for (stray in WindowListing.strayWindows(listing, managedPackages(context), activePackages())) {
+            if (isLent(stray.packageName)) continue
             if (isPlaced(stray.packageName)) park(context, stray, "no tile on screen")
             else closeWindow(context, stray, "no tile left")
         }
@@ -190,13 +191,93 @@ object PipAnchor {
      */
 
     private suspend fun closeWindow(context: Context, win: FloatingWindow, reason: String) {
-        expectedGone.add(win.packageName)
-        unpark(context, win.packageName)
-        noteFreeform(win.packageName, false)
-        statusFlow(win.packageName).value = Status(seen = lastSeen)
+        forgetWindow(context, win.packageName)
         val out = runCatching { DockShell.shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "closed ${win.packageName} ($reason): ${out.trim()}")
+    }
+
+    /**
+     * The window of [packageName] is gone by our own doing (closed, or moved out
+     * of freeform): its state is dropped, its disappearance is expected rather
+     * than "the user closed it", and the dashboard takes its focus back when no
+     * docked window is left.
+     */
+    private suspend fun forgetWindow(context: Context, packageName: String) {
+        expectedGone.add(packageName)
+        unpark(context, packageName)
+        noteFreeform(packageName, false)
+        statusFlow(packageName).value = Status(seen = lastSeen)
         if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
+    }
+
+    // --- Lending windows to a split ------------------------------------------
+    //
+    // A split pair (Maps + YouTube Music side by side) and the tiles' windows
+    // compete for the same apps. Launched on top of a tile's window, the pair
+    // never split: Android reused the app's freeform task, so there was no
+    // full-screen task for SystemUI to dock, and the dashboard, stopped by the
+    // apps coming to the front, parked both windows into the bottom-right
+    // corner as it does for any other app in front. So before a pair launches,
+    // its apps' windows are taken away from the tiles (moved out of freeform,
+    // still running, or closed when the system refuses) and the apps are lent
+    // to the split for a while: meanwhile no tile parks, nudges or reopens
+    // them. Once the loan ends and the dashboard is back on screen, a tile
+    // whose app should live in it opens it again as usual.
+
+    /** How long the tiles leave a pair's apps alone after a split launch: the launch itself takes about three seconds. */
+    private const val SPLIT_LEND_MS = 8_000L
+
+    /** Package -> when its loan to a split ends (ms). */
+    private val lentUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** True while [packageName] belongs to a split launch and the tiles must leave its windows alone. */
+    fun isLent(packageName: String): Boolean {
+        val until = lentUntil[packageName] ?: return false
+        if (System.currentTimeMillis() < until) return true
+        lentUntil.remove(packageName, until)
+        return false
+    }
+
+    /**
+     * Hands [packages]' windows over to a split about to be launched: each app
+     * is lent for [SPLIT_LEND_MS], and any freeform window it has (docked on a
+     * tile or parked aside) is moved into the fullscreen stack, so that the
+     * launch that follows opens the app full screen rather than raising the
+     * floating window. A window the system will not move is closed instead:
+     * the pair then starts that app afresh. Returns once the windows are dealt
+     * with, so the caller can launch straight after.
+     */
+    suspend fun lendToSplit(context: Context, packages: Collection<String>) {
+        val now = System.currentTimeMillis()
+        for (pkg in packages) {
+            lentUntil[pkg] = now + SPLIT_LEND_MS
+            lastReopenAt[pkg] = now
+        }
+        // A park under way would push the window we are about to move.
+        for (pkg in packages) parking[pkg]?.cancel()
+        val listing = runGuarded { DockShell.listStacks(context) }.getOrElse {
+            Log.w(TAG, "lend to split: no stack listing", it)
+            return
+        }
+        syncFreeform(context, listing)
+        val windows = WindowListing.allFloatingWindows(listing, context.packageName)
+            .filter { it.mode == "freeform" && it.packageName in packages }
+        if (windows.isEmpty()) return
+        val fullscreen = WindowListing.fullscreenStackId(listing, context.packageName)
+        for (win in windows) {
+            val moved = fullscreen != null && runGuarded { DockShell.moveTask(context, win, fullscreen) }
+                .onSuccess { Log.i(TAG, "${win.packageName} lent to a split: $it") }
+                .onFailure { Log.w(TAG, "${win.packageName} could not leave freeform for the split", it) }
+                .isSuccess
+            if (moved) forgetWindow(context, win.packageName)
+        }
+        // Whatever still floats after that (the move was refused, or the ROM kept
+        // the window floating anyway) is closed: a fresh full-screen start is the
+        // one way left for the pair to come up split.
+        val after = runGuarded { DockShell.listStacks(context) }.getOrNull() ?: return
+        for (win in WindowListing.allFloatingWindows(after, context.packageName)) {
+            if (win.mode == "freeform" && win.packageName in packages) closeWindow(context, win, "lent to a split")
+        }
     }
 
     /**
@@ -274,6 +355,7 @@ object PipAnchor {
      * while one is under way would only repeat its round trips.
      */
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
+        if (isLent(packageName)) return
         parking.compute(packageName) { _, running ->
             if (running?.isActive == true) running
             else scope.launch {
@@ -294,6 +376,15 @@ object PipAnchor {
         var mem = DockPolicy.Memory()
         var lastResult: String? = null
         while (true) {
+            if (isLent(packageName)) {
+                // Lent to a split: neither parked, placed nor reopened meanwhile,
+                // and nothing remembered from before the loan, so its window
+                // being gone afterwards is not taken for the user closing it.
+                mem = DockPolicy.Memory()
+                status.value = status.value.copy(docked = false, checkedAt = System.currentTimeMillis())
+                delay(POLL_MS)
+                continue
+            }
             val lookup = runGuarded { findFloatingWindow(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
             // hide() left in place is parked here (closed if its tile is gone).
@@ -420,6 +511,7 @@ object PipAnchor {
      * turn it fullscreen, so that is never done here.
      */
     fun nudge(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
+        if (isLent(packageName)) return
         scope.launch {
             val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
             if (win.mode != "freeform") return@launch
@@ -581,8 +673,11 @@ object PipAnchor {
 
     fun parkForOtherApp(context: Context, packageName: String = MAPS_PACKAGE) {
         scope.launch {
-            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
-            if (win.mode == "freeform") park(context, win, "another app is in front")
+            // A pair's apps come to the front on purpose: their windows are the split's now.
+            if (!isLent(packageName)) {
+                val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
+                if (win?.mode == "freeform") park(context, win, "another app is in front")
+            }
             DockShell.release()
         }
     }
@@ -602,6 +697,7 @@ object PipAnchor {
             val mine = managedPackages(context)
             for (win in WindowListing.allFloatingWindows(listing, context.packageName)) {
                 if (win.mode != "freeform" || win.packageName !in mine || win.packageName in onPage) continue
+                if (isLent(win.packageName)) continue
                 if (isPlaced(win.packageName)) park(context, win, "page change")
                 else closeWindow(context, win, "tile removed")
             }
@@ -627,6 +723,7 @@ object PipAnchor {
      */
     fun hide(context: Context, packageName: String = MAPS_PACKAGE) {
         if ((tileCounts[packageName] ?: 0) > 0) return
+        if (isLent(packageName)) return
         scope.launch {
             val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
             if (stack == null) {

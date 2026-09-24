@@ -57,6 +57,42 @@ class PipAnchorTest {
     }
 
     @Test
+    fun fullscreenStackIsTheDashboardsOwn() {
+        // Stack 1 holds the dashboard; stack 0 is Home and never a candidate.
+        assertEquals(1, WindowListing.fullscreenStackId(android10))
+    }
+
+    @Test
+    fun fullscreenStackFallsBackToAnyStandardOne() {
+        val other = """
+            Stack id=0 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={... mWindowingMode=fullscreen mActivityType=home ...}
+              taskId=2: com.android.launcher3/.Launcher bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=4 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=70: com.android.chrome/com.google.android.apps.chrome.Main bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=7 bounds=[640,80][1240,660] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[640,80][1240,660] userId=0 visible=true
+        """.trimIndent()
+        assertEquals(4, WindowListing.fullscreenStackId(other))
+    }
+
+    @Test
+    fun noFullscreenStackForAppsMeansNowhereToMoveTo() {
+        val homeOnly = """
+            Stack id=0 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={... mWindowingMode=fullscreen mActivityType=home ...}
+              taskId=2: com.android.launcher3/.Launcher bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=7 bounds=[640,80][1240,660] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[640,80][1240,660] userId=0 visible=true
+        """.trimIndent()
+        assertNull(WindowListing.fullscreenStackId(homeOnly))
+        assertNull(WindowListing.fullscreenStackId(""))
+    }
+
+    @Test
     fun numericWindowingModeIsUnderstood() {
         val numeric = """
             Stack id=4 bounds=[0,0][600,400] displayId=0 userId=0
