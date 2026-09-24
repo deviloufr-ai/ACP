@@ -59,7 +59,7 @@ object WindowListing {
     /**
      * True while a dialog or the app drawer is open. Docked windows are drawn
      * above everything on this head unit, so they would cover the dialog; the
-     * tiles slide their windows off the right edge meanwhile and dock them
+     * tiles push their windows into the bottom-right corner meanwhile and dock them
      * again afterwards.
      */
 

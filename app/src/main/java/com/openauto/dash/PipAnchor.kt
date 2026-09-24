@@ -152,6 +152,11 @@ object PipAnchor {
     /** Windows parked aside (off-page, or out of a dialog's way): alive, but not on the dashboard. */
     private val parked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
+    /** The window is back (or gone): the parked corner's cover goes once no window is left there. */
+    private fun unpark(context: Context, packageName: String) {
+        if (parked.remove(packageName) && parked.isEmpty()) ParkedCover.hide(context) { parked.isNotEmpty() }
+    }
+
     /** Freeform windows actually showing on the dashboard (not parked aside). */
     private fun onScreenWindows(): Set<String> = freeformNow - parked
 
@@ -167,10 +172,10 @@ object PipAnchor {
     }
 
     /** Forgets windows that are gone from [listing] (e.g. a parked one the system closed). */
-    private fun syncFreeform(listing: String) {
+    private fun syncFreeform(context: Context, listing: String) {
         val present = WindowListing.allFloatingWindows(listing).filter { it.mode == "freeform" }.map { it.packageName }.toSet()
         for (pkg in freeformNow.toList()) if (pkg !in present) {
-            parked.remove(pkg)
+            unpark(context, pkg)
             noteFreeform(pkg, false)
         }
     }
@@ -186,7 +191,7 @@ object PipAnchor {
 
     private suspend fun closeWindow(context: Context, win: FloatingWindow, reason: String) {
         expectedGone.add(win.packageName)
-        parked.remove(win.packageName)
+        unpark(context, win.packageName)
         noteFreeform(win.packageName, false)
         statusFlow(win.packageName).value = Status(seen = lastSeen)
         val out = runCatching { DockShell.shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
@@ -195,10 +200,12 @@ object PipAnchor {
     }
 
     /**
-     * The way a window leaves the dashboard without being closed: slid off the
-     * right edge at its current size (a thin strip stays visible, the system
-     * will not hide a freeform window completely). The app keeps running; the
-     * tile brings the window back when it is on screen again.
+     * The way a window leaves the dashboard without being closed: pushed off
+     * the bottom-right corner at its current size. The system never hides a
+     * freeform window completely: it keeps 48 × 32 dp of it on screen, a full
+     * strip down the side when a window was only pushed off the right edge,
+     * just a corner this way, and [ParkedCover] hides that corner. The app
+     * keeps running; the tile brings the window back when it is on screen again.
      */
 
     private suspend fun park(context: Context, win: FloatingWindow, reason: String) {
@@ -207,11 +214,14 @@ object PipAnchor {
         if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
         val b = win.bounds ?: return
         val dm = context.resources.displayMetrics
-        if (b.left >= dm.widthPixels - ASIDE_SLIVER_PX) return // already aside
         val left = dm.widthPixels - ASIDE_SLIVER_PX
-        runGuarded { DockShell.resize(context, win, ScreenRect(left, b.top, left + (b.right - b.left), b.bottom)) }
-            .onFailure { Log.w(TAG, "park aside failed", it) }
-        Log.i(TAG, "${win.packageName} parked aside ($reason)")
+        val top = dm.heightPixels - ASIDE_SLIVER_PX
+        if (b.left < left || b.top < top) {
+            runGuarded { DockShell.resize(context, win, ScreenRect(left, top, left + (b.right - b.left), top + (b.bottom - b.top))) }
+                .onFailure { Log.w(TAG, "park aside failed", it) }
+            Log.i(TAG, "${win.packageName} parked aside ($reason)")
+        }
+        if (win.packageName in parked && grantOverlayPermission(context)) ParkedCover.show(context) { parked.isNotEmpty() }
     }
 
     @Synchronized
@@ -259,8 +269,8 @@ object PipAnchor {
     private val parking = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
     /**
-     * Slides [packageName]'s window off the right edge at its current size (a
-     * thin strip stays visible). One park at a time per app: a second request
+     * Pushes [packageName]'s window into the bottom-right corner at its current
+     * size, out of sight (see [park]). One park at a time per app: a second request
      * while one is under way would only repeat its round trips.
      */
     fun parkAside(context: Context, packageName: String = MAPS_PACKAGE) {
@@ -295,7 +305,7 @@ object PipAnchor {
                 mem = mem.copy(attempts = 0, lastStack = null)
             } else if (win == null) {
                 status.value = status.value.copy(pipPackage = null, docked = false, mode = null, seen = lastSeen, windowBounds = null, oversizePx = null, checkedAt = now, visible = null, behindDashboard = null)
-                parked.remove(packageName)
+                unpark(context, packageName)
                 noteFreeform(packageName, false)
                 if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
                 val (step, next) = DockPolicy.onMissing(
@@ -328,7 +338,7 @@ object PipAnchor {
             } else {
                 expectedGone.remove(packageName)
                 // Back from being parked (another page, a dialog): placed below.
-                parked.remove(packageName)
+                unpark(context, packageName)
                 val (step, next) = DockPolicy.onPresent(
                     mem, win, rect, allowedArea.value,
                     lastRaiseAt = lastRaiseAt[packageName] ?: 0L, now = now
@@ -393,7 +403,7 @@ object PipAnchor {
         val out = runGuarded { DockShell.shell(context, "am force-stop $packageName") }
             .getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "stopped $packageName before docking it: ${out.trim().ifEmpty { "ok" }}")
-        parked.remove(packageName)
+        unpark(context, packageName)
         noteFreeform(packageName, false)
         lastReopenAt.remove(packageName) // open ours straight away
         delay(FORCE_STOP_SETTLE_MS)
@@ -588,7 +598,7 @@ object PipAnchor {
     fun stashAllExcept(context: Context, onPage: Set<String>) {
         scope.launch {
             val listing = runCatching { DockShell.listStacks(context) }.getOrNull() ?: return@launch
-            syncFreeform(listing)
+            syncFreeform(context, listing)
             val mine = managedPackages(context)
             for (win in WindowListing.allFloatingWindows(listing, context.packageName)) {
                 if (win.mode != "freeform" || win.packageName !in mine || win.packageName in onPage) continue
@@ -621,7 +631,7 @@ object PipAnchor {
             val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
             if (stack == null) {
                 // Already gone: still hand focus back.
-                parked.remove(packageName)
+                unpark(context, packageName)
                 noteFreeform(packageName, false)
                 if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
                 return@launch
