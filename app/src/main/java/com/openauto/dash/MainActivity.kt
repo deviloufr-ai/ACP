@@ -10,7 +10,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
@@ -48,6 +50,12 @@ class MainActivity : ComponentActivity() {
         enableImmersiveFullscreen()
 
         setContent {
+            // An app window (docked or parked aside) forces the status bar on.
+            val windowOpen = PipAnchor.dockedPackages.collectAsState().value.isNotEmpty()
+            LaunchedEffect(windowOpen) {
+                statusBarForced = windowOpen
+                enableImmersiveFullscreen()
+            }
             OpenAutoDashTheme {
                 AutomotiveDashboard(inSplitMode = inMultiWindow.value)
             }
@@ -80,10 +88,24 @@ class MainActivity : ComponentActivity() {
         inMultiWindow.value = isInMultiWindowMode
     }
 
+    /**
+     * True while an app window exists, docked on its tile or parked aside:
+     * Android then shows the status bar whatever the dashboard asks. Asking
+     * to hide it anyway (as the dashboard did whenever it had the focus, i.e.
+     * with the window parked aside) made the head unit draw its own flat white
+     * bar; not asking lets the bar show the dashboard's colours through it.
+     */
+    private var statusBarForced = false
+
     private fun enableImmersiveFullscreen() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
+            if (statusBarForced) {
+                show(WindowInsetsCompat.Type.statusBars())
+                hide(WindowInsetsCompat.Type.navigationBars())
+            } else {
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
