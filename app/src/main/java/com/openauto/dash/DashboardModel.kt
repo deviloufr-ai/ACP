@@ -76,30 +76,37 @@ enum class BuiltinKind(
  *  - [BuiltinWidget] one of our own cards (map / media / OBD / directions),
  *  - [SystemWidget]  a real Android app-widget, hosted via [WidgetHostHolder],
  *  - [AppWindow]     any installed app running in a window the size of the tile.
+ *
+ * [zoom] scales what the tile draws (text, icons, spacing) inside its cells,
+ * like the system's display size but for this tile alone; 1 is as designed.
  */
 sealed interface DashboardItem {
     val x: Int
     val y: Int
     val w: Int
     val h: Int
+    val zoom: Float
 
     data class AppShortcut(
         val packageName: String,
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 2, override val h: Int = 2
+        override val w: Int = 2, override val h: Int = 2,
+        override val zoom: Float = 1f
     ) : DashboardItem
 
     data class SplitPair(
         val primaryPackage: String,
         val secondaryPackage: String,
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 2, override val h: Int = 2
+        override val w: Int = 2, override val h: Int = 2,
+        override val zoom: Float = 1f
     ) : DashboardItem
 
     data class LaunchBar(
         val packages: List<String> = emptyList(),
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 8, override val h: Int = 1
+        override val w: Int = 8, override val h: Int = 1,
+        override val zoom: Float = 1f
     ) : DashboardItem
 
     /** [design] is this tile's own look (see WidgetDesigns.kt); two clocks may differ. */
@@ -107,20 +114,23 @@ sealed interface DashboardItem {
         val kind: BuiltinKind,
         override val x: Int = 0, override val y: Int = 0,
         override val w: Int = 5, override val h: Int = 3,
-        val design: WidgetDesign = WidgetDesign.STANDARD
+        val design: WidgetDesign = WidgetDesign.STANDARD,
+        override val zoom: Float = 1f
     ) : DashboardItem
 
     data class SystemWidget(
         val appWidgetId: Int,
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 5, override val h: Int = 3
+        override val w: Int = 5, override val h: Int = 3,
+        override val zoom: Float = 1f
     ) : DashboardItem
 
     /** An app (YouTube Music, Waze, ...) docked as a floating window over this tile, like the Maps window. */
     data class AppWindow(
         val packageName: String,
         override val x: Int = 0, override val y: Int = 0,
-        override val w: Int = 5, override val h: Int = 3
+        override val w: Int = 5, override val h: Int = 3,
+        override val zoom: Float = 1f
     ) : DashboardItem
 }
 
@@ -132,17 +142,39 @@ const val GRID_ROWS = 7
 fun DashboardItem.isCompactTile(): Boolean =
     this is DashboardItem.AppShortcut || this is DashboardItem.SplitPair
 
-/** Smallest span this tile may be resized to (icons stay small, widgets bigger). */
-fun DashboardItem.minW(): Int = when {
-    isCompactTile() -> 1
-    this is DashboardItem.LaunchBar -> 3
-    else -> 3
+/**
+ * Smallest span a tile may be resized to: a single cell, whatever it is. A
+ * small tile's content is made to fit with its [DashboardItem.zoom].
+ */
+fun DashboardItem.minW(): Int = 1
+
+fun DashboardItem.minH(): Int = 1
+
+/** How far a tile's content can be zoomed out and in, and by how much per tap. */
+const val ZOOM_MIN = 0.5f
+const val ZOOM_MAX = 2f
+const val ZOOM_STEP = 0.1f
+
+/** The zoom one step out ([steps] < 0) or in (> 0) from [zoom], on whole tenths so it never drifts. */
+fun zoomStep(zoom: Float, steps: Int): Float {
+    val tenths = kotlin.math.round(zoom * 10f).toInt() + steps
+    return (tenths / 10f).coerceIn(ZOOM_MIN, ZOOM_MAX)
 }
 
-fun DashboardItem.minH(): Int = when {
-    isCompactTile() -> 1
-    this is DashboardItem.LaunchBar -> 1
-    else -> 2
+/** Whether zooming changes anything: another app's window or a system widget draws itself. */
+fun DashboardItem.canZoom(): Boolean = this !is DashboardItem.AppWindow && this !is DashboardItem.SystemWidget
+
+/** Returns a copy whose content is drawn at [zoom] (clamped to [ZOOM_MIN]..[ZOOM_MAX]). */
+fun DashboardItem.withZoom(zoom: Float): DashboardItem {
+    val z = zoom.coerceIn(ZOOM_MIN, ZOOM_MAX)
+    return when (this) {
+        is DashboardItem.AppShortcut -> copy(zoom = z)
+        is DashboardItem.SplitPair -> copy(zoom = z)
+        is DashboardItem.LaunchBar -> copy(zoom = z)
+        is DashboardItem.BuiltinWidget -> copy(zoom = z)
+        is DashboardItem.SystemWidget -> copy(zoom = z)
+        is DashboardItem.AppWindow -> copy(zoom = z)
+    }
 }
 
 /** Returns a copy placed at cell [x],[y] spanning [w] x [h], clamped to the grid. */
@@ -531,6 +563,7 @@ object DashboardStore {
             is DashboardItem.SystemWidget -> JSONObject().put("t", "widget").put("id", appWidgetId)
             is DashboardItem.AppWindow -> JSONObject().put("t", "appwin").put("pkg", packageName)
         }
+        if (zoom != 1f) o.put("z", zoom.toDouble())
         return o.put("gx", x).put("gy", y).put("gw", w).put("gh", h)
     }
 
@@ -549,9 +582,10 @@ object DashboardStore {
         val gy = optInt("gy", -1)
         val gw = optInt("gw", -1)
         val gh = optInt("gh", -1)
+        val zoom = optDouble("z", 1.0).toFloat().takeIf { it.isFinite() } ?: 1f
         fun place(item: DashboardItem): DashboardItem =
-            if (gx >= 0 && gy >= 0 && gw > 0 && gh > 0) item.withCell(gx, gy, gw, gh)
-            else item.markUnplaced()
+            (if (gx >= 0 && gy >= 0 && gw > 0 && gh > 0) item.withCell(gx, gy, gw, gh)
+            else item.markUnplaced()).let { if (zoom != 1f) it.withZoom(zoom) else it }
 
         return when (optString("t")) {
             "app" -> optString("pkg").takeIf { it.isNotBlank() }

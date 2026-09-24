@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Per-tile zoom while arranging (DashboardGrid.kt) -->
+    <string name="zoom_button">Text and icon size</string>
+    <string name="zoom_out">Smaller</string>
+    <string name="zoom_in">Bigger</string>
+    <string name="zoom_reset">Back to 100 %</string>
+</resources>
