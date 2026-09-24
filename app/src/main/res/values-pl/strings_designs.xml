@@ -36,7 +36,6 @@
     <string name="design_change">Zmień wygląd: %1$s</string>
     <string name="design_picker_title">Wygląd: %1$s</string>
     <string name="design_picker_hint">Dotknij wyglądu, aby użyć go na tym kafelku. Każdy kafelek ma własny.</string>
-    <string name="design_picker_hint_sample">Dotknij wyglądu, aby użyć go na tym kafelku. Podglądy pokazują przykładowe wartości, dopóki widżet nie ma danych.</string>
     <string name="design_codes_unit">kody</string>
     <string name="design_engine_lamp">Kontrolka silnika</string>
     <string name="design_on">Wł.</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">Zadzwoń: %1$s</string>
     <string name="design_notif_new_unit">nowe</string>
     <string name="design_latest">Ostatnie</string>
+    <string name="design_no_scan_yet">Jeszcze nie odczytano</string>
+    <string name="design_range_unknown">Zasięg jeszcze nie ustawiony</string>
 </resources>

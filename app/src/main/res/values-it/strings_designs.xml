@@ -36,7 +36,6 @@
     <string name="design_change">Cambia lo stile di %1$s</string>
     <string name="design_picker_title">Stile: %1$s</string>
     <string name="design_picker_hint">Tocca uno stile per usarlo su questo riquadro. Ogni riquadro mantiene il suo.</string>
-    <string name="design_picker_hint_sample">Tocca uno stile per usarlo su questo riquadro. Le anteprime mostrano valori di esempio finché il widget non ha dati.</string>
     <string name="design_codes_unit">codici</string>
     <string name="design_engine_lamp">Spia motore</string>
     <string name="design_on">Accesa</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">Chiama %1$s</string>
     <string name="design_notif_new_unit">nuove</string>
     <string name="design_latest">Ultima</string>
+    <string name="design_no_scan_yet">Non ancora letto</string>
+    <string name="design_range_unknown">Autonomia non ancora configurata</string>
 </resources>

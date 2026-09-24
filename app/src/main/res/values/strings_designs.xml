@@ -36,7 +36,6 @@
     <string name="design_change">Change the design of %1$s</string>
     <string name="design_picker_title">Design: %1$s</string>
     <string name="design_picker_hint">Tap a design to use it on this tile. Each tile keeps its own design.</string>
-    <string name="design_picker_hint_sample">Tap a design to use it on this tile. Previews show sample values until the widget has a live reading.</string>
     <string name="design_codes_unit">codes</string>
     <string name="design_engine_lamp">Engine lamp</string>
     <string name="design_on">On</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">Call %1$s</string>
     <string name="design_notif_new_unit">new</string>
     <string name="design_latest">Latest</string>
+    <string name="design_no_scan_yet">Not scanned yet</string>
+    <string name="design_range_unknown">Range not set up yet</string>
 </resources>

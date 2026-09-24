@@ -36,7 +36,6 @@
     <string name="design_change">Design von %1$s ändern</string>
     <string name="design_picker_title">Design: %1$s</string>
     <string name="design_picker_hint">Tippe auf ein Design, um es für diese Kachel zu verwenden. Jede Kachel behält ihr eigenes.</string>
-    <string name="design_picker_hint_sample">Tippe auf ein Design, um es für diese Kachel zu verwenden. Die Vorschau zeigt Beispielwerte, bis das Widget einen Messwert hat.</string>
     <string name="design_codes_unit">Codes</string>
     <string name="design_engine_lamp">Motorleuchte</string>
     <string name="design_on">An</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">%1$s anrufen</string>
     <string name="design_notif_new_unit">neu</string>
     <string name="design_latest">Neueste</string>
+    <string name="design_no_scan_yet">Noch nicht ausgelesen</string>
+    <string name="design_range_unknown">Reichweite noch nicht eingerichtet</string>
 </resources>

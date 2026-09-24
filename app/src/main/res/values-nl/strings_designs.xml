@@ -36,7 +36,6 @@
     <string name="design_change">Ontwerp van %1$s wijzigen</string>
     <string name="design_picker_title">Ontwerp: %1$s</string>
     <string name="design_picker_hint">Tik op een ontwerp om het voor deze tegel te gebruiken. Elke tegel houdt zijn eigen ontwerp.</string>
-    <string name="design_picker_hint_sample">Tik op een ontwerp om het voor deze tegel te gebruiken. Voorbeelden tonen voorbeeldwaarden tot de widget gegevens heeft.</string>
     <string name="design_codes_unit">codes</string>
     <string name="design_engine_lamp">Motorlampje</string>
     <string name="design_on">Aan</string>
@@ -59,4 +58,6 @@
     <string name="design_call_first">%1$s bellen</string>
     <string name="design_notif_new_unit">nieuw</string>
     <string name="design_latest">Laatste</string>
+    <string name="design_no_scan_yet">Nog niet uitgelezen</string>
+    <string name="design_range_unknown">Actieradius nog niet ingesteld</string>
 </resources>
