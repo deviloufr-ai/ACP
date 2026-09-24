@@ -71,14 +71,14 @@ internal object QuestionPrompt {
         ).put("required", JSONArray(listOf("heard", "answer")))
 
     fun build(
-        engine: CarEngine,
+        car: String,
         language: AiLanguage,
         codes: List<String>,
         diagnosis: Diagnosis?,
         focus: String,
         previous: Exchange?
     ): String = buildString {
-        appendLine("You are an experienced mechanic who knows Citroën / PSA cars well, talking with the driver of a Citroën C4 Picasso (2011), engine: ${engine.detail}.")
+        appendLine("You are an experienced mechanic who knows Citroën / PSA cars well, talking with the driver of this car: $car.")
         appendLine("Its stored fault codes: ${codes.joinToString(", ")}. The driver is looking at $focus.")
         diagnosis?.let { d ->
             appendLine("What you already told the driver: ${d.summary} ${d.overview}".trim())
@@ -265,7 +265,7 @@ object AskMechanic {
         job = scope.launch {
             val config = AiSettings.load(q.context)
             val prompt = QuestionPrompt.build(
-                config.engine, config.language, q.codes, q.diagnosis, q.focus,
+                CarProfileStore.current.promptDescription(), config.language, q.codes, q.diagnosis, q.focus,
                 previous?.takeIf { it.first == q.focus }?.second
             )
             val reply = GeminiClient.generate(

@@ -44,10 +44,10 @@ class AskMechanicTest {
         val advice = CodeAdvice("P1352", "Relais de préchauffage", listOf("Boîtier défectueux"), "Le fusible", cost = "100 à 250 €")
         val d = Diagnosis(Severity.SOON, "Préchauffage à vérifier.", listOf(advice))
         val prompt = QuestionPrompt.build(
-            CarEngine.HDI_16, AiLanguage.FRENCH, listOf("P1352"), d, "P1352",
+            CarProfile.PRESET.promptDescription(), AiLanguage.FRENCH, listOf("P1352"), d, "P1352",
             Exchange("Je peux rouler ?", "Oui, prudemment.")
         )
-        assertTrue(prompt.contains("1.6 HDi diesel"))
+        assertTrue(prompt.contains("1.6 HDi 110"))
         assertTrue(prompt.contains("P1352: Relais de préchauffage. likely causes: Boîtier défectueux. check first: Le fusible. cost: 100 à 250 €"))
         assertTrue(prompt.contains("previous question was \"Je peux rouler ?\""))
         assertTrue(prompt.contains("Answer in French"))

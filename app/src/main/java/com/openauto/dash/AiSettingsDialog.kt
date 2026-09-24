@@ -52,7 +52,7 @@ import java.util.Locale
 // The Test button's patience: long enough for a slow link, short enough to read the verdict.
 private const val TEST_BUDGET_MS = 45_000L
 
-/** Gemini key, engine, language and voice for the AI mechanic, with a one-tap test. */
+/** Gemini key, language and voice for the AI mechanic, with a one-tap test. */
 @Composable
 internal fun AiSettingsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -74,7 +74,7 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
 
     fun close() {
         AiSettings.save(context, config)
-        // A new key, engine or language: redo the advice for any codes on the tile.
+        // A new key or language: redo the advice for any codes on the tile.
         AiMechanic.refresh()
         onDismiss()
     }
@@ -181,8 +181,13 @@ internal fun AiSettingsDialog(onDismiss: () -> Unit) {
                     colors = fieldColors()
                 )
 
-                Label(stringResource(R.string.ai_engine))
-                ChoiceRow(CarEngine.entries, config.engine, { it.label }) { config = config.copy(engine = it) }
+                // The mechanic answers for the car set in "My car".
+                Label(stringResource(R.string.car_ai_car))
+                Text(
+                    stringResource(R.string.car_ai_car_detail, CarProfileStore.current.name),
+                    color = DashColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
 
                 Label(stringResource(R.string.ai_language))
                 // "Same as app" (null) first, then every language by its own name.
@@ -252,7 +257,7 @@ internal fun fieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun Label(text: String) {
+internal fun Label(text: String) {
     Text(text, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
 }
 
