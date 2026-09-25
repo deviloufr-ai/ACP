@@ -1310,4 +1310,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
         )
     }
+
+    // The phone's call, when the overlay window can't show it over other apps.
+    PhoneCallHost()
 }

@@ -34,4 +34,6 @@
     <string name="paired_since">Associée le %1$s</string>
     <string name="scanned_download_code">Ce code sert à télécharger l\'appli. Scannez maintenant l\'autre, le code d\'association à droite sur l\'écran de l\'autoradio.</string>
     <string name="invalid_code_read">Ce n\'est pas un code d\'association Dashwheel (lu : %1$s).</string>
+    <string name="step_calls">Appels</string>
+    <string name="step_calls_detail">Affiche qui appelle sur l\'écran de la voiture, pour décrocher ou raccrocher depuis celui-ci. Le son reste sur le Bluetooth de la voiture.</string>
 </resources>

@@ -34,4 +34,6 @@
     <string name="paired_since">Gekoppeld op %1$s</string>
     <string name="scanned_download_code">Die code downloadt de app. Scan nu de andere, de koppelcode rechts op het scherm van de autoradio.</string>
     <string name="invalid_code_read">Dit is geen Dashwheel-koppelcode (gelezen: %1$s).</string>
+    <string name="step_calls">Oproepen</string>
+    <string name="step_calls_detail">Toont op het scherm van de auto wie er belt, om daar op te nemen of op te hangen. Het geluid blijft op de bluetooth van de auto.</string>
 </resources>

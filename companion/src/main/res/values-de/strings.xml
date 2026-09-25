@@ -34,4 +34,6 @@
     <string name="paired_since">Gekoppelt am %1$s</string>
     <string name="scanned_download_code">Dieser Code lädt die App herunter. Scanne jetzt den anderen, den Kopplungscode rechts auf dem Bildschirm des Autoradios.</string>
     <string name="invalid_code_read">Das ist kein Dashwheel-Kopplungscode (gelesen: %1$s).</string>
+    <string name="step_calls">Anrufe</string>
+    <string name="step_calls_detail">Zeigt auf dem Bildschirm des Autos, wer anruft, um dort anzunehmen oder aufzulegen. Der Ton bleibt auf dem Bluetooth des Autos.</string>
 </resources>

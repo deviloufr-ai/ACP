@@ -34,4 +34,6 @@
     <string name="paired_since">Sparowano %1$s</string>
     <string name="scanned_download_code">Ten kod pobiera aplikację. Zeskanuj teraz drugi, kod parowania po prawej stronie ekranu radia.</string>
     <string name="invalid_code_read">To nie jest kod parowania Dashwheel (odczytano: %1$s).</string>
+    <string name="step_calls">Połączenia</string>
+    <string name="step_calls_detail">Pokazuje na ekranie auta, kto dzwoni, by tam odebrać lub się rozłączyć. Dźwięk zostaje na Bluetooth auta.</string>
 </resources>

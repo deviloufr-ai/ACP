@@ -7,6 +7,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import com.openauto.dash.link.ActionResult
+import com.openauto.dash.link.CallCommand
 import com.openauto.dash.link.Dismiss
 import com.openauto.dash.link.Hello
 import com.openauto.dash.link.LINK_PORT
@@ -55,11 +56,13 @@ object LinkServer {
     private val sender = Executors.newSingleThreadExecutor()
     private var server: ServerSocket? = null
     @Volatile private var session: LinkSession? = null
+    @Volatile private var appContext: Context? = null
 
     @Synchronized
     fun start(context: Context) {
         if (server != null) return
         val app = context.applicationContext
+        appContext = app
         val socket = try {
             ServerSocket().apply {
                 reuseAddress = true
@@ -131,6 +134,7 @@ object LinkServer {
 
         send(Hello(deviceName(context), appVersion(context)))
         send(NotificationSync(PhoneNotificationListener.snapshot()))
+        send(PhoneCalls.snapshot())
         try {
             while (true) {
                 val message = link.receive() ?: continue
@@ -160,6 +164,10 @@ object LinkServer {
             is Reply -> onMain(message.key, ActionResult.Action.REPLY) { it.reply(message.key, message.text) }
             is MarkRead -> onMain(message.key, ActionResult.Action.MARK_READ) { it.markRead(message.key) }
             is Dismiss -> onMain(message.key, ActionResult.Action.DISMISS) { it.dismiss(message.key) }
+            is CallCommand -> main.post {
+                // Refused (no permission, no call): tell the head unit what the call really is.
+                if (!PhoneCalls.command(appContext ?: return@post, message.action)) send(PhoneCalls.snapshot())
+            }
             else -> Unit
         }
     }

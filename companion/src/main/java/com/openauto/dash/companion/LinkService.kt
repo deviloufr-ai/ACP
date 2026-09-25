@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
  * Keeps [LinkServer] listening while the phone is in a pocket: a foreground
  * service with a quiet, permanent notification saying whether the car is
  * connected. Runs only while sharing is on and at least one car is paired.
+ * Also follows the phone calls ([PhoneCalls]) for as long as it runs.
  */
 class LinkService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -31,6 +32,7 @@ class LinkService : Service() {
         createChannel()
         startForeground(NOTIFICATION_ID, notification(LinkServer.state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         LinkServer.start(this)
+        PhoneCalls.start(this)
         scope.launch {
             LinkServer.state.collect { state ->
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(state))
@@ -49,6 +51,7 @@ class LinkService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        PhoneCalls.stop(this)
         LinkServer.stop()
         super.onDestroy()
     }

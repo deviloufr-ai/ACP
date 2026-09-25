@@ -34,4 +34,6 @@
     <string name="paired_since">Paired on %1$s</string>
     <string name="scanned_download_code">That code downloads the app. Now scan the other one, the pairing code on the right of the head unit\'s screen.</string>
     <string name="invalid_code_read">This is not a Dashwheel pairing code (read: %1$s).</string>
+    <string name="step_calls">Calls</string>
+    <string name="step_calls_detail">Shows who is calling on the car\'s screen, to answer or hang up from there. The sound stays on the car\'s Bluetooth.</string>
 </resources>

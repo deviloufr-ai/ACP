@@ -1,13 +1,18 @@
 package com.openauto.dash
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import com.openauto.dash.link.ActionResult
+import com.openauto.dash.link.CallCommand
+import com.openauto.dash.link.CallState
 import com.openauto.dash.link.Dismiss
 import com.openauto.dash.link.Hello
 import com.openauto.dash.link.LINK_PORT
@@ -50,7 +55,8 @@ import java.util.Base64
  * over Wi-Fi; the Dashwheel Companion app on it listens on the hotspot's
  * gateway address. This side finds that gateway, dials it, proves it holds
  * the secret from the pairing QR code, then shows the phone's notifications
- * in the Notifications card and sends back replies.
+ * in the Notifications card, sends back replies, and shows its calls
+ * ([PhoneCallOverlay]) with answer / hang-up buttons.
  */
 
 /** A phone the driver paired by scanning the QR code with the companion app. */
@@ -62,6 +68,18 @@ data class PairedPhone(
     val pairedAt: Long,
     /** The phone said it no longer knows this pairing: it must be paired again. */
     val forgotten: Boolean = false
+)
+
+/** The phone's call as the head unit shows it. */
+data class PhoneCall(
+    val phase: CallState.Phase,
+    val number: String?,
+    val name: String?,
+    val photo: Bitmap?,
+    /** [SystemClock.elapsedRealtime] when it was answered, on this head unit's clock. */
+    val answeredAt: Long,
+    /** False: the companion may not answer / hang up, so the call is only shown. */
+    val canControl: Boolean
 )
 
 sealed interface PhoneLinkState {
@@ -99,6 +117,10 @@ object PhoneLink {
     /** How the phone carried out a reply / mark-as-read / dismiss. */
     private val _results = MutableSharedFlow<ActionResult>(extraBufferCapacity = 8)
     val results: SharedFlow<ActionResult> = _results
+
+    /** The phone's call; null when there is none (or no phone). */
+    private val _call = MutableStateFlow<PhoneCall?>(null)
+    val call: StateFlow<PhoneCall?> = _call
 
     /** Bumped when the network changes or the phones change, to retry right away. */
     private val wake = MutableStateFlow(0)
@@ -155,6 +177,7 @@ object PhoneLink {
     fun reply(key: String, text: String) = send(Reply(NotificationFeed.phoneKey(key), text))
     fun markRead(key: String) = send(MarkRead(NotificationFeed.phoneKey(key)))
     fun dismiss(key: String) = send(Dismiss(NotificationFeed.phoneKey(key)))
+    fun callCommand(action: CallCommand.Action) = send(CallCommand(action))
 
     private suspend fun run(context: Context) {
         var last = wake.value
@@ -216,6 +239,7 @@ object PhoneLink {
             link.close()
             if (session === link) session = null
             NotificationFeed.phoneClear()
+            _call.value = null
         }
         return true
     }
@@ -238,8 +262,29 @@ object PhoneLink {
             is NotificationPosted -> NotificationFeed.phonePosted(message.notification)
             is NotificationRemoved -> NotificationFeed.phoneRemoved(message.key)
             is ActionResult -> _results.tryEmit(message)
+            is CallState -> _call.value = toPhoneCall(message)
             else -> Unit
         }
+    }
+
+    private fun toPhoneCall(state: CallState): PhoneCall? {
+        if (state.phase == CallState.Phase.IDLE) return null
+        val before = _call.value
+        val photo = if (before != null && state.photoPng != null && before.number == state.number) before.photo
+        else state.photoPng?.let { png ->
+            runCatching {
+                val bytes = Base64.getDecoder().decode(png)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }.getOrNull()
+        }
+        return PhoneCall(
+            phase = state.phase,
+            number = state.number,
+            name = state.name,
+            photo = photo,
+            answeredAt = SystemClock.elapsedRealtime() - state.activeForMs,
+            canControl = state.canControl
+        )
     }
 
     private fun refreshIdleState() {

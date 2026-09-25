@@ -36,4 +36,12 @@
     <string name="phone_clear">Auf dem Telefon löschen</string>
     <string name="phone_pair_qr_download">App herunterladen</string>
     <string name="phone_pair_qr_pair">Kopplungscode: in der App scannen</string>
+    <string name="phone_call_incoming">Eingehender Anruf</string>
+    <string name="phone_call_unknown">Unbekannte Nummer</string>
+    <string name="phone_call_answer">Annehmen</string>
+    <string name="phone_call_decline">Ablehnen</string>
+    <string name="phone_call_hang_up">Auflegen</string>
+    <string name="phone_call_no_control">Um hier anzunehmen, erlaube Anrufe in Dashwheel Begleiter.</string>
+    <string name="phone_overlay">Anrufe über anderen Apps zeigen</string>
+    <string name="phone_overlay_detail">Ein Anruf erscheint dann auch, wenn eine andere App den ganzen Bildschirm füllt.</string>
 </resources>

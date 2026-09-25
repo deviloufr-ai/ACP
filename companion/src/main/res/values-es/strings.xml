@@ -34,4 +34,6 @@
     <string name="paired_since">Vinculado el %1$s</string>
     <string name="scanned_download_code">Ese código descarga la app. Escanea ahora el otro, el código de vinculación a la derecha de la pantalla de la radio.</string>
     <string name="invalid_code_read">No es un código de vinculación de Dashwheel (leído: %1$s).</string>
+    <string name="step_calls">Llamadas</string>
+    <string name="step_calls_detail">Muestra quién llama en la pantalla del coche, para contestar o colgar desde ahí. El sonido sigue en el Bluetooth del coche.</string>
 </resources>

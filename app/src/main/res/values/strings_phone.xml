@@ -37,4 +37,12 @@
     <string name="phone_clear">Clear on phone</string>
     <string name="phone_pair_qr_download">Download the app</string>
     <string name="phone_pair_qr_pair">Pairing code: scan it in the app</string>
+    <string name="phone_call_incoming">Incoming call</string>
+    <string name="phone_call_unknown">Unknown number</string>
+    <string name="phone_call_answer">Answer</string>
+    <string name="phone_call_decline">Decline</string>
+    <string name="phone_call_hang_up">Hang up</string>
+    <string name="phone_call_no_control">To answer from here, allow Calls in Dashwheel Companion.</string>
+    <string name="phone_overlay">Show calls over other apps</string>
+    <string name="phone_overlay_detail">An incoming call then shows even with another app on the whole screen.</string>
 </resources>

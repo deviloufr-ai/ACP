@@ -36,4 +36,12 @@
     <string name="phone_clear">Wissen op telefoon</string>
     <string name="phone_pair_qr_download">App downloaden</string>
     <string name="phone_pair_qr_pair">Koppelcode: scan hem in de app</string>
+    <string name="phone_call_incoming">Inkomende oproep</string>
+    <string name="phone_call_unknown">Onbekend nummer</string>
+    <string name="phone_call_answer">Opnemen</string>
+    <string name="phone_call_decline">Weigeren</string>
+    <string name="phone_call_hang_up">Ophangen</string>
+    <string name="phone_call_no_control">Sta Oproepen toe in Dashwheel Companion om hier op te nemen.</string>
+    <string name="phone_overlay">Oproepen over andere apps tonen</string>
+    <string name="phone_overlay_detail">Een oproep verschijnt dan ook als een andere app het hele scherm vult.</string>
 </resources>

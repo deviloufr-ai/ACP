@@ -36,4 +36,12 @@
     <string name="phone_clear">Borrar en el teléfono</string>
     <string name="phone_pair_qr_download">Descargar la app</string>
     <string name="phone_pair_qr_pair">Código de vinculación: escanéalo en la app</string>
+    <string name="phone_call_incoming">Llamada entrante</string>
+    <string name="phone_call_unknown">Número desconocido</string>
+    <string name="phone_call_answer">Contestar</string>
+    <string name="phone_call_decline">Rechazar</string>
+    <string name="phone_call_hang_up">Colgar</string>
+    <string name="phone_call_no_control">Para contestar desde aquí, permite Llamadas en Dashwheel Compañero.</string>
+    <string name="phone_overlay">Mostrar llamadas sobre otras apps</string>
+    <string name="phone_overlay_detail">Así una llamada aparece aunque otra app ocupe toda la pantalla.</string>
 </resources>

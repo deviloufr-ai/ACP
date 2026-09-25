@@ -34,4 +34,6 @@
     <string name="paired_since">Associado em %1$s</string>
     <string name="scanned_download_code">Esse código transfere a app. Leia agora o outro, o código de associação à direita no ecrã do autorrádio.</string>
     <string name="invalid_code_read">Não é um código de associação Dashwheel (lido: %1$s).</string>
+    <string name="step_calls">Chamadas</string>
+    <string name="step_calls_detail">Mostra quem liga no ecrã do carro, para atender ou desligar a partir dele. O som continua no Bluetooth do carro.</string>
 </resources>

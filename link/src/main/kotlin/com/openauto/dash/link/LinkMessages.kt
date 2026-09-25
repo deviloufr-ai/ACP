@@ -77,6 +77,34 @@ data class ActionResult(val key: String, val action: Action, val ok: Boolean) : 
     enum class Action { REPLY, MARK_READ, DISMISS }
 }
 
+/** Phone → head unit: the phone call, each time it changes (and once when the link comes up). */
+@Serializable
+@SerialName("call")
+data class CallState(
+    val phase: Phase,
+    /** The other party's number, when the phone can read it. */
+    val number: String? = null,
+    /** Their name from the phone's contacts. */
+    val name: String? = null,
+    /** Their contact photo as a small PNG, base64. */
+    val photoPng: String? = null,
+    /** How long the call has been answered, when sent (clocks may differ between the two). */
+    val activeForMs: Long = 0,
+    /** False when the companion isn't allowed to answer / hang up: the head unit only shows the call. */
+    val canControl: Boolean = true
+) : LinkMessage {
+    @Serializable
+    enum class Phase { IDLE, RINGING, ACTIVE }
+}
+
+/** Head unit → phone: answer, decline or end the call. */
+@Serializable
+@SerialName("call_cmd")
+data class CallCommand(val action: Action) : LinkMessage {
+    @Serializable
+    enum class Action { ANSWER, DECLINE, HANG_UP }
+}
+
 /** A notification as the head unit shows it. [key] is the phone's own key. */
 @Serializable
 data class PhoneNotification(

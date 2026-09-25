@@ -1,6 +1,8 @@
 package com.openauto.dash
 
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -24,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -44,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +68,8 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.openauto.dash.link.ActionResult
 import com.openauto.dash.link.ConversationLine
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
@@ -284,6 +290,26 @@ internal fun PhonePane() {
     }
 
     SettingsRow(Icons.Filled.AddLink, stringResource(R.string.phone_pair), stringResource(R.string.phone_pair_detail)) { pairing = true }
+
+    // Calls show in their own window over other apps; without that, only over the launcher.
+    val scope = rememberCoroutineScope()
+    var overlayAllowed by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            overlayAllowed = Settings.canDrawOverlays(context)
+            delay(2_000)
+        }
+    }
+    if (phones.isNotEmpty() && !overlayAllowed) {
+        SettingsRow(Icons.Filled.Layers, stringResource(R.string.phone_overlay), stringResource(R.string.phone_overlay_detail)) {
+            scope.launch {
+                overlayAllowed = PipAnchor.grantOverlayPermission(context)
+                if (!overlayAllowed) {
+                    context.launchSafely(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
+                }
+            }
+        }
+    }
 
     if (pairing) PhonePairingDialog(onDismiss = { pairing = false })
 }
