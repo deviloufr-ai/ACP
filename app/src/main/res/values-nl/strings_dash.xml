@@ -145,4 +145,22 @@
     <string name="dash_page_below2">Twee onder Start</string>
     <string name="dash_empty_title">Hier staat nog niets</string>
     <string name="dash_empty_body">Voeg een tegel toe of kies een sjabloon voor alle pagina\'s.</string>
+    <string name="dash_effects_title">Effecten</string>
+    <string name="dash_effects_none">Geen</string>
+    <string name="dash_effects_reduced">Beperkt</string>
+    <string name="dash_effects_full">Volledig</string>
+    <string name="dash_effects_none_hint">Beste leesbaarheid: dekkende kaarten, scherpe cijfers, geen gloed</string>
+    <string name="dash_effects_reduced_hint">Zachtere gloed, glas blijft</string>
+    <string name="dash_effects_full_hint">Elk thema met al zijn gloed en glas</string>
+    <string name="dash_drive_lock_notice">Parkeer om wijzigingen te maken</string>
+    <string name="dash_alert_spoken">%1$s. Stop zodra het kan.</string>
+    <string name="dash_theme_group_recommended">Aanbevolen</string>
+    <string name="dash_theme_group_colours">Thema\'s</string>
+    <string name="dash_theme_group_skins">Werelden</string>
+    <string name="dash_theme_night">Nacht</string>
+    <string name="dash_theme_day">Dag</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">Het centrale display van de C4 Picasso: koudwitte cijfers op rookgrafiet, amberkleurige waarschuwingen</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">De lounge-cabine: parelgrijs, witte panelen, één diepblauw accent</string>
 </resources>

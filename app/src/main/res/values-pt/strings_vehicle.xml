@@ -199,4 +199,6 @@
     <string name="vehicle_err_refused">%1$s recusou a ligação: ocupado por um telemóvel ou outra app, sem alimentação ou fora de alcance</string>
     <string name="vehicle_err_silent">%1$s ligou-se mas nunca respondeu</string>
     <string name="vehicle_err_permission">Permissão Bluetooth não concedida</string>
+    <string name="vehicle_obd_connect_from_bar">Ligue com o botão OBD da barra</string>
+    <string name="vehicle_recent_alerts">Últimos avisos</string>
 </resources>

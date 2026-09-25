@@ -8,4 +8,9 @@
     <string name="settings_section_advanced">Avançado</string>
     <string name="settings_ai_detail">Explica os códigos de avaria e fala os alertas</string>
     <string name="settings_system_detail">O verdadeiro Google Maps no bloco Maps. Precisa de root.</string>
+    <string name="settings_section_driving">Condução</string>
+    <string name="settings_drive_lock">Alterações só com o carro parado</string>
+    <string name="settings_drive_lock_detail">A edição, as definições e a grelha de apps esperam que o carro pare</string>
+    <string name="settings_tap_sound">Som ao tocar</string>
+    <string name="settings_tap_sound_detail">Um bip curto a cada toque, para ecrãs que não vibram</string>
 </resources>
