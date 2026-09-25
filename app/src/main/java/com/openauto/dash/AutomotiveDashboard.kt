@@ -79,9 +79,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
@@ -844,13 +843,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
             }
-            AnimatedVisibility(
-                visible = pageIndicatorShown && !editing,
-                enter = fadeIn(tween(150)),
-                exit = fadeOut(tween(400)),
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
-            ) {
-                PageIndicator(pageIndicatorFor)
+            // Fades in fast and out slowly; drawn only while it shows at all.
+            val indicatorAlpha by animateFloatAsState(
+                targetValue = if (pageIndicatorShown && !editing) 1f else 0f,
+                animationSpec = tween(if (pageIndicatorShown) 150 else 400),
+                label = "pageIndicator"
+            )
+            if (indicatorAlpha > 0f) {
+                PageIndicator(
+                    pageIndicatorFor,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                        .graphicsLayer { alpha = indicatorAlpha }
+                )
             }
 
             // needs the accessibility service; if it isn't on, tapping prompts to
