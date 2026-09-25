@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mechanik AI</string>
-    <string name="ai_explanation">Gdy adapter się połączy, Dashwheel szuka kodów usterek. Nowy kod objaśnia Gemini i odczytuje go na głos. Wysyłane są tylko kody, odczyty silnika i model auta.</string>
+    <string name="ai_explanation">Gdy adapter się połączy, Dashwheel szuka kodów usterek. Nowy kod objaśnia Gemini i odczytuje go na głos. Do Google trafiają kody, odczyty silnika i model auta, a także Twój głos, gdy zadajesz pytanie na głos.</string>
     <string name="ai_activation_code">Kod aktywacyjny</string>
     <string name="ai_activation_hint">Odblokowuje wbudowany klucz</string>
     <string name="ai_activate">Aktywuj</string>
@@ -38,9 +38,14 @@
     <string name="ai_say_weak_battery">Akumulator jest słaby: %1$s wolta przy wyłączonym silniku. Warto go wkrótce sprawdzić.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">Można jechać</string>
+    <string name="ai_verdict_ok">Brak oznak pilności</string>
     <string name="ai_verdict_soon">Wkrótce sprawdzić</string>
     <string name="ai_verdict_stop">Zatrzymaj się</string>
+    <string name="ai_rules_stop">Ta usterka może uszkodzić silnik: zatrzymaj się, gdy będzie bezpiecznie, i oddaj auto do sprawdzenia przed dalszą jazdą.</string>
+    <string name="ai_rules_soon">Z tą usterką trzeba pojechać do warsztatu w ciągu kilku dni: do tego czasu jedź spokojnie.</string>
+    <string name="ai_rules_raised">Wbudowane zasady bezpieczeństwa oceniają ją poważniej niż AI.</string>
+    <string name="ai_disclaimer">Porada AI (%1$s): może być błędna. Przed naprawą potwierdź ją w warsztacie.</string>
+    <string name="ai_details_parked">Szczegóły można czytać na postoju. Pytanie nadal możesz zadać na głos.</string>
     <string name="ai_check_first">Najpierw sprawdzić: %1$s</string>
     <string name="ai_details">Szczegóły</string>
     <string name="ai_close">Zamknij</string>

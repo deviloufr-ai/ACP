@@ -78,7 +78,7 @@ internal object QuestionPrompt {
         focus: String,
         previous: Exchange?
     ): String = buildString {
-        appendLine("You are an experienced mechanic who knows Citroën / PSA cars well, talking with the driver of this car: $car.")
+        appendLine(MechanicPersona.of(car) + " You are talking with its driver.")
         appendLine("Its stored fault codes: ${codes.joinToString(", ")}. The driver is looking at $focus.")
         diagnosis?.let { d ->
             appendLine("What you already told the driver: ${d.summary} ${d.overview}".trim())
@@ -99,7 +99,8 @@ internal object QuestionPrompt {
         appendLine("The attached recording is the driver asking you a question out loud.")
         appendLine("Answer in ${language.promptName}, with correct spelling and all accents, the way a mechanic would in person: 2 to 4 short sentences, concrete and specific to this car. The answer is read aloud, so no lists and no symbols.")
         appendLine("- heard: the driver's question as you understood it, written in ${language.promptName}.")
-        append("- answer: your answer. If the recording holds no clear question, say so in one sentence.")
+        appendLine("- answer: your answer. If the recording holds no clear question, say so in one sentence.")
+        append("If you are not sure, say so rather than guess, and never tell the driver a fault is safe to ignore without good grounds.")
     }
 
     /** The question as heard and the answer; null when unusable. */

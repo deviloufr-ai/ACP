@@ -99,6 +99,9 @@ object ObdCodes {
         "P2100" to Entry(R.string.vehicle_dtc_p2100_title, R.string.vehicle_dtc_p2100_fix, "Throttle actuator motor circuit", "Check throttle body motor and wiring; may need throttle body replacement.")
     )
 
+    /** The table's English meaning for [code]; null for a code the table doesn't hold (no guess from its structure). */
+    fun tableTitle(code: String): String? = TABLE[code.uppercase().trim()]?.title
+
     fun describe(code: String): DtcInfo {
         val c = code.uppercase().trim()
         TABLE[c]?.let { return DtcInfo(c, it.title, it.fix, it.titleRes, it.fixRes) }

@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -51,16 +52,22 @@ internal object Ipv4First : Dns {
  * Google Gemini over plain REST (free key from aistudio.google.com). The key
  * travels in a header, never in the URL.
  *
- * All models are asked at once and the first good answer wins. On a busy free
- * tier one model often answers while the others refuse ("high demand") or
- * hang, so waiting on them in turn wasted the budget. Each model has its own
- * free quota, and a car asks only a few times a day.
+ * Models are asked best first, each one [HEDGE_MS] after the last or as soon
+ * as one refuses, and the first good answer wins. On a busy free tier one
+ * model often answers while the others refuse ("high demand") or hang, so
+ * waiting on each in turn wasted the budget; asking them all at once let the
+ * quickest, the "lite" ones, win nearly every time with the weakest answer,
+ * and spent every model's quota (or, on a paid key, the bill) four times over.
  */
 object GeminiClient {
 
+    // Best first: the full models, then the lighter ones as last resorts.
     // "-latest" aliases follow Google's newest releases; the pinned versions
     // are extra chances on a busy day, and simply drop out once retired (404).
-    val MODELS = listOf("gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.6-flash", "gemini-3.1-flash-lite")
+    val MODELS = listOf("gemini-flash-latest", "gemini-3.6-flash", "gemini-flash-lite-latest", "gemini-3.1-flash-lite")
+
+    /** How long a model has on its own before the next one is asked too. */
+    const val HEDGE_MS = 8_000L
 
     private const val BASE = "https://generativelanguage.googleapis.com/v1beta/models"
     private val JSON_TYPE = "application/json".toMediaType()
@@ -92,12 +99,31 @@ object GeminiClient {
         withTimeoutOrNull(budgetMs) { race(apiKey, requestBody(prompt, schema, audio, audioMime)) }
             ?: Result.failure(InterruptedIOException("No Gemini model answered within ${budgetMs / 1000} s"))
 
-    /** Every model at once; the first answer wins and the rest are cancelled. */
-    private suspend fun race(apiKey: String, body: String): Result<GeminiReply> = coroutineScope {
-        val pending: MutableList<Deferred<Result<GeminiReply>>> = MODELS.map { model ->
+    private suspend fun race(apiKey: String, body: String): Result<GeminiReply> =
+        hedge(MODELS, HEDGE_MS) { model -> call(apiKey, model, body) }.map { (model, text) -> GeminiReply(model, text) }
+
+    /**
+     * Tries [attempt] on each of [models] in order: the first at once, each
+     * next one [hedgeMs] after the one before started, or as soon as an
+     * attempt has failed, whichever comes first. The first success wins and the attempts
+     * still running are cancelled; when all fail, the most telling failure.
+     */
+    internal suspend fun <T> hedge(
+        models: List<String>,
+        hedgeMs: Long,
+        attempt: suspend (String) -> T
+    ): Result<Pair<String, T>> = coroutineScope {
+        // Completed once a model's attempt has started, by its turn coming or by a failure letting it in early.
+        val started = List(models.size) { CompletableDeferred<Unit>() }
+        val pending: MutableList<Deferred<Result<Pair<String, T>>>> = models.mapIndexed { i, model ->
             async {
+                if (i > 0) {
+                    started[i - 1].await()
+                    withTimeoutOrNull(hedgeMs) { started[i].await() }
+                }
+                started[i].complete(Unit)
                 try {
-                    Result.success(GeminiReply(model, call(apiKey, model, body)))
+                    Result.success(model to attempt(model))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -114,6 +140,8 @@ object GeminiClient {
                 return@coroutineScope result
             }
             result.exceptionOrNull()?.let(failures::add)
+            // A refusal is no reason to wait: the next model in line goes now.
+            started.firstOrNull { !it.isCompleted }?.complete(Unit)
         }
         Result.failure(mostTelling(failures))
     }
