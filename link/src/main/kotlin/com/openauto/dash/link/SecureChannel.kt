@@ -64,13 +64,27 @@ class LinkSession internal constructor(
     private var sendCounter = 0L
     private var receiveCounter = 0L
 
-    fun send(message: LinkMessage) {
+    /**
+     * Sends [message]. False, with nothing sent, when it is too big for one
+     * frame: the other side would refuse the frame and drop the whole link.
+     */
+    fun send(message: LinkMessage): Boolean {
         val plain = LinkCodec.encode(message)
+        if (plain.size > MAX_MESSAGE) return false
         synchronized(output) {
             val cipher = Cipher.getInstance(AES_GCM)
             cipher.init(Cipher.ENCRYPT_MODE, sendKey, GCMParameterSpec(128, nonce(sendCounter++)))
             writeFrame(output, cipher.doFinal(plain))
         }
+        return true
+    }
+
+    /** [send], closing the link when it is broken. True when the message went. */
+    fun sendOrClose(message: LinkMessage): Boolean = try {
+        send(message)
+    } catch (e: IOException) {
+        close()
+        false
     }
 
     /**
@@ -96,6 +110,8 @@ class LinkSession internal constructor(
     companion object {
         /** A generous cap for one message (a notification with its icon is a few kB). */
         const val MAX_FRAME = 512 * 1024
+        /** The largest encoded message that fits in a frame, next to the GCM tag. */
+        const val MAX_MESSAGE = MAX_FRAME - GCM_TAG_BYTES
     }
 }
 
@@ -243,6 +259,7 @@ object SecureChannel {
 }
 
 private const val AES_GCM = "AES/GCM/NoPadding"
+private const val GCM_TAG_BYTES = 16
 
 internal fun writeFrame(output: DataOutputStream, bytes: ByteArray) {
     output.writeInt(bytes.size)

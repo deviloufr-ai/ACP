@@ -1,51 +1,22 @@
 package com.openauto.dash
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import dadb.Dadb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 /**
@@ -67,6 +38,35 @@ object PipAnchor {
     const val MAPS_PACKAGE = "com.google.android.apps.maps"
 
     private const val POLL_MS = 2_500L
+
+    /**
+     * The pace once a window has sat still for [IDLE_AFTER_POLLS] polls: every
+     * `am stack list` is an ADB round trip for each window tile, forever. Any
+     * sign that things may move (see [pollAgainSoon]) brings back [POLL_MS].
+     * Kept short: Maps killed for memory, dragged by hand or opened by voice
+     * raises none of those signs and is only seen by the next poll.
+     */
+    private const val IDLE_POLL_MS = 5_000L
+    private const val IDLE_AFTER_POLLS = 4
+
+    /** Bumped by events that may move a window (a touch, the dashboard coming back); see [idlePause]. */
+    private val wakeups = MutableStateFlow(0L)
+
+    /** Something may move a window soon: idle trackers poll at the quick pace again, starting now. */
+    fun pollAgainSoon() {
+        wakeups.update { it + 1 }
+    }
+
+    /**
+     * Waits out an idle poll interval, cut short by anything that may move a
+     * window: a touch, a page swipe, the dashboard area or the dock changing,
+     * the windows stepping aside. True when cut short.
+     */
+    private suspend fun idlePause(): Boolean = withTimeoutOrNull(IDLE_POLL_MS) {
+        combine(wakeups, pageSwiping, allowedArea, dockActive, steppedAside) { a, b, c, d, e -> listOf(a, b, c, d, e) }
+            .drop(1) // the values right now; only a change counts
+            .first()
+    } != null
 
     /** What the tile shows. [pipPackage] is null while no PiP window exists. */
     data class Status(
@@ -127,6 +127,7 @@ object PipAnchor {
         managed.add(packageName)
         lastReopenAt.remove(packageName) // back on screen: reopen at once if needed
         lastRaiseAt.remove(packageName) // and raise a window parked behind the dashboard at once
+        pollAgainSoon()
     }
 
     fun tileHidden(packageName: String) {
@@ -191,7 +192,7 @@ object PipAnchor {
 
     private suspend fun closeWindow(context: Context, win: FloatingWindow, reason: String) {
         forgetWindow(context, win.packageName)
-        val out = runCatching { DockShell.shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
+        val out = runGuarded { DockShell.shell(context, "am stack remove ${win.stackId}") }.getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "closed ${win.packageName} ($reason): ${out.trim()}")
     }
 
@@ -402,7 +403,7 @@ object PipAnchor {
         parking.compute(packageName) { _, running ->
             if (running?.isActive == true) running
             else scope.launch {
-                val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+                val win = runGuarded { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
                 park(context, win, "stepped aside for a dialog")
             }
         }
@@ -418,6 +419,10 @@ object PipAnchor {
         if (packageName == MAPS_PACKAGE && freshStarted.add(packageName)) forceStop(context, packageName)
         var mem = DockPolicy.Memory()
         var lastResult: String? = null
+        // Polls in a row that changed nothing: the listing was the same and
+        // there was nothing to do. Enough of them and the loop slows down.
+        var quietPolls = 0
+        var prevListing: String? = null
         while (true) {
             if (isLent(packageName)) {
                 // Lent to a split: neither parked, placed nor reopened meanwhile,
@@ -428,12 +433,16 @@ object PipAnchor {
                 delay(POLL_MS)
                 continue
             }
-            val lookup = runGuarded { findFloatingWindow(context, packageName) }
+            val lookup = runGuarded { lookUp(context, packageName) }
             // Safety net: a window whose tile left the screen but which a missed
             // hide() left in place is parked here (closed if its tile is gone).
             lastListing?.let { runGuarded { handleStrays(context, it) } }
-            val win = lookup.getOrNull()
+            val listing = lookup.getOrNull()?.first
+            val win = lookup.getOrNull()?.second
             val now = System.currentTimeMillis()
+            val sameListing = listing != null && listing == prevListing
+            prevListing = listing
+            var quiet = false
             if (lookup.isFailure) {
                 publishError(context, packageName, lookup.exceptionOrNull()!!)
                 mem = mem.copy(attempts = 0, lastStack = null)
@@ -442,12 +451,16 @@ object PipAnchor {
                 unpark(context, packageName)
                 noteFreeform(packageName, false)
                 if (onScreenWindows().isEmpty()) setDashboardFocusable(context, true)
+                val keepOpen = autoOpen(context, packageName)
                 val (step, next) = DockPolicy.onMissing(
                     mem, expectedGone = expectedGone.remove(packageName),
-                    autoOpen = autoOpen(context, packageName),
+                    autoOpen = keepOpen,
                     lastReopenAt = lastReopenAt[packageName] ?: 0L, now = now
                 )
                 mem = next
+                // No window and none to open: nothing happens until the user
+                // opens one (a touch, which brings the quick pace back).
+                quiet = sameListing && step == DockPolicy.Step.Idle && !keepOpen
                 when (step) {
                     DockPolicy.Step.UserClosed -> {
                         // Gone, and not by our hand: the user closed it. Respect that.
@@ -465,6 +478,7 @@ object PipAnchor {
                         lastReopenAt[packageName] = now
                         val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
                         Log.i(TAG, "opening $packageName at $rect (attempt ${step.attempt})")
+                        openedByTile(packageName)
                         SplitLauncher.launchFreeform(context, packageName, bounds)
                     }
                     else -> Unit
@@ -506,6 +520,7 @@ object PipAnchor {
                     continue
                 }
                 val keep = step as DockPolicy.Step.Keep
+                if (keep.docked) fullscreenReturns.remove(packageName)
                 if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
                     setDashboardFocusable(context, false)
@@ -535,6 +550,8 @@ object PipAnchor {
                     // raise it, after placing it so the window raised is one on
                     // the tile, not a sliver at the edge of the screen.
                     lastRaiseAt[packageName] = now
+                    // Raising can turn the window fullscreen on this head unit.
+                    openedByTile(packageName)
                     Log.i(TAG, "raising $packageName above the dashboard")
                     if (bringToFront(context, win.taskId)) DockShell.forgetListing()
                     else lastResult = listOfNotNull(lastResult.takeIf { place != null }, "failed: could not raise ${win.packageName} (task ${win.taskId})").joinToString(" \u00b7 ")
@@ -542,8 +559,12 @@ object PipAnchor {
                 if (place != null || keep.raise) {
                     status.value = status.value.copy(lastResult = lastResult, error = if (placementFailed) status.value.error else null)
                 }
+                // Docked where it belongs, and nothing moved since the last look.
+                quiet = sameListing && keep.docked && place == null && !keep.raise
             }
-            delay(POLL_MS)
+            quietPolls = if (quiet) quietPolls + 1 else 0
+            if (quietPolls < IDLE_AFTER_POLLS) delay(POLL_MS)
+            else if (idlePause()) quietPolls = 0 // something may move: look now, then at the quick pace
         }
     }
 
@@ -567,6 +588,7 @@ object PipAnchor {
         val out = runGuarded { DockShell.shell(context, "am force-stop $packageName") }
             .getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "stopped $packageName before docking it: ${out.trim().ifEmpty { "ok" }}")
+        openedByTile(packageName)
         unpark(context, packageName)
         noteFreeform(packageName, false)
         lastReopenAt.remove(packageName) // open ours straight away
@@ -586,7 +608,7 @@ object PipAnchor {
     fun nudge(context: Context, rect: ScreenRect, packageName: String = MAPS_PACKAGE) {
         if (isLent(packageName)) return
         scope.launch {
-            val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
+            val win = runGuarded { findFloatingWindow(context, packageName) }.getOrNull() ?: return@launch
             if (win.mode != "freeform" || win.offDisplay) return@launch // the tracker brings a hidden window back
             val b = win.bounds ?: return@launch
             Log.i(TAG, "nudging $packageName (its tile was tapped)")
@@ -612,9 +634,10 @@ object PipAnchor {
     suspend fun grantOverlayPermission(context: Context): Boolean {
         if (android.provider.Settings.canDrawOverlays(context)) return true
         if (overlayGrantTried) return false
-        overlayGrantTried = true
-        val out = runCatching { DockShell.shell(context, "appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow") }
+        val out = runGuarded { DockShell.shell(context, "appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow") }
             .getOrElse { "failed: ${it.message}" }
+        // Only a grant that actually ran counts as tried: a cancelled one is tried again.
+        overlayGrantTried = true
         // The app-op change can take a moment to reach this process.
         repeat(10) {
             if (android.provider.Settings.canDrawOverlays(context)) {
@@ -637,14 +660,15 @@ object PipAnchor {
 
     private suspend fun undoStatusBarPolicy(context: Context) {
         if (statusBarPolicyChecked) return
-        statusBarPolicyChecked = true
-        runCatching {
+        runGuarded {
             val current = DockShell.shell(context, "settings get global policy_control").trim()
             if (current.startsWith("immersive.status=") && current.contains(context.packageName)) {
                 DockShell.shell(context, "settings delete global policy_control")
                 Log.i(TAG, "cleared policy_control ('$current')")
             }
         }.onFailure { Log.w(TAG, "could not check status-bar policy", it) }
+        // Checked once it ran (failed or not); a cancelled check is done again.
+        statusBarPolicyChecked = true
     }
 
     // --- Keeping the docked window in front ---------------------------------
@@ -656,17 +680,23 @@ object PipAnchor {
     // takes it back when the window is gone. Side effect: no on-screen keyboard
     // for the dashboard while Maps is docked on the visible page.
 
+    /** Written on the main thread only. */
     @Volatile private var focusDeclined = false
 
     private suspend fun setDashboardFocusable(context: Context, focusable: Boolean) {
         val activity = context.findActivity() ?: return
-        if (focusable != focusDeclined) return
-        focusDeclined = !focusable
-        withContext(Dispatchers.Main) {
+        if (focusable != focusDeclined) return // already so: no trip to the main thread (every poll asks)
+        // Checked again, flipped and applied together on the main thread:
+        // callers on several IO threads could otherwise apply their changes in
+        // the reverse order and leave the dashboard unable to take focus.
+        val changed = withContext(Dispatchers.Main) {
+            if (focusable != focusDeclined) return@withContext false
+            focusDeclined = !focusable
             val flag = android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
             if (focusable) activity.window.clearFlags(flag) else activity.window.addFlags(flag)
+            true
         }
-        Log.i(TAG, if (focusable) "dashboard takes focus again" else "dashboard declines focus while Maps is docked")
+        if (changed) Log.i(TAG, if (focusable) "dashboard takes focus again" else "dashboard declines focus while Maps is docked")
     }
 
     private fun dashboardTaskId(context: Context): Int? = context.findActivity()?.taskId
@@ -689,13 +719,6 @@ object PipAnchor {
         }
         return null
     }
-
-
-    /**
-     * "Close enough": the window's centre is inside the target and its width is
-     * within the band SystemUI's aspect-ratio rules can produce. Exact equality
-     * never happens once the system has had its say.
-     */
 
     private const val PREFS = "pip_anchor"
 
@@ -748,12 +771,67 @@ object PipAnchor {
         scope.launch {
             // A pair's apps come to the front on purpose: their windows are the split's now.
             if (!isLent(packageName)) {
-                val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
+                val win = runGuarded { findFloatingWindow(context, packageName) }.getOrNull()
                 if (win?.mode == "freeform") park(context, win, "another app is in front")
+                // The other app may be this one, fullscreen instead of in its window.
+                sendBackIfFullscreen(context, packageName)
             }
             DockShell.release()
         }
     }
+
+    /** When the tile last opened, raised or stopped each app itself (ms). */
+    private val ownLaunchAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Times each app was sent back from fullscreen since it last docked. */
+    private val fullscreenReturns = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /** When the dashboard itself was last touched (ms). */
+    @Volatile private var lastTouchAt = 0L
+
+    /** The dashboard was touched: an app opening right after may be the user's doing. */
+    fun noteUserTouch() {
+        lastTouchAt = System.currentTimeMillis()
+        pollAgainSoon()
+    }
+
+    /** The tile is opening (or raising) [packageName] itself, to show it in its window. */
+    fun openedByTile(packageName: String) {
+        ownLaunchAt[packageName] = System.currentTimeMillis()
+        pollAgainSoon()
+    }
+
+    /**
+     * The tile's own launch can come up fullscreen instead of in its window,
+     * after a reboot above all, and the dashboard then stays covered by Maps
+     * until Back is pressed. So when the dashboard is covered right after the
+     * tile opened the app, and the app is what covers it, Back is pressed for
+     * the user: the app leaves the screen, the dashboard comes back, and the
+     * tile opens it in its window again. See [DockPolicy.sendBackFromFullscreen]
+     * for when it is left alone.
+     */
+    private suspend fun sendBackIfFullscreen(context: Context, packageName: String) {
+        repeat(FULLSCREEN_CHECKS) { check ->
+            if (check > 0) delay(FULLSCREEN_CHECK_MS)
+            val now = System.currentTimeMillis()
+            val returns = fullscreenReturns[packageName] ?: 0
+            if (!DockPolicy.sendBackFromFullscreen(autoOpen(context, packageName), ownLaunchAt[packageName] ?: 0L, lastTouchAt, returns, now)) return
+            val listing = runGuarded { DockShell.listStacks(context) }.getOrNull() ?: return
+            val full = WindowListing.fullscreenInFront(listing, packageName, context.packageName) ?: return@repeat
+            fullscreenReturns[packageName] = returns + 1
+            val out = runGuarded { DockShell.shell(context, "input keyevent $KEYCODE_BACK") }
+                .fold({ it.trim().ifEmpty { "ok" } }, { "failed: ${it.message}" })
+            Log.i(TAG, "$packageName came up fullscreen (task ${full.taskId}) instead of in its window; pressed Back: $out")
+            return
+        }
+    }
+
+    /** The listing may not show the app in front yet when the dashboard stops: looked at a few times. */
+    private const val FULLSCREEN_CHECKS = 3
+    private const val FULLSCREEN_CHECK_MS = 700L
+
+    /** `KeyEvent.KEYCODE_BACK`, for `input keyevent`. */
+    private const val KEYCODE_BACK = 4
 
     /**
      * Clears the dashboard of every managed window whose app is not in [onPage].
@@ -765,7 +843,7 @@ object PipAnchor {
 
     fun stashAllExcept(context: Context, onPage: Set<String>) {
         scope.launch {
-            val listing = runCatching { DockShell.listStacks(context) }.getOrNull() ?: return@launch
+            val listing = runGuarded { DockShell.listStacks(context) }.getOrNull() ?: return@launch
             syncFreeform(context, listing)
             val mine = managedPackages(context)
             for (win in WindowListing.allFloatingWindows(listing, context.packageName)) {
@@ -799,7 +877,7 @@ object PipAnchor {
         if ((tileCounts[packageName] ?: 0) > 0) return
         if (isLent(packageName)) return
         scope.launch {
-            val stack = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
+            val stack = runGuarded { findFloatingWindow(context, packageName) }.getOrNull()
             if (stack == null) {
                 // Already gone: still hand focus back.
                 unpark(context, packageName)
@@ -816,7 +894,7 @@ object PipAnchor {
                 val h = w * 9 / 16
                 val margin = (12 * dm.density).roundToInt()
                 val rect = ScreenRect(dm.widthPixels - w - margin, dm.heightPixels - h - margin, dm.widthPixels - margin, dm.heightPixels - margin)
-                runCatching { DockShell.resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
+                runGuarded { DockShell.resize(context, stack, rect) }.onFailure { Log.w(TAG, "park failed", it) }
             }
         }
     }
@@ -826,7 +904,11 @@ object PipAnchor {
 
     private var lastListing: String? = null
 
-    private suspend fun findFloatingWindow(context: Context, packageName: String? = null): FloatingWindow? {
+    private suspend fun findFloatingWindow(context: Context, packageName: String? = null): FloatingWindow? =
+        lookUp(context, packageName).second
+
+    /** The stack listing, and [packageName]'s floating window in it. */
+    private suspend fun lookUp(context: Context, packageName: String?): Pair<String, FloatingWindow?> {
         val listing = DockShell.listStacks(context)
         if (listing != lastListing) {
             // Full dump once per change: this is what tells us how the ROM
@@ -835,7 +917,7 @@ object PipAnchor {
             lastListing = listing
         }
         lastSeen = WindowListing.summarizeStacks(listing)
-        return WindowListing.parseFloatingWindow(listing, context.packageName, packageName)
+        return listing to WindowListing.parseFloatingWindow(listing, context.packageName, packageName)
     }
 
     /** Shows [e] on the tile; [context] resolves the message in the UI language (shell errors stay as the system wrote them). */
@@ -843,17 +925,9 @@ object PipAnchor {
         Log.w(TAG, "PiP anchor error", e)
         val msg = when {
             e is java.net.ConnectException || e.message?.contains("Connection refused") == true ->
-                context.getString(R.string.apps_window_error_no_shell, DockShell.adbPort())
+                context.getString(R.string.apps_window_error_no_shell, AdbInstaller.announcedPort())
             else -> e.message ?: e.javaClass.simpleName
         }
         statusFlow(packageName).let { it.value = it.value.copy(error = msg) }
     }
-
-    /**
-     * Picks the floating window out of `am stack list` output. Each stack is a
-     * block starting with `Stack id=N`; its configuration names the windowing
-     * mode (`mWindowingMode=pinned` / `freeform`) and its tasks appear as
-     * `taskId=N: package/activity`. Freeform wins over pinned; our own package
-     * and the Home stack are never candidates.
-     */
 }

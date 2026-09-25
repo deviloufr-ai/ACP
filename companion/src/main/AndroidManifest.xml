@@ -4,6 +4,8 @@
 
     <!-- The link to the head unit: a TCP server on the phone's hotspot address. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tells the hotspot apart from the phone's own networks, to listen on it alone. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Kept listening while the screen is off. connectedDevice needs one of a
          short list of permissions besides; CHANGE_NETWORK_STATE is the plain one. -->
@@ -24,9 +26,11 @@
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
-    <!-- The pairing secret lives in this app's preferences: never in a backup. -->
+    <!-- The pairing secret lives in this app's preferences: never in a backup,
+         nor in a device-to-device transfer (which allowBackup alone doesn't stop on Android 12+). -->
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
@@ -41,7 +45,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- The launcher's pairing QR code, opened from any QR scanner. -->
+            <!-- The launcher's pairing QR code, opened from any QR scanner (the
+                 camera and Lens open links as BROWSABLE). Nothing is paired until
+                 the confirm dialog, naming the car, is accepted; and the phone only
+                 listens on its own hotspot, so a planted pairing has no reach. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

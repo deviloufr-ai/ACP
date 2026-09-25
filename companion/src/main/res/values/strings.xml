@@ -36,4 +36,10 @@
     <string name="invalid_code_read">This is not a Dashwheel pairing code (read: %1$s).</string>
     <string name="step_calls">Calls</string>
     <string name="step_calls_detail">Shows who is calling on the car\'s screen, to answer or hang up from there. The sound stays on the car\'s Bluetooth.</string>
+    <string name="car_spot_title">Where\'s my car</string>
+    <string name="car_spot_left">Left here: %1$s</string>
+    <string name="car_spot_saved">Saved in the car: %1$s</string>
+    <string name="car_spot_none">Once the car is linked, the place where it stops shows up here.</string>
+    <string name="car_spot_map">Map</string>
+    <string name="car_spot_walk">Walk there</string>
 </resources>

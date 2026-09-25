@@ -36,4 +36,10 @@
     <string name="invalid_code_read">Dit is geen Dashwheel-koppelcode (gelezen: %1$s).</string>
     <string name="step_calls">Oproepen</string>
     <string name="step_calls_detail">Toont op het scherm van de auto wie er belt, om daar op te nemen of op te hangen. Het geluid blijft op de bluetooth van de auto.</string>
+    <string name="car_spot_title">Waar staat mijn auto</string>
+    <string name="car_spot_left">Hier achtergelaten: %1$s</string>
+    <string name="car_spot_saved">Opgeslagen in de auto: %1$s</string>
+    <string name="car_spot_none">Zodra de auto verbonden is, zie je hier waar hij stopt.</string>
+    <string name="car_spot_map">Kaart</string>
+    <string name="car_spot_walk">Lopend erheen</string>
 </resources>

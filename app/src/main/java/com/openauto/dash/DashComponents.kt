@@ -31,14 +31,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -248,18 +254,22 @@ internal fun glassPanel(shape: RoundedCornerShape): Modifier {
             )
         )
         .border(1.dp, line, shape)
-        .drawWithContent {
-            drawContent()
+        // The highlight's gradient is built once per size, not on every draw.
+        .drawWithCache {
             val inset = size.width * 0.18f
-            drawLine(
-                brush = Brush.horizontalGradient(
-                    listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent),
-                    startX = inset, endX = size.width - inset
-                ),
-                start = Offset(inset, 1f),
-                end = Offset(size.width - inset, 1f),
-                strokeWidth = 1.5f
+            val highlight = Brush.horizontalGradient(
+                listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent),
+                startX = inset, endX = size.width - inset
             )
+            onDrawWithContent {
+                drawContent()
+                drawLine(
+                    brush = highlight,
+                    start = Offset(inset, 1f),
+                    end = Offset(size.width - inset, 1f),
+                    strokeWidth = 1.5f
+                )
+            }
         }
 }
 
@@ -275,40 +285,42 @@ internal fun dashBackground(): Modifier {
     val glow = DashColors.Glow
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
-    return Modifier.drawBehind {
-        drawRect(
-            brush = Brush.linearGradient(
-                colors = stops,
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            )
+    // Gradients are built once per size and palette, not on every draw of the page.
+    return Modifier.drawWithCache {
+        val page = Brush.linearGradient(
+            colors = stops,
+            start = Offset.Zero,
+            end = Offset(size.width, size.height)
         )
-        if (glass) {
-            val topC = Offset(size.width * 0.5f, -size.height * 0.15f)
-            val topR = size.width * 0.45f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(accent.copy(alpha = 0.22f * glow), Color.Transparent),
-                    center = topC, radius = topR
-                ),
-                radius = topR, center = topC
-            )
-            val cornerC = Offset(size.width * 1.05f, size.height * 1.05f)
-            val cornerR = size.width * 0.40f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(accent2.copy(alpha = 0.24f * glow), Color.Transparent),
-                    center = cornerC, radius = cornerR
-                ),
-                radius = cornerR, center = cornerC
-            )
+        val topC = Offset(size.width * 0.5f, -size.height * 0.15f)
+        val topR = size.width * 0.45f
+        val cornerC = Offset(size.width * 1.05f, size.height * 1.05f)
+        val cornerR = size.width * 0.40f
+        val topWash = if (glass) Brush.radialGradient(listOf(accent.copy(alpha = 0.22f * glow), Color.Transparent), center = topC, radius = topR) else null
+        val cornerWash = if (glass) Brush.radialGradient(listOf(accent2.copy(alpha = 0.24f * glow), Color.Transparent), center = cornerC, radius = cornerR) else null
+        onDrawBehind {
+            drawRect(brush = page)
+            if (topWash != null) drawCircle(brush = topWash, radius = topR, center = topC)
+            if (cornerWash != null) drawCircle(brush = cornerWash, radius = cornerR, center = cornerC)
         }
     }
 }
 
-/** Average colour of a bitmap (used for the album-art colour bleed). */
+/**
+ * Average colour of a bitmap (used for the album-art colour bleed). Averages
+ * an 8x8 thumbnail: scaling straight to 1x1 samples only a few pixels in the
+ * middle of the cover.
+ */
 internal fun Bitmap.averageColor(): Color = runCatching {
-    Color(Bitmap.createScaledBitmap(this, 1, 1, true).getPixel(0, 0))
+    val thumb = Bitmap.createScaledBitmap(this, 8, 8, true)
+    val px = IntArray(64)
+    thumb.getPixels(px, 0, 8, 0, 0, 8, 8)
+    if (thumb !== this) thumb.recycle()
+    var a = 0; var r = 0; var g = 0; var b = 0
+    for (p in px) {
+        a += p ushr 24; r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF
+    }
+    Color(r / 64, g / 64, b / 64, a / 64)
 }.getOrDefault(Color.Gray)
 
 /**
@@ -367,3 +379,19 @@ internal fun DockDivider(onDrag: (Float) -> Unit, onDragEnd: () -> Unit) {
 
 internal fun currentClock(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+/**
+ * [content] that goes away with a swipe to either side, like a notification on
+ * Android: let go past about a third of its width and it slides out, then
+ * [onDismiss] runs. A shorter swipe springs back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val dismiss by rememberUpdatedState(onDismiss)
+    val state = rememberSwipeToDismissBoxState(positionalThreshold = { it * 0.35f })
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue != SwipeToDismissBoxValue.Settled) dismiss()
+    }
+    SwipeToDismissBox(state = state, backgroundContent = {}, modifier = modifier) { content() }
+}

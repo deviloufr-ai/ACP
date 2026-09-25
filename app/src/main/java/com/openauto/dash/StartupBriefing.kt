@@ -117,13 +117,17 @@ internal object CarStart {
  * quick, works offline, and nothing about the driver's day is sent anywhere.
  *
  * "The car starts" means the unit was off or asleep for [CarStart.OFF_GAP_MS]. A
- * heartbeat saved every [TICK_MS] stops while the unit is off or in deep
+ * heartbeat taken every [TICK_MS] stops while the unit is off or in deep
  * sleep, so the first beat after power-on sees the gap. That works on any head
  * unit without its own ignition broadcast, and a short stop doesn't re-brief.
+ * Within one run the last beat is kept in memory; it is only saved every
+ * [SAVE_MS] (flash wears), so after a power cut the gap reads up to that much
+ * longer than the unit was really off.
  */
 object StartupBriefing {
 
     private const val TICK_MS = 20_000L
+    private const val SAVE_MS = 5 * 60_000L
     // How long to wait for the OBD scan, a GPS fix, the CANbox fuel reading.
     private const val WAIT_MS = 25_000L
     private const val SETTLE_MS = 12_000L
@@ -144,16 +148,23 @@ object StartupBriefing {
         val app = context.applicationContext
         scope.launch { AiMechanic.state.collect { if (it.codes != null) lastScanAt = System.currentTimeMillis() } }
         scope.launch {
+            val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            // The saved beat only matters for the first one of this run.
+            var last = if (prefs.contains("boot")) {
+                Heartbeat(prefs.getInt("boot", -1), prefs.getLong("elapsed", 0L), prefs.getLong("wall", 0L))
+            } else {
+                null
+            }
+            var saved: Heartbeat? = null
             while (true) {
                 val now = Heartbeat(bootCount(app), SystemClock.elapsedRealtime(), System.currentTimeMillis())
-                val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val last = if (prefs.contains("boot")) {
-                    Heartbeat(prefs.getInt("boot", -1), prefs.getLong("elapsed", 0L), prefs.getLong("wall", 0L))
-                } else {
-                    null
+                val start = CarStart.detected(last, now)
+                if (start || saved == null || now.elapsed - saved.elapsed !in 0 until SAVE_MS) {
+                    prefs.edit().putInt("boot", now.boot).putLong("elapsed", now.elapsed).putLong("wall", now.wall).apply()
+                    saved = now
                 }
-                prefs.edit().putInt("boot", now.boot).putLong("elapsed", now.elapsed).putLong("wall", now.wall).apply()
-                if (CarStart.detected(last, now)) launch { brief(app) }
+                last = now
+                if (start) launch { brief(app) }
                 delay(TICK_MS)
             }
         }
@@ -193,8 +204,7 @@ object StartupBriefing {
 
     /** Current conditions at the car, if it has a position and the weather service answers. */
     private suspend fun weather(context: Context): Weather? {
-        if (!hasLocationPermission(context)) return null
-        LocationFeed.acquire(context)
+        if (!LocationFeed.acquire(context)) return null
         try {
             val here = withTimeoutOrNull(WAIT_MS) { LocationFeed.location.filterNotNull().first() } ?: return null
             WeatherRepo.refresh(here.latitude, here.longitude)

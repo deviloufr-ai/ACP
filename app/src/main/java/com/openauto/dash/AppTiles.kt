@@ -3,6 +3,7 @@
 package com.openauto.dash
 
 import android.graphics.drawable.Drawable
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -519,13 +521,28 @@ private fun AppRow(app: AppEntry, onClick: () -> Unit) {
     }
 }
 
+/**
+ * Launcher icons already turned into bitmaps, keyed by the app's drawable and
+ * the size drawn. Process-wide, so scrolling the drawer or paging the
+ * dashboard back to an app doesn't rasterise its icon again; bounded to ~4 MB,
+ * least recently used first out.
+ */
+private object IconBitmaps {
+    private val cache = object : LruCache<Pair<Drawable, Int>, ImageBitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: Pair<Drawable, Int>, value: ImageBitmap): Int = value.width * value.height * 4
+    }
+
+    fun get(icon: Drawable, px: Int): ImageBitmap {
+        val key = icon to px
+        return cache.get(key) ?: icon.toBitmap(width = px, height = px).asImageBitmap().also { cache.put(key, it) }
+    }
+}
+
 /** Renders an installed app's launcher [Drawable] as a Compose image. */
 @Composable
 internal fun AppIcon(icon: Drawable, size: androidx.compose.ui.unit.Dp) {
     val px = with(androidx.compose.ui.platform.LocalDensity.current) { size.roundToPx() }
-    val bitmap = remember(icon, px) {
-        icon.toBitmap(width = px.coerceAtLeast(1), height = px.coerceAtLeast(1)).asImageBitmap()
-    }
+    val bitmap = remember(icon, px) { IconBitmaps.get(icon, px.coerceAtLeast(1)) }
     Image(
         bitmap = bitmap,
         contentDescription = null,

@@ -201,4 +201,10 @@
     <string name="vehicle_err_permission">Bluetooth-Berechtigung nicht erteilt</string>
     <string name="vehicle_obd_connect_from_bar">Über die OBD-Taste in der Leiste verbinden</string>
     <string name="vehicle_recent_alerts">Letzte Warnungen</string>
+    <string name="vehicle_speed_fix">Geschwindigkeitskorrektur</string>
+    <string name="vehicle_speed_fix_detail">Wird zur vom Auto gemeldeten Geschwindigkeit addiert, passend zum Tacho</string>
+    <string name="vehicle_speed_fix_less">Korrektur verringern</string>
+    <string name="vehicle_speed_fix_more">Korrektur erhöhen</string>
+    <string name="vehicle_speed_fix_now">Aktuell: %1$d km/h. Anpassen, bis es mit dem Tacho übereinstimmt.</string>
+    <string name="vehicle_speed_fix_not_connected">OBD-Adapter verbinden, um die korrigierte Geschwindigkeit live zu sehen.</string>
 </resources>

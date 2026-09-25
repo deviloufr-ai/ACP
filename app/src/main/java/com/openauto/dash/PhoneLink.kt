@@ -23,32 +23,36 @@ import com.openauto.dash.link.NotificationPosted
 import com.openauto.dash.link.NotificationRemoved
 import com.openauto.dash.link.NotificationSync
 import com.openauto.dash.link.PairingOffer
+import com.openauto.dash.link.PairingStorage
 import com.openauto.dash.link.Ping
 import com.openauto.dash.link.Pong
 import com.openauto.dash.link.Reply
 import com.openauto.dash.link.SecureChannel
+import com.openauto.dash.link.StoredPairing
 import com.openauto.dash.link.UnknownPairingException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicReference
 
 /*
  * The phone link, head unit side. The driver's phone shares its connection
@@ -67,7 +71,10 @@ data class PairedPhone(
     val name: String,
     val pairedAt: Long,
     /** The phone said it no longer knows this pairing: it must be paired again. */
-    val forgotten: Boolean = false
+    val forgotten: Boolean = false,
+    /** Occasions a hotspot refused this pairing since the phone last connected (see [PhoneLink]). */
+    val refusals: Int = 0,
+    val lastRefusalAt: Long = 0
 )
 
 /** The phone's call as the head unit shows it. */
@@ -95,11 +102,20 @@ object PhoneLink {
     private const val PREFS = "phone_link"
     private const val KEY_PHONES = "phones"
     private const val CONNECT_TIMEOUT_MS = 3_000
+    private const val HANDSHAKE_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 45_000
     private const val PING_EVERY_MS = 15_000L
     /** How often to look for the phone: quickly while a pairing code is on screen. */
     private const val RETRY_MS = 10_000L
     private const val RETRY_PAIRING_MS = 2_000L
+    /**
+     * Any other driver's companion refuses a pairing it never saw, so one
+     * refusal proves nothing: only this many, on occasions this far apart, with
+     * none of this unit's pairings known there, mean the phone removed the car.
+     */
+    private const val REFUSALS_TO_FORGET = 3
+    private const val REFUSAL_OCCASION_MS = 30 * 60_000L
+    private const val OUTBOX_SIZE = 64
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var started = false
@@ -114,6 +130,14 @@ object PhoneLink {
     private val _pending = MutableStateFlow<PairingOffer?>(null)
     val pending: StateFlow<PairingOffer?> = _pending
 
+    /**
+     * The last try, as a short technical line for the pairing dialog and
+     * Settings: the address dialled and what came back. Not translated: it is
+     * read out when the link does not come up, to tell where it stops.
+     */
+    private val _lastAttempt = MutableStateFlow<String?>(null)
+    val lastAttempt: StateFlow<String?> = _lastAttempt
+
     /** How the phone carried out a reply / mark-as-read / dismiss. */
     private val _results = MutableSharedFlow<ActionResult>(extraBufferCapacity = 8)
     val results: SharedFlow<ActionResult> = _results
@@ -125,6 +149,14 @@ object PhoneLink {
     /** Bumped when the network changes or the phones change, to retry right away. */
     private val wake = MutableStateFlow(0)
     @Volatile private var session: LinkSession? = null
+    // Everything sent goes through one coroutine, so it reaches the phone in the order it was sent.
+    private val outbox = Channel<Pair<LinkSession, LinkMessage>>(OUTBOX_SIZE)
+
+    /** A link for the pending pairing, opened while another phone's link was up. */
+    private class Handover(val gateway: InetAddress, val link: LinkSession, val phone: PairedPhone)
+    private val handover = AtomicReference<Handover?>(null)
+
+    private enum class Attempt { LINKED, REFUSED, UNREACHABLE }
 
     fun start(context: Context) {
         val app = context.applicationContext
@@ -140,6 +172,7 @@ object PhoneLink {
                 override fun onLost(network: Network) = wake.update { it + 1 }
             }
         )
+        scope.launch { for ((link, message) in outbox) link.sendOrClose(message) }
         scope.launch { run(app) }
     }
 
@@ -156,7 +189,7 @@ object PhoneLink {
     }
 
     fun forget(context: Context, id: String) {
-        savePhones(context, _phones.value.filter { it.id != id })
+        updatePhones(context) { phones -> phones.filter { it.id != id } }
         session?.takeIf { it.pairingId == id }?.close()
         refreshIdleState()
     }
@@ -164,14 +197,7 @@ object PhoneLink {
     /** Sends to the connected phone; false when no phone is connected. */
     fun send(message: LinkMessage): Boolean {
         val current = session ?: return false
-        scope.launch {
-            try {
-                current.send(message)
-            } catch (e: IOException) {
-                current.close()
-            }
-        }
-        return true
+        return outbox.trySend(current to message).isSuccess
     }
 
     fun reply(key: String, text: String) = send(Reply(NotificationFeed.phoneKey(key), text))
@@ -182,15 +208,13 @@ object PhoneLink {
     private suspend fun run(context: Context) {
         var last = wake.value
         while (scope.isActive) {
+            handover.getAndSet(null)?.let { runSession(context, it.gateway, it.link, it.phone, isPending = true) }
             val pending = _pending.value
             val candidates = listOfNotNull(pending?.let { PairedPhone(it.id, it.secret, "", 0) }) +
                 _phones.value.filter { !it.forgotten }
             val gateway = if (candidates.isEmpty()) null else hotspotGateway(context)
-            if (gateway != null) {
-                for (phone in candidates) {
-                    if (tryPhone(context, gateway, phone, isPending = phone.id == pending?.id)) break
-                }
-            }
+            if (gateway != null) dial(context, gateway, candidates, pending?.id)
+            else if (candidates.isNotEmpty()) note("no Wi-Fi gateway: not on a phone hotspot")
             refreshIdleState()
             val wait = if (_pending.value != null) RETRY_PAIRING_MS else RETRY_MS
             withTimeoutOrNull(wait) { wake.first { it != last } }
@@ -198,27 +222,70 @@ object PhoneLink {
         }
     }
 
-    /** One attempt with one pairing; true when the phone answered (and the link has now ended). */
-    private fun tryPhone(context: Context, gateway: InetAddress, phone: PairedPhone, isPending: Boolean): Boolean {
-        val socket = Socket()
+    /** Tries each pairing on the phone at [gateway] until one links (and that link has ended). */
+    private fun dial(context: Context, gateway: InetAddress, candidates: List<PairedPhone>, pendingId: String?) {
+        val refused = mutableListOf<String>()
+        for (phone in candidates) {
+            val isPending = phone.id == pendingId
+            when (tryPhone(context, gateway, phone, isPending)) {
+                Attempt.LINKED -> return
+                // A pairing code the phone hasn't accepted yet: the paired phones still get their turn.
+                Attempt.REFUSED -> if (!isPending) refused += phone.id
+                Attempt.UNREACHABLE -> Unit
+            }
+        }
+        if (refused.isNotEmpty()) noteRefusals(context, refused)
+    }
+
+    /** One attempt with one pairing. */
+    private fun tryPhone(context: Context, gateway: InetAddress, phone: PairedPhone, isPending: Boolean): Attempt {
+        val what = "${gateway.hostAddress}:$LINK_PORT ${if (isPending) "new code" else "paired"}"
         val link = try {
+            connect(gateway, phone)
+        } catch (e: UnknownPairingException) {
+            note("$what: phone does not know this code")
+            return Attempt.REFUSED
+        } catch (e: IOException) {
+            note("$what: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+            return Attempt.UNREACHABLE
+        } catch (e: Exception) {
+            // A crypto provider missing an algorithm on this unit, say: say so rather than retry blind.
+            note("$what: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+            Log.w(TAG, "link attempt failed", e)
+            return Attempt.UNREACHABLE
+        }
+        note("$what: linked")
+        runSession(context, gateway, link, phone, isPending)
+        return Attempt.LINKED
+    }
+
+    private fun note(line: String) {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
+        _lastAttempt.value = "$time  ${line.trim().take(140)}"
+        Log.i(TAG, line)
+    }
+
+    private fun connect(gateway: InetAddress, phone: PairedPhone): LinkSession {
+        val socket = Socket()
+        try {
             socket.connect(InetSocketAddress(gateway, LINK_PORT), CONNECT_TIMEOUT_MS)
-            socket.soTimeout = READ_TIMEOUT_MS
+            socket.soTimeout = HANDSHAKE_TIMEOUT_MS
             socket.tcpNoDelay = true
-            SecureChannel.client(
+            val link = SecureChannel.client(
                 socket.getInputStream(), socket.getOutputStream(), phone.id, phone.secret,
                 onClose = { runCatching { socket.close() } }
             )
-        } catch (e: UnknownPairingException) {
-            runCatching { socket.close() }
-            // The phone removed this car: show it as needing a new pairing.
-            if (!isPending) savePhones(context, _phones.value.map { if (it.id == phone.id) it.copy(forgotten = true) else it })
-            return true
+            socket.soTimeout = READ_TIMEOUT_MS
+            return link
         } catch (e: IOException) {
             runCatching { socket.close() }
-            return false
+            throw e
         }
+    }
 
+    /** Runs an open link until it ends. */
+    private fun runSession(context: Context, gateway: InetAddress, link: LinkSession, phone: PairedPhone, isPending: Boolean) {
+        if (!link.sendOrClose(Hello(unitName(context), BuildConfig.VERSION_NAME))) return
         session = link
         val pinger = scope.launch {
             while (isActive) {
@@ -226,8 +293,11 @@ object PhoneLink {
                 send(Ping)
             }
         }
+        // While a pairing code is on screen, keep asking the phone whether it now knows it.
+        val prober = if (isPending) null else scope.launch { probePending(gateway, link) }
+        // Where the car stops, for the phone's "where's my car".
+        val whereabouts = scope.launch { CarWhereabouts.report(context) { send(it) } }
         try {
-            link.send(Hello(unitName(context), BuildConfig.VERSION_NAME))
             while (true) {
                 val message = link.receive() ?: continue
                 handle(context, phone, isPending, message)
@@ -236,12 +306,40 @@ object PhoneLink {
             Log.i(TAG, "link ended: ${e.message}")
         } finally {
             pinger.cancel()
+            prober?.cancel()
+            whereabouts.cancel()
             link.close()
             if (session === link) session = null
             NotificationFeed.phoneClear()
             _call.value = null
         }
-        return true
+    }
+
+    /**
+     * Once the phone accepts the pending pairing, its link takes over from
+     * [current] (the phone keeps one link at a time anyway).
+     */
+    private suspend fun probePending(gateway: InetAddress, current: LinkSession) {
+        while (true) {
+            val offer = _pending.filterNotNull().first()
+            val phone = PairedPhone(offer.id, offer.secret, "", 0)
+            val link = try {
+                connect(gateway, phone)
+            } catch (e: IOException) {
+                null
+            }
+            if (link != null) {
+                if (!currentCoroutineContext().isActive) {
+                    link.close()
+                    return
+                }
+                handover.getAndSet(Handover(gateway, link, phone))?.link?.close()
+                current.close()
+                wake.update { it + 1 }
+                return
+            }
+            delay(RETRY_PAIRING_MS)
+        }
     }
 
     private fun handle(context: Context, phone: PairedPhone, isPending: Boolean, message: LinkMessage) {
@@ -251,9 +349,18 @@ object PhoneLink {
                     // The QR code was used: this phone is now paired.
                     _pending.value = null
                     val paired = PairedPhone(phone.id, phone.secret, message.deviceName, System.currentTimeMillis())
-                    savePhones(context, _phones.value.filter { it.id != phone.id } + paired)
-                } else if (message.deviceName != phone.name) {
-                    savePhones(context, _phones.value.map { if (it.id == phone.id) it.copy(name = message.deviceName) else it })
+                    updatePhones(context) { phones -> phones.filter { it.id != phone.id } + paired }
+                } else {
+                    // It answered, so earlier refusals were some other phone's.
+                    updatePhones(context) { phones ->
+                        phones.map {
+                            if (it.id == phone.id && (it.name != message.deviceName || it.refusals != 0)) {
+                                it.copy(name = message.deviceName, refusals = 0, lastRefusalAt = 0)
+                            } else {
+                                it
+                            }
+                        }
+                    }
                 }
                 _state.value = PhoneLinkState.Connected(message.deviceName)
             }
@@ -287,6 +394,21 @@ object PhoneLink {
         )
     }
 
+    /** Pairings every one of which the hotspot's phone refused; counted once per occasion. */
+    private fun noteRefusals(context: Context, ids: List<String>) {
+        val now = System.currentTimeMillis()
+        updatePhones(context) { phones ->
+            phones.map {
+                if (it.id !in ids || now - it.lastRefusalAt in 0 until REFUSAL_OCCASION_MS) {
+                    it
+                } else {
+                    val refusals = it.refusals + 1
+                    it.copy(refusals = refusals, lastRefusalAt = now, forgotten = refusals >= REFUSALS_TO_FORGET)
+                }
+            }
+        }
+    }
+
     private fun refreshIdleState() {
         if (session != null && _state.value is PhoneLinkState.Connected) return
         _state.value = if (_phones.value.isEmpty() && _pending.value == null) PhoneLinkState.Unpaired else PhoneLinkState.Searching
@@ -315,34 +437,19 @@ object PhoneLink {
             ?: Build.MODEL?.takeIf { it.isNotBlank() }
             ?: "Dashwheel"
 
-    private fun readPhones(context: Context): List<PairedPhone> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_PHONES, null) ?: return emptyList()
-        return runCatching {
-            val array = JSONArray(raw)
-            (0 until array.length()).map { i ->
-                val o = array.getJSONObject(i)
-                PairedPhone(
-                    o.getString("id"), Base64.getDecoder().decode(o.getString("secret")),
-                    o.optString("name"), o.optLong("pairedAt"), o.optBoolean("forgotten")
-                )
-            }
-        }.getOrDefault(emptyList())
-    }
-
-    @Synchronized
-    private fun savePhones(context: Context, phones: List<PairedPhone>) {
-        val array = JSONArray()
-        phones.forEach {
-            array.put(
-                JSONObject()
-                    .put("id", it.id)
-                    .put("secret", Base64.getEncoder().encodeToString(it.secret))
-                    .put("name", it.name)
-                    .put("pairedAt", it.pairedAt)
-                    .put("forgotten", it.forgotten)
-            )
+    private fun readPhones(context: Context): List<PairedPhone> =
+        PairingStorage.decode(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_PHONES, null)).map {
+            PairedPhone(it.id, it.secret, it.name, it.pairedAt, it.forgotten, it.refusals, it.lastRefusalAt)
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PHONES, array.toString()).apply()
+
+    /** Changes the paired phones and saves them, as one step: the link, the UI and pairing all change them. */
+    @Synchronized
+    private fun updatePhones(context: Context, change: (List<PairedPhone>) -> List<PairedPhone>) {
+        val before = _phones.value
+        val phones = change(before)
+        if (phones == before) return
+        val stored = phones.map { StoredPairing(it.id, it.secret, it.name, it.pairedAt, it.forgotten, it.refusals, it.lastRefusalAt) }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PHONES, PairingStorage.encode(stored)).apply()
         _phones.value = phones
         wake.update { it + 1 }
     }

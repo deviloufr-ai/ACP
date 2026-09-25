@@ -66,6 +66,8 @@ object DemoMode {
     private var codes = listOf("P0401")
     /** The mechanic's advice on [codes], built when the demo starts. */
     private var diagnosis: Diagnosis? = null
+    /** The language [diagnosis] is written in. */
+    private var diagnosisLanguage: AiLanguage? = null
 
     fun toggle(context: Context) = if (isOn) stop() else start(context)
 
@@ -74,6 +76,7 @@ object DemoMode {
         val app = context.applicationContext
         before = Snapshot.take()
         codes = listOf("P0401")
+        diagnosisLanguage = AiSettings.load(app).language
         diagnosis = demoDiagnosis(app)
         player.reset()
         _active.value = true
@@ -95,10 +98,20 @@ object DemoMode {
         if (!isOn) return
         job?.cancel()
         job = null
+        // Off first: a real event from here on publishes itself, and the feeds
+        // that kept their real state up to date meanwhile hand it back below.
+        _active.value = false
         before?.restore()
         before = null
         _media.value = MediaState()
-        _active.value = false
+    }
+
+    /** The language changed during the demo: its advice is written again in [language]. */
+    internal fun followLanguage(context: Context, language: AiLanguage) {
+        if (!isOn || diagnosisLanguage == language) return
+        diagnosisLanguage = language
+        diagnosis = demoDiagnosis(context.applicationContext)
+        AiMechanic.demoWrite(mechanicState(codes))
     }
 
     /** The fault-code tile's state for [codes]: the advice comes with them, as after a real scan. */
@@ -350,7 +363,8 @@ object DemoMode {
             // CANbox: doors shut, fuel and range going down with the kilometres.
             McuReader.demoWrite(McuReader.DoorState(), fuelPercent = 58, rangeKm = (612 - tripM / 1000).roundToInt())
             WeatherRepo.demoWrite(weather, error = null)
-            NotificationFeed.demoWrite(notifications ?: demoNotifications(context, startedAt).also { notifications = it })
+            // Written once: one cleared or swiped away stays gone for the rest of the demo.
+            if (notifications == null) NotificationFeed.demoWrite(demoNotifications(context, startedAt).also { notifications = it })
             navigate(context, metres, now)
         }
 
@@ -455,13 +469,18 @@ object DemoMode {
 
     /** A few stations around the fake drive, priced like a Paris day. */
     private val DEMO_STATIONS = listOf(
-        FuelStation(1, "44, Rue De Rivoli", "Paris", 48.8573, 2.3494, mapOf(FuelGrade.GAZOLE to 1.789, FuelGrade.E10 to 1.849, FuelGrade.SP98 to 1.929)),
-        FuelStation(2, "6, Avenue De La Grande Armée", "Paris", 48.8749, 2.2905, mapOf(FuelGrade.GAZOLE to 1.729, FuelGrade.E10 to 1.809)),
-        FuelStation(3, "112, Boulevard Haussmann", "Paris", 48.8748, 2.3196, mapOf(FuelGrade.GAZOLE to 1.759, FuelGrade.SP95 to 1.859, FuelGrade.E85 to 0.899)),
-        FuelStation(4, "28, Quai De La Rapée", "Paris", 48.8452, 2.3689, mapOf(FuelGrade.GAZOLE to 1.699, FuelGrade.E10 to 1.779, FuelGrade.GPLC to 0.959))
+        FuelStation(1, "44, Rue De Rivoli", "Paris", 48.8573, 2.3494, mapOf(FuelGrade.GAZOLE to 1.789, FuelGrade.E10 to 1.849, FuelGrade.SP98 to 1.929), "Relais Rivoli"),
+        FuelStation(2, "6, Avenue De La Grande Armée", "Paris", 48.8749, 2.2905, mapOf(FuelGrade.GAZOLE to 1.729, FuelGrade.E10 to 1.809), "Station Grande Armée"),
+        FuelStation(3, "112, Boulevard Haussmann", "Paris", 48.8748, 2.3196, mapOf(FuelGrade.GAZOLE to 1.759, FuelGrade.SP95 to 1.859, FuelGrade.E85 to 0.899), "Relais Haussmann"),
+        FuelStation(4, "28, Quai De La Rapée", "Paris", 48.8452, 2.3689, mapOf(FuelGrade.GAZOLE to 1.699, FuelGrade.E10 to 1.779, FuelGrade.GPLC to 0.959), "Station de la Rapée")
     )
 
-    /** What the real sources showed when the demo began, put back when it ends. */
+    /**
+     * What the real sources showed when the demo began, put back when it ends.
+     * The feeds whose real state can change meanwhile (a route ending, a
+     * message arriving, a fetch landing, the CANbox) keep it up to date
+     * themselves and hand back their latest instead.
+     */
     private class Snapshot(
         val lamp: EngineLamp?,
         val pending: Set<String>,
@@ -469,29 +488,20 @@ object DemoMode {
         val trip: TripState,
         val heading: Float?,
         val g: GForce,
-        val doors: McuReader.DoorState?,
-        val fuel: Int?,
-        val range: Int?,
-        val weather: Weather?,
-        val weatherError: String?,
-        val nav: NavState,
-        val notifications: List<NotifItem>,
         val care: CareState,
-        val ai: AiMechanic.State,
-        val stations: List<FuelStation>?,
-        val stationsError: String?
+        val ai: AiMechanic.State
     ) {
         fun restore() {
             ObdBluetoothManager.endDemo(lamp, pending)
             LocationFeed.demoWrite(location, trip, heading)
             GForceFeed.demoWrite(g)
-            McuReader.demoWrite(doors, fuel, range)
-            WeatherRepo.demoWrite(weather, weatherError)
-            NavDirections.demoWrite(nav)
-            NotificationFeed.demoWrite(notifications)
+            McuReader.endDemo()
+            WeatherRepo.endDemo()
+            NavDirections.endDemo()
+            NotificationFeed.endDemo()
             CarCare.demoWrite(care)
             AiMechanic.demoWrite(ai)
-            FuelPriceRepo.demoWrite(stations, stationsError)
+            FuelPriceRepo.endDemo()
         }
 
         companion object {
@@ -499,11 +509,7 @@ object DemoMode {
                 ObdBluetoothManager.lamp.value, ObdBluetoothManager.pending.value,
                 LocationFeed.location.value, LocationFeed.trip.value, LocationFeed.headingDeg.value,
                 GForceFeed.g.value,
-                McuReader.doorState.value, McuReader.fuelPercent.value, McuReader.rangeKm.value,
-                WeatherRepo.weather.value, WeatherRepo.error.value,
-                NavDirections.state.value, NotificationFeed.items.value,
-                CarCare.state.value, AiMechanic.state.value,
-                FuelPriceRepo.stations.value, FuelPriceRepo.error.value
+                CarCare.state.value, AiMechanic.state.value
             )
         }
     }

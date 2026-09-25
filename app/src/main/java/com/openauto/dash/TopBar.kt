@@ -53,7 +53,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,12 +90,17 @@ import androidx.compose.ui.unit.sp
  * Top bar, edit toolbar, page dots and the update banner.
  */
 
-/** Everything a top bar shows and can do; each skin's bar arranges the same model. */
+/**
+ * Everything a top bar shows and can do; each skin's bar arranges the same model.
+ * The OBD readings are a [State], read only where they are drawn ([obdData]),
+ * so a new sample does not recompose the whole bar.
+ */
+@Stable
 internal class TopBarModel(
     val clock: String,
     val versionName: String,
     val obdConnection: ObdConnectionState,
-    val obdData: ObdData,
+    val obd: State<ObdData>,
     val editing: Boolean,
     val layout: DashLayout,
     val onLayout: (DashLayout) -> Unit,
@@ -101,10 +109,7 @@ internal class TopBarModel(
     val onSplit: () -> Unit,
     val onToggleEdit: () -> Unit,
     val onTemplates: () -> Unit,
-    val onTheme: () -> Unit,
-    val onAi: () -> Unit,
     val onSystem: () -> Unit,
-    val onLanguage: () -> Unit,
     val onCheckUpdates: () -> Unit,
     /** Demo mode is running: the menu offers to stop it. */
     val demo: Boolean,
@@ -112,51 +117,14 @@ internal class TopBarModel(
     /** The head unit's status bar is up (an app window is docked) and already shows the time. */
     val merged: Boolean = false,
     val page: Int = 0,
-    val onPage: (Int) -> Unit = {},
     /** The car is moving and the drive lock is on: arranging and settings wait (DriveLock.kt). */
     val moving: Boolean = false,
     val lockWhileMoving: Boolean = true,
     val onLockWhileMoving: (Boolean) -> Unit = {},
     /** Opens the Settings screen (SettingsScreen.kt). */
     val onSettings: () -> Unit = {}
-)
-
-@Composable
-internal fun TopBar(
-    clock: String,
-    versionName: String,
-    obdConnection: ObdConnectionState,
-    obdData: ObdData,
-    editing: Boolean,
-    layout: DashLayout,
-    onLayout: (DashLayout) -> Unit,
-    onApps: () -> Unit,
-    onConnectObd: () -> Unit,
-    onSplit: () -> Unit,
-    onToggleEdit: () -> Unit,
-    onTemplates: () -> Unit,
-    onTheme: () -> Unit,
-    onAi: () -> Unit,
-    onSystem: () -> Unit,
-    onLanguage: () -> Unit,
-    onCheckUpdates: () -> Unit,
-    demo: Boolean,
-    onDemo: () -> Unit,
-    merged: Boolean = false,
-    page: Int = 0,
-    onPage: (Int) -> Unit = {},
-    moving: Boolean = false,
-    lockWhileMoving: Boolean = true,
-    onLockWhileMoving: (Boolean) -> Unit = {},
-    onSettings: () -> Unit = {}
 ) {
-    val m = TopBarModel(
-        clock, versionName, obdConnection, obdData, editing, layout, onLayout,
-        onApps, onConnectObd, onSplit, onToggleEdit, onTemplates, onTheme, onAi, onSystem,
-        onLanguage, onCheckUpdates, demo, onDemo, merged, page, onPage,
-        moving, lockWhileMoving, onLockWhileMoving, onSettings
-    )
-    if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
+    val obdData: ObdData get() = obd.value
 }
 
 /** The bar from a model built by the caller (shared with the Settings screen). */
@@ -229,7 +197,7 @@ internal fun StandardTopBar(m: TopBarModel) {
                 }
                 // Takes what is left and no more; its pills shorten first.
                 Row(modifier = Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
-                    VehicleAlerts(m.obdConnection, m.obdData)
+                    VehicleAlerts(m.obdConnection, m.obd)
                 }
                 ObdPill(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
@@ -401,7 +369,7 @@ internal fun ObdPill(state: ObdConnectionState, onConnect: () -> Unit, modifier:
     val idle = state.isIdle
     val off = state == ObdConnectionState.DISCONNECTED
     val connecting = state == ObdConnectionState.CONNECTING
-    val pulse = if (connecting) rememberLoop(900, reverse = true) else null
+    val pulse = if (connecting) rememberLoop(900, reverse = true, status = true) else null
     val halo = DashColors.Glow
     val ink = if (off) DashColors.Muted else color
     val shape = DashShape.Pill
@@ -595,10 +563,15 @@ private fun MenuIcon(icon: ImageVector, enabled: Boolean = true) {
  * shows while everything is normal or OBD is off.
  */
 @Composable
-internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) {
+internal fun VehicleAlerts(obdConnection: ObdConnectionState, obd: State<ObdData>) {
     val context = LocalContext.current
-    val battery by BatteryWatch.state.collectAsState()
-    val live = if (obdConnection == ObdConnectionState.CONNECTED) vehicleAlerts(context, obdData, battery) else emptyList()
+    val battery = BatteryWatch.state.collectAsState()
+    // Re-evaluated on every sample, but only a changed list of alerts recomposes the pills.
+    val live by remember(obdConnection, context) {
+        derivedStateOf {
+            if (obdConnection == ObdConnectionState.CONNECTED) vehicleAlerts(context, obd.value, battery.value) else emptyList()
+        }
+    }
     // A critical reading goes to the centre, which keeps it until it is tapped.
     LaunchedEffect(live) {
         live.filter { it.level == AlertLevel.CRITICAL }.forEach { AlertCenter.raise(it) }

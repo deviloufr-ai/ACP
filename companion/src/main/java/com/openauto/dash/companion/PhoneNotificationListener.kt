@@ -27,7 +27,7 @@ class PhoneNotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         instance = this
-        LinkServer.send(NotificationSync(snapshot()))
+        LinkServer.send(syncMessage())
     }
 
     override fun onListenerDisconnected() {
@@ -93,7 +93,7 @@ class PhoneNotificationListener : NotificationListenerService() {
         val lines = style?.messages.orEmpty().takeLast(MAX_LINES).mapNotNull { m ->
             val text = m.text?.toString()?.trim().orEmpty()
             if (text.isEmpty()) null
-            else ConversationLine(m.person?.name?.toString() ?: me, text, m.timestamp)
+            else ConversationLine((m.person?.name?.toString() ?: me).take(MAX_TITLE), text, m.timestamp)
         }
         val title = (style?.conversationTitle ?: extras.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
         val text = lines.lastOrNull()?.text
@@ -105,7 +105,7 @@ class PhoneNotificationListener : NotificationListenerService() {
             key = sbn.key,
             packageName = sbn.packageName,
             appName = appName,
-            title = title,
+            title = title.take(MAX_TITLE),
             text = text.take(MAX_TEXT),
             postedAt = sbn.postTime,
             messages = lines.map { it.copy(text = it.text.take(MAX_TEXT)) },
@@ -133,6 +133,7 @@ class PhoneNotificationListener : NotificationListenerService() {
     companion object {
         private const val MAX_LINES = 6
         private const val MAX_TEXT = 1_000
+        private const val MAX_TITLE = 200
         private const val ICON_PX = 64
 
         /** The bound listener, null until the driver grants Notification access. */
@@ -140,11 +141,19 @@ class PhoneNotificationListener : NotificationListenerService() {
         var instance: PhoneNotificationListener? = null
             private set
 
-        /** Every notification worth showing in the car, newest first. */
-        fun snapshot(): List<PhoneNotification> {
-            val listener = instance ?: return emptyList()
-            val active = runCatching { listener.activeNotifications }.getOrNull() ?: return emptyList()
-            return active.sortedByDescending { it.postTime }.mapNotNull { listener.toPhoneNotification(it) }
+        /**
+         * The newest notifications worth showing in the car, as one sync that
+         * fits the link's frame limit (see [NotificationSync.of]).
+         */
+        fun syncMessage(): NotificationSync {
+            val listener = instance ?: return NotificationSync(emptyList())
+            val active = runCatching { listener.activeNotifications }.getOrNull() ?: return NotificationSync(emptyList())
+            // Only as many as the car shows are read out of the notifications.
+            val newest = active.sortedByDescending { it.postTime }.asSequence()
+                .mapNotNull { listener.toPhoneNotification(it) }
+                .take(NotificationSync.MAX_ITEMS)
+                .toList()
+            return NotificationSync.of(newest)
         }
 
         /** The action that takes a typed answer, as Android Auto finds it. */

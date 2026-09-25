@@ -177,7 +177,7 @@ object PidProbe {
             if (text.isEmpty() || text.contains("NO DATA", ignoreCase = true) || text.contains("UNABLE", ignoreCase = true)) {
                 return ProbeResult(c, ProbeVerdict.NO_ANSWER, reply = reply)
             }
-            val hex = text.uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
+            val hex = text.uppercase(Locale.ROOT).replace(NON_HEX, "")
             if (hex.startsWith("7F") || hex.contains("7F" + c.request.take(2))) return ProbeResult(c, ProbeVerdict.REFUSED, reply = reply)
             return ProbeResult(c, ProbeVerdict.UNREADABLE, reply = reply)
         }
@@ -203,6 +203,7 @@ object PidProbe {
             .trim()
     }
 
+    private val NON_HEX = Regex("[^0-9A-F]")
     private val MULTI_FRAME_LINE = Regex("^[0-9A-F]:\\s*", RegexOption.IGNORE_CASE)
     private val LENGTH_LINE = Regex("^[0-9A-F]{3}$", RegexOption.IGNORE_CASE)
 
@@ -262,19 +263,19 @@ object PidProbe {
     }
 
     fun readCandidates(raw: String): List<PidCandidate> {
-        val o = JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim())
+        val o = aiJson(raw)
         val items = o.optJSONArray("items") ?: return emptyList()
         return (0 until items.length()).mapNotNull { i ->
             val it = items.optJSONObject(i) ?: return@mapNotNull null
             val reading = ExtraReading.entries.firstOrNull { r -> r.name == it.optString("reading") } ?: return@mapNotNull null
-            val request = it.optString("request").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
+            val request = it.optString("request").uppercase(Locale.ROOT).replace(NON_HEX, "")
             if (request.length < 4 || request.length % 2 != 0) return@mapNotNull null
             // Only reads: modes 01 (live data), 21 and 22 (maker data). Nothing that writes or resets.
             if (request.take(2) !in setOf("01", "21", "22")) return@mapNotNull null
-            val header = it.optString("header").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "").takeIf { h -> h.length in 3..8 }
-            val replyAddress = it.optString("replyAddress").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "")
+            val header = it.optString("header").uppercase(Locale.ROOT).replace(NON_HEX, "").takeIf { h -> h.length in 3..8 }
+            val replyAddress = it.optString("replyAddress").uppercase(Locale.ROOT).replace(NON_HEX, "")
                 .takeIf { a -> header != null && (a.length == 3 || a.length == 8) }
-            val session = it.optString("session").uppercase(Locale.ROOT).replace(Regex("[^0-9A-F]"), "").takeIf { s -> s.isNotEmpty() }
+            val session = it.optString("session").uppercase(Locale.ROOT).replace(NON_HEX, "").takeIf { s -> s.isNotEmpty() }
             // Anything but a known-safe session is dropped along with its request: it may only answer inside it.
             if (session != null && (session !in SAFE_SESSIONS || header == null)) return@mapNotNull null
             val formula = it.optString("formula").takeIf { f -> f.isNotBlank() } ?: return@mapNotNull null
@@ -315,7 +316,7 @@ object PidExplorer {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private var pollJob: Job? = null
-    private var verifiedFor: Int = 0
+    @Volatile private var verifiedFor: Int = 0
 
     fun setContext(context: Context) {
         if (appContext != null) return
@@ -341,6 +342,7 @@ object PidExplorer {
         if (ObdBluetoothManager.connectionState.value != ObdConnectionState.CONNECTED) {
             return Result.failure(IllegalStateException(context.getString(R.string.vehicle_obd_not_connected)))
         }
+        dropIfOtherCar()
         _state.value = _state.value.copy(searching = true, results = emptyList(), error = null, searched = false)
         stopPolling()
         try {
@@ -409,23 +411,58 @@ object PidExplorer {
 
     private fun keep(c: PidCandidate, car: CarProfile) {
         _state.value = _state.value.copy(verified = _state.value.verified.filter { it.reading != c.reading } + c)
-        verifiedFor = car.promptDescription().hashCode()
+        verifiedFor = carKey(car)
         save()
     }
 
+    /**
+     * Which car confirmed requests belong to: its name, engine and fuel only,
+     * so editing its power or gearbox in Settings keeps them.
+     */
+    private fun carKey(car: CarProfile): Int =
+        listOf(car.name, car.engine, car.fuel.name).joinToString("|") { it.trim().lowercase(Locale.ROOT) }.hashCode()
+
+    /**
+     * The confirmed requests are this car's: another car (the driver changed
+     * the profile) would be asked for the old one's maker data every few
+     * seconds, so they go and a new search finds the new car's.
+     */
+    private fun dropIfOtherCar() {
+        if (_state.value.verified.isEmpty()) return
+        val car = CarProfileStore.current
+        if (verifiedFor == carKey(car)) return
+        // Saved before carKey, under the whole description: the same car, keep and re-key.
+        if (verifiedFor == car.promptDescription().hashCode()) {
+            verifiedFor = carKey(car)
+            save()
+            return
+        }
+        _state.value = _state.value.copy(verified = emptyList())
+        _readings.value = emptyMap()
+        save()
+    }
+
+    // Called from the connection collector (IO) and from search() (the caller's thread).
+    @Synchronized
     private fun startPolling() {
         if (pollJob?.isActive == true) return
         pollJob = scope.launch {
             while (isActive) {
+                dropIfOtherCar()
                 val list = _state.value.verified
                 if (list.isNotEmpty() && !DemoMode.isOn && !_state.value.searching &&
                     ObdBluetoothManager.connectionState.value == ObdConnectionState.CONNECTED
                 ) {
                     val now = System.currentTimeMillis()
                     val fresh = _readings.value.toMutableMap()
-                    for (c in list) {
-                        val r = PidProbe.read(c, ObdBluetoothManager.query(c.header, c.request, PROBE_TIMEOUT_MS, c.replyAddress, c.session))
-                        if (r.verdict == ProbeVerdict.OK && r.value != null) fresh[c.reading] = ExtraValue(r.value, now)
+                    // One set-up per computer and session rather than per reading.
+                    for ((_, group) in list.groupBy { Triple(it.header, it.replyAddress, it.session) }) {
+                        val c0 = group.first()
+                        val replies = ObdBluetoothManager.queryAll(c0.header, group.map { it.request }, PROBE_TIMEOUT_MS, c0.replyAddress, c0.session)
+                        group.forEachIndexed { i, c ->
+                            val r = PidProbe.read(c, replies.getOrNull(i))
+                            if (r.verdict == ProbeVerdict.OK && r.value != null) fresh[c.reading] = ExtraValue(r.value, now)
+                        }
                     }
                     _readings.value = fresh
                 }
@@ -434,6 +471,7 @@ object PidExplorer {
         }
     }
 
+    @Synchronized
     private fun stopPolling() {
         pollJob?.cancel()
         pollJob = null

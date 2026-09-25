@@ -50,6 +50,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -110,10 +112,11 @@ internal fun DashboardPage(
     inSplitMode: Boolean,
     onModelTouch: (Boolean) -> Unit,
     appsByPackage: Map<String, AppEntry>,
-    mediaState: MediaState,
+    /** Live readings, passed as States so only the tiles that show them recompose. */
+    media: State<MediaState>,
     mediaController: CarMediaController,
     hasMediaAccess: Boolean,
-    obdData: ObdData,
+    obd: State<ObdData>,
     obdConnection: ObdConnectionState,
     onConnectObd: () -> Unit,
     onPickDevice: () -> Unit,
@@ -150,11 +153,11 @@ internal fun DashboardPage(
                 item = item,
                 editing = editing && !inSplitMode,
                 appsByPackage = appsByPackage,
-                mediaState = mediaState,
+                media = media,
                 mediaController = mediaController,
                 hasMediaAccess = hasMediaAccess,
                 context = context,
-                obdData = obdData,
+                obd = obd,
                 obdConnection = obdConnection,
                 onConnectObd = onConnectObd,
                 onPickDevice = onPickDevice,
@@ -321,6 +324,15 @@ internal fun GridTile(
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
+    // The gesture detectors below restart only when the tile moves or resizes;
+    // these always call the latest callbacks (a layout switch replaces them).
+    val onMoveCell by rememberUpdatedState(onMoveCell)
+    val onResizeCell by rememberUpdatedState(onResizeCell)
+    val canPlace by rememberUpdatedState(canPlace)
+    val canMove by rememberUpdatedState(canMove)
+    val onPreview by rememberUpdatedState(onPreview)
+    val onPreviewClear by rememberUpdatedState(onPreviewClear)
+    val onModelTouch by rememberUpdatedState(onModelTouch)
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var resizeExtra by remember { mutableStateOf(Offset.Zero) }
     var active by remember { mutableStateOf(false) }
@@ -484,11 +496,11 @@ internal fun TileContent(
     item: DashboardItem,
     editing: Boolean,
     appsByPackage: Map<String, AppEntry>,
-    mediaState: MediaState,
+    media: State<MediaState>,
     mediaController: CarMediaController,
     hasMediaAccess: Boolean,
     context: android.content.Context,
-    obdData: ObdData,
+    obd: State<ObdData>,
     obdConnection: ObdConnectionState,
     onConnectObd: () -> Unit,
     onPickDevice: () -> Unit,
@@ -499,17 +511,19 @@ internal fun TileContent(
     /** Grid only: grow this tile to at least the given pixel size (a docked window's minimum). */
     onFitToWindow: ((Int, Int) -> Unit)? = null
 ) {
-    val env = SkinTileEnv(
-        editing, appsByPackage, mediaState, mediaController, hasMediaAccess, context,
-        obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
-    )
+    val env = remember(editing, appsByPackage, media, mediaController, hasMediaAccess, context, obd, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar) {
+        SkinTileEnv(
+            editing, appsByPackage, media, mediaController, hasMediaAccess, context,
+            obd, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onEditLaunchBar
+        )
+    }
     // A tile's own design beats the skin; its standard look is this same
     // routing with the design cleared (the skin's tile under a skin).
     if (item is DashboardItem.BuiltinWidget && item.design != WidgetDesign.STANDARD) {
         DesignedTile(item, env) {
             TileContent(
-                item.copy(design = WidgetDesign.STANDARD), editing, appsByPackage, mediaState, mediaController, hasMediaAccess,
-                context, obdData, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onLaunchSplitPair, onEditLaunchBar,
+                item.copy(design = WidgetDesign.STANDARD), editing, appsByPackage, media, mediaController, hasMediaAccess,
+                context, obd, obdConnection, onConnectObd, onPickDevice, onLaunchApp, onLaunchSplitPair, onEditLaunchBar,
                 onModelTouch, onFitToWindow
             )
         }
@@ -576,7 +590,7 @@ internal fun TileContent(
                 onPickDevice = onPickDevice
             )
             BuiltinKind.OBD_ALL -> ObdAllCard(
-                obdData = obdData,
+                obdData = obd.value,
                 connection = obdConnection,
                 onConnect = onConnectObd,
                 modifier = Modifier.fillMaxSize(),
@@ -596,8 +610,8 @@ internal fun TileContent(
             BuiltinKind.NOTIFICATIONS -> NotificationsCard(hasAccess = hasMediaAccess, modifier = Modifier.fillMaxSize())
             BuiltinKind.AUDIO -> AudioCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.FILTER_CARE -> FilterCareCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.WARMUP -> WarmupCard(obdData, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
-            BuiltinKind.BATTERY -> BatteryCard(obdData, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
+            BuiltinKind.WARMUP -> WarmupCard(obd.value, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
+            BuiltinKind.BATTERY -> BatteryCard(obd.value, obdConnection == ObdConnectionState.CONNECTED, Modifier.fillMaxSize())
             BuiltinKind.MY_CAR -> MyCarCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.ECO_DRIVE -> EcoDriveCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.BREAK_TIMER -> BreakCard(modifier = Modifier.fillMaxSize())
@@ -675,29 +689,6 @@ internal fun EmptyPage(onAdd: () -> Unit, onTemplates: () -> Unit, modifier: Mod
                 Text(stringResource(R.string.templates_button))
             }
         }
-    }
-}
-
-@Composable
-internal fun AddTile(onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .clip(DashShape.Medium)
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .itemFill(DashColors.Card, CircleShape, rim = null),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.dash_add), tint = DashColors.Accent, modifier = Modifier.size(34.dp))
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.dash_add), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
     }
 }
 

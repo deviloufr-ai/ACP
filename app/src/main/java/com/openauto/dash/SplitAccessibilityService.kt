@@ -18,6 +18,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.util.Log
 import android.widget.TextView
@@ -66,9 +67,17 @@ class SplitAccessibilityService : AccessibilityService() {
     }
 
     // Window changes are the only events we watch, and only to keep the floating
-    // swap button visible exactly while the screen is split.
+    // swap button visible exactly while the screen is split. The system batches
+    // them (notificationTimeout in the config) and hands over only the last of
+    // a burst, so its change flags can be a trailing focus change that hides the
+    // pane move before it: every window event re-checks the panes.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        updateOverlayForSplit()
+        event ?: return
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED -> updateOverlayForSplit()
+            else -> Unit
+        }
     }
 
     override fun onInterrupt() {}
@@ -84,12 +93,17 @@ class SplitAccessibilityService : AccessibilityService() {
      * applies the same ordering so the two never disagree about which pane is which.
      */
     private fun splitPaneBounds(): Pair<Rect, Rect>? = runCatching {
-        val rects = (windows ?: emptyList())
-            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
-            .map { Rect().also { r -> it.getBoundsInScreen(r) } }
-            .filter { it.width() > 0 && it.height() > 0 }
-            .sortedBy { it.left }
-        if (rects.size < 2) null else rects.first() to rects.last()
+        val all = windows ?: emptyList()
+        try {
+            val rects = all
+                .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+                .map { Rect().also { r -> it.getBoundsInScreen(r) } }
+                .filter { it.width() > 0 && it.height() > 0 }
+                .sortedBy { it.left }
+            if (rects.size < 2) null else rects.first() to rects.last()
+        } finally {
+            recycle(all)
+        }
     }.getOrNull()
 
     /**
@@ -130,17 +144,37 @@ class SplitAccessibilityService : AccessibilityService() {
      * opposite order. Null when two *distinct* app packages can't be resolved.
      */
     private fun splitPanePackages(): Pair<String, String>? = runCatching {
-        val panes = (windows ?: emptyList())
-            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
-            .mapNotNull { w ->
-                val r = Rect().also { w.getBoundsInScreen(it) }
-                val pkg = w.root?.packageName?.toString()
-                if (r.width() > 0 && r.height() > 0 && !pkg.isNullOrBlank()) r to pkg else null
-            }
-            .sortedWith(compareBy({ it.first.left }, { it.first.top }))
-        if (panes.size < 2 || panes.first().second == panes.last().second) null
-        else panes.first().second to panes.last().second
+        val all = windows ?: emptyList()
+        try {
+            val panes = all
+                .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+                .mapNotNull { w ->
+                    val r = Rect().also { w.getBoundsInScreen(it) }
+                    val root = w.root
+                    val pkg = root?.packageName?.toString()
+                    root?.let { recycle(it) }
+                    if (r.width() > 0 && r.height() > 0 && !pkg.isNullOrBlank()) r to pkg else null
+                }
+                .sortedWith(compareBy({ it.first.left }, { it.first.top }))
+            if (panes.size < 2 || panes.first().second == panes.last().second) null
+            else panes.first().second to panes.last().second
+        } finally {
+            recycle(all)
+        }
     }.getOrNull()
+
+    // Before Android 13 the window and node objects handed out by the system
+    // come from a pool and go back to it only when recycled; since, recycling
+    // does nothing.
+    @Suppress("DEPRECATION")
+    private fun recycle(windows: List<AccessibilityWindowInfo>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) windows.forEach { runCatching { it.recycle() } }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun recycle(node: AccessibilityNodeInfo) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) runCatching { node.recycle() }
+    }
 
     /**
      * Swap the two panes. This ROM's SystemUI has **no working swap gesture**
@@ -329,6 +363,13 @@ class SplitAccessibilityService : AccessibilityService() {
          * is not enabled/bound, so callers can fall back to another strategy.
          */
         fun requestSplit(): Boolean = instance?.toggleSplitScreen() ?: false
+
+        /**
+         * True when the screen shows two apps side by side right now (false
+         * when the service is not enabled/bound). The toggle action *exits*
+         * split on this ROM, so callers check this before asking for a split.
+         */
+        fun isSplit(): Boolean = instance?.isInSplitMode() ?: false
 
         /**
          * Swap the left/right (or top/bottom) split panes. Returns false when the

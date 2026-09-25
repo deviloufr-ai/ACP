@@ -58,6 +58,16 @@ class CareRulesTest {
     }
 
     @Test
+    fun anEngineComputerGoneSilentEndsTheDrive() {
+        // Key back to accessory: the adapter stays linked but nothing answers, and the
+        // poll publishes the last readings with the engine stopped.
+        val (driving, _, t1) = run(CareState(), town, t0, 8 * 60)
+        val (after, _, _) = run(driving, town.engineStopped(), t1, 4 * 60)
+        assertNull(after.drive)
+        assertEquals(1, after.filter.shortStreak)
+    }
+
+    @Test
     fun aGapInTheReadingsEndsTheDrive() {
         val (driving, _, t1) = run(CareState(), town, t0, 5 * 60)
         val (next, _) = CareRules.step(driving, town, t1 + 10 * 60_000L, car)

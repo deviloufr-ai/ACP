@@ -41,11 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,7 +57,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -81,10 +76,8 @@ internal fun OriginalMediaCard(
     context: Context,
     modifier: Modifier = Modifier
 ) {
-    val positionMs = rememberMediaPosition(mediaState, controller)
-    val fraction = if (mediaState.durationMs > 0L) {
-        (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
-    } else 0f
+    // Wrapped once per cover, not on every recomposition.
+    val art = remember(mediaState.artwork) { mediaState.artwork?.asImageBitmap() }
 
     Card(modifier = modifier) {
         Column(
@@ -101,10 +94,9 @@ internal fun OriginalMediaCard(
                         .background(DashColors.CardHi),
                     contentAlignment = Alignment.Center
                 ) {
-                    val art = mediaState.artwork
                     if (art != null) {
                         Image(
-                            bitmap = art.asImageBitmap(),
+                            bitmap = art,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -153,24 +145,7 @@ internal fun OriginalMediaCard(
             if (hasAccess) {
                 if (mediaState.durationMs > 0L) {
                     Spacer(Modifier.height(14.dp))
-                    LinearProgressIndicator(
-                        progress = { fraction },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(CircleShape),
-                        color = DashColors.Accent,
-                        trackColor = DashColors.CardHi
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(formatTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                        Text(formatTime(mediaState.durationMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                    }
+                    OriginalMediaProgress(mediaState, controller)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -227,6 +202,31 @@ internal fun OriginalMediaCard(
                 }
             }
         }
+    }
+}
+
+/** Seek bar and times: the only part of the card that follows the 2 Hz position poll. */
+@Composable
+private fun OriginalMediaProgress(mediaState: MediaState, controller: CarMediaController) {
+    val positionMs = rememberMediaPosition(mediaState, controller)
+    val fraction = (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
+    LinearProgressIndicator(
+        progress = { fraction },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(CircleShape),
+        color = DashColors.Accent,
+        trackColor = DashColors.CardHi
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(formatTrackTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+        Text(formatTrackTime(mediaState.durationMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -362,15 +362,19 @@ internal fun OriginalAnalogGauge(
     majorTicks: Int = 9
 ) {
     val target = (value / maxValue).coerceIn(0f, 1f)
-    val frac by animateFloatAsState(
+    // Read only inside the draw below: the 500 ms needle swing redraws the dial
+    // without recomposing the gauge every frame.
+    val sweep = animateFloatAsState(
         targetValue = if (dimmed) 0f else target,
         animationSpec = tween(durationMillis = 500),
         label = "gauge"
     )
     val startAngle = 135f      // 7:30 position (Compose: 0° = 3 o'clock, CW positive)
     val sweepTotal = 270f
-    val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
-    val needleColor = if (dimmed) DashColors.Muted else sweepColor
+    val muted = DashColors.Muted
+    val trackColor = DashColors.CardHi
+    val tickColor = DashColors.TextSecondary.copy(alpha = 0.6f)
+    val hubColor = DashColors.Card
 
     BoxWithConstraints(
         modifier = modifier,
@@ -382,6 +386,9 @@ internal fun OriginalAnalogGauge(
         val labelSize = (gaugePx * 0.085f).coerceIn(9f, 15f).sp
 
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val frac = sweep.value
+            val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
+            val needleColor = if (dimmed) muted else sweepColor
             val stroke = size.minDimension * 0.085f
             val radius = (size.minDimension - stroke) / 2f
             val center = Offset(size.width / 2f, size.height / 2f)
@@ -390,7 +397,7 @@ internal fun OriginalAnalogGauge(
 
             // Base track.
             drawArc(
-                color = DashColors.CardHi,
+                color = trackColor,
                 startAngle = startAngle,
                 sweepAngle = sweepTotal,
                 useCenter = false,
@@ -437,7 +444,7 @@ internal fun OriginalAnalogGauge(
                 val ca = cos(a).toFloat()
                 val sa = sin(a).toFloat()
                 drawLine(
-                    color = DashColors.TextSecondary.copy(alpha = 0.6f),
+                    color = tickColor,
                     start = Offset(center.x + ca * tickInner, center.y + sa * tickInner),
                     end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
                     strokeWidth = stroke * 0.16f,
@@ -456,7 +463,7 @@ internal fun OriginalAnalogGauge(
                 strokeWidth = stroke * 0.35f,
                 cap = StrokeCap.Round
             )
-            drawCircle(color = DashColors.Card, radius = stroke * 0.9f, center = center)
+            drawCircle(color = hubColor, radius = stroke * 0.9f, center = center)
             drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
         }
 
@@ -518,7 +525,7 @@ internal fun OriginalMeterChip(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(if (dimmed) 0f else fraction.coerceIn(0f, 1f))
+                    .fillMaxWidth(if (dimmed) 0f else fraction01(fraction))
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(color)

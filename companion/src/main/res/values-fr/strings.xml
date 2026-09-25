@@ -36,4 +36,10 @@
     <string name="invalid_code_read">Ce n\'est pas un code d\'association Dashwheel (lu : %1$s).</string>
     <string name="step_calls">Appels</string>
     <string name="step_calls_detail">Affiche qui appelle sur l\'écran de la voiture, pour décrocher ou raccrocher depuis celui-ci. Le son reste sur le Bluetooth de la voiture.</string>
+    <string name="car_spot_title">Où est ma voiture</string>
+    <string name="car_spot_left">Laissée ici : %1$s</string>
+    <string name="car_spot_saved">Enregistrée dans la voiture : %1$s</string>
+    <string name="car_spot_none">Une fois la voiture reliée, l\'endroit où elle s\'arrête s\'affiche ici.</string>
+    <string name="car_spot_map">Carte</string>
+    <string name="car_spot_walk">Y aller à pied</string>
 </resources>

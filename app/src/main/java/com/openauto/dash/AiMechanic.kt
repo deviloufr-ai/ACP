@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.content.res.Resources
 import kotlinx.coroutines.CoroutineScope
@@ -323,16 +324,19 @@ internal data class SpokenLine(val res: Int, val args: List<Any>, val quantity: 
  * and some faults are only judged with the engine running.
  */
 internal class RescanAfterStart {
+    // Told of scans on the IO threads, fed readings on the OBD collector's: both synchronized.
     private var pending = false
     private var runningSince: Long? = null
 
     /** A scan just finished at [rpm]. */
+    @Synchronized
     fun scanned(rpm: Int) {
         pending = rpm == 0
         runningSince = null
     }
 
     /** True once, when the engine has run [RUNNING_MS] since a scan made with it stopped. */
+    @Synchronized
     fun due(rpm: Int, now: Long): Boolean {
         if (!pending) return false
         if (rpm <= LiveWatch.RUNNING_RPM) {
@@ -408,8 +412,6 @@ object AiMechanic {
 
     private const val PREFS = "ai_mechanic"
     private const val KEY_KNOWN = "known_codes"
-    // Beside a cached answer: which model gave it.
-    private const val MODEL_SUFFIX = "|model"
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -480,6 +482,25 @@ object AiMechanic {
         }
     }
 
+    /** The language the advice on the tile was asked in; null while there's none. */
+    @Volatile private var explainedIn: AiLanguage? = null
+
+    /**
+     * The launcher's language may have changed (the screen was rebuilt in it):
+     * the advice already on the tile was written by Gemini in the old one, so
+     * it is asked again (or read from the cache) in the new one. The demo's
+     * canned advice is rebuilt the same way.
+     */
+    fun followLanguage(context: Context) {
+        val language = AiSettings.load(context).language
+        if (DemoMode.isOn) {
+            DemoMode.followLanguage(context, language)
+            return
+        }
+        val before = explainedIn ?: return
+        if (before != language) refresh()
+    }
+
     /** Checks one set of live readings against the warning rules, and rescans once the engine runs. */
     fun watch(data: ObdData) {
         if (DemoMode.isOn) return
@@ -495,6 +516,7 @@ object AiMechanic {
     /** Fills in the advice for [codes]; speaks only when some are [fresh] (new and to be announced). */
     private suspend fun explain(context: Context, codes: List<String>, fresh: List<String>) {
         val config = AiSettings.load(context)
+        explainedIn = config.language
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
         val resources = config.language.resources(context)
         val offline = MechanicLines.newCodes(fresh).text(resources)
@@ -505,10 +527,9 @@ object AiMechanic {
         val bounded: (Diagnosis) -> Diagnosis = { d -> SeverityFloor.apply(d, floor) { MechanicLines.ruleVerdict(it).text(resources) } }
         // "v2": answers with the detail sheet; older, shorter ones are asked again.
         val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + car.promptDescription().hashCode() + "|" + config.language.name
-        val cache = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-        cache.getString(cacheKey, null)?.let(MechanicPrompt::parse)?.let { cached ->
-            val d = bounded(cached.copy(model = cache.getString(cacheKey + MODEL_SUFFIX, null).orEmpty()))
+        val cached = DiagnosisCache.get(context, cacheKey)
+        cached?.let { MechanicPrompt.parse(it.text) }?.let { parsed ->
+            val d = bounded(parsed.copy(model = cached.model))
             _state.value = State(codes = codes, diagnosis = d)
             say(d.summary)
             return
@@ -525,7 +546,7 @@ object AiMechanic {
         GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.schema(codes))
             .mapCatching { reply -> reply to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
             .onSuccess { (reply, diagnosis) ->
-                cache.edit().putString(cacheKey, reply.text).putString(cacheKey + MODEL_SUFFIX, reply.model).apply()
+                DiagnosisCache.put(context, cacheKey, reply)
                 val d = bounded(diagnosis.copy(model = reply.model))
                 _state.value = State(codes = codes, diagnosis = d)
                 say(d.summary)
@@ -567,5 +588,57 @@ object AiMechanic {
         is InterruptedIOException -> R.string.ai_error_timeout
         is ConnectException, is NoRouteToHostException -> R.string.ai_error_connect
         else -> R.string.ai_error_offline
+    }
+}
+
+/**
+ * Gemini's answers by codes, car and language, so a fault already explained
+ * isn't asked about again. Kept apart from the scan's own state (saved on every
+ * scan) and limited to the latest [MAX] answers, oldest dropped first.
+ */
+private object DiagnosisCache {
+    private const val PREFS = "ai_diagnoses"
+    private const val KEY_ORDER = "order"
+    // Beside a cached answer: which model gave it.
+    private const val MODEL_SUFFIX = "|model"
+    private const val MAX = 10
+    /** Where answers used to be kept, never pruned; cleared out once per run. */
+    private const val OLD_PREFS = "ai_mechanic"
+    private var oldCleared = false
+
+    fun get(context: Context, key: String): GeminiReply? {
+        val prefs = prefs(context)
+        val text = prefs.getString(key, null) ?: return null
+        return GeminiReply(model = prefs.getString(key + MODEL_SUFFIX, null).orEmpty(), text = text)
+    }
+
+    @Synchronized
+    fun put(context: Context, key: String, reply: GeminiReply) {
+        val prefs = prefs(context)
+        val order = order(prefs).filter { it != key } + key
+        val dropped = order.dropLast(MAX)
+        prefs.edit().apply {
+            dropped.forEach { remove(it).remove(it + MODEL_SUFFIX) }
+            putString(key, reply.text)
+            putString(key + MODEL_SUFFIX, reply.model)
+            putString(KEY_ORDER, JSONArray(order.takeLast(MAX)).toString())
+        }.apply()
+    }
+
+    private fun order(prefs: SharedPreferences): List<String> =
+        runCatching {
+            val array = JSONArray(prefs.getString(KEY_ORDER, null) ?: return emptyList())
+            List(array.length()) { array.getString(it) }
+        }.getOrDefault(emptyList())
+
+    @Synchronized
+    private fun prefs(context: Context): SharedPreferences {
+        if (!oldCleared) {
+            oldCleared = true
+            val old = context.getSharedPreferences(OLD_PREFS, Context.MODE_PRIVATE)
+            val stale = old.all.keys.filter { it.startsWith("diag_") }
+            if (stale.isNotEmpty()) old.edit().apply { stale.forEach { remove(it) } }.apply()
+        }
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     }
 }

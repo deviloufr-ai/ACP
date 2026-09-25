@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Cloud
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.WbCloudy
@@ -66,11 +68,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +84,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,6 +93,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -111,10 +118,19 @@ internal class PermissionState(val granted: Boolean, val request: () -> Unit)
 @Composable
 internal fun rememberPermission(permission: String): PermissionState {
     val context = LocalContext.current
-    var granted by remember {
-        mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
-    }
+    fun check() = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    var granted by remember { mutableStateOf(check()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+    // Checked again on every return to the launcher: the permission may have
+    // been granted (or taken back) in the system settings meanwhile.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, permission) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) granted = check()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     return PermissionState(granted) { launcher.launch(permission) }
 }
 
@@ -164,21 +180,6 @@ internal fun NeedsAccess(icon: ImageVector, title: String, action: String, onAct
 @Composable
 internal fun ClockCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var now by remember { mutableStateOf(Date()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = Date()
-            delay(1000)
-        }
-    }
-    val locale = Locale.getDefault()
-    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale) }
-    val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
-    val time = timeFmt.format(now)
-    val date = dateFmt.format(now)
-    val seconds = secFmt.format(now)
-
     Card(modifier = modifier) {
         BoxWithConstraints(
             modifier = Modifier
@@ -191,28 +192,42 @@ internal fun ClockCard(modifier: Modifier = Modifier) {
                 .padding(DashSpace.Lg)
         ) {
             val numSize = min(maxWidth.value * 0.28f, maxHeight.value * 0.55f).coerceIn(36f, 120f).roundToInt()
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    HeroNumber(text = time, size = numSize)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        seconds,
-                        color = DashColors.TextSecondary,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = (numSize * 0.16f).dp)
-                    )
-                }
-                Text(
-                    date.replaceFirstChar { it.uppercase() },
-                    color = DashColors.TextSecondary,
-                    letterSpacing = 1.sp,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            ClockReadout(numSize)
         }
+    }
+}
+
+/** The ticking part of the clock tile, so each second recomposes only these lines. */
+@Composable
+private fun ClockReadout(numSize: Int) {
+    val now = rememberNow(1_000L)
+    val locale = Locale.getDefault()
+    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale) }
+    val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
+    val time = timeFmt.format(now)
+    val date = dateFmt.format(now)
+    val seconds = secFmt.format(now)
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            HeroNumber(text = time, size = numSize)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                seconds,
+                color = DashColors.TextSecondary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = (numSize * 0.16f).dp)
+            )
+        }
+        Text(
+            date.replaceFirstChar { it.uppercase() },
+            color = DashColors.TextSecondary,
+            letterSpacing = 1.sp,
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -564,37 +579,40 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                 }
                 else -> LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(items, key = { it.key }) { n ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(DashShape.Small)
-                                .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
-                                .clickable { if (n.fromPhone) opened = n else runCatching { n.contentIntent?.send() } }
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val bmp = n.icon
-                            if (bmp != null) Image(bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)))
-                            else Icon(Icons.Filled.Notifications, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(n.title.ifEmpty { n.appLabel }, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                                if (n.text.isNotEmpty()) Text(n.text, color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.labelSmall)
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(timeFmt.format(Date(n.postedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (n.fromPhone) {
-                                        Icon(
-                                            Icons.Filled.PhoneAndroid, contentDescription = stringResource(R.string.phone_from_phone),
-                                            tint = DashColors.Accent, modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(Modifier.width(3.dp))
+                        // Swiped aside, it leaves the card, like on a phone.
+                        SwipeAway(onDismiss = { NotificationFeed.remove(n.key) }) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(DashShape.Small)
+                                    .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
+                                    .clickable { if (n.fromPhone) opened = n else runCatching { n.contentIntent?.send() } }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val bmp = n.icon
+                                if (bmp != null) Image(bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)))
+                                else Icon(Icons.Filled.Notifications, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(n.title.ifEmpty { n.appLabel }, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                                    if (n.text.isNotEmpty()) Text(n.text, color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(timeFmt.format(Date(n.postedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (n.fromPhone) {
+                                            Icon(
+                                                Icons.Filled.PhoneAndroid, contentDescription = stringResource(R.string.phone_from_phone),
+                                                tint = DashColors.Accent, modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(Modifier.width(3.dp))
+                                        }
+                                        Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                     }
-                                    Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                 }
                             }
                         }
@@ -614,67 +632,81 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
 
 // --- Audio ------------------------------------------------------------------------
 
-/** Media volume with mute, plus shortcuts to the sound and Bluetooth settings. */
+/**
+ * Media volume with mute, − and +, plus shortcuts to the sound and Bluetooth
+ * settings. Where the head unit ignores Android's media volume (see
+ * [MediaVolume]) the slider gives way to the buttons, which then press the
+ * volume keys like the knob.
+ */
 @Composable
 internal fun AudioCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val max = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    val audio = remember { MediaVolume.audio(context) }
+    val max = remember { MediaVolume.max(audio) }
     var dragging by remember { mutableStateOf(false) }
     // Follow the hardware knob / other apps while nobody is dragging the slider.
-    // The system broadcasts VOLUME_CHANGED_ACTION on every change; a slow poll
-    // remains as a fallback for ROMs that don't send it.
-    DisposableEffect(Unit) {
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) {
-                if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-            }
-        }
-        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
-        runCatching { androidx.core.content.ContextCompat.registerReceiver(context, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) }
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    var volume by rememberMusicVolume(audio, hold = { dragging })
+    val byKeys by MediaVolume.byKeys.collectAsState()
+    val unavailable by MediaVolume.unavailable.collectAsState()
+    LaunchedEffect(Unit) { MediaVolume.check(audio) }
+    val muted = !byKeys && volume == 0
+    fun act(change: () -> Unit) {
+        change()
+        volume = MediaVolume.level(audio)
     }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        }
-    }
-    val muted = volume == 0
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_audio_title)) {
-                Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                if (!byKeys) {
+                    Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                }
             }
-            Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = {
-                        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, if (muted) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE, 0)
-                        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    },
-                    modifier = Modifier.size(44.dp)
-                ) {
+            Row(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (byKeys) Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally) else Arrangement.Start
+            ) {
+                val buttonSize = if (byKeys) 56.dp else 44.dp
+                IconButton(onClick = { act { MediaVolume.toggleMute(context) } }, modifier = Modifier.size(buttonSize)) {
                     Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = stringResource(if (muted) R.string.info_audio_unmute else R.string.info_audio_mute),
                         tint = if (muted) DashColors.Warning else DashColors.TextPrimary, modifier = Modifier.size(26.dp))
                 }
-                Slider(
-                    value = volume.toFloat(),
-                    onValueChange = { v ->
-                        dragging = true
-                        volume = v.roundToInt()
-                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
-                    },
-                    onValueChangeFinished = { dragging = false },
-                    valueRange = 0f..max.toFloat(),
-                    steps = (max - 1).coerceAtLeast(0),
-                    colors = SliderDefaults.colors(
-                        thumbColor = if (DashColors.Light) DashColors.Accent else Color.White, activeTrackColor = DashColors.Accent,
-                        inactiveTrackColor = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi,
-                        activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent
-                    ),
-                    modifier = Modifier.weight(1f)
+                IconButton(onClick = { act { MediaVolume.lower(context) } }, modifier = Modifier.size(buttonSize)) {
+                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.design_volume_down), tint = DashColors.TextPrimary, modifier = Modifier.size(24.dp))
+                }
+                if (!byKeys) {
+                    Slider(
+                        value = volume.toFloat(),
+                        onValueChange = { v ->
+                            dragging = true
+                            volume = v.roundToInt()
+                            MediaVolume.set(context, volume)
+                        },
+                        onValueChangeFinished = {
+                            dragging = false
+                            volume = MediaVolume.level(audio)
+                        },
+                        valueRange = 0f..max.toFloat(),
+                        steps = (max - 1).coerceAtLeast(0),
+                        colors = SliderDefaults.colors(
+                            thumbColor = if (DashColors.Light) DashColors.Accent else Color.White, activeTrackColor = DashColors.Accent,
+                            inactiveTrackColor = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi,
+                            activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                IconButton(onClick = { act { MediaVolume.raise(context) } }, modifier = Modifier.size(buttonSize)) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.design_volume_up), tint = DashColors.TextPrimary, modifier = Modifier.size(24.dp))
+                }
+            }
+            if (byKeys) {
+                Text(
+                    stringResource(if (unavailable) R.string.info_audio_unavailable else R.string.info_audio_by_keys),
+                    color = if (unavailable) DashColors.Warning else DashColors.Muted,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -683,6 +715,37 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * The media volume, following the hardware knob and other apps: the system
+ * broadcasts VOLUME_CHANGED_ACTION on every change, and a slow poll remains as
+ * a fallback for ROMs that don't send it. Outside changes are ignored while
+ * [hold] is true (the slider is being dragged). Shared by the audio tile and
+ * its designed face.
+ */
+@Composable
+internal fun rememberMusicVolume(audio: AudioManager, hold: () -> Boolean = { false }): MutableIntState {
+    val context = LocalContext.current
+    val volume = remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    val held by rememberUpdatedState(hold)
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                if (!held()) volume.intValue = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }
+        }
+        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+        runCatching { ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED) }
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5000)
+            if (!held()) volume.intValue = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        }
+    }
+    return volume
 }
 
 @Composable

@@ -41,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +52,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -68,6 +70,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.CompositingStrategy
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -89,7 +93,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
@@ -188,7 +191,6 @@ private val PRESET_DEPTH = 6.dp
 private val PRESET_TRAVEL = 3.dp
 private val CRT_BEZEL = 10.dp
 
-private const val RPM_MAX = 7000f
 private const val RPM_LEDS = 24
 private const val FUEL_LEDS = 20
 private const val REEL_SPIN_MS = 2_400
@@ -200,9 +202,11 @@ private const val SPECTRUM_LOOP_MS = 4_000
  * Whole-screen synthwave backdrop: starry gradient sky, a striped sun on the
  * horizon, wireframe mountains, a dark ground and a perspective grid whose
  * cross lines roll towards the viewer. By day: a starless pastel sky, lilac
- * hills and a pale ground with cyan rails. Paths and brushes are cached per
- * size and appearance; only the grid and the star twinkle read the animation,
- * inside the draw.
+ * hills and a pale ground with cyan rails. Everything between the stars and
+ * the rolling cross lines is recorded once per size and appearance into an
+ * offscreen layer; each step of the ambient ticker (about 20 a second, none
+ * with effects off) only redraws the sky, the star twinkle and the cross lines
+ * around it.
  */
 @Composable
 internal fun tapeDeckBackground(): Modifier {
@@ -289,6 +293,19 @@ internal fun tapeDeckBackground(): Modifier {
                 startY = horizon - bloomH, endY = horizon + bloomH
             )
 
+            // The sun, hills, ground and rails never move: rendered once, then only composited.
+            val scenery = obtainGraphicsLayer().apply { compositingStrategy = CompositingStrategy.Offscreen }
+            scenery.record {
+                drawCircle(halo, radius = haloR, center = sunC)
+                drawPath(sun, sunFill)
+                drawPath(hillFill, mountain)
+                drawPath(hillEdge, hillGlowInk, style = hillGlow)
+                drawPath(hillEdge, magenta, style = hillStroke)
+                drawPath(ridges, ridgeInk, style = ridgeStroke)
+                drawRect(groundFill, topLeft = Offset(0f, horizon), size = Size(w, ground))
+                drawPath(verticals, verticalInk, style = gridStroke)
+            }
+
             onDrawBehind {
                 val t = loop.value
                 drawRect(sky, size = Size(w, horizon))
@@ -298,14 +315,7 @@ internal fun tapeDeckBackground(): Modifier {
                         drawPoints(group, PointMode.Points, Color.White.copy(alpha = a), starWidths[k], StrokeCap.Round)
                     }
                 }
-                drawCircle(halo, radius = haloR, center = sunC)
-                drawPath(sun, sunFill)
-                drawPath(hillFill, mountain)
-                drawPath(hillEdge, hillGlowInk, style = hillGlow)
-                drawPath(hillEdge, magenta, style = hillStroke)
-                drawPath(ridges, ridgeInk, style = ridgeStroke)
-                drawRect(groundFill, topLeft = Offset(0f, horizon), size = Size(w, ground))
-                drawPath(verticals, verticalInk, style = gridStroke)
+                drawLayer(scenery)
                 // Cross lines sit at depths 1, 2, 3... that slide towards the
                 // viewer; y = horizon + ground / depth gives the perspective spacing.
                 val roll = (t * GRID_ROLLS_PER_LOOP) % 1f
@@ -338,7 +348,7 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
         modifier = Modifier
             .fillMaxWidth()
             .height(TOP_BAR_HEIGHT)
-            // Own layer, so the animated page background redrawing each frame
+            // Own layer, so the animated page background redrawing each step
             // does not re-record the bar (no clip: its glow spills below it).
             .graphicsLayer()
             .drawWithCache {
@@ -390,7 +400,7 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
         Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
             ObdLed(m.obdConnection, m.onConnectObd)
             OutsideTemp()
-            VehicleAlerts(m.obdConnection, m.obdData)
+            VehicleAlerts(m.obdConnection, m.obd)
             MorePicker(m) { open ->
                 NeonPill(null, stringResource(R.string.tape_cd_more), open) {
                     Icon(Icons.Filled.MoreVert, contentDescription = null, tint = legend, modifier = Modifier.size(20.dp))
@@ -532,8 +542,8 @@ private fun vfdText(
     fontWeight = weight,
     shadow = when {
         !glow -> null
-        onScreen || !DashColors.Light -> Shadow(color.copy(alpha = 0.75f), blurRadius = size.value * 0.9f)
-        else -> Shadow(color.copy(alpha = 0.3f), blurRadius = size.value * 0.4f)
+        onScreen || !DashColors.Light -> softTextShadow(color.copy(alpha = 0.75f), size.value * 0.9f)
+        else -> softTextShadow(color.copy(alpha = 0.3f), size.value * 0.4f)
     }
 )
 
@@ -547,17 +557,19 @@ private fun chromeText(color: Color, size: TextUnit, glow: Boolean = false) = Te
     letterSpacing = 0.16.em,
     shadow = when {
         !glow -> null
-        DashColors.Light -> Shadow(color.copy(alpha = 0.3f), blurRadius = size.value * 0.4f)
-        else -> Shadow(color.copy(alpha = 0.7f), blurRadius = size.value)
+        DashColors.Light -> softTextShadow(color.copy(alpha = 0.3f), size.value * 0.4f)
+        else -> softTextShadow(color.copy(alpha = 0.7f), size.value)
     }
 )
 
-/** True for half of every [halfPeriodMs] x 2, aligned to the wall clock (so colons tick with the seconds). */
-/** Tube / CRT flicker: alpha 1 most of the time, with a short stutter every few seconds. */
+/** Tube / CRT flicker: alpha 1 most of the time, with a short stutter every few seconds (steady with effects off). */
 @Composable
 private fun rememberFlicker(): State<Float> {
     val alpha = remember { mutableFloatStateOf(1f) }
-    LaunchedEffect(Unit) {
+    val still = DashColors.Effects == DashEffects.NONE
+    LaunchedEffect(still) {
+        alpha.floatValue = 1f
+        if (still) return@LaunchedEffect
         val rnd = Random(System.nanoTime())
         while (true) {
             delay(3_500L + rnd.nextLong(4_500L))
@@ -588,39 +600,45 @@ private fun BlinkingText(text: String, style: TextStyle, periodMs: Long = 600L, 
 
 /**
  * A VFD window with a neon rim that glows outward in falling-alpha strokes:
- * black glass with a faint sheen at night, a flat pearl panel by day.
+ * black glass with a faint sheen at night, a flat pearl panel by day. Cached
+ * across recompositions (a live readout recomposes on every sample).
  */
-private fun Modifier.vfdPanel(rim: Color, corner: Dp = 14.dp): Modifier = drawBehind {
+@Composable
+private fun Modifier.vfdPanel(rim: Color, corner: Dp = 14.dp): Modifier = cachedDraw(rim, corner) {
     val r = CornerRadius(corner.toPx())
     val line = 1.5.dp.toPx()
-    for (i in 3 downTo 1) {
-        drawRoundRect(rim.copy(alpha = 0.07f), cornerRadius = r, style = Stroke(line + i * 4.dp.toPx()))
+    val halos = Array(3) { Stroke(line + (3 - it) * 4.dp.toPx()) }
+    val haloInk = rim.copy(alpha = 0.07f)
+    val panel = TdPanel
+    val sheen = if (DashColors.Light) null else {
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), endY = size.height * 0.4f)
     }
-    drawRoundRect(TdPanel, cornerRadius = r)
-    if (!DashColors.Light) {
-        drawRoundRect(
-            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), endY = size.height * 0.4f),
-            cornerRadius = r
-        )
+    val edge = Stroke(line)
+    onDrawBehind {
+        for (halo in halos) drawRoundRect(haloInk, cornerRadius = r, style = halo)
+        drawRoundRect(panel, cornerRadius = r)
+        if (sheen != null) drawRoundRect(sheen, cornerRadius = r)
+        drawRoundRect(rim, cornerRadius = r, style = edge)
     }
-    drawRoundRect(rim, cornerRadius = r, style = Stroke(line))
 }
 
 /**
  * Recessed black display window (the top bar clock), dark in both modes; by
  * day a white bevel under its lower edge sinks it into the silver strip.
  */
-private fun Modifier.vfdInset(): Modifier = drawBehind {
+private val VfdInset = Modifier.drawWithCache {
     val r = CornerRadius(8.dp.toPx())
-    if (DashColors.Light) {
-        drawRoundRect(Color.White.copy(alpha = 0.85f), topLeft = Offset(0f, 1.dp.toPx()), size = size, cornerRadius = r)
+    val bevel = DashColors.Light
+    val lift = Offset(0f, 1.dp.toPx())
+    val glass = Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.06f)), startY = size.height * 0.6f)
+    val rimInk = TdVfdRim
+    val edge = Stroke(1.dp.toPx())
+    onDrawBehind {
+        if (bevel) drawRoundRect(Color.White.copy(alpha = 0.85f), topLeft = lift, size = size, cornerRadius = r)
+        drawRoundRect(TdVfd, cornerRadius = r)
+        drawRoundRect(glass, cornerRadius = r)
+        drawRoundRect(rimInk, cornerRadius = r, style = edge)
     }
-    drawRoundRect(TdVfd, cornerRadius = r)
-    drawRoundRect(
-        Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.06f)), startY = size.height * 0.6f),
-        cornerRadius = r
-    )
-    drawRoundRect(TdVfdRim, cornerRadius = r, style = Stroke(1.dp.toPx()))
 }
 
 /** [a] minus [b], or [fallback] if Skia's path ops refuse (never expected for these simple shapes). */
@@ -762,7 +780,8 @@ private fun DrawScope.drawSegment(path: Path, lit: Boolean, color: Color, ghost:
  * ghosts; lit ones get a wide low-alpha glow pass under the solid pass, fainter
  * on the light page unless the digits sit [onScreen] (a display dark in both
  * modes). The colon lights while [colonOn] returns true (read at draw time, so
- * a blinking colon only redraws).
+ * a blinking colon only redraws). The segment paths depend on the height
+ * alone, so a new value only redraws them.
  */
 @Composable
 private fun SevenSegment(
@@ -770,40 +789,59 @@ private fun SevenSegment(
     height: Dp,
     color: Color,
     modifier: Modifier = Modifier,
-    ghost: Color = color.copy(alpha = 0.08f),
     onScreen: Boolean = false,
     colonOn: () -> Boolean = { true }
 ) {
+    val ghost = color.copy(alpha = 0.08f)
     val glowAlpha = if (onScreen || !DashColors.Light) 0.28f else 0.12f
+    val geometry = remember { SegGeometry() }
     Spacer(
         modifier
             .size(height * (segUnits(text) / SEG_H), height)
-            .drawWithCache {
+            .drawBehind {
                 val s = size.height / SEG_H
-                val segs = segmentPaths(s)
-                val dots = colonPaths(s)
-                val glow = Stroke(width = SEG_T * s * 0.9f, join = StrokeJoin.Round)
-                onDrawBehind {
-                    var x = 0f
-                    text.forEachIndexed { i, c ->
-                        if (i > 0) x += segGap(text, i) * s
-                        if (c == ':') {
-                            val lit = colonOn()
-                            translate(left = x) { dots.forEach { drawSegment(it, lit, color, ghost, glow, glowAlpha) } }
-                            x += SEG_COLON_W * s
-                        } else {
-                            val mask = segMask(c)
-                            translate(left = x) {
-                                segs.forEachIndexed { k, p ->
-                                    drawSegment(p, mask and (1 shl k) != 0, color, ghost, glow, glowAlpha)
-                                }
+                geometry.fit(s)
+                val segs = geometry.segs
+                val dots = geometry.dots
+                val glow = geometry.glow
+                var x = 0f
+                text.forEachIndexed { i, c ->
+                    if (i > 0) x += segGap(text, i) * s
+                    if (c == ':') {
+                        val lit = colonOn()
+                        translate(left = x) { dots.forEach { drawSegment(it, lit, color, ghost, glow, glowAlpha) } }
+                        x += SEG_COLON_W * s
+                    } else {
+                        val mask = segMask(c)
+                        translate(left = x) {
+                            segs.forEachIndexed { k, p ->
+                                drawSegment(p, mask and (1 shl k) != 0, color, ghost, glow, glowAlpha)
                             }
-                            x += SEG_W * s
                         }
+                        x += SEG_W * s
                     }
                 }
             }
     )
+}
+
+/** One digit size's segment and colon paths and glow stroke, rebuilt only when the scale [fit] is given changes. */
+private class SegGeometry {
+    private var scale = -1f
+    var segs: List<Path> = emptyList()
+        private set
+    var dots: List<Path> = emptyList()
+        private set
+    var glow = Stroke(0f)
+        private set
+
+    fun fit(s: Float) {
+        if (s == scale) return
+        scale = s
+        segs = segmentPaths(s)
+        dots = colonPaths(s)
+        glow = Stroke(width = SEG_T * s * 0.9f, join = StrokeJoin.Round)
+    }
 }
 
 /** Three-digit speed with ghost 8s in the unused places; all ghosts when there is no reading. */
@@ -863,7 +901,7 @@ private fun TapeLogo() {
             shadow = if (DashColors.Light) {
                 Shadow(Color.White.copy(alpha = 0.9f), offset = Offset(0f, 1.5f), blurRadius = 1f)
             } else {
-                Shadow(magenta.copy(alpha = 0.55f), blurRadius = 14f)
+                softTextShadow(magenta.copy(alpha = 0.55f), 14f)
             }
         )
     )
@@ -892,15 +930,16 @@ private fun NeonPill(label: String?, description: String, onClick: () -> Unit, i
         Row(
             modifier = Modifier
                 .height(34.dp)
-                .drawBehind {
+                .cachedDraw(cyan, idle, interaction) {
                     val r = CornerRadius(size.height / 2f)
                     val line = 1.5.dp.toPx()
-                    drawRoundRect(
-                        cyan.copy(alpha = if (pressed) 0.3f else 0.12f), cornerRadius = r,
-                        style = Stroke(line + 6.dp.toPx())
-                    )
-                    drawRoundRect(if (pressed) cyan.copy(alpha = 0.25f) else idle, cornerRadius = r)
-                    drawRoundRect(cyan, cornerRadius = r, style = Stroke(line))
+                    val halo = Stroke(line + 6.dp.toPx())
+                    val edge = Stroke(line)
+                    onDrawBehind {
+                        drawRoundRect(cyan.copy(alpha = if (pressed) 0.3f else 0.12f), cornerRadius = r, style = halo)
+                        drawRoundRect(if (pressed) cyan.copy(alpha = 0.25f) else idle, cornerRadius = r)
+                        drawRoundRect(cyan, cornerRadius = r, style = edge)
+                    }
                 }
                 .padding(horizontal = if (label != null) 14.dp else 11.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -927,7 +966,7 @@ private fun VfdClock(clock: String) {
     Row(
         modifier = Modifier
             .height(44.dp)
-            .vfdInset()
+            .then(VfdInset)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -959,16 +998,14 @@ private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
         Spacer(
             Modifier
                 .size(10.dp)
-                .drawBehind {
-                    val on = blink?.value ?: true
-                    if (on && state != ObdConnectionState.DISCONNECTED) {
-                        val r = size.minDimension * 1.3f
-                        drawCircle(
-                            Brush.radialGradient(listOf(color.copy(alpha = 0.6f), fadeOf(color)), center = center, radius = r),
-                            radius = r
-                        )
+                .cachedDraw(color, state, blink) {
+                    val r = size.minDimension * 1.3f
+                    val halo = Brush.radialGradient(listOf(color.copy(alpha = 0.6f), fadeOf(color)), center = size.center, radius = r)
+                    onDrawBehind {
+                        val on = blink?.value ?: true
+                        if (on && state != ObdConnectionState.DISCONNECTED) drawCircle(halo, radius = r)
+                        drawCircle(if (on) color else color.copy(alpha = 0.3f))
                     }
-                    drawCircle(if (on) color else color.copy(alpha = 0.3f))
                 }
         )
         Spacer(Modifier.width(8.dp))
@@ -1015,13 +1052,13 @@ private fun ReadoutRow(items: List<TdReadout>, valueSize: TextUnit, modifier: Mo
     }
 }
 
-/** "RPM" + a 24-LED bar (green, yellow, magenta) lit up to rpm / 7000 + the reading. */
+/** "RPM" + a 24-LED bar (green, yellow, magenta) lit up to rpm / SKIN_RPM_MAX + the reading. */
 @Composable
 private fun RpmLeds(rpm: Int, live: Boolean, labelSize: TextUnit, modifier: Modifier) {
     val cyan = DashColors.Accent
     val green = DashColors.Good
     val magenta = DashColors.Accent2
-    val lit = if (live) (rpm / RPM_MAX * RPM_LEDS).roundToInt().coerceIn(0, RPM_LEDS) else 0
+    val lit = if (live) (rpm / SKIN_RPM_MAX * RPM_LEDS).roundToInt().coerceIn(0, RPM_LEDS) else 0
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.tape_rpm_caps), style = vfdText(cyan, labelSize), maxLines = 1)
         Spacer(Modifier.width(8.dp))
@@ -1132,11 +1169,7 @@ private fun TapeSpeedHud(env: SkinTileEnv) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
-    val source = when {
-        env.obdConnection == ObdConnectionState.CONNECTED -> "OBD"
-        speed != null -> "GPS"
-        else -> stringResource(R.string.tape_no_signal_caps)
-    }
+    val source = speedSource(env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.tape_no_signal_caps))
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
     val color = if (over) DashColors.Warning else cyan
     BoxWithConstraints(
@@ -1182,8 +1215,8 @@ private const val CASSETTE_ASPECT = CAS_W / CAS_H
 private fun TapeMedia(env: SkinTileEnv) {
     val state = env.mediaState
     val access = env.hasMediaAccess
-    val positionMs = rememberMediaPosition(state, env.mediaController)
-    val fraction = if (state.durationMs > 0L) (positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
+    // The playback position is read only by the reels and the counter, so it never recomposes the deck.
+    val controller = env.mediaController
     val spin = rememberSpin(REEL_SPIN_MS, running = state.isPlaying)
     val loaded = state.hasMedia && state.title.isNotBlank()
     val title = when {
@@ -1222,7 +1255,7 @@ private fun TapeMedia(env: SkinTileEnv) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Cassette(title, artist, fraction, spin, Modifier.size(casW, casH))
+                Cassette(title, artist, state, controller, spin, Modifier.size(casW, casH))
                 Spacer(Modifier.height(gap))
                 if (access) {
                     TransportKeys(env, state, iconSize, Modifier.width(colW).height(keysH))
@@ -1233,10 +1266,10 @@ private fun TapeMedia(env: SkinTileEnv) {
                 }
                 if (deckBelow) {
                     Spacer(Modifier.height(gap))
-                    DeckPanel(state, positionMs, access, Modifier.fillMaxWidth().height(minOf(spareH - gap, 150.dp)))
+                    DeckPanel(state, controller, access, Modifier.fillMaxWidth().height(minOf(spareH - gap, 150.dp)))
                 }
             }
-            if (deckRight) DeckPanel(state, positionMs, access, Modifier.weight(1f).fillMaxHeight())
+            if (deckRight) DeckPanel(state, controller, access, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -1249,7 +1282,14 @@ private fun TapeMedia(env: SkinTileEnv) {
  * that layer.
  */
 @Composable
-private fun Cassette(title: String, artist: String, fraction: Float, spin: State<Float>, modifier: Modifier) {
+private fun Cassette(
+    title: String,
+    artist: String,
+    state: MediaState,
+    controller: CarMediaController,
+    spin: State<Float>,
+    modifier: Modifier
+) {
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
     val light = DashColors.Light
@@ -1258,7 +1298,7 @@ private fun Cassette(title: String, artist: String, fraction: Float, spin: State
         Spacer(
             Modifier
                 .fillMaxSize()
-                .drawWithCache {
+                .cachedDraw(title, artist, cyan, magenta, light, measurer) {
                     val s = size.width / CAS_W
                     val minText = 10.sp.toPx()
                     val titleLayout = measurer.measure(
@@ -1329,38 +1369,48 @@ private fun Cassette(title: String, artist: String, fraction: Float, spin: State
                     }
                 }
         )
-        Spacer(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer()
-                .drawWithCache {
-                    val s = size.width / CAS_W
-                    val teeth = hubTeeth(s)
-                    val windowRim = Stroke(2f * s)
-                    val span = PACK_MAX * PACK_MAX - PACK_MIN * PACK_MIN
-                    val f = fraction.coerceIn(0f, 1f)
+        CassetteReels(state, controller, spin)
+    }
+}
+
+/**
+ * The reels, tape packs and window rim on their own layer: spinning redraws
+ * only this layer, and only it follows the playback position (the packs).
+ */
+@Composable
+private fun CassetteReels(state: MediaState, controller: CarMediaController, spin: State<Float>) {
+    val fraction = rememberUpdatedState(rememberMediaFraction(state, controller))
+    Spacer(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer()
+            .cachedDraw(spin, fraction) {
+                val s = size.width / CAS_W
+                val teeth = hubTeeth(s)
+                val windowRim = Stroke(2f * s)
+                val span = PACK_MAX * PACK_MAX - PACK_MIN * PACK_MIN
+                val leftC = Offset(152f * s, 123f * s)
+                val rightC = Offset(258f * s, 123f * s)
+                val hole = TdWindow
+                val windowInk = TdWindowRim
+                onDrawBehind {
+                    val f = fraction.value
                     // Tape moves from the left pack to the right one; area is conserved.
                     val left = sqrt(PACK_MIN * PACK_MIN + span * (1f - f)) * s
                     val right = sqrt(PACK_MIN * PACK_MIN + span * f) * s
-                    val leftC = Offset(152f * s, 123f * s)
-                    val rightC = Offset(258f * s, 123f * s)
-                    val hole = TdWindow
-                    val windowInk = TdWindowRim
-                    onDrawBehind {
-                        val angle = spin.value
-                        drawReel(leftC, left, 13f * s, angle, teeth, hole)
-                        drawReel(rightC, right, 13f * s, angle, teeth, hole)
-                        drawRoundRect(
-                            windowInk, topLeft = Offset(110f * s, 92f * s), size = Size(190f * s, 62f * s),
-                            cornerRadius = CornerRadius(31f * s), style = windowRim
-                        )
-                        drawLine(
-                            Color.White.copy(alpha = 0.10f), Offset(136f * s, 96f * s), Offset(124f * s, 150f * s), 3f * s
-                        )
-                    }
+                    val angle = spin.value
+                    drawReel(leftC, left, 13f * s, angle, teeth, hole)
+                    drawReel(rightC, right, 13f * s, angle, teeth, hole)
+                    drawRoundRect(
+                        windowInk, topLeft = Offset(110f * s, 92f * s), size = Size(190f * s, 62f * s),
+                        cornerRadius = CornerRadius(31f * s), style = windowRim
+                    )
+                    drawLine(
+                        Color.White.copy(alpha = 0.10f), Offset(136f * s, 96f * s), Offset(124f * s, 150f * s), 3f * s
+                    )
                 }
-        )
-    }
+            }
+    )
 }
 
 private val HAIRLINE = Stroke(1f)
@@ -1502,7 +1552,7 @@ private fun PianoKey(
 
 /** Deck status LED and word, the tape counter, a spectrum analyser and the HI-FI badge on a VFD. */
 @Composable
-private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modifier: Modifier) {
+private fun DeckPanel(state: MediaState, controller: CarMediaController, access: Boolean, modifier: Modifier) {
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
     val (status, statusColor) = when {
@@ -1526,7 +1576,7 @@ private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modi
                 Spacer(Modifier.width(6.dp))
                 Text(status, style = vfdText(statusColor, 12.sp), maxLines = 1)
                 Spacer(Modifier.weight(1f))
-                if (state.durationMs > 0L) SevenSegment(formatTrackTime(positionMs), 18.dp, cyan)
+                if (state.durationMs > 0L) DeckCounter(state, controller, cyan)
             }
             Spacer(Modifier.height(6.dp))
             Spectrum(state.isPlaying, Modifier.weight(1f).fillMaxWidth())
@@ -1536,6 +1586,13 @@ private fun DeckPanel(state: MediaState, positionMs: Long, access: Boolean, modi
             }
         }
     }
+}
+
+/** The tape counter ("2:14"), in its own scope so only it follows the playback position. */
+@Composable
+private fun DeckCounter(state: MediaState, controller: CarMediaController, color: Color) {
+    val positionMs = rememberMediaPosition(state, controller)
+    SevenSegment(formatTrackTime(positionMs), 18.dp, color)
 }
 
 /**
@@ -1548,7 +1605,7 @@ private fun Spectrum(playing: Boolean, modifier: Modifier) {
     val magenta = DashColors.Accent2
     val loop = if (playing) rememberLoop(SPECTRUM_LOOP_MS) else null
     Spacer(
-        // Own layer: the bars redraw every frame while playing, the rest of the tile does not.
+        // Own layer: the bars redraw every step while playing, the rest of the tile does not.
         modifier.graphicsLayer().drawWithCache {
             val bars = (size.width / 14.dp.toPx()).toInt().coerceIn(6, 40)
             val gap = 3.dp.toPx()
@@ -1640,7 +1697,7 @@ private fun TapeNavigation(env: SkinTileEnv) {
                     shape = screenShape
                     clip = true
                 }
-                .crtScreen()
+                .then(CrtScreen)
                 .padding(horizontal = rx * 0.6f + 8.dp, vertical = 10.dp)
         ) {
             when {
@@ -1669,29 +1726,36 @@ private fun TapeNavigation(env: SkinTileEnv) {
 }
 
 /** Plastic monitor housing (dark at night, silver-grey by day) with a small power LED of [led] colour. */
-private fun Modifier.crtBezel(led: Color): Modifier = drawBehind {
+@Composable
+private fun Modifier.crtBezel(led: Color): Modifier = cachedDraw(led) {
     val r = CornerRadius(22.dp.toPx())
-    drawRoundRect(
-        tdShadow(0.45f), topLeft = Offset(0f, 6.dp.toPx()), size = size, cornerRadius = r
-    )
-    drawRoundRect(TdBezelOuter, cornerRadius = r)
+    val shade = tdShadow(0.45f)
+    val drop = Offset(0f, 6.dp.toPx())
+    val outer = TdBezelOuter
     val inset = 2.dp.toPx()
-    drawRoundRect(
-        Brush.verticalGradient(listOf(TdBezelTop, TdBezel, TdBezelBottom)),
-        topLeft = Offset(inset, inset), size = Size(size.width - inset * 2f, size.height - inset * 2f),
-        cornerRadius = CornerRadius(r.x - inset)
-    )
-    drawRoundRect(
-        TdBezelRim, topLeft = Offset(inset, inset), size = Size(size.width - inset * 2f, size.height - inset * 2f),
-        cornerRadius = CornerRadius(r.x - inset), style = Stroke(1.5.dp.toPx())
-    )
+    val innerTopLeft = Offset(inset, inset)
+    val innerSize = Size(size.width - inset * 2f, size.height - inset * 2f)
+    val innerR = CornerRadius(r.x - inset)
+    val body = Brush.verticalGradient(listOf(TdBezelTop, TdBezel, TdBezelBottom))
+    val rimInk = TdBezelRim
+    val rim = Stroke(1.5.dp.toPx())
     val c = Offset(size.width - 26.dp.toPx(), size.height - CRT_BEZEL.toPx() / 2f)
-    drawCircle(led.copy(alpha = 0.35f), radius = 5.dp.toPx(), center = c)
-    drawCircle(led, radius = 2.dp.toPx(), center = c)
+    onDrawBehind {
+        drawRoundRect(shade, topLeft = drop, size = size, cornerRadius = r)
+        drawRoundRect(outer, cornerRadius = r)
+        drawRoundRect(body, topLeft = innerTopLeft, size = innerSize, cornerRadius = innerR)
+        drawRoundRect(rimInk, topLeft = innerTopLeft, size = innerSize, cornerRadius = innerR, style = rim)
+        drawCircle(led.copy(alpha = 0.35f), radius = 5.dp.toPx(), center = c)
+        drawCircle(led, radius = 2.dp.toPx(), center = c)
+    }
 }
 
-/** CRT glass: radial phosphor-black background and a faint wire grid under the content, scanlines and vignette over it. */
-private fun Modifier.crtScreen(): Modifier = drawWithCache {
+/**
+ * CRT glass: radial phosphor-black background and a faint wire grid under the
+ * content, scanlines and vignette over it. One shared modifier, so the cache
+ * survives recomposition.
+ */
+private val CrtScreen = Modifier.drawWithCache {
     val w = size.width
     val h = size.height
     if (w <= 0f || h <= 0f) return@drawWithCache onDrawWithContent { drawContent() }
@@ -1817,13 +1881,7 @@ private fun TurnGlyph(nav: NavState, size: Dp) {
     Box(
         Modifier
             .size(size)
-            .drawBehind {
-                val r = this.size.minDimension * 0.6f
-                drawCircle(
-                    Brush.radialGradient(listOf(TdPhosphor.copy(alpha = 0.28f), Color.Transparent), center = center, radius = r),
-                    radius = r
-                )
-            },
+            .glowHalo(TdPhosphor.copy(alpha = 0.28f), 0.6f),
         contentAlignment = Alignment.Center
     ) {
         if (bitmap != null) {
@@ -1853,11 +1911,10 @@ private fun TapeClock(env: SkinTileEnv) {
     val now = rememberNow(60_000L)
     val blink = rememberBlink()
     val locale = Locale.getDefault()
-    val time = remember(now, locale) { SimpleDateFormat("HH:mm", locale).format(now) }
-    val date = remember(now, locale) {
-        val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMMyyyy")
-        SimpleDateFormat(pattern, locale).format(now).uppercase(locale)
-    }
+    val timeFmt = rememberDateFormat("HH:mm")
+    val dateFmt = rememberDateFormat("EEEdMMMyyyy", best = true)
+    val time = remember(now, timeFmt) { timeFmt.format(now) }
+    val date = remember(now, dateFmt) { dateFmt.format(now).uppercase(locale) }
     val digits = time.padStart(5, ' ')
     BoxWithConstraints(
         Modifier
@@ -1890,20 +1947,30 @@ private fun TapeClock(env: SkinTileEnv) {
  * brackets. The plate is dark at night; by day it is pale acrylic and the
  * tube's core stays closer to its colour (a white-hot core vanishes on it).
  */
-private fun Modifier.neonSign(tube: Color): Modifier = drawBehind {
+@Composable
+private fun Modifier.neonSign(tube: Color): Modifier = cachedDraw(tube) {
     val light = DashColors.Light
     val r = CornerRadius(18.dp.toPx())
-    drawRoundRect(if (light) Color.White.copy(alpha = 0.6f) else TdInk.copy(alpha = 0.72f), cornerRadius = r)
-    for (i in NEON_WIDTHS.indices) {
-        drawRoundRect(tube.copy(alpha = NEON_ALPHAS[i]), cornerRadius = r, style = Stroke(NEON_WIDTHS[i].dp.toPx()))
-    }
-    drawRoundRect(lerp(tube, Color.White, if (light) 0.35f else 0.7f), cornerRadius = r, style = Stroke(0.8.dp.toPx()))
+    val plate = if (light) Color.White.copy(alpha = 0.6f) else TdInk.copy(alpha = 0.72f)
+    val tubes = NEON_WIDTHS.map { Stroke(it.dp.toPx()) }
+    val core = lerp(tube, Color.White, if (light) 0.35f else 0.7f)
+    val coreStroke = Stroke(0.8.dp.toPx())
+    val bracket = TdVfdRim
     val bw = 6.dp.toPx()
     val bh = 9.dp.toPx()
-    for (fx in floatArrayOf(0.25f, 0.75f)) {
-        drawRect(TdVfdRim, topLeft = Offset(size.width * fx - bw / 2f, -bh / 2f), size = Size(bw, bh))
+    onDrawBehind {
+        drawRoundRect(plate, cornerRadius = r)
+        for (i in NEON_WIDTHS.indices) {
+            drawRoundRect(tube.copy(alpha = NEON_ALPHAS[i]), cornerRadius = r, style = tubes[i])
+        }
+        drawRoundRect(core, cornerRadius = r, style = coreStroke)
+        for (fx in NEON_BRACKETS) {
+            drawRect(bracket, topLeft = Offset(size.width * fx - bw / 2f, -bh / 2f), size = Size(bw, bh))
+        }
     }
 }
+
+private val NEON_BRACKETS = floatArrayOf(0.25f, 0.75f)
 
 private val NEON_WIDTHS = floatArrayOf(10f, 6f, 3.5f, 2f)
 private val NEON_ALPHAS = floatArrayOf(0.06f, 0.14f, 0.35f, 1f)
@@ -1917,7 +1984,7 @@ private val NEON_ALPHAS = floatArrayOf(0.06f, 0.14f, 0.35f, 1f)
 private fun NeonTubeText(text: String, color: Color, size: TextUnit, modifier: Modifier = Modifier) {
     val px = with(LocalDensity.current) { size.toPx() }
     val light = DashColors.Light
-    val bloom = if (light) Shadow(color.copy(alpha = 0.4f), blurRadius = px * 0.1f) else Shadow(color, blurRadius = px * 0.2f)
+    val bloom = if (light) softTextShadow(color.copy(alpha = 0.4f), px * 0.1f) else softTextShadow(color, px * 0.2f)
     val base = TextStyle(fontSize = size, lineHeight = size, fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal)
     Box(modifier) {
         Text(
@@ -1949,17 +2016,10 @@ private fun NeonTubeText(text: String, color: Color, size: TextUnit, modifier: M
 @Composable
 private fun NeonIcon(icon: ImageVector, color: Color, size: Dp) {
     val glow = color.copy(alpha = if (DashColors.Light) 0.2f else 0.35f)
-    val clear = fadeOf(color)
     Box(
         Modifier
             .size(size)
-            .drawBehind {
-                val r = this.size.minDimension * 0.7f
-                drawCircle(
-                    Brush.radialGradient(listOf(glow, clear), center = center, radius = r),
-                    radius = r
-                )
-            },
+            .glowHalo(glow, 0.7f, fadeOf(color)),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(size * 0.9f))
@@ -2054,7 +2114,7 @@ private fun TapeRange(item: DashboardItem, env: SkinTileEnv) {
     val magenta = DashColors.Accent2
     val green = DashColors.Good
     val muted = DashColors.Muted
-    val color = if (fuel.percent < 15) DashColors.Warning else cyan
+    val color = if (fuel.percent <= SKIN_LOW_FUEL_PCT) DashColors.Warning else cyan
     val lit = (fuel.percent / 100f * FUEL_LEDS).roundToInt().coerceIn(0, FUEL_LEDS)
     BoxWithConstraints(
         Modifier

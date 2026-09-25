@@ -79,6 +79,9 @@ import java.util.Date
  * code the companion app scans.
  */
 
+/** How long a reply / mark-as-read / dismiss may wait for the phone's answer. */
+private const val SEND_TIMEOUT_MS = 20_000L
+
 /** A phone notification, opened from the Notifications card. */
 @Composable
 internal fun PhoneMessageSheet(item: NotifItem, onDismiss: () -> Unit) {
@@ -116,6 +119,19 @@ internal fun PhoneMessageSheet(item: NotifItem, onDismiss: () -> Unit) {
     fun sent(ok: Boolean) {
         problem = if (ok) null else noLink
         sending = ok
+    }
+
+    // The phone's answer may never come: the link dropped, or it went unheard.
+    LaunchedEffect(sending, connected) {
+        if (!sending) return@LaunchedEffect
+        if (!connected) {
+            sending = false
+            problem = noLink
+            return@LaunchedEffect
+        }
+        delay(SEND_TIMEOUT_MS)
+        sending = false
+        problem = failed
     }
 
     val dictate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -262,6 +278,7 @@ internal fun PhonePane() {
         Column(Modifier.weight(1f)) {
             Text(title, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
             Text(detail, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (state !is PhoneLinkState.Connected) LinkAttemptLine()
         }
     }
     HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(horizontal = 12.dp))
@@ -363,6 +380,7 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                             Spacer(Modifier.width(10.dp))
                             Text(stringResource(R.string.phone_pair_waiting), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                         }
+                        LinkAttemptLine()
                     }
                 }
             }
@@ -403,4 +421,16 @@ internal fun QrCode(text: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** The link's last try (see [PhoneLink.lastAttempt]), small, for when it does not come up. */
+@Composable
+private fun LinkAttemptLine() {
+    val line = PhoneLink.lastAttempt.collectAsState().value ?: return
+    Text(
+        line,
+        color = DashColors.Muted,
+        style = MaterialTheme.typography.labelSmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+        maxLines = 2
+    )
 }

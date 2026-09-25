@@ -120,7 +120,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
-    val variant = variantOf(layout)
+    // Read when called, never captured: gesture handlers outlive a composition,
+    // and a stale arrangement would save one layout's tiles over the other's.
+    fun variant() = variantOf(layout)
     var showTemplates by remember { mutableStateOf(false) }
     // The Settings screen, on the tab it was opened to; null while closed.
     var settingsTab by remember { mutableStateOf<SettingsTab?>(null) }
@@ -130,24 +132,37 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     val mediaController = remember { CarMediaController(context) }
     val updateManager = remember { UpdateManager(context) }
-    val obdData by ObdBluetoothManager.data.collectAsState()
+    // The live readings stay States: reading them here would recompose the whole
+    // dashboard on every OBD sample. Tiles read them where they draw them.
+    val obd = ObdBluetoothManager.data.collectAsState()
     val obdConnection by ObdBluetoothManager.connectionState.collectAsState()
     // Demo mode (⋮ menu) plays its own made-up tracks in place of the real session.
-    val demoOn by DemoMode.active.collectAsState()
-    val realMediaState by mediaController.mediaState.collectAsState()
-    val demoMediaState by DemoMode.media.collectAsState()
-    val mediaState = if (demoOn) demoMediaState else realMediaState
+    val demoState = DemoMode.active.collectAsState()
+    val demoOn by demoState
+    val realMedia = mediaController.mediaState.collectAsState()
+    val demoMedia = DemoMode.media.collectAsState()
+    val media = remember { derivedStateOf { if (demoState.value) demoMedia.value else realMedia.value } }
     val updateStatus by updateManager.status.collectAsState()
 
     // Enumerating every launchable app (labels + icons) is the slowest part of
     // a cold start, so it runs on IO; tiles render their placeholder until then.
     var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
-    LaunchedEffect(Unit) {
+    // Bumped when an app is installed, removed or updated; the list is read again.
+    var appsChanged by remember { mutableIntStateOf(0) }
+    DisposableEffect(context) {
+        val stop = AppLauncher.watchPackages(context) { appsChanged++ }
+        onDispose { stop() }
+    }
+    LaunchedEffect(appsChanged) {
+        // An update fires several callbacks in a row: read the list once they settle.
+        if (appsChanged > 0) delay(1_000)
         apps = withContext(Dispatchers.IO) { AppLauncher.loadApps(context) }
     }
     val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
 
-    var pages by remember { mutableStateOf(DashboardStore.load(context, variant)) }
+    var pages by remember { mutableStateOf(DashboardStore.load(context, variant())) }
+    // The other arrangement's window apps, cached (see windowAppsEverywhere); null = read again.
+    var otherLayoutWindows by remember { mutableStateOf<Set<String>?>(null) }
     // Layout snapshots for Undo while arranging (newest last, capped).
     var history by remember { mutableStateOf<List<List<List<DashboardItem>>>>(emptyList()) }
 
@@ -160,6 +175,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             DashLayoutStore.save(context, next)
             pages = DashboardStore.load(context, nextVariant)
             history = emptyList()
+            otherLayoutWindows = null
         }
     }
     // (page, index) of the launch bar whose apps are being edited.
@@ -245,7 +261,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // and pickers wait. Anything open when it engages closes; a locked tap
     // shows the notice chip for a moment instead of doing nothing.
     var lockWhileMoving by remember { mutableStateOf(DriveLockStore.load(context)) }
-    val moving = rememberMoving(lockWhileMoving, obdData, obdConnection, demoOn)
+    val moving by rememberMoving(lockWhileMoving, demoOn)
     var lockNoticeAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(lockNoticeAt) {
         if (lockNoticeAt > 0L) {
@@ -284,22 +300,31 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val pageSwiping = pagerState.isScrollInProgress || columnState.isScrollInProgress
     LaunchedEffect(pageSwiping) { PipAnchor.pageSwiping.value = pageSwiping }
 
-    /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
-    fun windowApps(items: List<DashboardItem>): Set<String> = items.mapNotNull {
+    /** Apps shown in a window by [items]' tiles. */
+    fun tileWindowApps(items: List<DashboardItem>): Set<String> = items.mapNotNullTo(HashSet()) {
         when {
             it is DashboardItem.BuiltinWidget && it.kind == BuiltinKind.PIP_ANCHOR -> PipAnchor.MAPS_PACKAGE
             it is DashboardItem.AppWindow -> it.packageName
             else -> null
         }
-    }.toSet() + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+    }
 
-    /** Window apps of every page, in both arrangements (a tile in the other layout still owns its window). */
+    /** Apps shown in a window by [items]' tiles, plus Maps when a layout docks it beside the pages. */
+    fun windowApps(items: List<DashboardItem>): Set<String> =
+        tileWindowApps(items) + if (layout != DashLayout.GRID) setOf(PipAnchor.MAPS_PACKAGE) else emptySet()
+
+    /**
+     * Window apps of every page, in both arrangements (a tile in the other layout
+     * still owns its window). The other arrangement is read from storage once and
+     * kept until it can change (a layout switch or a template), not on every swipe.
+     */
     fun windowAppsEverywhere(): Set<String> {
-        val other = if (variant == "") "_half" else ""
-        return windowApps(
-            pages.flatten() +
-                (if (DashboardStore.exists(context, other)) DashboardStore.load(context, other).flatten() else emptyList())
-        )
+        val other = otherLayoutWindows ?: run {
+            val variant = if (variant() == "") "_half" else ""
+            (if (DashboardStore.exists(context, variant)) tileWindowApps(DashboardStore.load(context, variant).flatten()) else emptySet())
+                .also { otherLayoutWindows = it }
+        }
+        return windowApps(pages.flatten()) + other
     }
 
     // As soon as the current page changes (mid-swipe), clear the windows whose
@@ -335,7 +360,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         if (after == before) return
         history = (history + listOf(before)).takeLast(MAX_UNDO)
         pages = after
-        DashboardStore.save(context, pages, variant)
+        DashboardStore.save(context, pages, variant())
     }
 
     /** Adds at the first free cell; returns the new tile's index, or -1 when the page is full. */
@@ -419,7 +444,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         val previous = history.lastOrNull() ?: return
         history = history.dropLast(1)
         pages = previous
-        DashboardStore.save(context, pages, variant)
+        DashboardStore.save(context, pages, variant())
     }
 
     /** Clears one page (releasing any hosted app-widgets); Undo brings it back. */
@@ -435,7 +460,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         if (after == pages) return
         history = (history + listOf(pages)).takeLast(MAX_UNDO)
         pages = after
-        DashboardStore.save(context, pages, variant)
+        DashboardStore.save(context, pages, variant())
     }
 
     val screenConfig = LocalConfiguration.current
@@ -456,15 +481,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
      * too if the user has never set that one up.
      */
     fun applyTemplate(template: DashTemplate, replaceAll: Boolean) {
-        val built = TemplatePlacer.pages(template, templateScreen(variant != ""))
+        val built = TemplatePlacer.pages(template, templateScreen(variant() != ""))
         if (replaceAll) {
             pages.flatten().filterIsInstance<DashboardItem.SystemWidget>()
                 .forEach { WidgetHostHolder.delete(context, it.appWidgetId) }
         }
         mutateAll(pages.mapIndexed { p, old -> if (replaceAll || old.isEmpty()) built[p] else old })
-        val other = if (variant == "") "_half" else ""
+        val other = if (variant() == "") "_half" else ""
         if (!DashboardStore.exists(context, other)) {
             DashboardStore.save(context, TemplatePlacer.pages(template, templateScreen(other != "")), other)
+            otherLayoutWindows = null
         }
         releaseMapsAnchorIfGone()
     }
@@ -489,75 +515,39 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // Auto-connect to the saved OBD adapter when permission is held and we're
-    // not already connected. Called on first launch and on every resume.
-    val autoConnectObd: () -> Unit = {
-        val state = ObdBluetoothManager.connectionState.value
-        if (state.isIdle) {
-            val saved = ObdBluetoothManager.savedDeviceAddress()
-            val missingPerms = requiredBluetoothPermissions().any {
-                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
-            }
-            if (saved != null && !missingPerms) scope.launch { ObdBluetoothManager.connect(saved) }
-        }
-    }
-
     // Observe media; re-check notification access on resume so granting it in
-    // system settings takes effect without an app restart. Also auto-connect OBD.
-    var resumed by remember { mutableStateOf(false) }
+    // system settings takes effect without an app restart. The OBD link, its
+    // poll and the reconnect run in VehicleMonitor, for the whole process; the
+    // screen only says whether the launcher is in front.
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
         CarProfileStore.setContext(context)
+        SpeedCorrection.setContext(context)
         CarCare.setContext(context)
         Maintenance.setContext(context)
         PidExplorer.setContext(context)
         AiMechanic.setContext(context)
         StartupBriefing.start(context)
+        VehicleMonitor.start(context)
         mediaController.start()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     hasMediaAccess = CarMediaController.hasNotificationAccess(context)
                     if (hasMediaAccess) mediaController.start()
-                    autoConnectObd()
-                    resumed = true
+                    VehicleMonitor.connectSaved()
+                    VehicleMonitor.setForeground(true)
                 }
-                Lifecycle.Event.ON_PAUSE -> resumed = false
+                Lifecycle.Event.ON_PAUSE -> VehicleMonitor.setForeground(false)
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            VehicleMonitor.setForeground(false)
             mediaController.stop()
-        }
-    }
-
-    // Keep the OBD link up while the dashboard is on screen: retry every 5s
-    // whenever it's down. Paused (another app fullscreen) means no retries; the
-    // resume observer above reconnects the moment we come back.
-    LaunchedEffect(resumed) {
-        while (resumed) {
-            autoConnectObd()
-            delay(5000)
-        }
-    }
-
-    LaunchedEffect(obdConnection, demoOn) {
-        // The demo feeds the readings itself and must not scan, speak or save anything.
-        if (obdConnection != ObdConnectionState.CONNECTED || demoOn) return@LaunchedEffect
-        // The AI mechanic checks for fault codes by itself once the first
-        // readings are in (it only speaks about codes it hasn't heard before).
-        launch {
-            delay(3000)
-            AiMechanic.autoScan()
-        }
-        while (true) {
-            ObdBluetoothManager.poll()
-            AiMechanic.watch(ObdBluetoothManager.data.value)
-            CarCare.watch(ObdBluetoothManager.data.value)
-            delay(500)
         }
     }
 
@@ -655,7 +645,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         clock = clock,
         versionName = updateManager.currentVersionName,
         obdConnection = obdConnection,
-        obdData = obdData,
+        obd = obd,
         editing = editing,
         layout = layout,
         onLayout = switchLayout,
@@ -667,16 +657,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         },
         onToggleEdit = { if (editing) editing = false else whenParked { editing = true } },
         onTemplates = { whenParked { showTemplates = true } },
-        onTheme = { whenParked { settingsTab = SettingsTab.LOOK } },
-        onAi = { whenParked { settingsTab = SettingsTab.CAR } },
         onSystem = { whenParked { showSystemDialog = true } },
-        onLanguage = { whenParked { settingsTab = SettingsTab.LOOK } },
         onCheckUpdates = checkForUpdates,
         demo = demoOn,
         onDemo = { DemoMode.toggle(context) },
         merged = barForced,
         page = currentPage,
-        onPage = ::showPage,
         moving = moving,
         lockWhileMoving = lockWhileMoving,
         onLockWhileMoving = {
@@ -768,10 +754,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     inSplitMode = inSplitMode,
                     onModelTouch = { blockPagerSwipe = it },
                     appsByPackage = appsByPackage,
-                    mediaState = mediaState,
+                    media = media,
                     mediaController = mediaController,
                     hasMediaAccess = mediaAccess,
-                    obdData = obdData,
+                    obd = obd,
                     obdConnection = obdConnection,
                     onConnectObd = onConnectObd,
                     onPickDevice = onPickDevice,
@@ -986,11 +972,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     designPicker?.let { (page, index) ->
         val tile = pages.getOrNull(page)?.getOrNull(index) as? DashboardItem.BuiltinWidget
         if (tile == null) {
-            designPicker = null
+            // The tile went away (undo, template): close, but not mid-composition.
+            LaunchedEffect(Unit) { designPicker = null }
         } else {
             val env = SkinTileEnv(
-                editing = false, appsByPackage = appsByPackage, mediaState = mediaState, mediaController = mediaController,
-                hasMediaAccess = mediaAccess, context = context, obdData = obdData, obdConnection = obdConnection,
+                editing = false, appsByPackage = appsByPackage, media = media, mediaController = mediaController,
+                hasMediaAccess = mediaAccess, context = context, obd = obd, obdConnection = obdConnection,
                 onConnectObd = onConnectObd, onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onEditLaunchBar = {}
             )
             WidgetDesignPickerDialog(
@@ -1003,8 +990,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     // Arranging mode: view-hosting tiles show their placeholder, not a second live map.
                     TileContent(
                         item = tile.copy(design = WidgetDesign.STANDARD), editing = true, appsByPackage = appsByPackage,
-                        mediaState = mediaState, mediaController = mediaController, hasMediaAccess = mediaAccess,
-                        context = context, obdData = obdData, obdConnection = obdConnection, onConnectObd = onConnectObd,
+                        media = media, mediaController = mediaController, hasMediaAccess = mediaAccess,
+                        context = context, obd = obd, obdConnection = obdConnection, onConnectObd = onConnectObd,
                         onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onLaunchSplitPair = onLaunchSplitPair,
                         onEditLaunchBar = {}, onModelTouch = {}
                     )
@@ -1021,7 +1008,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     launchBarEditor?.let { (page, index) ->
         val bar = pages.getOrNull(page)?.getOrNull(index) as? DashboardItem.LaunchBar
         if (bar == null) {
-            launchBarEditor = null
+            LaunchedEffect(Unit) { launchBarEditor = null }
         } else {
             LaunchBarEditorDialog(
                 apps = apps,
@@ -1053,7 +1040,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     if (showTemplates) {
         DashTemplateDialog(
-            screen = templateScreen(variant != ""),
+            screen = templateScreen(variant() != ""),
             onApply = { template, replaceAll ->
                 applyTemplate(template, replaceAll)
                 showTemplates = false

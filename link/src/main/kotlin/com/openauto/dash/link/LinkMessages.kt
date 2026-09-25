@@ -39,10 +39,42 @@ data object Ping : LinkMessage
 @SerialName("pong")
 data object Pong : LinkMessage
 
+/**
+ * Head unit → phone: where the car is, so the companion app can lead back to
+ * it. Sent when the car comes to a stop (the last stop before it is switched
+ * off is where it was parked), when the spot is saved on the dashboard's
+ * Parking tile ([saved]), and when the link comes up. [at] is when the car was
+ * there; the phone keeps the newest.
+ */
+@Serializable
+@SerialName("car_location")
+data class CarLocation(val lat: Double, val lng: Double, val at: Long, val saved: Boolean = false) : LinkMessage
+
 /** Phone → head unit: every notification currently shown, sent after [Hello]. */
 @Serializable
 @SerialName("notif_sync")
-data class NotificationSync(val notifications: List<PhoneNotification>) : LinkMessage
+data class NotificationSync(val notifications: List<PhoneNotification>) : LinkMessage {
+    companion object {
+        /** The head unit's card keeps 20 notifications in all: more would only be dropped there. */
+        const val MAX_ITEMS = 20
+
+        /**
+         * A sync of [notifications] (newest first) that always fits in one frame:
+         * at most [MAX_ITEMS], each app's icon only on its first notification
+         * (the head unit keeps one icon per app, taken from the first it reads),
+         * and the oldest left out until it fits in [maxBytes].
+         */
+        fun of(notifications: List<PhoneNotification>, maxBytes: Int = LinkSession.MAX_MESSAGE): NotificationSync {
+            val withIcon = HashSet<String>()
+            var items = notifications.take(MAX_ITEMS).map { n ->
+                if (n.iconPng == null || withIcon.add(n.packageName)) n else n.copy(iconPng = null)
+            }
+            // Dropping from the end never drops an app's icon while one of its notifications stays.
+            while (items.isNotEmpty() && LinkCodec.encode(NotificationSync(items)).size > maxBytes) items = items.dropLast(1)
+            return NotificationSync(items)
+        }
+    }
+}
 
 /** Phone → head unit: a notification appeared or changed. */
 @Serializable

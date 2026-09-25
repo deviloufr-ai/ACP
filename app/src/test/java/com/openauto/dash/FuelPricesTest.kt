@@ -58,4 +58,47 @@ class FuelPricesTest {
         assertTrue(url.contains("order_by=gazole_prix"))
         assertTrue(url.contains("${FuelPrices.RADIUS_KM}km"))
     }
+
+    private val osmJson = """{"elements": [
+        {"type": "node", "id": 1, "lat": 48.8321, "lon": 2.3591, "tags": {"amenity": "fuel", "name": "Total Access", "ref:FR:prix-carburants": "75013025"}},
+        {"type": "way", "id": 2, "center": {"lat": 48.8351, "lon": 2.3581}, "tags": {"amenity": "fuel", "brand": "Esso"}},
+        {"type": "node", "id": 3, "lat": 48.9, "lon": 2.4, "tags": {"amenity": "fuel", "name": "Far away"}},
+        {"type": "node", "id": 4, "lat": 48.8, "lon": 2.3}
+    ]}"""
+
+    @Test
+    fun openStreetMapStationsAreReadWithTheirNames() {
+        val osm = FuelStationNames.parse(osmJson)
+        assertEquals(3, osm.size)
+        assertEquals("Total Access", osm[0].name)
+        assertEquals(75013025L, osm[0].priceId)
+        // A way is placed at its centre, and named by its brand when it has no name.
+        assertEquals("Esso", osm[1].name)
+        assertEquals(48.8351, osm[1].lat, 1e-9)
+    }
+
+    @Test
+    fun stationsTakeTheNameTaggedWithTheirIdElseTheNearestOne() {
+        val stations = FuelPrices.parse(json)
+        val names = FuelStationNames.match(stations, FuelStationNames.parse(osmJson))
+        assertEquals("Total Access", names[75013025L])
+        assertEquals("Esso", names[75013024L])
+        val lonely = FuelStation(9, "Rue", "Lyon", 45.76, 4.83, emptyMap())
+        assertEquals("", FuelStationNames.match(listOf(lonely), FuelStationNames.parse(osmJson))[9L])
+    }
+
+    @Test
+    fun theNameQueryAsksAroundEachStation() {
+        val q = FuelStationNames.query(FuelPrices.parse(json))
+        assertTrue(q.startsWith("[out:json]"))
+        assertEquals(2, Regex("around:150,").findAll(q).count())
+        assertTrue(q.contains("around:150,48.83200,2.35900"))
+    }
+
+    @Test
+    fun theLabelNamesTheStationAndItsTown() {
+        val s = FuelStation(1, "44, Rue De Rivoli", "Paris", 48.0, 2.0, emptyMap())
+        assertEquals("44, Rue De Rivoli, Paris", s.label)
+        assertEquals("Relais Rivoli, Paris", s.copy(name = "Relais Rivoli").label)
+    }
 }

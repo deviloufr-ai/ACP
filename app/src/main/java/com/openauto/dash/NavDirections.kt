@@ -66,31 +66,52 @@ object NavDirections {
     @Volatile
     private var currentKey: String? = null
 
-    /** [DemoMode]'s route (and, when it ends, the real one back). */
+    /** The real route, kept up to date while the demo shows its own, and put back when it ends. */
+    @Volatile
+    private var real = NavState()
+
+    /**
+     * Per navigation app: updates in a row where inflating its custom layout
+     * found nothing the extras hadn't given. That inflation runs on the main
+     * thread about once a second while navigating, so an app whose layout
+     * never helps stops paying for it (and is tried again now and then).
+     */
+    private val fruitlessInflations = HashMap<String, Int>()
+    private const val MAX_FRUITLESS = 3
+    private const val RETRY_INFLATION_EVERY = 30
+
+    /** [DemoMode]'s route. */
     internal fun demoWrite(state: NavState) {
         _state.value = state
     }
 
+    /** The demo is over: the real route back, as it is now (a route ended meanwhile stays ended). */
+    internal fun endDemo() {
+        _state.value = real
+    }
+
+    private fun publish(state: NavState) {
+        real = state
+        if (!DemoMode.isOn) _state.value = state
+    }
+
     fun onPosted(context: Context, sbn: StatusBarNotification) {
-        if (DemoMode.isOn) return
         if (sbn.packageName !in PACKAGES) return
         val parsed = parse(context, sbn) ?: return
         currentKey = sbn.key
-        _state.value = parsed
+        publish(parsed)
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
-        if (DemoMode.isOn) return
         if (sbn.key == currentKey) {
             currentKey = null
-            _state.value = NavState()
+            publish(NavState())
         }
     }
 
     fun clear() {
-        if (DemoMode.isOn) return
         currentKey = null
-        _state.value = NavState()
+        publish(NavState())
     }
 
     /**
@@ -118,7 +139,12 @@ object NavDirections {
 
         // Maps often uses a custom layout with nothing in the extras, so inflate
         // the remote views and read their text and image views directly.
-        if (lines.isEmpty() || icon == null) {
+        val pkg = sbn.packageName
+        val continueLabel = context.getString(R.string.info_nav_continue)
+        val fruitless = fruitlessInflations[pkg] ?: 0
+        val worthInflating = lines.isEmpty() || fruitless < MAX_FRUITLESS || fruitless % RETRY_INFLATION_EVERY == 0
+        if ((lines.isEmpty() || icon == null) && worthInflating) {
+            val without = fromLines(lines.toList(), icon, pkg, continueLabel)
             @Suppress("DEPRECATION")
             for (rv in listOf(n.bigContentView, n.contentView, n.headsUpContentView)) {
                 val (texts, bmp) = remoteContent(context, rv)
@@ -126,9 +152,26 @@ object NavDirections {
                 if (icon == null) icon = bmp
                 if (lines.isNotEmpty() && icon != null) break
             }
+            // Helped only if what the tile shows came out different.
+            val helped = fromLines(lines, icon, pkg, continueLabel) != without
+            fruitlessInflations[pkg] = if (helped) 0 else fruitless + 1
+        } else if (!worthInflating) {
+            fruitlessInflations[pkg] = fruitless + 1
         }
         if (lines.isEmpty()) return null
-        return fromLines(lines, icon, sbn.packageName, context.getString(R.string.info_nav_continue))
+        return fromLines(lines, sameIcon(icon), pkg, continueLabel)
+    }
+
+    /**
+     * Every update (about once a second) carries its arrow as a new bitmap;
+     * the one on screen is kept while the arrow looks the same, so an update
+     * that changed nothing else doesn't redraw the tile.
+     */
+    private fun sameIcon(icon: Bitmap?): Bitmap? {
+        val shown = real.icon ?: return icon
+        if (icon == null || shown === icon) return icon
+        // sameAs checks size and format before comparing the pixels.
+        return if (!shown.isRecycled && shown.sameAs(icon)) shown else icon
     }
 
     /**

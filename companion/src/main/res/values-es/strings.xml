@@ -36,4 +36,10 @@
     <string name="invalid_code_read">No es un código de vinculación de Dashwheel (leído: %1$s).</string>
     <string name="step_calls">Llamadas</string>
     <string name="step_calls_detail">Muestra quién llama en la pantalla del coche, para contestar o colgar desde ahí. El sonido sigue en el Bluetooth del coche.</string>
+    <string name="car_spot_title">Dónde está mi coche</string>
+    <string name="car_spot_left">Dejado aquí: %1$s</string>
+    <string name="car_spot_saved">Guardado en el coche: %1$s</string>
+    <string name="car_spot_none">Con el coche conectado, aquí aparece dónde se detiene.</string>
+    <string name="car_spot_map">Mapa</string>
+    <string name="car_spot_walk">Ir a pie</string>
 </resources>

@@ -158,17 +158,30 @@ class DashboardStoreTest {
         assertTrue(saved.contains("com.example.a"))
     }
 
+    @Test
+    fun unknownTilesStayWithTheirOwnLayout() {
+        val full = """{"v":9,"pages":[[{"t":"hologram","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
+        val half = """{"v":9,"pages":[[{"t":"jetpack","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
+        val fullPages = DashboardStore.parsePages(full, "")!!
+        // Reading the other arrangement (as a page swipe does) must not swap its unknown tiles in.
+        DashboardStore.parsePages(half, "_half")
+
+        val saved = DashboardStore.serializePages(List(DashboardStore.PAGE_COUNT) { fullPages.getOrElse(it) { emptyList() } }, "")
+        assertTrue(saved.contains("hologram"))
+        assertFalse(saved.contains("jetpack"))
+    }
+
     // --- tile designs ---------------------------------------------------------
 
     @Test
     fun tileDesignRoundTripsAndSurvivesMovesAndResizes() {
-        val gauge = widget(BuiltinKind.SPEED_HUD, 0, 0, 3, 2).copy(design = WidgetDesign.GAUGE)
+        val gauge = widget(BuiltinKind.SPEED_HUD, 0, 0, 3, 2).copy(design = WidgetDesign.NEON)
         val pages = listOf(listOf(gauge, widget(BuiltinKind.CLOCK, 3, 0, 3, 2)), emptyList(), emptyList())
         assertEquals(pages, DashboardStore.parsePages(DashboardStore.serializePages(pages)))
 
         val moved = DashboardStore.moveResolving(pages[0], 0, 6, 3)!!
-        assertEquals(WidgetDesign.GAUGE, (moved[0] as DashboardItem.BuiltinWidget).design)
-        assertEquals(WidgetDesign.GAUGE, (gauge.withCell(0, 0, 5, 3) as DashboardItem.BuiltinWidget).design)
+        assertEquals(WidgetDesign.NEON, (moved[0] as DashboardItem.BuiltinWidget).design)
+        assertEquals(WidgetDesign.NEON, (gauge.withCell(0, 0, 5, 3) as DashboardItem.BuiltinWidget).design)
     }
 
     @Test
@@ -191,6 +204,17 @@ class DashboardStoreTest {
         assertEquals(WidgetDesign.STANDARD, (pages[0][1] as DashboardItem.BuiltinWidget).design)
         assertEquals(WidgetDesign.STANDARD, WidgetDesign.fromName(null))
         assertEquals(WidgetDesign.NEON, WidgetDesign.fromName("NEON"))
+    }
+
+    @Test
+    fun retiredDesignsBecomeTheirClosestSibling() {
+        assertEquals(WidgetDesign.HERO, WidgetDesign.fromName("MINIMAL"))
+        assertEquals(WidgetDesign.NEON, WidgetDesign.fromName("GAUGE"))
+        assertEquals(WidgetDesign.CHRONO, WidgetDesign.fromName("BLUEPRINT"))
+        val pages = DashboardStore.parsePages(
+            """{"v":1,"pages":[[{"t":"builtin","k":"MEDIA","d":"RING","gx":0,"gy":0,"gw":4,"gh":2}]]}"""
+        )!!
+        assertEquals(WidgetDesign.GLASS, (pages[0][0] as DashboardItem.BuiltinWidget).design)
     }
 
     @Test

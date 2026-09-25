@@ -2,6 +2,7 @@ package com.openauto.dash
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -21,14 +22,14 @@ import androidx.compose.ui.unit.dp
  */
 
 /** How a design arranges a widget's reading. */
-internal enum class FaceLayout { HERO, ARC, RING, BARS, STATS, TERMINAL, DIAL, FLAP }
+internal enum class FaceLayout { HERO, ARC, RING, BARS, STATS, TERMINAL, DIAL, FLAP, ORB, LIQUID, DOTS, POSTER, DUO, ISLAND }
 
-/** The material a design is drawn in. THEME and MINIMAL follow the dashboard theme; the rest bring their own colours. */
-internal enum class FaceLookKind { THEME, MINIMAL, LCD, AMBER, NEON, PAPER, GLASS, CARBON, BLUEPRINT, CHROME, FLAP }
+/** The material a design is drawn in. THEME follows the dashboard theme; the rest bring their own colours. */
+internal enum class FaceLookKind { THEME, LCD, AMBER, NEON, PAPER, GLASS, CARBON, CHROME, FLAP, DOTS }
 
 /**
  * A tile's design. Names are persisted with the tile, so never rename an
- * entry; new designs go at the end. [layout] is null for [STANDARD] and for
+ * entry; a removed one goes in [RETIRED] so saved tiles keep a close look. [layout] is null for [STANDARD] and for
  * the widget-specific designs, which draw their own picture of the reading
  * (WidgetSignatures.kt) and exist only for the [kinds] they suit.
  */
@@ -42,20 +43,20 @@ enum class WidgetDesign(
 ) {
     STANDARD(R.string.design_standard, R.string.design_standard_desc, null, FaceLookKind.THEME),
     HERO(R.string.design_hero, R.string.design_hero_desc, FaceLayout.HERO, FaceLookKind.THEME),
-    GAUGE(R.string.design_gauge, R.string.design_gauge_desc, FaceLayout.ARC, FaceLookKind.THEME),
-    RING(R.string.design_ring, R.string.design_ring_desc, FaceLayout.RING, FaceLookKind.THEME),
-    BARS(R.string.design_bars, R.string.design_bars_desc, FaceLayout.BARS, FaceLookKind.THEME),
-    STATS(R.string.design_stats, R.string.design_stats_desc, FaceLayout.STATS, FaceLookKind.THEME),
-    MINIMAL(R.string.design_minimal, R.string.design_minimal_desc, FaceLayout.HERO, FaceLookKind.MINIMAL),
     LCD(R.string.design_lcd, R.string.design_lcd_desc, FaceLayout.HERO, FaceLookKind.LCD),
     AMBER(R.string.design_amber, R.string.design_amber_desc, FaceLayout.TERMINAL, FaceLookKind.AMBER),
     NEON(R.string.design_neon, R.string.design_neon_desc, FaceLayout.ARC, FaceLookKind.NEON),
     PAPER(R.string.design_paper, R.string.design_paper_desc, FaceLayout.STATS, FaceLookKind.PAPER),
     GLASS(R.string.design_glass, R.string.design_glass_desc, FaceLayout.RING, FaceLookKind.GLASS),
     CARBON(R.string.design_carbon, R.string.design_carbon_desc, FaceLayout.BARS, FaceLookKind.CARBON),
-    BLUEPRINT(R.string.design_blueprint, R.string.design_blueprint_desc, FaceLayout.DIAL, FaceLookKind.BLUEPRINT),
     CHRONO(R.string.design_chrono, R.string.design_chrono_desc, FaceLayout.DIAL, FaceLookKind.CHROME),
     FLAP(R.string.design_flap, R.string.design_flap_desc, FaceLayout.FLAP, FaceLookKind.FLAP),
+    ORB(R.string.design_orb, R.string.design_orb_desc, FaceLayout.ORB, FaceLookKind.THEME),
+    LIQUID(R.string.design_liquid, R.string.design_liquid_desc, FaceLayout.LIQUID, FaceLookKind.THEME),
+    DOTS(R.string.design_dots, R.string.design_dots_desc, FaceLayout.DOTS, FaceLookKind.DOTS),
+    POSTER(R.string.design_poster, R.string.design_poster_desc, FaceLayout.POSTER, FaceLookKind.THEME),
+    DUO(R.string.design_duo, R.string.design_duo_desc, FaceLayout.DUO, FaceLookKind.THEME),
+    ISLAND(R.string.design_island, R.string.design_island_desc, FaceLayout.ISLAND, FaceLookKind.THEME),
 
     // Made for particular widgets: the shape comes from what the widget shows.
     THERMOMETER(R.string.design_thermometer, R.string.design_thermometer_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.WARMUP, BuiltinKind.WEATHER)),
@@ -117,9 +118,15 @@ enum class WidgetDesign(
             return listOf(STANDARD) + all.filter { it.isSignature } + all.filter { !it.isSignature && it != STANDARD }
         }
 
-        /** The saved design, or [STANDARD] for a blank or unknown name (a newer build's design after a downgrade). */
+        /** Designs dropped for looking too much like another, and the one their tiles now wear. */
+        private val RETIRED = mapOf(
+            "MINIMAL" to HERO, "GAUGE" to NEON, "RING" to GLASS,
+            "BARS" to CARBON, "STATS" to PAPER, "BLUEPRINT" to CHRONO
+        )
+
+        /** The saved design, its successor if it was retired, or [STANDARD] for a blank or unknown name (a newer build's design after a downgrade). */
         fun fromName(name: String?): WidgetDesign =
-            entries.firstOrNull { it.name == name } ?: STANDARD
+            entries.firstOrNull { it.name == name } ?: RETIRED[name] ?: STANDARD
     }
 }
 
@@ -132,27 +139,35 @@ internal val WidgetDesign.description: String
 
 // --- What a design draws -----------------------------------------------------
 
-internal class FaceStat(val label: String, val value: String)
+@Immutable
+internal data class FaceStat(val label: String, val value: String)
 
-internal class FaceRow(
+@Immutable
+internal data class FaceRow(
     val title: String,
     val detail: String,
     val alert: Boolean = false,
     /** Initials drawn in a round badge instead of the row's dot (contacts). */
     val badge: String? = null,
-    val onClick: (() -> Unit)? = null
+    val onClick: (() -> Unit)? = null,
+    /** Set when the row can be swiped away (a notification); [key] then tells rows apart. */
+    val onDismiss: (() -> Unit)? = null,
+    val key: Any? = null
 )
 
 /** A small gauge: label, value, unit and how far round it goes (0..1). */
-internal class FaceGauge(val label: String, val value: String, val unit: String, val fraction: Float)
+@Immutable
+internal data class FaceGauge(val label: String, val value: String, val unit: String, val fraction: Float)
 
 /** Something at a time of day: an agenda event ([endMs] set) or a notification (a moment). */
-internal class FaceEvent(val startMs: Long, val endMs: Long?, val title: String)
+@Immutable
+internal data class FaceEvent(val startMs: Long, val endMs: Long?, val title: String)
 
 /** Which road sign a widget reads as. */
 internal enum class SignKind { SPEED, PARKING, DIRECTIONS, FUEL, REST }
 
-internal class FaceAction(
+@Immutable
+internal data class FaceAction(
     val icon: ImageVector,
     val label: String,
     val onClick: () -> Unit,
@@ -169,8 +184,12 @@ internal class FaceAction(
  * designs set smaller. [fullCircle] makes gauges run the whole way round
  * (compass, clock seconds). [clock] (h, m, s) and [compass] let the dial
  * designs draw hands or cardinal letters.
+ *
+ * A value type: a face equal to the last one lets its design skip redrawing,
+ * so a feed that repeats itself costs nothing on screen.
  */
-internal class WidgetFace(
+@Immutable
+internal data class WidgetFace(
     val icon: ImageVector,
     val title: String,
     val value: String,
@@ -219,11 +238,11 @@ internal class WidgetFace(
 // --- Materials ----------------------------------------------------------------
 
 /** Extra drawing a material adds on top of its colours. */
-internal enum class LookDecoration { NONE, SCANLINES, CARBON, BLUEPRINT, CHROME, NEON, GLASS }
+internal enum class LookDecoration { NONE, SCANLINES, CARBON, CHROME, NEON, GLASS, DOTS }
 
 /**
  * Colours, type and shape of one material. [background] null means the
- * theme's own [Card]; a transparent brush means no card at all (Minimal).
+ * theme's own [Card].
  */
 internal data class FaceLook(
     val kind: FaceLookKind,
@@ -258,7 +277,7 @@ private val Mono = FontFamily.Monospace
 private val Serif = FontFamily.Serif
 private val Sans = FontFamily.SansSerif
 
-/** The material for [kind]; THEME and MINIMAL read the live dashboard palette. */
+/** The material for [kind]; THEME reads the live dashboard palette. */
 internal fun faceLook(kind: FaceLookKind): FaceLook = when (kind) {
     FaceLookKind.THEME -> FaceLook(
         kind, background = null,
@@ -267,13 +286,6 @@ internal fun faceLook(kind: FaceLookKind): FaceLook = when (kind) {
         fill = if (DashColors.Glass) DashColors.haze(0.07f) else DashColors.CardHi, onAccent = DashColors.OnAccent,
         border = null, radius = 24.dp, font = Sans, numFont = Sans, numWeight = FontWeight.Bold,
         glow = if (DashColors.Glow > 0f) DashColors.Accent.copy(alpha = 0.35f * DashColors.Glow) else null
-    )
-    FaceLookKind.MINIMAL -> FaceLook(
-        kind, background = Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)),
-        ink = DashColors.TextPrimary, dim = DashColors.Muted, accent = DashColors.Accent, accent2 = DashColors.Accent2,
-        warn = DashColors.Warning, track = DashColors.TextPrimary.copy(alpha = 0.10f), fill = Color.Transparent,
-        onAccent = DashColors.OnAccent, border = null, radius = 0.dp, font = Sans, numFont = Sans,
-        numWeight = FontWeight.Thin, labelWeight = FontWeight.Normal
     )
     FaceLookKind.LCD -> FaceLook(
         kind, background = Brush.verticalGradient(listOf(Color(0xFF122010), Color(0xFF0B1509))),
@@ -318,13 +330,6 @@ internal fun faceLook(kind: FaceLookKind): FaceLook = when (kind) {
         border = Color(0xFF2A2A2A), radius = 12.dp, font = CondensedFamily, numFont = CondensedFamily,
         numWeight = FontWeight.ExtraBold, numItalic = true, decoration = LookDecoration.CARBON, squareControls = true
     )
-    FaceLookKind.BLUEPRINT -> FaceLook(
-        kind, background = Brush.verticalGradient(listOf(Color(0xFF123E78), Color(0xFF0F3666))),
-        ink = Color(0xFFF2F7FF), dim = Color(0xFFA9C4EA), accent = Color.White, accent2 = Color(0xFF9FD0FF),
-        warn = Color(0xFFFFC94A), track = Color(0x26FFFFFF), fill = Color.Transparent, onAccent = Color(0xFF123E78),
-        border = Color(0x55FFFFFF), radius = 4.dp, font = Mono, numFont = Mono, numWeight = FontWeight.Medium,
-        labelWeight = FontWeight.Medium, decoration = LookDecoration.BLUEPRINT, squareControls = true
-    )
     FaceLookKind.CHROME -> FaceLook(
         kind, background = Brush.radialGradient(listOf(Color(0xFF2A2F36), Color(0xFF121417))),
         ink = Color(0xFFF3F3F3), dim = Color(0xFF9CA3AD), accent = Color(0xFFFF6A2B), accent2 = Color(0xFFFFB36B),
@@ -338,5 +343,12 @@ internal fun faceLook(kind: FaceLookKind): FaceLook = when (kind) {
         warn = Color(0xFFFF5A4E), track = Color(0x14FFFFFF), fill = Color(0xFF1C1C1C), onAccent = Color(0xFF0D0D0D),
         border = Color(0xFF262626), radius = 10.dp, font = CondensedFamily, numFont = Mono, numWeight = FontWeight.Bold,
         squareControls = true
+    )
+    FaceLookKind.DOTS -> FaceLook(
+        kind, background = Brush.verticalGradient(listOf(Color(0xFF0A0A0A), Color(0xFF050505))),
+        ink = Color(0xFFF5F5F5), dim = Color(0xFF8A8A8A), accent = Color(0xFFFF3B30), accent2 = Color(0xFFF5F5F5),
+        warn = Color(0xFFFF3B30), track = Color(0x1FFFFFFF), fill = Color(0x14FFFFFF), onAccent = Color.White,
+        border = Color(0xFF1C1C1C), radius = 22.dp, font = Mono, numFont = Mono, numWeight = FontWeight.Medium,
+        labelWeight = FontWeight.Medium, decoration = LookDecoration.DOTS
     )
 }

@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
@@ -57,20 +56,41 @@ object WeatherRepo {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client by lazy {
+        Http.client.newBuilder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+    }
 
     private var lastLat = Double.NaN
     private var lastLng = Double.NaN
     private var lastFetch = 0L
 
+    // The real answer, kept while the demo shows its own and put back when it ends.
+    @Volatile private var realWeather: Weather? = null
+    @Volatile private var realError: String? = null
+
     private const val REFRESH_MS = 15 * 60_000L
     private const val MOVE_DEG = 0.05   // ~5 km: refresh sooner when the car has moved on
 
-    /** [DemoMode]'s weather (and, when it ends, the real one back). */
+    /** [DemoMode]'s weather. */
     internal fun demoWrite(weather: Weather?, error: String?) {
+        _weather.value = weather
+        _error.value = error
+    }
+
+    /** The demo is over: the real weather back, including an answer that came in meanwhile. */
+    internal fun endDemo() {
+        _weather.value = realWeather
+        _error.value = realError
+    }
+
+    private fun publish(weather: Weather?, error: String?) {
+        realWeather = weather
+        realError = error
+        // A fetch that was already on its way when the demo started must not replace the demo's weather.
+        if (DemoMode.isOn) return
         _weather.value = weather
         _error.value = error
     }
@@ -111,11 +131,10 @@ object WeatherRepo {
                     )
                 }
             }.onSuccess {
-                _weather.value = it
-                _error.value = null
+                publish(it, null)
             }.onFailure {
                 // Technical detail only; the UI adds the localized "Weather unavailable".
-                _error.value = it.message.orEmpty()
+                publish(realWeather, it.message.orEmpty())
                 // Allow a retry before the normal interval.
                 lastFetch = now - REFRESH_MS + 60_000L
             }

@@ -260,8 +260,11 @@ object DashboardStore {
      * newer version, seen after a downgrade) are carried through untouched, per
      * page, and written back on the next save instead of being silently
      * dropped. Held here because the in-memory model has no slot for them.
+     * Kept per layout variant: loading the other arrangement must not swap
+     * its unknown tiles into this one's next save.
      */
-    private val retained = HashMap<Int, MutableList<JSONObject>>()
+    private val retainedByVariant = HashMap<String, HashMap<Int, MutableList<JSONObject>>>()
+    private fun retained(variant: String) = retainedByVariant.getOrPut(variant) { HashMap() }
 
     /**
      * Default layout when nothing is saved yet: the Daily template, laid out
@@ -294,19 +297,19 @@ object DashboardStore {
 
     fun load(context: Context, variant: String = ""): List<List<DashboardItem>> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = prefs.getString(pagesKey(variant), null) ?: run { retained.clear(); return defaultPages(variant.isNotEmpty()) }
+        val raw = prefs.getString(pagesKey(variant), null) ?: run { retained(variant).clear(); return defaultPages(variant.isNotEmpty()) }
 
         // A corrupt primary value falls back to the last good layout rather
         // than to the defaults; only when both are unreadable does the user
         // lose their arrangement, and then it is logged.
-        val parsed = parsePages(raw)
+        val parsed = parsePages(raw, variant)
             ?: prefs.getString(backupKey(variant), null)?.let { backup ->
                 Log.w(TAG, "Saved layout unreadable, restoring the previous one")
-                parsePages(backup)
+                parsePages(backup, variant)
             }
             ?: run {
                 Log.e(TAG, "Saved layout and its backup are both unreadable; using defaults")
-                retained.clear()
+                retained(variant).clear()
                 return defaultPages(variant.isNotEmpty())
             }
 
@@ -323,9 +326,9 @@ object DashboardStore {
     /**
      * Parses either schema (bare pages array, or the versioned object) into
      * pages of tiles; null if the text is not a layout at all. Unknown tiles
-     * are stashed in [retained] for the next [save].
+     * are stashed in [retained] ([variant]'s) for the next [save].
      */
-    internal fun parsePages(raw: String): List<List<DashboardItem>>? = runCatching {
+    internal fun parsePages(raw: String, variant: String = ""): List<List<DashboardItem>>? = runCatching {
         val trimmed = raw.trim()
         val pages = if (trimmed.startsWith("{")) {
             val obj = JSONObject(trimmed)
@@ -335,6 +338,7 @@ object DashboardStore {
         } else {
             JSONArray(trimmed)
         }
+        val retained = retained(variant)
         retained.clear()
         (0 until pages.length()).map { p ->
             val page = pages.optJSONArray(p) ?: JSONArray()
@@ -349,7 +353,8 @@ object DashboardStore {
     }.onFailure { Log.w(TAG, "Layout parse failed", it) }.getOrNull()
 
     /** The versioned JSON document [save] writes, including any [retained] tiles. */
-    internal fun serializePages(pages: List<List<DashboardItem>>): String {
+    internal fun serializePages(pages: List<List<DashboardItem>>, variant: String = ""): String {
+        val retained = retained(variant)
         val json = JSONArray()
         pages.take(PAGE_COUNT).forEachIndexed { p, page ->
             val arr = JSONArray()
@@ -362,12 +367,12 @@ object DashboardStore {
 
     fun save(context: Context, pages: List<List<DashboardItem>>, variant: String = "") {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val doc = serializePages(pages)
+        val doc = serializePages(pages, variant)
         val previous = prefs.getString(pagesKey(variant), null)
         prefs.edit().apply {
             // Keep what was there as the fallback for the next load, unless it
             // is the same text (nothing to gain) or unreadable (nothing to keep).
-            if (previous != null && previous != doc && parsePagesQuietly(previous)) {
+            if (previous != null && previous != doc && parsePagesQuietly(previous, variant)) {
                 putString(backupKey(variant), previous)
             }
             putString(pagesKey(variant), doc)
@@ -375,9 +380,10 @@ object DashboardStore {
     }
 
     /** True if [raw] parses as a layout, without touching [retained]. */
-    private fun parsePagesQuietly(raw: String): Boolean {
+    private fun parsePagesQuietly(raw: String, variant: String): Boolean {
+        val retained = retained(variant)
         val keep = HashMap(retained)
-        val ok = parsePages(raw) != null
+        val ok = parsePages(raw, variant) != null
         retained.clear(); retained.putAll(keep)
         return ok
     }

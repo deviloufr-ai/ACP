@@ -25,13 +25,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.CacheDrawScope
+import androidx.compose.ui.draw.DrawResult
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -39,11 +45,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -72,7 +78,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /*
- * Draws a [WidgetFace] in a [WidgetDesign]: the eight layouts, the materials
+ * Draws a [WidgetFace] in a [WidgetDesign]: the classic layouts (the newer
+ * ones live in WidgetFacesModern.kt), the materials
  * behind them, and the frame the view-hosting widgets (map, Maps window, 3D
  * car) get instead. Sizes scale with the tile, so a design reads the same on
  * a 3x2 clock and a 5x3 media card.
@@ -110,6 +117,12 @@ internal fun DesignedFace(face: WidgetFace, design: WidgetDesign, modifier: Modi
                 FaceLayout.TERMINAL -> TerminalLayout(face, look, m)
                 FaceLayout.DIAL -> DialLayout(face, look, m)
                 FaceLayout.FLAP -> FlapLayout(face, look, m)
+                FaceLayout.ORB -> OrbLayout(face, look, m)
+                FaceLayout.LIQUID -> LiquidLayout(face, look, m)
+                FaceLayout.DOTS -> DotsLayout(face, look, m)
+                FaceLayout.POSTER -> PosterLayout(face, look, m)
+                FaceLayout.DUO -> DuoLayout(face, look, m)
+                FaceLayout.ISLAND -> IslandLayout(face, look, m)
             }
         }
     }
@@ -126,11 +139,12 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
     }
     val shape = RoundedCornerShape(look.radius)
     val border = look.border
+    val decoration = look.decoration
     Box(
         modifier = modifier
             .then(
                 // A soft halo outside the rim; the grid leaves a few dp around each tile.
-                if (look.decoration == LookDecoration.NEON) Modifier.drawBehind {
+                if (decoration == LookDecoration.NEON) Modifier.drawBehind {
                     drawRoundRect(
                         color = look.accent.copy(alpha = 0.28f),
                         cornerRadius = CornerRadius(look.radius.toPx()),
@@ -140,11 +154,10 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
             )
             .clip(shape)
             .background(bg)
-            .drawBehind { drawDecoration(look) }
             .then(
                 when {
                     border == null -> Modifier
-                    look.decoration == LookDecoration.CHROME -> Modifier.border(
+                    decoration == LookDecoration.CHROME -> Modifier.border(
                         look.borderWidth,
                         Brush.linearGradient(listOf(Color(0xFFEEF0F3), Color(0xFF7C838C), Color(0xFFD9DDE2), Color(0xFF5D636B))),
                         shape
@@ -152,19 +165,31 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
                     else -> Modifier.border(look.borderWidth, border, shape)
                 }
             )
-            .then(
-                if (look.decoration == LookDecoration.SCANLINES) Modifier.drawWithContent {
-                    drawContent()
+    ) {
+        // The material's pattern (weave, grid, glows, scanlines) sits in layers of
+        // its own: a reading that ticks redraws the numbers, not the hundred lines
+        // behind or over them.
+        if (decoration in BACKDROP_DECORATIONS) {
+            Spacer(Modifier.matchParentSize().graphicsLayer().drawBehind { drawDecoration(look) })
+        }
+        content()
+        if (decoration == LookDecoration.SCANLINES) {
+            Spacer(
+                Modifier.matchParentSize().graphicsLayer().drawBehind {
                     val step = 3.dp.toPx()
                     var y = 0f
                     while (y < size.height) {
                         drawLine(Color.Black.copy(alpha = 0.22f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
                         y += step
                     }
-                } else Modifier
+                }
             )
-    ) { content() }
+        }
+    }
 }
+
+/** Decorations drawn behind the content (scanlines go over it). */
+private val BACKDROP_DECORATIONS = setOf(LookDecoration.CARBON, LookDecoration.DOTS, LookDecoration.GLASS, LookDecoration.NEON)
 
 private fun DrawScope.drawDecoration(look: FaceLook) {
     val w = size.width
@@ -182,19 +207,15 @@ private fun DrawScope.drawDecoration(look: FaceLook) {
             drawLine(look.accent, Offset(w - s, 0f), Offset(w, s), strokeWidth = s * 0.11f)
             drawLine(look.accent, Offset(w - s * 0.62f, 0f), Offset(w, s * 0.62f), strokeWidth = s * 0.05f)
         }
-        LookDecoration.BLUEPRINT -> {
-            val step = min(w, h) * 0.1f
-            var i = 0
-            var x = 0f
-            while (x < w) {
-                drawLine(Color.White.copy(alpha = if (i % 5 == 0) 0.12f else 0.05f), Offset(x, 0f), Offset(x, h), 1f)
-                x += step; i++
-            }
-            i = 0
-            var y = 0f
+        LookDecoration.DOTS -> {
+            // A faint pegboard of dots, like a phone's glyph matrix switched off.
+            val step = 9.dp.toPx()
+            val r = 0.9.dp.toPx()
+            var y = step / 2f
             while (y < h) {
-                drawLine(Color.White.copy(alpha = if (i % 5 == 0) 0.12f else 0.05f), Offset(0f, y), Offset(w, y), 1f)
-                y += step; i++
+                var x = step / 2f
+                while (x < w) { drawCircle(Color.White.copy(alpha = 0.05f), r, Offset(x, y)); x += step }
+                y += step
             }
         }
         LookDecoration.GLASS -> {
@@ -348,34 +369,46 @@ internal fun FaceStatBlock(stat: FaceStat, look: FaceLook, m: FaceMetrics, modif
 internal fun FaceRows(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int, modifier: Modifier = Modifier) {
     if (f.rows.isEmpty()) return
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(m.dp(1.8f).coerceAtLeast(3.dp))) {
-        f.rows.take(max).forEach { r ->
-            val shape = RoundedCornerShape(look.radius * 0.45f)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shape)
-                    .background(look.fill)
-                    .then(r.onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
-                    .padding(horizontal = m.dp(2.6f).coerceAtLeast(6.dp), vertical = m.dp(1.8f).coerceAtLeast(4.dp)),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val badge = r.badge
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier.size(m.dp(9f).coerceAtLeast(22.dp)).clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(look.accent, look.accent2))),
-                        contentAlignment = Alignment.Center
-                    ) { FaceText(badge, look, m.sp(max(m.u * 3.6f, 9f)), color = look.onAccent, weight = FontWeight.Bold) }
-                } else {
-                    Box(Modifier.width(3.dp).height(m.dp(5f).coerceAtLeast(12.dp)).clip(CircleShape).background(if (r.alert) look.warn else look.accent))
+        f.rows.take(max).forEachIndexed { i, r ->
+            // A notification goes with a swipe; its key keeps the next row from taking over the swiped one's state.
+            key(r.key ?: i) {
+                FaceRowSwipe(r) {
+                    val shape = RoundedCornerShape(look.radius * 0.45f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(shape)
+                            .background(look.fill)
+                            .then(r.onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
+                            .padding(horizontal = m.dp(2.6f).coerceAtLeast(6.dp), vertical = m.dp(1.8f).coerceAtLeast(4.dp)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val badge = r.badge
+                        if (badge != null) {
+                            Box(
+                                modifier = Modifier.size(m.dp(9f).coerceAtLeast(22.dp)).clip(CircleShape)
+                                    .background(Brush.linearGradient(listOf(look.accent, look.accent2))),
+                                contentAlignment = Alignment.Center
+                            ) { FaceText(badge, look, m.sp(max(m.u * 3.6f, 9f)), color = look.onAccent, weight = FontWeight.Bold) }
+                        } else {
+                            Box(Modifier.width(3.dp).height(m.dp(5f).coerceAtLeast(12.dp)).clip(CircleShape).background(if (r.alert) look.warn else look.accent))
+                        }
+                        Spacer(Modifier.width(m.dp(2.6f).coerceAtLeast(6.dp)))
+                        FaceText(r.title, look, m.body, Modifier.weight(1f), weight = FontWeight.Medium)
+                        Spacer(Modifier.width(6.dp))
+                        FaceText(r.detail, look, m.body, color = if (r.alert) look.warn else look.dim)
+                    }
                 }
-                Spacer(Modifier.width(m.dp(2.6f).coerceAtLeast(6.dp)))
-                FaceText(r.title, look, m.body, Modifier.weight(1f), weight = FontWeight.Medium)
-                Spacer(Modifier.width(6.dp))
-                FaceText(r.detail, look, m.body, color = if (r.alert) look.warn else look.dim)
             }
         }
     }
+}
+
+/** [content] for [row], swipeable away when the row has an [FaceRow.onDismiss]. */
+@Composable
+private fun FaceRowSwipe(row: FaceRow, content: @Composable () -> Unit) {
+    val dismiss = row.onDismiss
+    if (dismiss == null) content() else SwipeAway(onDismiss = dismiss) { content() }
 }
 
 @Composable
@@ -389,12 +422,19 @@ internal fun FaceProgress(fraction: Float, look: FaceLook, m: FaceMetrics, modif
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .fillMaxWidth(fraction01(fraction))
                 .clip(CircleShape)
                 .background(if (alert) Brush.horizontalGradient(listOf(look.warn, look.warn)) else Brush.horizontalGradient(listOf(look.accent, look.accent2)))
         )
     }
 }
+
+/**
+ * [v] as a 0..1 share of a bar or sweep. A missing, NaN or infinite reading
+ * (0 / 0 when a range is still 0) draws as empty instead of crashing layout
+ * or roundToInt.
+ */
+internal fun fraction01(v: Float?): Float = if (v == null || !v.isFinite()) 0f else v.coerceIn(0f, 1f)
 
 /** Point on a circle, angle in degrees clockwise from 12 o'clock. */
 internal fun polarPoint(c: Offset, r: Float, deg: Float): Offset {
@@ -402,7 +442,7 @@ internal fun polarPoint(c: Offset, r: Float, deg: Float): Offset {
     return Offset(c.x + r * sin(t).toFloat(), c.y - r * cos(t).toFloat())
 }
 
-// --- Hero (also Minimal and LCD) ------------------------------------------------------
+// --- Hero (also LCD) ------------------------------------------------------
 
 @Composable
 private fun HeroLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
@@ -441,7 +481,10 @@ private fun ArcLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
             val g = maxWidth.value
-            Canvas(modifier = Modifier.fillMaxSize()) { drawGaugeArc(f, look) }
+            val fraction = rememberUpdatedState(f.fraction)
+            val full = f.fullCircle
+            val alert = f.alert
+            Spacer(Modifier.fillMaxSize().drawWithCache { gaugeArc(look, full, alert, fraction) })
             Column(
                 modifier = Modifier.align(Alignment.Center).padding(horizontal = (g * 0.2f).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -461,35 +504,41 @@ private fun ArcLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     }
 }
 
-private fun DrawScope.drawGaugeArc(f: WidgetFace, look: FaceLook) {
+/**
+ * The gauge's arc. Geometry, brush and Neon's tick ring are built once per
+ * size; only [fraction] is read at draw time, so a new reading redraws the
+ * arc without rebuilding any of it.
+ */
+private fun CacheDrawScope.gaugeArc(look: FaceLook, full: Boolean, alert: Boolean, fraction: State<Float?>): DrawResult {
     val stroke = size.minDimension * 0.07f
     val inset = stroke / 2f + size.minDimension * 0.04f
     val topLeft = Offset(inset, inset)
     val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
-    val start = if (f.fullCircle) -90f else 150f
-    val span = if (f.fullCircle) 360f else 240f
-    drawArc(look.track, start, span, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
-    val fr = (f.fraction ?: 0f).coerceIn(0f, 1f)
-    if (fr > 0f) {
-        val brush = if (f.alert) Brush.linearGradient(listOf(look.warn, look.warn))
-        else Brush.linearGradient(listOf(look.accent, look.accent2), Offset(0f, size.height), Offset(size.width, 0f))
-        if (look.decoration == LookDecoration.NEON) {
-            drawArc(look.accent.copy(alpha = 0.35f), start, span * fr, false, topLeft, arcSize, style = Stroke(stroke * 2.2f, cap = StrokeCap.Round))
-        }
-        drawArc(brush, start, span * fr, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
-    }
-    if (look.decoration == LookDecoration.NEON) {
-        val c = center
+    val start = if (full) -90f else 150f
+    val span = if (full) 360f else 240f
+    val line = Stroke(stroke, cap = StrokeCap.Round)
+    val halo = Stroke(stroke * 2.2f, cap = StrokeCap.Round)
+    val brush = if (alert) Brush.linearGradient(listOf(look.warn, look.warn))
+    else Brush.linearGradient(listOf(look.accent, look.accent2), Offset(0f, size.height), Offset(size.width, 0f))
+    val neon = look.decoration == LookDecoration.NEON
+    val tickColor = look.accent2.copy(alpha = 0.8f)
+    val ticks = if (!neon) emptyList() else {
+        val c = Offset(size.width / 2f, size.height / 2f)
         val r = size.minDimension / 2f
-        val a0 = if (f.fullCircle) 0f else -120f
-        for (i in 0..24) {
-            if (f.fullCircle && i == 24) break
+        val a0 = if (full) 0f else -120f
+        (0..(if (full) 23 else 24)).map { i ->
             val a = a0 + span * i / 24f
-            drawLine(
-                look.accent2.copy(alpha = 0.8f), polarPoint(c, r * 0.99f, a), polarPoint(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a),
-                strokeWidth = if (i % 6 == 0) 2f else 1f
-            )
+            Triple(polarPoint(c, r * 0.99f, a), polarPoint(c, r * (if (i % 6 == 0) 0.9f else 0.95f), a), if (i % 6 == 0) 2f else 1f)
         }
+    }
+    return onDrawBehind {
+        drawArc(look.track, start, span, false, topLeft, arcSize, style = line)
+        val fr = fraction01(fraction.value)
+        if (fr > 0f) {
+            if (neon) drawArc(look.accent.copy(alpha = 0.35f), start, span * fr, false, topLeft, arcSize, style = halo)
+            drawArc(brush, start, span * fr, false, topLeft, arcSize, style = line)
+        }
+        ticks.forEach { (a, b, w) -> drawLine(tickColor, a, b, strokeWidth = w) }
     }
 }
 
@@ -504,19 +553,23 @@ private fun RingLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     ) {
         val ring = min(m.h - m.pad * 2f, m.w * 0.46f).coerceAtLeast(24f)
         Box(modifier = Modifier.size(ring.dp), contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val stroke = size.minDimension * 0.08f
-                val inset = stroke / 2f
-                drawArc(look.track, 0f, 360f, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
-                val fr = (f.fraction ?: 0f).coerceIn(0f, 1f)
-                if (fr > 0f) {
-                    drawArc(
-                        if (f.alert) Brush.linearGradient(listOf(look.warn, look.warn)) else Brush.linearGradient(listOf(look.accent, look.accent2)),
-                        -90f, 360f * fr, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke),
-                        style = Stroke(stroke, cap = StrokeCap.Round)
-                    )
+            val fraction = rememberUpdatedState(f.fraction)
+            val alert = f.alert
+            Spacer(
+                Modifier.fillMaxSize().drawWithCache {
+                    val stroke = size.minDimension * 0.08f
+                    val inset = Offset(stroke / 2f, stroke / 2f)
+                    val arcSize = Size(size.width - stroke, size.height - stroke)
+                    val track = Stroke(stroke)
+                    val line = Stroke(stroke, cap = StrokeCap.Round)
+                    val brush = if (alert) Brush.linearGradient(listOf(look.warn, look.warn)) else Brush.linearGradient(listOf(look.accent, look.accent2))
+                    onDrawBehind {
+                        drawArc(look.track, 0f, 360f, false, inset, arcSize, style = track)
+                        val fr = fraction01(fraction.value)
+                        if (fr > 0f) drawArc(brush, -90f, 360f * fr, false, inset, arcSize, style = line)
+                    }
                 }
-            }
+            )
             Box(
                 modifier = Modifier.fillMaxSize().padding((ring * 0.17f).dp).clip(CircleShape),
                 contentAlignment = Alignment.Center
@@ -554,33 +607,43 @@ private fun BarsLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             FaceValue(f, look, m, min(m.h * 0.34f, m.w * 0.22f))
             FaceCaption(f, look, m)
         }
-        val fraction = f.fraction
-        if (fraction != null) {
-            val hotFrom = if (look.kind == FaceLookKind.CARBON) 0.8f else 2f
-            Canvas(modifier = Modifier.fillMaxWidth().height(m.dp(7f).coerceIn(8.dp, 18.dp))) {
-                val n = 24
-                val gap = size.width * 0.007f
-                val segW = (size.width - gap * (n - 1)) / n
-                val lit = (fraction.coerceIn(0f, 1f) * n).roundToInt()
-                val skew = if (look.kind == FaceLookKind.CARBON) size.height * 0.35f else 0f
-                for (i in 0 until n) {
-                    val x = i * (segW + gap)
-                    val color = when {
-                        i >= lit -> look.track
-                        f.alert || i >= n * hotFrom -> look.warn
-                        else -> look.accent
-                    }
-                    if (skew == 0f) {
-                        drawRoundRect(color, Offset(x, 0f), Size(segW, size.height), CornerRadius(min(segW, size.height) * 0.25f))
-                    } else {
-                        val p = Path().apply {
+        if (f.fraction != null) {
+            val carbon = look.kind == FaceLookKind.CARBON
+            val hotFrom = if (carbon) 0.8f else 2f
+            val fraction = rememberUpdatedState(f.fraction)
+            val alert = rememberUpdatedState(f.alert)
+            Spacer(
+                Modifier.fillMaxWidth().height(m.dp(7f).coerceIn(8.dp, 18.dp)).drawWithCache {
+                    val n = 24
+                    val gap = size.width * 0.007f
+                    val segW = (size.width - gap * (n - 1)) / n
+                    val skew = if (carbon) size.height * 0.35f else 0f
+                    val corner = CornerRadius(min(segW, size.height) * 0.25f)
+                    // Carbon's slanted segments are built once per size, not on every reading.
+                    val slanted = if (skew == 0f) emptyList() else List(n) { i ->
+                        val x = i * (segW + gap)
+                        Path().apply {
                             moveTo(x + skew, 0f); lineTo(x + segW + skew, 0f)
                             lineTo(x + segW, size.height); lineTo(x, size.height); close()
                         }
-                        drawPath(p, color)
+                    }
+                    onDrawBehind {
+                        val lit = (fraction01(fraction.value) * n).roundToInt()
+                        for (i in 0 until n) {
+                            val color = when {
+                                i >= lit -> look.track
+                                alert.value || i >= n * hotFrom -> look.warn
+                                else -> look.accent
+                            }
+                            if (skew == 0f) {
+                                drawRoundRect(color, Offset(i * (segW + gap), 0f), Size(segW, size.height), corner)
+                            } else {
+                                drawPath(slanted[i], color)
+                            }
+                        }
                     }
                 }
-            }
+            )
         }
         if (f.stats.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(m.dp(2.5f))) {
@@ -671,7 +734,8 @@ private fun StatsLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
 
 @Composable
 private fun TerminalLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
-    val cursorOn by rememberBlink(530L)
+    // Read only when drawing, so the blink repaints the cursor without recomposing the layout.
+    val cursorOn = rememberBlink(530L)
     val fs = m.body
     Column(modifier = Modifier.fillMaxSize().padding(m.pad.dp)) {
         Column(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), verticalArrangement = Arrangement.spacedBy(m.dp(1.2f))) {
@@ -698,12 +762,12 @@ private fun TerminalLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                     color = if (a.enabled) look.ink else look.dim, glow = true
                 )
             }
-            Box(Modifier.width((fs.value * 0.6f).dp).height((fs.value * 1.1f).dp).background(if (cursorOn) look.ink else Color.Transparent))
+            Box(Modifier.width((fs.value * 0.6f).dp).height((fs.value * 1.1f).dp).drawBehind { if (cursorOn.value) drawRect(look.ink) })
         }
     }
 }
 
-// --- Analogue dial (Blueprint, Chronograph) -------------------------------------------------
+// --- Analogue dial (Chronograph) -------------------------------------------------
 
 @Composable
 private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
@@ -713,71 +777,83 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     val dialValue = if (f.textValue) "" else f.value
     val dialUnit = (f.unit.ifEmpty { f.title }).uppercase(Locale.getDefault())
     val letters = if (f.compass) {
-        listOf(
-            stringResource(R.string.info_dir_n), stringResource(R.string.info_dir_e),
-            stringResource(R.string.info_dir_s), stringResource(R.string.info_dir_w)
-        )
+        val n = stringResource(R.string.info_dir_n)
+        val e = stringResource(R.string.info_dir_e)
+        val s = stringResource(R.string.info_dir_s)
+        val w = stringResource(R.string.info_dir_w)
+        remember(n, e, s, w) { listOf(n, e, s, w) }
     } else emptyList()
+    val full = f.fullCircle
+    val a0 = if (full) 0f else -135f
+    val span = if (full) 360f else 270f
+    val chrome = look.decoration == LookDecoration.CHROME
     Row(
         modifier = Modifier.fillMaxSize().padding(m.pad.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = if (wide) Arrangement.spacedBy(m.dp(5f)) else Arrangement.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
-            val c = center
-            val r = size.minDimension / 2f
-            val full = f.fullCircle
-            val a0 = if (full) 0f else -135f
-            val span = if (full) 360f else 270f
-            val chrome = look.decoration == LookDecoration.CHROME
-            if (chrome) {
-                drawCircle(Brush.linearGradient(listOf(Color(0xFFEEF0F3), Color(0xFF7C838C), Color(0xFFD9DDE2), Color(0xFF5D636B))), r, c)
-                drawCircle(Color(0xFF0D0F12), r * 0.93f, c)
-            } else {
-                drawCircle(
-                    look.ink, r * 0.97f, c,
-                    style = Stroke(1.2f, pathEffect = if (look.kind == FaceLookKind.BLUEPRINT) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null)
-                )
-            }
-            val tickOuter = r * (if (chrome) 0.88f else 0.9f)
-            val n = if (full) 60 else 40
-            for (i in 0..n) {
-                if (full && i == n) break
-                val a = a0 + span * i / n
-                val major = i % 5 == 0
-                drawLine(look.ink, polarPoint(c, tickOuter, a), polarPoint(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
-            }
-            if (!full) {
-                val inset = c.x - (tickOuter - r * 0.03f)
-                drawArc(
-                    look.warn, a0 + span * 0.8f - 90f, span * 0.2f, false,
-                    Offset(inset, c.y - (tickOuter - r * 0.03f)), Size((tickOuter - r * 0.03f) * 2, (tickOuter - r * 0.03f) * 2),
-                    style = Stroke(r * 0.05f)
-                )
-            }
-            val labelStyle = TextStyle(fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.16f / density / fontScale).sp)
-            letters.forEachIndexed { i, l ->
-                val p = polarPoint(c, r * 0.56f, i * 90f)
-                val layout = measurer.measure(l, labelStyle.copy(color = if (i == 0) look.accent else look.ink))
-                drawText(layout, topLeft = Offset(p.x - layout.size.width / 2f, p.y - layout.size.height / 2f))
-            }
-            val clock = f.clock
-            if (clock != null) {
-                val (h, mi, s) = clock
-                drawLine(look.ink, c, polarPoint(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
-                drawLine(look.ink, c, polarPoint(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
-                drawLine(look.accent, polarPoint(c, r * 0.15f, s * 6f + 180f), polarPoint(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
-            } else {
-                if (showValueInDial && dialValue.isNotEmpty()) {
-                    val v = measurer.measure(dialValue, TextStyle(color = look.ink, fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.22f / density / fontScale).sp))
-                    drawText(v, topLeft = Offset(c.x - v.size.width / 2f, c.y + r * 0.34f - v.size.height / 2f))
-                    val u = measurer.measure(dialUnit, TextStyle(color = look.dim, fontFamily = look.font, fontSize = (r * 0.09f / density / fontScale).sp, letterSpacing = 0.1.em))
-                    drawText(u, topLeft = Offset(c.x - u.size.width / 2f, c.y + r * 0.52f - u.size.height / 2f))
+        Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
+            // The dial itself (rim, ticks, red zone, letters) in its own layer, built
+            // once per size: a new reading only redraws the hands above it.
+            Spacer(
+                Modifier.fillMaxSize().graphicsLayer().drawWithCache {
+                    val c = Offset(size.width / 2f, size.height / 2f)
+                    val r = size.minDimension / 2f
+                    val tickOuter = r * (if (chrome) 0.88f else 0.9f)
+                    val labelStyle = TextStyle(fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.16f / density / fontScale).sp)
+                    val labels = letters.mapIndexed { i, l -> measurer.measure(l, labelStyle.copy(color = if (i == 0) look.accent else look.ink)) }
+                    val rim = if (chrome) Brush.linearGradient(listOf(Color(0xFFEEF0F3), Color(0xFF7C838C), Color(0xFFD9DDE2), Color(0xFF5D636B))) else null
+                    val rimStroke = Stroke(1.2f)
+                    onDrawBehind {
+                        if (rim != null) {
+                            drawCircle(rim, r, c)
+                            drawCircle(Color(0xFF0D0F12), r * 0.93f, c)
+                        } else {
+                            drawCircle(look.ink, r * 0.97f, c, style = rimStroke)
+                        }
+                        val n = if (full) 60 else 40
+                        for (i in 0..n) {
+                            if (full && i == n) break
+                            val a = a0 + span * i / n
+                            val major = i % 5 == 0
+                            drawLine(look.ink, polarPoint(c, tickOuter, a), polarPoint(c, tickOuter - r * (if (major) 0.14f else 0.07f), a), strokeWidth = if (major) 3f else 1.2f)
+                        }
+                        if (!full) {
+                            val inset = c.x - (tickOuter - r * 0.03f)
+                            drawArc(
+                                look.warn, a0 + span * 0.8f - 90f, span * 0.2f, false,
+                                Offset(inset, c.y - (tickOuter - r * 0.03f)), Size((tickOuter - r * 0.03f) * 2, (tickOuter - r * 0.03f) * 2),
+                                style = Stroke(r * 0.05f)
+                            )
+                        }
+                        labels.forEachIndexed { i, layout ->
+                            val p = polarPoint(c, r * 0.56f, i * 90f)
+                            drawText(layout, topLeft = Offset(p.x - layout.size.width / 2f, p.y - layout.size.height / 2f))
+                        }
+                    }
                 }
-                val a = a0 + span * (f.fraction ?: 0f).coerceIn(0f, 1f)
-                drawLine(look.accent, polarPoint(c, r * 0.16f, a + 180f), polarPoint(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+            )
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val c = center
+                val r = size.minDimension / 2f
+                val clock = f.clock
+                if (clock != null) {
+                    val (h, mi, s) = clock
+                    drawLine(look.ink, c, polarPoint(c, r * 0.45f, (h % 12 + mi / 60f) * 30f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
+                    drawLine(look.ink, c, polarPoint(c, r * 0.68f, mi * 6f), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                    drawLine(look.accent, polarPoint(c, r * 0.15f, s * 6f + 180f), polarPoint(c, r * 0.76f, s * 6f), strokeWidth = r * 0.018f, cap = StrokeCap.Round)
+                } else {
+                    if (showValueInDial && dialValue.isNotEmpty()) {
+                        val v = measurer.measure(dialValue, TextStyle(color = look.ink, fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.22f / density / fontScale).sp))
+                        drawText(v, topLeft = Offset(c.x - v.size.width / 2f, c.y + r * 0.34f - v.size.height / 2f))
+                        val u = measurer.measure(dialUnit, TextStyle(color = look.dim, fontFamily = look.font, fontSize = (r * 0.09f / density / fontScale).sp, letterSpacing = 0.1.em))
+                        drawText(u, topLeft = Offset(c.x - u.size.width / 2f, c.y + r * 0.52f - u.size.height / 2f))
+                    }
+                    val a = a0 + span * fraction01(f.fraction)
+                    drawLine(look.accent, polarPoint(c, r * 0.16f, a + 180f), polarPoint(c, r * 0.78f, a), strokeWidth = r * 0.04f, cap = StrokeCap.Round)
+                }
+                drawCircle(if (chrome) Color(0xFFC9CED5) else look.ink, r * 0.065f, c)
             }
-            drawCircle(if (chrome) Color(0xFFC9CED5) else look.ink, r * 0.065f, c)
         }
         if (wide) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(m.dp(2.6f), Alignment.CenterVertically)) {
@@ -859,16 +935,14 @@ internal fun DesignFrame(
 ) {
     val look = faceLook(design.look)
     val labelAtBottom = design.layout == FaceLayout.BARS || design.layout == FaceLayout.STATS || design.layout == FaceLayout.TERMINAL
-    val showLabel = look.kind != FaceLookKind.MINIMAL
     val pad = when (look.kind) {
-        FaceLookKind.MINIMAL -> 0.dp
-        FaceLookKind.CHROME, FaceLookKind.BLUEPRINT -> 12.dp
+        FaceLookKind.CHROME -> 12.dp
         else -> 8.dp
     }
     val innerShape = RoundedCornerShape((look.radius - pad).coerceAtLeast(2.dp))
     FaceSurface(look, modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (showLabel && !labelAtBottom) FrameLabel(icon, title, look, big = design.layout == FaceLayout.HERO)
+            if (!labelAtBottom) FrameLabel(icon, title, look, big = design.layout == FaceLayout.HERO)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -876,40 +950,28 @@ internal fun DesignFrame(
                     .clip(innerShape)
                     .then(
                         when (look.kind) {
-                            FaceLookKind.THEME, FaceLookKind.MINIMAL -> Modifier
+                            FaceLookKind.THEME -> if (design.layout == FaceLayout.DUO) Modifier.border(2.dp, look.accent, innerShape) else Modifier
                             FaceLookKind.NEON -> Modifier.border(1.5.dp, look.accent2, innerShape)
                             else -> Modifier.border(1.dp, look.accent.copy(alpha = 0.6f), innerShape)
                         }
                     )
             ) { content() }
-            if (showLabel && labelAtBottom) FrameLabel(icon, title, look, big = false)
-        }
-        if (look.kind == FaceLookKind.BLUEPRINT) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val l = 18.dp.toPx()
-                val i = 3.dp.toPx()
-                val s = 2.dp.toPx()
-                listOf(
-                    Offset(i, i) to Offset(1f, 1f), Offset(size.width - i, i) to Offset(-1f, 1f),
-                    Offset(i, size.height - i) to Offset(1f, -1f), Offset(size.width - i, size.height - i) to Offset(-1f, -1f)
-                ).forEach { (p, d) ->
-                    drawLine(Color.White, p, Offset(p.x + d.x * l, p.y), s)
-                    drawLine(Color.White, p, Offset(p.x, p.y + d.y * l), s)
-                }
-            }
+            if (labelAtBottom) FrameLabel(icon, title, look, big = false)
         }
     }
 }
 
 @Composable
 private fun FrameLabel(icon: ImageVector, title: String, look: FaceLook, big: Boolean) {
-    val now = rememberNow(30_000L)
+    // HH:mm only: a tick on each minute is enough.
+    val now = rememberNow(60_000L)
     val time = remember(now) { SimpleDateFormat("HH:mm", Locale.getDefault()).format(now) }
     val size = if (big) 16.sp else 12.sp
     Row(
         modifier = Modifier
             .clip(controlShape(look))
             .background(if (look.kind == FaceLookKind.THEME) Color.Transparent else look.fill)
+            .then(if (look.kind == FaceLookKind.DOTS) Modifier.border(1.dp, look.dim.copy(alpha = 0.5f), controlShape(look)) else Modifier)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -36,4 +36,10 @@
     <string name="invalid_code_read">To nie jest kod parowania Dashwheel (odczytano: %1$s).</string>
     <string name="step_calls">Połączenia</string>
     <string name="step_calls_detail">Pokazuje na ekranie auta, kto dzwoni, by tam odebrać lub się rozłączyć. Dźwięk zostaje na Bluetooth auta.</string>
+    <string name="car_spot_title">Gdzie jest mój samochód</string>
+    <string name="car_spot_left">Zostawiony tutaj: %1$s</string>
+    <string name="car_spot_saved">Zapisany w samochodzie: %1$s</string>
+    <string name="car_spot_none">Gdy samochód jest połączony, tutaj pojawi się miejsce, w którym się zatrzymał.</string>
+    <string name="car_spot_map">Mapa</string>
+    <string name="car_spot_walk">Idź pieszo</string>
 </resources>

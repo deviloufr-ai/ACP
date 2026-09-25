@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +49,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,12 +57,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -151,6 +155,7 @@ internal fun ObdCard(
         return
     }
     val connected = connection == ObdConnectionState.CONNECTED
+    var speedFix by remember { mutableStateOf(false) }
     Card(modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             // Short tiles drop the secondary chips; tall tiles stack the RPM bar
@@ -170,8 +175,13 @@ internal fun ObdCard(
                         color = DashColors.Accent,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.weight(1f)
                     )
+                    // The speed correction, to match the car's speedometer.
+                    IconButton(onClick = { speedFix = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.vehicle_speed_fix), tint = DashColors.Muted, modifier = Modifier.size(20.dp))
+                    }
                     if (connected) {
                         TextButton(
                             onClick = onPickDevice,
@@ -283,6 +293,32 @@ internal fun ObdCard(
             }
         }
     }
+    if (speedFix) SpeedCorrectionDialog(obdData.speedKmh.takeIf { connected }, onDismiss = { speedFix = false })
+}
+
+/**
+ * The speed correction from the telemetry tile, with the corrected speed live
+ * above it: nudge it until it reads what the car's speedometer says.
+ */
+@Composable
+internal fun SpeedCorrectionDialog(speedKmh: Int?, onDismiss: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text(stringResource(R.string.vehicle_speed_fix), color = DashColors.TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    speedKmh?.let { stringResource(R.string.vehicle_speed_fix_now, it) } ?: stringResource(R.string.vehicle_speed_fix_not_connected),
+                    color = DashColors.TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                SpeedCorrectionRow()
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_close), color = DashColors.Accent) } }
+    )
 }
 
 /**
@@ -297,7 +333,10 @@ internal fun RpmBar(
     modifier: Modifier = Modifier,
     redlineFraction: Float = 0.82f
 ) {
-    val frac by animateFloatAsState(
+    // The animated fill is read only while drawing, so the 400 ms slide redraws
+    // the bar without recomposing the tile each frame; the readout's colour only
+    // follows it across the redline.
+    val frac = animateFloatAsState(
         targetValue = if (dimmed) 0f else (rpm / maxRpm).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 400),
         label = "rpmBar"
@@ -308,7 +347,7 @@ internal fun RpmBar(
     val glow = DashColors.Glow
     // Bare themes have no card behind the bar, so a background-coloured track would vanish.
     val track = if (DashColors.Glass) DashColors.well(0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background
-    val overRedline = frac >= redlineFraction
+    val overRedline by remember(redlineFraction) { derivedStateOf { frac.value >= redlineFraction } }
 
     Column(modifier = modifier) {
         Row(
@@ -326,38 +365,41 @@ internal fun RpmBar(
             )
         }
         Spacer(Modifier.height(6.dp))
-        Canvas(
+        Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
-        ) {
-            val h = size.height
-            val corner = CornerRadius(h / 2f)
-            drawRoundRect(color = track, size = size, cornerRadius = corner)
-            val w = size.width * frac
-            if (w > 0f) {
-                val fill = Brush.horizontalGradient(listOf(good, accent, warning), endX = size.width)
-                if (glow > 0f) {
-                    drawRoundRect(
-                        brush = fill,
-                        topLeft = Offset(0f, -h * 0.6f),
-                        size = Size(w, h * 2.2f),
-                        cornerRadius = CornerRadius(h),
-                        alpha = 0.30f * glow
-                    )
+                .drawWithCache {
+                    val h = size.height
+                    val corner = CornerRadius(h / 2f)
+                    val fill = Brush.horizontalGradient(listOf(good, accent, warning), endX = size.width)
+                    val rx = size.width * redlineFraction
+                    onDrawBehind {
+                        drawRoundRect(color = track, size = size, cornerRadius = corner)
+                        val w = size.width * frac.value
+                        if (w > 0f) {
+                            if (glow > 0f) {
+                                drawRoundRect(
+                                    brush = fill,
+                                    topLeft = Offset(0f, -h * 0.6f),
+                                    size = Size(w, h * 2.2f),
+                                    cornerRadius = CornerRadius(h),
+                                    alpha = 0.30f * glow
+                                )
+                            }
+                            drawRoundRect(brush = fill, size = Size(w, h), cornerRadius = corner)
+                        }
+                        // Redline marker.
+                        drawLine(
+                            color = warning.copy(alpha = 0.7f),
+                            start = Offset(rx, -2f),
+                            end = Offset(rx, h + 2f),
+                            strokeWidth = 2f,
+                            cap = StrokeCap.Round
+                        )
+                    }
                 }
-                drawRoundRect(brush = fill, size = Size(w, h), cornerRadius = corner)
-            }
-            // Redline marker.
-            val rx = size.width * redlineFraction
-            drawLine(
-                color = warning.copy(alpha = 0.7f),
-                start = Offset(rx, -2f),
-                end = Offset(rx, h + 2f),
-                strokeWidth = 2f,
-                cap = StrokeCap.Round
-            )
-        }
+        )
     }
 }
 
@@ -401,18 +443,22 @@ internal fun AnalogGauge(
         return
     }
     val target = (value / maxValue).coerceIn(0f, 1f)
-    val frac by animateFloatAsState(
+    // Read only inside the draw below: the 500 ms needle swing redraws the dial
+    // without recomposing the gauge (and its numerals) every frame.
+    val sweep = animateFloatAsState(
         targetValue = if (dimmed) 0f else target,
         animationSpec = tween(durationMillis = 500),
         label = "gauge"
     )
     val startAngle = 135f      // 7:30 position (Compose: 0° = 3 o'clock, CW positive)
     val sweepTotal = 270f
-    val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
-    val needleColor = if (dimmed) DashColors.Muted else sweepColor
+    val muted = DashColors.Muted
     val glass = DashColors.Glass
     val glow = DashColors.Glow
     val accent2 = DashColors.Accent2
+    val trackColor = if (glass) DashColors.haze(0.07f) else DashColors.CardHi
+    val tickColor = DashColors.TextSecondary
+    val hubColor = DashColors.Card
 
     BoxWithConstraints(
         modifier = modifier,
@@ -425,40 +471,68 @@ internal fun AnalogGauge(
         val tickLabelSize = (gaugePx * 0.05f).coerceIn(7f, 12f).sp
         val textMeasurer = rememberTextMeasurer()
         val tickLabelColor = DashColors.TextSecondary.copy(alpha = 0.55f)
+        // The hero's tick labels ("0" ... "220"), measured once per size and style
+        // rather than a dozen times on every frame of the needle's swing.
+        val tickCount = (majorTicks - 1) * (if (hero) 4 else 1)
+        val tickLabels = remember(textMeasurer, hero, maxValue, tickCount, tickLabelSize, tickLabelColor) {
+            if (!hero) emptyMap() else (0..tickCount step 4).associateWith { i ->
+                textMeasurer.measure(
+                    (maxValue * i / tickCount).roundToInt().toString(),
+                    style = TextStyle(fontSize = tickLabelSize, fontWeight = FontWeight.SemiBold, color = tickLabelColor)
+                )
+            }
+        }
 
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Spacer(modifier = Modifier.fillMaxSize().drawWithCache {
             val stroke = size.minDimension * 0.085f
             val radius = (size.minDimension - stroke) / 2f
             val center = Offset(size.width / 2f, size.height / 2f)
             val topLeft = Offset(center.x - radius, center.y - radius)
             val arcSize = Size(radius * 2f, radius * 2f)
+            val line = Stroke(width = stroke, cap = StrokeCap.Round)
+            val gradient = gaugeSweepBrush(center, accent, accent2)
+            val redline = SolidColor(redlineAccent)
+            onDrawBehind {
+                val frac = sweep.value
+                val sweepColor = if (frac >= redlineFraction) redlineAccent else accent
+                val needleColor = if (dimmed) muted else sweepColor
 
-            // Base track.
-            drawArc(
-                color = if (glass) DashColors.haze(0.07f) else DashColors.CardHi,
-                startAngle = startAngle,
-                sweepAngle = sweepTotal,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-            // Dim redline zone on the track.
-            drawArc(
-                color = redlineAccent.copy(alpha = 0.35f),
-                startAngle = startAngle + sweepTotal * redlineFraction,
-                sweepAngle = sweepTotal * (1f - redlineFraction),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-            // Active sweep: accent->accent2 gradient along the arc, a wide soft
-            // halo underneath (scaled by the theme's glow) and a bright core line.
-            if (frac > 0f) {
-                val sweepBrush: Brush = if (frac >= redlineFraction) SolidColor(redlineAccent)
-                    else gaugeSweepBrush(center, accent, accent2)
-                if (glow > 0f) {
+                // Base track.
+                drawArc(
+                    color = trackColor,
+                    startAngle = startAngle,
+                    sweepAngle = sweepTotal,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = line
+                )
+                // Dim redline zone on the track.
+                drawArc(
+                    color = redlineAccent.copy(alpha = 0.35f),
+                    startAngle = startAngle + sweepTotal * redlineFraction,
+                    sweepAngle = sweepTotal * (1f - redlineFraction),
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = line
+                )
+                // Active sweep: accent->accent2 gradient along the arc, a wide soft
+                // halo underneath (scaled by the theme's glow) and a bright core line.
+                if (frac > 0f) {
+                    val sweepBrush: Brush = if (frac >= redlineFraction) redline else gradient
+                    if (glow > 0f) {
+                        drawArc(
+                            brush = sweepBrush,
+                            startAngle = startAngle,
+                            sweepAngle = sweepTotal * frac,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            alpha = 0.14f * glow,
+                            style = Stroke(width = stroke * 3.2f, cap = StrokeCap.Round)
+                        )
+                    }
                     drawArc(
                         brush = sweepBrush,
                         startAngle = startAngle,
@@ -466,112 +540,97 @@ internal fun AnalogGauge(
                         useCenter = false,
                         topLeft = topLeft,
                         size = arcSize,
-                        alpha = 0.14f * glow,
-                        style = Stroke(width = stroke * 3.2f, cap = StrokeCap.Round)
+                        alpha = 0.25f + 0.15f * glow,
+                        style = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
+                    )
+                    drawArc(
+                        brush = sweepBrush,
+                        startAngle = startAngle,
+                        sweepAngle = sweepTotal * frac,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = line
+                    )
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.35f + 0.3f * glow),
+                        startAngle = startAngle,
+                        sweepAngle = sweepTotal * frac,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke * 0.22f, cap = StrokeCap.Round)
                     )
                 }
-                drawArc(
-                    brush = sweepBrush,
-                    startAngle = startAngle,
-                    sweepAngle = sweepTotal * frac,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    alpha = 0.25f + 0.15f * glow,
-                    style = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
-                )
-                drawArc(
-                    brush = sweepBrush,
-                    startAngle = startAngle,
-                    sweepAngle = sweepTotal * frac,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round)
-                )
-                drawArc(
-                    color = Color.White.copy(alpha = 0.35f + 0.3f * glow),
-                    startAngle = startAngle,
-                    sweepAngle = sweepTotal * frac,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = stroke * 0.22f, cap = StrokeCap.Round)
-                )
-            }
-            // Tick marks (hero adds minor ticks between the majors, plus labels).
-            val tickOuter = radius - stroke * 0.6f
-            val tickInner = radius - stroke * 1.5f
-            val minorPerMajor = if (hero) 4 else 1
-            val tickCount = (majorTicks - 1) * minorPerMajor
-            for (i in 0..tickCount) {
-                val major = i % minorPerMajor == 0
-                val a = Math.toRadians((startAngle + sweepTotal * i / tickCount).toDouble())
-                val ca = cos(a).toFloat()
-                val sa = sin(a).toFloat()
-                val inner = if (major) tickInner else tickInner + (tickOuter - tickInner) * 0.45f
-                drawLine(
-                    color = DashColors.TextSecondary.copy(alpha = if (major) 0.6f else 0.25f),
-                    start = Offset(center.x + ca * inner, center.y + sa * inner),
-                    end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
-                    strokeWidth = stroke * if (major) 0.16f else 0.09f,
-                    cap = StrokeCap.Round
-                )
-                // Tile-sized gauges label every other major and skip the two end
-                // labels, which would collide with the unit text below the numerals.
-                val majorIndex = i / minorPerMajor
-                val showLabel = hero && major && (
-                    gaugePx >= 300f || (majorIndex % 2 == 0 && i != 0 && i != tickCount)
-                )
-                if (showLabel) {
-                    val labelValue = (maxValue * i / tickCount).roundToInt().toString()
-                    val layout = textMeasurer.measure(
-                        labelValue,
-                        style = TextStyle(fontSize = tickLabelSize, fontWeight = FontWeight.SemiBold, color = tickLabelColor)
+                // Tick marks (hero adds minor ticks between the majors, plus labels).
+                val tickOuter = radius - stroke * 0.6f
+                val tickInner = radius - stroke * 1.5f
+                val minorPerMajor = if (hero) 4 else 1
+                for (i in 0..tickCount) {
+                    val major = i % minorPerMajor == 0
+                    val a = Math.toRadians((startAngle + sweepTotal * i / tickCount).toDouble())
+                    val ca = cos(a).toFloat()
+                    val sa = sin(a).toFloat()
+                    val inner = if (major) tickInner else tickInner + (tickOuter - tickInner) * 0.45f
+                    drawLine(
+                        color = tickColor.copy(alpha = if (major) 0.6f else 0.25f),
+                        start = Offset(center.x + ca * inner, center.y + sa * inner),
+                        end = Offset(center.x + ca * tickOuter, center.y + sa * tickOuter),
+                        strokeWidth = stroke * if (major) 0.16f else 0.09f,
+                        cap = StrokeCap.Round
                     )
-                    val lr = tickInner - stroke * 0.55f - maxOf(layout.size.width, layout.size.height) * 0.5f
-                    drawText(
-                        layout,
-                        topLeft = Offset(
-                            center.x + ca * lr - layout.size.width / 2f,
-                            center.y + sa * lr - layout.size.height / 2f
-                        )
+                    // Tile-sized gauges label every other major and skip the two end
+                    // labels, which would collide with the unit text below the numerals.
+                    val majorIndex = i / minorPerMajor
+                    val showLabel = hero && major && (
+                        gaugePx >= 300f || (majorIndex % 2 == 0 && i != 0 && i != tickCount)
                     )
-                }
-            }
-            if (hero) {
-                // Glowing tip dot at the end of the sweep.
-                if (!dimmed) {
-                    val tipA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
-                    val tip = Offset(center.x + cos(tipA).toFloat() * radius, center.y + sin(tipA).toFloat() * radius)
-                    if (glow > 0f) {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(Color.White.copy(alpha = 0.9f * glow), Color.Transparent),
-                                center = tip, radius = stroke * 1.6f
-                            ),
-                            radius = stroke * 1.6f, center = tip
+                    val layout = if (showLabel) tickLabels[i] else null
+                    if (layout != null) {
+                        val lr = tickInner - stroke * 0.55f - maxOf(layout.size.width, layout.size.height) * 0.5f
+                        drawText(
+                            layout,
+                            topLeft = Offset(
+                                center.x + ca * lr - layout.size.width / 2f,
+                                center.y + sa * lr - layout.size.height / 2f
+                            )
                         )
                     }
-                    drawCircle(color = Color.White, radius = stroke * 0.42f, center = tip)
                 }
-            } else {
-                // Needle + hub.
-                val needleA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
-                val nx = cos(needleA).toFloat()
-                val ny = sin(needleA).toFloat()
-                val needleLen = radius - stroke * 0.4f
-                drawLine(
-                    color = needleColor,
-                    start = Offset(center.x - nx * radius * 0.12f, center.y - ny * radius * 0.12f),
-                    end = Offset(center.x + nx * needleLen, center.y + ny * needleLen),
-                    strokeWidth = stroke * 0.35f,
-                    cap = StrokeCap.Round
-                )
-                drawCircle(color = DashColors.Card, radius = stroke * 0.9f, center = center)
-                drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
+                if (hero) {
+                    // Glowing tip dot at the end of the sweep.
+                    if (!dimmed) {
+                        val tipA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
+                        val tip = Offset(center.x + cos(tipA).toFloat() * radius, center.y + sin(tipA).toFloat() * radius)
+                        if (glow > 0f) {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    listOf(Color.White.copy(alpha = 0.9f * glow), Color.Transparent),
+                                    center = tip, radius = stroke * 1.6f
+                                ),
+                                radius = stroke * 1.6f, center = tip
+                            )
+                        }
+                        drawCircle(color = Color.White, radius = stroke * 0.42f, center = tip)
+                    }
+                } else {
+                    // Needle + hub.
+                    val needleA = Math.toRadians((startAngle + sweepTotal * frac).toDouble())
+                    val nx = cos(needleA).toFloat()
+                    val ny = sin(needleA).toFloat()
+                    val needleLen = radius - stroke * 0.4f
+                    drawLine(
+                        color = needleColor,
+                        start = Offset(center.x - nx * radius * 0.12f, center.y - ny * radius * 0.12f),
+                        end = Offset(center.x + nx * needleLen, center.y + ny * needleLen),
+                        strokeWidth = stroke * 0.35f,
+                        cap = StrokeCap.Round
+                    )
+                    drawCircle(color = hubColor, radius = stroke * 0.9f, center = center)
+                    drawCircle(color = needleColor, radius = stroke * 0.5f, center = center)
+                }
             }
-        }
+        })
 
         // Digital readout in the middle.
         val lit = glow > 0f && !dimmed
@@ -659,7 +718,7 @@ internal fun MeterChip(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(if (dimmed) 0f else fraction.coerceIn(0f, 1f))
+                    .fillMaxWidth(if (dimmed) 0f else fraction01(fraction))
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(Brush.horizontalGradient(listOf(color, lerp(color, Color.White, 0.3f))))

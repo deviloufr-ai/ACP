@@ -2,18 +2,17 @@ package com.openauto.dash.companion
 
 import android.content.Context
 import com.openauto.dash.link.PairingOffer
+import com.openauto.dash.link.PairingStorage
+import com.openauto.dash.link.StoredPairing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.json.JSONArray
-import org.json.JSONObject
-import java.util.Base64
 
 /** A head unit this phone agreed to share with. */
 data class PairedUnit(val id: String, val name: String, val secret: ByteArray, val pairedAt: Long)
 
 /**
  * The head units the driver allowed, with the secret each one proves on every
- * connection. Kept in private preferences (the app opts out of backups).
+ * connection. Kept in private preferences, left out of backups and transfers.
  */
 object PairedUnits {
     private const val PREFS = "paired_units"
@@ -57,29 +56,12 @@ object PairedUnits {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun read(context: Context): List<PairedUnit> {
-        val raw = prefs(context).getString(KEY, null) ?: return emptyList()
-        return runCatching {
-            val array = JSONArray(raw)
-            (0 until array.length()).map { i ->
-                val o = array.getJSONObject(i)
-                PairedUnit(o.getString("id"), o.getString("name"), Base64.getDecoder().decode(o.getString("secret")), o.optLong("pairedAt"))
-            }
-        }.getOrDefault(emptyList())
-    }
+    private fun read(context: Context): List<PairedUnit> =
+        PairingStorage.decode(prefs(context).getString(KEY, null)).map { PairedUnit(it.id, it.name, it.secret, it.pairedAt) }
 
     private fun write(context: Context, units: List<PairedUnit>) {
-        val array = JSONArray()
-        units.forEach {
-            array.put(
-                JSONObject()
-                    .put("id", it.id)
-                    .put("name", it.name)
-                    .put("secret", Base64.getEncoder().encodeToString(it.secret))
-                    .put("pairedAt", it.pairedAt)
-            )
-        }
-        prefs(context).edit().putString(KEY, array.toString()).apply()
+        val stored = units.map { StoredPairing(it.id, it.secret, name = it.name, pairedAt = it.pairedAt) }
+        prefs(context).edit().putString(KEY, PairingStorage.encode(stored)).apply()
         _units.value = units
     }
 }

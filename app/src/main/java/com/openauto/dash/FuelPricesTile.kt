@@ -31,7 +31,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /*
  * "Fuel nearby": the cheapest stations around the car for its fuel, one tap
@@ -66,13 +68,23 @@ internal fun rememberFuelNearby(): FuelNearby? {
     val stations by FuelPriceRepo.stations.collectAsState()
     val grades = remember(car) { FuelPrices.gradesFor(car) }
     val here = location ?: return null
-    LaunchedEffect(here.latitude, here.longitude, grades.first()) {
-        FuelPriceRepo.refresh(here.latitude, here.longitude, grades.first())
+    // Asked again once the car has moved about a kilometre (or the grade changed),
+    // and each minute meanwhile so an old list still gets refreshed; the repo
+    // skips any fetch it doesn't need. Not restarted on every GPS fix.
+    LaunchedEffect((here.latitude * 100).roundToInt(), (here.longitude * 100).roundToInt(), grades.first()) {
+        while (true) {
+            FuelPriceRepo.refresh(here.latitude, here.longitude, grades.first())
+            delay(60_000)
+        }
     }
     val list = stations ?: return null
-    // A petrol car falls back to SP95/98 where no E10 is sold.
-    val grade = grades.firstOrNull { g -> list.any { it.prices.containsKey(g) } } ?: grades.first()
-    return FuelNearby(grade, here.latitude, here.longitude, FuelPrices.rank(list, grade, here.latitude, here.longitude))
+    // Ranked again when the list, the grade or the position (to ~100 m) changes,
+    // not on every recomposition.
+    return remember(list, grades, (here.latitude * 1000).roundToInt(), (here.longitude * 1000).roundToInt()) {
+        // A petrol car falls back to SP95/98 where no E10 is sold.
+        val grade = grades.firstOrNull { g -> list.any { it.prices.containsKey(g) } } ?: grades.first()
+        FuelNearby(grade, here.latitude, here.longitude, FuelPrices.rank(list, grade, here.latitude, here.longitude))
+    }
 }
 
 @Composable
@@ -104,7 +116,7 @@ internal fun FuelPricesCard(modifier: Modifier = Modifier) {
                     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         nearby.ranked.forEachIndexed { i, r ->
                             StationRow(r, cheapest = i == 0) {
-                                navigateTo(context, r.station.lat, r.station.lng, r.station.address)
+                                navigateTo(context, r.station.lat, r.station.lng, r.station.label)
                             }
                         }
                     }
@@ -120,14 +132,25 @@ private fun StationRow(r: RankedStation, cheapest: Boolean, onClick: () -> Unit)
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            FuelPrices.formatPrice(r.price), color = if (cheapest) DashColors.Good else DashColors.TextPrimary,
-            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge
-        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                FuelPrices.formatPrice(r.price), color = if (cheapest) DashColors.Good else DashColors.TextPrimary,
+                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(Modifier.width(3.dp))
+            Text(
+                FuelPrices.CURRENCY, color = if (cheapest) DashColors.Good else DashColors.TextSecondary,
+                fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium
+            )
+        }
         Spacer(Modifier.width(10.dp))
+        // The station's name over its town; the town alone when the name isn't known.
         Column(Modifier.weight(1f)) {
-            Text(r.station.address, color = DashColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
-            Text(r.station.town, color = DashColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+            val name = r.station.name
+            Text(name.ifBlank { r.station.town }, color = DashColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
+            if (name.isNotBlank()) {
+                Text(r.station.town, color = DashColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+            }
         }
         Spacer(Modifier.width(8.dp))
         Text(FuelPrices.formatDistance(r.distanceKm), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)

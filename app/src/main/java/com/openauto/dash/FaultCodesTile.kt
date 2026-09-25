@@ -59,6 +59,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -102,17 +103,22 @@ internal fun ObdDtcCard(
     val codes = ai.codes
     val diagnosis = ai.diagnosis
     val lamp by ObdBluetoothManager.lamp.collectAsState()
-    val obdData by ObdBluetoothManager.data.collectAsState()
+    // Only whether the engine runs matters here: the card must not redraw on every OBD sample.
+    val obd = ObdBluetoothManager.data.collectAsState()
+    val engineOff by remember { derivedStateOf { obd.value.rpm == 0 } }
     val pending by ObdBluetoothManager.pending.collectAsState()
     // The AI's advice is written in the mechanic's language; its labels follow it.
-    val aiText = remember(ai, context) { AiSettings.load(context).language.resources(context) }
+    // The setting is re-read as the AI's state moves on (a cheap prefs lookup);
+    // the localised resources are rebuilt only when the language itself changes.
+    val aiLanguage = remember(ai, context) { AiSettings.load(context).language }
+    val aiText = remember(aiLanguage, context) { aiLanguage.resources(context) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<DtcMessage?>(null) }
     // The code whose detail sheet is open.
     var opened by remember { mutableStateOf<String?>(null) }
     // The drive lock (DriveLock.kt) holds back the sheet's reading while the car moves; the voice stays.
     val lockWhileMoving = remember(context) { DriveLockStore.load(context) }
-    val moving = rememberMoving(lockWhileMoving, obdData, connection, DemoMode.isOn)
+    val moving by rememberMoving(lockWhileMoving, DemoMode.isOn)
     val scanFailed = stringResource(R.string.ai_scan_failed)
     val clearFailed = stringResource(R.string.ai_clear_failed)
     val clearedText = stringResource(R.string.ai_cleared)
@@ -172,7 +178,7 @@ internal fun ObdDtcCard(
                 }
                 // Ignition on, engine off: every dashboard lamp is lit for its self-test,
                 // which the "lamp off" badge would otherwise seem to contradict.
-                if (obdData.rpm == 0) {
+                if (engineOff) {
                     Spacer(Modifier.height(8.dp))
                     Row {
                         Icon(Icons.Filled.Info, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(18.dp))

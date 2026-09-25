@@ -44,7 +44,7 @@ object ObdParser {
 
     /** Parses the ELM327 `ATRV` reply, e.g. "12.3V". */
     internal fun parseVoltage(response: String): Double? =
-        Regex("([0-9]+\\.?[0-9]*)").find(response)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+        NUMBER.find(response)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
 
     /** Control-module voltage (PID 0142): value = ((A*256)+B) / 1000 volts. */
     internal fun parseControlModuleVoltage(response: String): Double? {
@@ -119,7 +119,7 @@ object ObdParser {
         // With headers: each sender's message being assembled, and the bytes it still expects.
         val assembling = mutableMapOf<String, Pair<MutableList<Int>, Int>>()
         response.uppercase().split('\r', '\n').map { it.trim() }.filter { it.isNotEmpty() }.forEach { line ->
-            val frame = Regex("^([0-9A-F]):\\s*(.*)$").find(line)
+            val frame = FRAME_LINE.find(line)
             val body = (frame?.groupValues?.get(2) ?: line).replace(" ", "")
             // "SEARCHING...", "NO DATA" and the like carry no bytes.
             if (body.isEmpty() || !body.all { it in '0'..'9' || it in 'A'..'F' }) return@forEach
@@ -183,9 +183,13 @@ object ObdParser {
 
     /** Extracts the data bytes that follow [header] (e.g. "410D") in [response]. */
     internal fun dataBytes(response: String, header: String): List<Int>? {
-        val hex = response
-            .uppercase()
-            .replace(Regex("[^0-9A-F]"), "")
+        // Runs for every reply of every poll: a plain loop, no regex or extra copies.
+        val hex = buildString(response.length) {
+            for (c in response) {
+                val u = c.uppercaseChar()
+                if (u in '0'..'9' || u in 'A'..'F') append(u)
+            }
+        }
         val index = hex.indexOf(header)
         if (index < 0) return null
 
@@ -200,4 +204,54 @@ object ObdParser {
         return if (bytes.isEmpty()) null else bytes
     }
 
+    /**
+     * The PIDs a "supported PIDs" request (0100, 0120, 0140...) says are served,
+     * [base] + 1 to [base] + 32, one bit each, most significant first. Every
+     * computer that answers (engine, gearbox) adds its own; null when none did.
+     */
+    internal fun parseSupportedPids(response: String, base: Int): Set<Int>? {
+        val header = "41" + HEX_DIGITS[base shr 4] + HEX_DIGITS[base and 0x0F]
+        var answered = false
+        val pids = HashSet<Int>()
+        response.split('\r', '\n').forEach { line ->
+            val bytes = dataBytes(line, header)?.takeIf { it.size >= 4 } ?: return@forEach
+            answered = true
+            for (i in 0 until 32) {
+                if (bytes[i / 8] and (0x80 shr (i % 8)) != 0) pids += base + i + 1
+            }
+        }
+        return if (answered) pids else null
+    }
+
+    /**
+     * Asks the car which mode-01 PIDs it serves, up to 0160: 0100, then 0120
+     * and 0140 when the range before says they exist. Null when the first
+     * request goes unanswered (engine computer asleep): then nothing is known.
+     */
+    internal fun supportedPids(ask: (String) -> String?): SupportedPids? {
+        val pids = HashSet<Int>()
+        var base = 0
+        while (base <= 0x40) {
+            val command = "01" + HEX_DIGITS[base shr 4] + HEX_DIGITS[base and 0x0F]
+            val range = ask(command)?.let { parseSupportedPids(it, base) }
+                ?: return if (base == 0) null else SupportedPids(pids, knownUpTo = base)
+            pids += range
+            // The last bit of each range says whether the next one exists at all.
+            if (base + 0x20 !in range) return SupportedPids(pids, knownUpTo = 0xFF)
+            base += 0x20
+        }
+        return SupportedPids(pids, knownUpTo = base)
+    }
+
+    private const val HEX_DIGITS = "0123456789ABCDEF"
+    private val NUMBER = Regex("([0-9]+\\.?[0-9]*)")
+    private val FRAME_LINE = Regex("^([0-9A-F]):\\s*(.*)$")
+}
+
+/**
+ * The mode-01 PIDs the car said it serves. A PID past the ranges it was asked
+ * about ([knownUpTo]) gets the benefit of the doubt.
+ */
+internal class SupportedPids(private val pids: Set<Int>, private val knownUpTo: Int) {
+    fun has(pid: Int): Boolean = pid > knownUpTo || pid in pids
 }

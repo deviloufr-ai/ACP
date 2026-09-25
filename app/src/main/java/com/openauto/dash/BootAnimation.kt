@@ -24,7 +24,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -274,6 +273,9 @@ internal object BootAnimationInstaller {
 
     private class NotQf : Exception()
 
+    /** What a logo file name on the USB stick may be: a brand slug and `.bmp`. */
+    private val SAFE_LOGO_NAME = Regex("[a-z0-9_-]+\\.bmp")
+
     /**
      * Runs [script] as root after putting each local file of [push] at its
      * path: over the internal ADB when it answers and gets root, else through
@@ -286,15 +288,16 @@ internal object BootAnimationInstaller {
             port != null && AdbInstaller.ensureRoot(context, port) -> adbShell(context, port, script, *push)
             SystemInstaller.isRootAvailable() -> suShell(script, *push)
             port != null -> adbShell(context, port, script, *push)
-            else -> error(context.getString(R.string.boot_no_adb, DockShell.adbPort()))
+            else -> error(context.getString(R.string.boot_no_adb, AdbInstaller.announcedPort()))
         }
         Log.d("BootAnimation", out)
         if (out.contains("NOTQF")) throw NotQf()
         return out
     }
 
+    // Pushing the animation and writing the logo partition can take a while: the long timeout.
     private fun adbShell(context: Context, port: Int, script: String, vararg push: Pair<File, String>): String =
-        AdbInstaller.connect(context, port).use { dadb ->
+        AdbInstaller.connect(context, port, readTimeoutMs = AdbInstaller.LONG_TIMEOUT_MS).use { dadb ->
             push.forEach { (file, to) -> dadb.push(file, to) }
             dadb.shell(script).allOutput
         }
@@ -304,16 +307,7 @@ internal object BootAnimationInstaller {
         val copy = push.joinToString("") { (file, to) ->
             "cp '${file.absolutePath}' '$to' || { echo 'FAIL:could not copy ${file.name}'; exit; }; "
         }
-        val process = ProcessBuilder("su").redirectErrorStream(true).start()
-        val out = StringBuilder()
-        val reader = Thread { out.append(process.inputStream.bufferedReader().readText()) }.apply { start() }
-        process.outputStream.bufferedWriter().use { it.write(copy + script + "\nexit\n") }
-        if (!process.waitFor(SU_TIMEOUT_S, TimeUnit.SECONDS)) {
-            process.destroy()
-            error("su timed out")
-        }
-        reader.join(2000)
-        return out.toString()
+        return RootShell.su(null, SU_TIMEOUT_S, stdin = copy + script + "\nexit\n").all
     }
 
     private const val SU_TIMEOUT_S = 120L
@@ -369,6 +363,8 @@ internal object BootAnimationInstaller {
      * stick and returns their names. Touches nothing on the unit itself.
      */
     fun saveToUsb(context: Context, zip: File, logo: File, logoName: String): Result<List<String>> = runCatching {
+        // Pasted into a root shell command: a plain file name, nothing else.
+        require(SAFE_LOGO_NAME.matches(logoName)) { "bad logo file name: $logoName" }
         verify(zip)
         val out = shell(
             context,

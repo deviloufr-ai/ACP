@@ -8,6 +8,8 @@
         <exclude domain="sharedpref" path="car_bluetooth_mac.xml" />
         <exclude domain="sharedpref" path="mcu_prefs.xml" />
         <exclude domain="sharedpref" path="phone_link.xml" />
+        <exclude domain="sharedpref" path="ai_prefs.xml" />
+        <exclude domain="sharedpref" path="compile_after_update.xml" />
         <exclude domain="file" path="adb" />
     </cloud-backup>
     <device-transfer>
@@ -16,6 +18,8 @@
         <exclude domain="sharedpref" path="car_bluetooth_mac.xml" />
         <exclude domain="sharedpref" path="mcu_prefs.xml" />
         <exclude domain="sharedpref" path="phone_link.xml" />
+        <exclude domain="sharedpref" path="ai_prefs.xml" />
+        <exclude domain="sharedpref" path="compile_after_update.xml" />
         <exclude domain="file" path="adb" />
     </device-transfer>
 </data-extraction-rules>

@@ -1,11 +1,12 @@
 package com.openauto.dash
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
+import okhttp3.FormBody
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
@@ -19,7 +20,9 @@ import kotlin.math.sqrt
 /*
  * Fuel prices at the stations around the car, from the French government's
  * open data (prix-carburants.gouv.fr, free, no key), which every station in
- * France must feed. Elsewhere the list is simply empty.
+ * France must feed. Elsewhere the list is simply empty. That data has no
+ * station names: those come from OpenStreetMap (Overpass API, free, no key),
+ * where French stations carry the government's id.
  */
 
 /** The grades the data knows; [field] is the dataset's column prefix. */
@@ -32,15 +35,23 @@ enum class FuelGrade(val field: String, val label: String) {
     GPLC("gplc", "GPLc")
 }
 
-/** One station: where it is and what it charges per litre for each grade it sells. */
+/**
+ * One station: where it is and what it charges per litre for each grade it
+ * sells. [name] ("Intermarché", "Esso Express") is blank until OpenStreetMap
+ * named it, and stays blank where it doesn't know the station.
+ */
 data class FuelStation(
     val id: Long,
     val address: String,
     val town: String,
     val lat: Double,
     val lng: Double,
-    val prices: Map<FuelGrade, Double>
+    val prices: Map<FuelGrade, Double>,
+    val name: String = ""
 ) {
+    /** For a map app's pin: the name when known, else the street address. */
+    val label: String get() = listOf(name.ifBlank { address }, town).filter { it.isNotBlank() }.joinToString(", ")
+
     /** Straight-line distance to ([lat], [lng]) in km. */
     fun distanceKm(fromLat: Double, fromLng: Double): Double {
         val r = 6_371.0
@@ -113,8 +124,62 @@ object FuelPrices {
 
     fun formatPrice(price: Double): String = String.format(Locale.getDefault(), "%.3f", price)
 
+    /** The data is in euros, whatever the car's own currency setting. */
+    const val CURRENCY = "€"
+
+    /** "1,789 €" */
+    fun formatPriceWithCurrency(price: Double): String = formatPrice(price) + " " + CURRENCY
+
     fun formatDistance(km: Double): String =
         if (km < 10) String.format(Locale.getDefault(), "%.1f km", km) else "${km.toInt()} km"
+}
+
+/** One fuel station as OpenStreetMap knows it: where, its name, and the government's id when tagged. */
+data class OsmFuelStation(val lat: Double, val lng: Double, val name: String, val priceId: Long?)
+
+/** Station names from OpenStreetMap: the query and the matching. Pure, so it's unit-tested. */
+object FuelStationNames {
+    const val URL = "https://overpass-api.de/api/interpreter"
+    /** How far an unmatched station may be from an OpenStreetMap one to take its name, in metres. */
+    private const val MATCH_M = 150
+
+    /** One Overpass query for the fuel stations right around each of [stations]. */
+    fun query(stations: List<FuelStation>): String = buildString {
+        append("[out:json][timeout:20];(")
+        stations.forEach { s -> append(String.format(Locale.US, "nwr[\"amenity\"=\"fuel\"](around:%d,%.5f,%.5f);", MATCH_M, s.lat, s.lng)) }
+        append(");out center tags;")
+    }
+
+    fun parse(json: String): List<OsmFuelStation> {
+        val elements = JSONObject(json).optJSONArray("elements") ?: return emptyList()
+        return (0 until elements.length()).mapNotNull { i ->
+            val o = elements.optJSONObject(i) ?: return@mapNotNull null
+            val tags = o.optJSONObject("tags") ?: return@mapNotNull null
+            // Nodes carry their position; ways and relations their centre.
+            val at = o.optJSONObject("center") ?: o
+            val lat = at.optDouble("lat", Double.NaN)
+            val lng = at.optDouble("lon", Double.NaN)
+            if (lat.isNaN() || lng.isNaN()) return@mapNotNull null
+            val name = tags.optString("name").trim().ifBlank { tags.optString("brand").trim() }
+            OsmFuelStation(lat, lng, name, tags.optString("ref:FR:prix-carburants").trim().toLongOrNull())
+        }
+    }
+
+    /**
+     * The name for each of [stations]: the OpenStreetMap station tagged with
+     * its id, else the nearest named one within [MATCH_M]; blank when none.
+     */
+    fun match(stations: List<FuelStation>, osm: List<OsmFuelStation>): Map<Long, String> {
+        val named = osm.filter { it.name.isNotBlank() }
+        return stations.associate { s ->
+            val byId = named.firstOrNull { it.priceId == s.id }
+            val near = byId ?: named
+                .map { it to s.distanceKm(it.lat, it.lng) }
+                .filter { it.second * 1000 <= MATCH_M }
+                .minByOrNull { it.second }?.first
+            s.id to near?.name.orEmpty()
+        }
+    }
 }
 
 /** Fetches and keeps the stations around the car; refreshes when it moves on or the list gets old. */
@@ -126,24 +191,69 @@ object FuelPriceRepo {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val client = OkHttpClient.Builder()
-        .dns(Ipv4First)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
+    private val client by lazy {
+        Http.client.newBuilder()
+            .dns(Ipv4First)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+    }
 
     private var lastLat = Double.NaN
     private var lastLng = Double.NaN
     private var lastGrade: FuelGrade? = null
     private var lastFetch = 0L
 
+    // The real answer, kept while the demo shows its own and put back when it ends.
+    @Volatile private var realStations: List<FuelStation>? = null
+    @Volatile private var realError: String? = null
+
     private const val REFRESH_MS = 30 * 60_000L
     private const val MOVE_DEG = 0.03   // ~3 km: the neighbourhood has changed
 
-    /** [DemoMode]'s stations (and, when it ends, the real ones back). */
+    /** [DemoMode]'s stations. */
     internal fun demoWrite(stations: List<FuelStation>?, error: String?) {
         _stations.value = stations
         _error.value = error
+    }
+
+    /** The demo is over: the real stations back, including an answer that came in meanwhile. */
+    internal fun endDemo() {
+        _stations.value = realStations
+        _error.value = realError
+    }
+
+    private fun publish(stations: List<FuelStation>?, error: String?) {
+        realStations = stations
+        realError = error
+        // A fetch that was already on its way when the demo started must not replace the demo's stations.
+        if (DemoMode.isOn) return
+        _stations.value = stations
+        _error.value = error
+    }
+
+    /** Station names by the government's id, blank for one OpenStreetMap doesn't name; kept for the run. */
+    private val names = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /** [stations] with their names, asking OpenStreetMap only about the ones not looked up before. */
+    private fun withNames(stations: List<FuelStation>): List<FuelStation> {
+        val unknown = stations.filter { !names.containsKey(it.id) }
+        if (unknown.isNotEmpty()) {
+            runCatching {
+                val body = FormBody.Builder().add("data", FuelStationNames.query(unknown)).build()
+                val request = Request.Builder().url(FuelStationNames.URL).header("User-Agent", "Dashwheel car launcher").post(body).build()
+                client.newCall(request).execute().use { resp ->
+                    if (!resp.isSuccessful) error("HTTP ${resp.code}")
+                    FuelStationNames.parse(resp.body?.string().orEmpty())
+                }
+            }.onSuccess { osm ->
+                names.putAll(FuelStationNames.match(unknown, osm))
+            }.onFailure {
+                // Without names the list still works: the town is shown. Asked again with the next list.
+                Log.w("FuelPriceRepo", "station names unavailable: ${it.message}")
+            }
+        }
+        return stations.map { s -> names[s.id]?.takeIf { it.isNotBlank() }?.let { s.copy(name = it) } ?: s }
     }
 
     /** Fetches when the list is stale, the car has moved or the grade changed; cheap to call often. */
@@ -163,10 +273,12 @@ object FuelPriceRepo {
                     FuelPrices.parse(resp.body?.string().orEmpty())
                 }
             }.onSuccess {
-                _stations.value = it
-                _error.value = null
+                publish(it, null)
+                // Prices first; the names follow when OpenStreetMap answers.
+                val named = withNames(it)
+                if (named != it && realStations === it) publish(named, null)
             }.onFailure {
-                _error.value = it.message.orEmpty()
+                publish(realStations, it.message.orEmpty())
                 // Allow a retry before the normal interval.
                 lastFetch = now - REFRESH_MS + 60_000L
             }

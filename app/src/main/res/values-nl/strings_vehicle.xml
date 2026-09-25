@@ -201,4 +201,10 @@
     <string name="vehicle_err_permission">Bluetooth-toestemming niet verleend</string>
     <string name="vehicle_obd_connect_from_bar">Verbind met de OBD-knop in de balk</string>
     <string name="vehicle_recent_alerts">Recente waarschuwingen</string>
+    <string name="vehicle_speed_fix">Snelheidscorrectie</string>
+    <string name="vehicle_speed_fix_detail">Opgeteld bij de snelheid die de auto doorgeeft, gelijk aan de snelheidsmeter</string>
+    <string name="vehicle_speed_fix_less">Correctie verlagen</string>
+    <string name="vehicle_speed_fix_more">Correctie verhogen</string>
+    <string name="vehicle_speed_fix_now">Snelheid nu: %1$d km/h. Pas aan tot het gelijk is aan de snelheidsmeter.</string>
+    <string name="vehicle_speed_fix_not_connected">Verbind de OBD-adapter om de gecorrigeerde snelheid live te zien.</string>
 </resources>
