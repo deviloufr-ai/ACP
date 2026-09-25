@@ -30,7 +30,7 @@ class PairingOffer(val id: String, val unitName: String, val secret: ByteArray) 
         fun create(unitName: String, random: SecureRandom = SecureRandom()): PairingOffer {
             val id = ByteArray(8).also(random::nextBytes).joinToString("") { "%02x".format(it) }
             val secret = ByteArray(SECRET_BYTES).also(random::nextBytes)
-            return PairingOffer(id, unitName.take(64), secret)
+            return PairingOffer(id, unitName.trim().take(64), secret)
         }
 
         /** Null for anything that isn't a well-formed offer of a version this side knows. */

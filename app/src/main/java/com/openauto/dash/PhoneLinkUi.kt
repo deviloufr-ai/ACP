@@ -1,6 +1,8 @@
 package com.openauto.dash
 
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -24,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -44,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +60,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -64,6 +69,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.openauto.dash.link.ActionResult
 import com.openauto.dash.link.ConversationLine
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
@@ -302,6 +308,26 @@ internal fun PhonePane() {
 
     SettingsRow(Icons.Filled.AddLink, stringResource(R.string.phone_pair), stringResource(R.string.phone_pair_detail)) { pairing = true }
 
+    // Calls show in their own window over other apps; without that, only over the launcher.
+    val scope = rememberCoroutineScope()
+    var overlayAllowed by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            overlayAllowed = Settings.canDrawOverlays(context)
+            delay(2_000)
+        }
+    }
+    if (phones.isNotEmpty() && !overlayAllowed) {
+        SettingsRow(Icons.Filled.Layers, stringResource(R.string.phone_overlay), stringResource(R.string.phone_overlay_detail)) {
+            scope.launch {
+                overlayAllowed = PipAnchor.grantOverlayPermission(context)
+                if (!overlayAllowed) {
+                    context.launchSafely(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
+                }
+            }
+        }
+    }
+
     if (pairing) PhonePairingDialog(onDismiss = { pairing = false })
 }
 
@@ -337,14 +363,18 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // The download code is only for a first install: smaller, and labelled so it
+                    // isn't taken for the pairing code (the companion app says so if it is).
+                    Column(Modifier.weight(0.8f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.phone_pair_step1), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         QrCode(download, Modifier.fillMaxWidth())
+                        QrCaption(stringResource(R.string.phone_pair_qr_download), primary = false)
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1.2f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.phone_pair_step2), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Text(stringResource(R.string.phone_pair_step3), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         QrCode(offer.toUri(), Modifier.fillMaxWidth())
+                        QrCaption(stringResource(R.string.phone_pair_qr_pair), primary = true)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(10.dp))
@@ -360,6 +390,18 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                 Text(stringResource(if (paired != null) R.string.phone_done else R.string.dash_cancel), color = DashColors.Accent)
             }
         }
+    )
+}
+
+@Composable
+private fun QrCaption(text: String, primary: Boolean) {
+    Text(
+        text,
+        color = if (primary) DashColors.Accent else DashColors.Muted,
+        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center
     )
 }
 

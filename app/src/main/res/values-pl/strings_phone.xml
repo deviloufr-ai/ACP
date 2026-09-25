@@ -34,4 +34,14 @@
     <string name="phone_no_link">Telefon nie jest połączony.</string>
     <string name="phone_mark_read">Oznacz jako przeczytane</string>
     <string name="phone_clear">Usuń z telefonu</string>
+    <string name="phone_pair_qr_download">Pobierz aplikację</string>
+    <string name="phone_pair_qr_pair">Kod parowania: zeskanuj w aplikacji</string>
+    <string name="phone_call_incoming">Połączenie przychodzące</string>
+    <string name="phone_call_unknown">Nieznany numer</string>
+    <string name="phone_call_answer">Odbierz</string>
+    <string name="phone_call_decline">Odrzuć</string>
+    <string name="phone_call_hang_up">Rozłącz</string>
+    <string name="phone_call_no_control">Aby odbierać tutaj, zezwól na Połączenia w Dashwheel Companion.</string>
+    <string name="phone_overlay">Pokazuj połączenia nad innymi aplikacjami</string>
+    <string name="phone_overlay_detail">Połączenie pojawi się wtedy nawet, gdy inna aplikacja zajmuje cały ekran.</string>
 </resources>
