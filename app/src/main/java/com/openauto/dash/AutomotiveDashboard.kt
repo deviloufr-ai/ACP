@@ -236,6 +236,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             showPage(DashboardStore.CENTER)
         }
     }
+    // A learned steering wheel button asking for the app drawer (SteeringWheelActions.kt).
+    val openAppsRequested by MainActivity.openAppsRequested.collectAsState()
+    LaunchedEffect(openAppsRequested) {
+        if (openAppsRequested > 0L) showAllApps = true
+    }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     // The demo's music and directions need no access grant.
     val mediaAccess = hasMediaAccess || demoOn
@@ -528,6 +533,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         Maintenance.setContext(context)
         PidExplorer.setContext(context)
         AiMechanic.setContext(context)
+        SteeringWheelStore.setContext(context)
         StartupBriefing.start(context)
         VehicleMonitor.start(context)
         mediaController.start()

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -100,6 +102,7 @@ internal fun SettingsScreen(
     var upkeep by remember { mutableStateOf(false) }
     var explorer by remember { mutableStateOf(false) }
     var bootLogo by remember { mutableStateOf(false) }
+    var wheelButtons by remember { mutableStateOf(false) }
     val tap = rememberTapFeedback()
 
     SolidCard(modifier = modifier) {
@@ -169,7 +172,7 @@ internal fun SettingsScreen(
                         onExplorer = { explorer = true }
                     )
                     SettingsTab.LOOK -> LookPane(theme)
-                    SettingsTab.DRIVING -> DrivingPane(m)
+                    SettingsTab.DRIVING -> DrivingPane(m, onWheelButtons = { wheelButtons = true })
                     SettingsTab.PHONE -> PhonePane()
                     SettingsTab.ADVANCED -> AdvancedPane(m, onBootLogo = { bootLogo = true })
                 }
@@ -182,6 +185,7 @@ internal fun SettingsScreen(
     if (upkeep) UpkeepDialog(onDismiss = { upkeep = false })
     if (explorer) PidExplorerDialog(onDismiss = { explorer = false })
     if (bootLogo) BootLogoDialog(onDismiss = { bootLogo = false })
+    if (wheelButtons) SteeringWheelDialog(onDismiss = { wheelButtons = false })
 }
 
 @Composable
@@ -204,8 +208,9 @@ private fun LookPane(theme: ThemeState) {
 }
 
 @Composable
-private fun DrivingPane(m: TopBarModel) {
+private fun DrivingPane(m: TopBarModel, onWheelButtons: () -> Unit) {
     val context = LocalContext.current
+    val wheelMappings by SteeringWheelStore.mappings.collectAsState()
     SettingsSection(stringResource(R.string.settings_section_driving))
     SettingsToggle(
         Icons.Filled.DirectionsCar, stringResource(R.string.settings_drive_lock),
@@ -215,6 +220,12 @@ private fun DrivingPane(m: TopBarModel) {
         Icons.Filled.VolumeUp, stringResource(R.string.settings_tap_sound),
         stringResource(R.string.settings_tap_sound_detail), FeedbackStore.sound
     ) { FeedbackStore.save(context, it) }
+    SettingsRow(
+        Icons.Filled.SettingsRemote, stringResource(R.string.wheel_title),
+        if (wheelMappings.isEmpty()) stringResource(R.string.wheel_settings_detail_empty)
+        else pluralStringResource(R.plurals.wheel_settings_detail_count, wheelMappings.size, wheelMappings.size),
+        onWheelButtons
+    )
 }
 
 @Composable

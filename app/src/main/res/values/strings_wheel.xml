@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Steering wheel button learning (SteeringWheelDialog.kt), from Settings -> Driving -->
+    <string name="wheel_title">Steering Wheel Buttons</string>
+    <string name="wheel_settings_detail_empty">Learn your wheel\'s buttons and assign actions</string>
+    <plurals name="wheel_settings_detail_count">
+        <item quantity="one">%1$d button assigned</item>
+        <item quantity="other">%1$d buttons assigned</item>
+    </plurals>
+    <string name="wheel_explanation">Tap Learn a new button below, then press any button on your steering wheel. Pick what it should do — media, volume, an app, or more.</string>
+    <string name="wheel_learn_button">Learn a new button</string>
+    <string name="wheel_empty">No buttons learned yet.</string>
+    <string name="wheel_remove">Remove</string>
+    <string name="wheel_back">Back</string>
+    <string name="wheel_listening_title">Press a button on the wheel…</string>
+    <string name="wheel_listening_detail">Dashwheel is waiting for the next button press.</string>
+    <string name="wheel_assign_prompt">What should %1$s do?</string>
+    <string name="wheel_choose_app">Launch an app…</string>
+    <string name="wheel_remove_binding">Forget this button</string>
+    <string name="wheel_group_media">Media</string>
+    <string name="wheel_group_volume">Volume</string>
+    <string name="wheel_group_system">System</string>
+    <string name="wheel_group_phone">Phone</string>
+    <string name="wheel_needs_accessibility">Needs Accessibility turned on</string>
+    <string name="wheel_accessibility_hint">Back, recent apps, notifications and split screen need Dashwheel turned on under Settings, Accessibility.</string>
+    <string name="wheel_accessibility_enable">Turn on</string>
+    <string name="wheel_action_back">Back</string>
+    <string name="wheel_action_recents">Recent apps</string>
+    <string name="wheel_action_notifications">Notifications</string>
+    <string name="wheel_action_quick_settings">Quick settings</string>
+    <string name="wheel_action_toggle_split">Split screen on / off</string>
+    <string name="wheel_action_screenshot">Screenshot</string>
+    <string name="wheel_action_play_pause">Play / Pause</string>
+    <string name="wheel_action_next">Next track</string>
+    <string name="wheel_action_previous">Previous track</string>
+    <string name="wheel_action_volume_up">Volume up</string>
+    <string name="wheel_action_volume_down">Volume down</string>
+    <string name="wheel_action_mute">Mute / Unmute</string>
+    <string name="wheel_action_voice">Voice assistant</string>
+    <string name="wheel_action_home">Go to Home</string>
+    <string name="wheel_action_open_apps">Open the app drawer</string>
+    <string name="wheel_action_swap_split">Swap split-screen sides</string>
+    <string name="wheel_action_answer">Answer call</string>
+    <string name="wheel_action_decline">Decline call</string>
+    <string name="wheel_action_hang_up">Hang up call</string>
+</resources>
