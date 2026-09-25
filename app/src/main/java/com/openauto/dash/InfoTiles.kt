@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Cloud
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.WbCloudy
@@ -577,37 +579,40 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                 }
                 else -> LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(items, key = { it.key }) { n ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(DashShape.Small)
-                                .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
-                                .clickable { if (n.fromPhone) opened = n else runCatching { n.contentIntent?.send() } }
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val bmp = n.icon
-                            if (bmp != null) Image(bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)))
-                            else Icon(Icons.Filled.Notifications, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(n.title.ifEmpty { n.appLabel }, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                                if (n.text.isNotEmpty()) Text(n.text, color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.labelSmall)
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(timeFmt.format(Date(n.postedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (n.fromPhone) {
-                                        Icon(
-                                            Icons.Filled.PhoneAndroid, contentDescription = stringResource(R.string.phone_from_phone),
-                                            tint = DashColors.Accent, modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(Modifier.width(3.dp))
+                        // Swiped aside, it leaves the card, like on a phone.
+                        SwipeAway(onDismiss = { NotificationFeed.remove(n.key) }) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(DashShape.Small)
+                                    .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
+                                    .clickable { if (n.fromPhone) opened = n else runCatching { n.contentIntent?.send() } }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val bmp = n.icon
+                                if (bmp != null) Image(bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)))
+                                else Icon(Icons.Filled.Notifications, contentDescription = null, tint = DashColors.Muted, modifier = Modifier.size(30.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(n.title.ifEmpty { n.appLabel }, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                                    if (n.text.isNotEmpty()) Text(n.text, color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(timeFmt.format(Date(n.postedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (n.fromPhone) {
+                                            Icon(
+                                                Icons.Filled.PhoneAndroid, contentDescription = stringResource(R.string.phone_from_phone),
+                                                tint = DashColors.Accent, modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(Modifier.width(3.dp))
+                                        }
+                                        Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                     }
-                                    Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                 }
                             }
                         }
@@ -627,49 +632,81 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
 
 // --- Audio ------------------------------------------------------------------------
 
-/** Media volume with mute, plus shortcuts to the sound and Bluetooth settings. */
+/**
+ * Media volume with mute, − and +, plus shortcuts to the sound and Bluetooth
+ * settings. Where the head unit ignores Android's media volume (see
+ * [MediaVolume]) the slider gives way to the buttons, which then press the
+ * volume keys like the knob.
+ */
 @Composable
 internal fun AudioCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val max = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
+    val audio = remember { MediaVolume.audio(context) }
+    val max = remember { MediaVolume.max(audio) }
     var dragging by remember { mutableStateOf(false) }
     // Follow the hardware knob / other apps while nobody is dragging the slider.
     var volume by rememberMusicVolume(audio, hold = { dragging })
-    val muted = volume == 0
+    val byKeys by MediaVolume.byKeys.collectAsState()
+    val unavailable by MediaVolume.unavailable.collectAsState()
+    LaunchedEffect(Unit) { MediaVolume.check(audio) }
+    val muted = !byKeys && volume == 0
+    fun act(change: () -> Unit) {
+        change()
+        volume = MediaVolume.level(audio)
+    }
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_audio_title)) {
-                Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                if (!byKeys) {
+                    Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                }
             }
-            Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = {
-                        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, if (muted) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE, 0)
-                        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    },
-                    modifier = Modifier.size(44.dp)
-                ) {
+            Row(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (byKeys) Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally) else Arrangement.Start
+            ) {
+                val buttonSize = if (byKeys) 56.dp else 44.dp
+                IconButton(onClick = { act { MediaVolume.toggleMute(context) } }, modifier = Modifier.size(buttonSize)) {
                     Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = stringResource(if (muted) R.string.info_audio_unmute else R.string.info_audio_mute),
                         tint = if (muted) DashColors.Warning else DashColors.TextPrimary, modifier = Modifier.size(26.dp))
                 }
-                Slider(
-                    value = volume.toFloat(),
-                    onValueChange = { v ->
-                        dragging = true
-                        volume = v.roundToInt()
-                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
-                    },
-                    onValueChangeFinished = { dragging = false },
-                    valueRange = 0f..max.toFloat(),
-                    steps = (max - 1).coerceAtLeast(0),
-                    colors = SliderDefaults.colors(
-                        thumbColor = if (DashColors.Light) DashColors.Accent else Color.White, activeTrackColor = DashColors.Accent,
-                        inactiveTrackColor = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi,
-                        activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent
-                    ),
-                    modifier = Modifier.weight(1f)
+                IconButton(onClick = { act { MediaVolume.lower(context) } }, modifier = Modifier.size(buttonSize)) {
+                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.design_volume_down), tint = DashColors.TextPrimary, modifier = Modifier.size(24.dp))
+                }
+                if (!byKeys) {
+                    Slider(
+                        value = volume.toFloat(),
+                        onValueChange = { v ->
+                            dragging = true
+                            volume = v.roundToInt()
+                            MediaVolume.set(context, volume)
+                        },
+                        onValueChangeFinished = {
+                            dragging = false
+                            volume = MediaVolume.level(audio)
+                        },
+                        valueRange = 0f..max.toFloat(),
+                        steps = (max - 1).coerceAtLeast(0),
+                        colors = SliderDefaults.colors(
+                            thumbColor = if (DashColors.Light) DashColors.Accent else Color.White, activeTrackColor = DashColors.Accent,
+                            inactiveTrackColor = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi,
+                            activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                IconButton(onClick = { act { MediaVolume.raise(context) } }, modifier = Modifier.size(buttonSize)) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.design_volume_up), tint = DashColors.TextPrimary, modifier = Modifier.size(24.dp))
+                }
+            }
+            if (byKeys) {
+                Text(
+                    stringResource(if (unavailable) R.string.info_audio_unavailable else R.string.info_audio_by_keys),
+                    color = if (unavailable) DashColors.Warning else DashColors.Muted,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

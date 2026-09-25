@@ -523,6 +523,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
         CarProfileStore.setContext(context)
+        SpeedCorrection.setContext(context)
         CarCare.setContext(context)
         Maintenance.setContext(context)
         PidExplorer.setContext(context)

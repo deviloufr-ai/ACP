@@ -1,10 +1,8 @@
 package com.openauto.dash
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.location.Location
-import android.media.AudioManager
 import android.net.Uri
 import android.provider.CalendarContract
 import androidx.compose.material.icons.Icons
@@ -571,10 +569,13 @@ private fun mediaFace(env: SkinTileEnv): WidgetFace {
 @Composable
 private fun audioFace(): WidgetFace {
     val context = LocalContext.current
-    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val max = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
+    val audio = remember { MediaVolume.audio(context) }
+    val max = remember { MediaVolume.max(audio) }
     // Follows the hardware knob and other apps, like the standard audio tile.
     var volume by rememberMusicVolume(audio)
+    val byKeys by MediaVolume.byKeys.collectAsState()
+    val unavailable by MediaVolume.unavailable.collectAsState()
+    LaunchedEffect(Unit) { MediaVolume.check(audio) }
     // Whether anything plays: the level meter only bounces then.
     var playing by remember { mutableStateOf(audio.isMusicActive) }
     LaunchedEffect(Unit) {
@@ -583,28 +584,35 @@ private fun audioFace(): WidgetFace {
             playing = audio.isMusicActive
         }
     }
-    val muted = volume == 0
-    fun step(direction: Int) {
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0)
-        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+    // Where the volume keys are pressed instead (MediaVolume), the level isn't known.
+    val muted = !byKeys && volume == 0
+    fun act(change: () -> Unit) {
+        change()
+        volume = MediaVolume.level(audio)
     }
     return WidgetFace(
         icon = if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
         title = BuiltinKind.AUDIO.label,
-        value = (volume * 100f / max).roundToInt().toString(), unit = "%",
-        caption = stringResource(R.string.design_media_volume),
-        fraction = volume / max.toFloat(),
-        alert = muted,
+        value = if (byKeys) "\u2013" else (volume * 100f / max).roundToInt().toString(), unit = if (byKeys) "" else "%",
+        caption = stringResource(
+            when {
+                !byKeys -> R.string.design_media_volume
+                unavailable -> R.string.info_audio_unavailable
+                else -> R.string.info_audio_by_keys
+            }
+        ),
+        fraction = if (byKeys) 0.5f else volume / max.toFloat(),
+        alert = muted || (byKeys && unavailable),
         active = playing,
         actions = listOf(
             FaceAction(
                 if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
                 stringResource(if (muted) R.string.info_audio_unmute else R.string.info_audio_mute),
                 primary = true,
-                onClick = { step(if (muted) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE) }
+                onClick = { act { MediaVolume.toggleMute(context) } }
             ),
-            FaceAction(Icons.Filled.Remove, stringResource(R.string.design_volume_down), onClick = { step(AudioManager.ADJUST_LOWER) }),
-            FaceAction(Icons.Filled.Add, stringResource(R.string.design_volume_up), onClick = { step(AudioManager.ADJUST_RAISE) })
+            FaceAction(Icons.Filled.Remove, stringResource(R.string.design_volume_down), onClick = { act { MediaVolume.lower(context) } }),
+            FaceAction(Icons.Filled.Add, stringResource(R.string.design_volume_up), onClick = { act { MediaVolume.raise(context) } })
         )
     )
 }
@@ -765,7 +773,10 @@ private fun notificationsFace(env: SkinTileEnv): WidgetFace {
             ?: stringResource(R.string.info_notif_empty),
         fraction = (items.size / 10f).coerceIn(0f, 1f),
         rows = items.map { n ->
-            FaceRow(n.title.ifEmpty { n.appLabel }, timeFmt.format(Date(n.postedAt)), onClick = { runCatching { n.contentIntent?.send() } })
+            FaceRow(
+                n.title.ifEmpty { n.appLabel }, timeFmt.format(Date(n.postedAt)), onClick = { runCatching { n.contentIntent?.send() } },
+                onDismiss = { NotificationFeed.remove(n.key) }, key = n.key
+            )
         },
         stats = latest?.let { listOf(FaceStat(stringResource(R.string.design_latest), timeFmt.format(Date(it.postedAt)))) }.orEmpty(),
         events = items.take(6).map { FaceEvent(it.postedAt, null, it.title.ifEmpty { it.appLabel }) },
@@ -1029,18 +1040,19 @@ private fun fuelPricesFace(): WidgetFace {
     return WidgetFace(
         icon = icon, title = title,
         value = FuelPrices.formatPrice(best.price), unit = "€/L",
-        caption = stringResource(R.string.fuel_cheapest, nearby.grade.label) + " · " + FuelPrices.formatDistance(best.distanceKm),
+        caption = stringResource(R.string.fuel_cheapest, nearby.grade.label) + " · " + best.station.name.ifBlank { best.station.town } +
+            " · " + FuelPrices.formatDistance(best.distanceKm),
         stats = listOf(
-            FaceStat(nearby.grade.label, FuelPrices.formatPrice(best.price)),
+            FaceStat(nearby.grade.label, FuelPrices.formatPriceWithCurrency(best.price)),
             FaceStat(stringResource(R.string.fuel_navigate), FuelPrices.formatDistance(best.distanceKm))
         ),
         rows = nearby.ranked.take(6).map { r ->
             FaceRow(
-                FuelPrices.formatPrice(r.price) + " · " + FuelPrices.formatDistance(r.distanceKm),
-                r.station.address + ", " + r.station.town,
-                onClick = { navigateTo(context, r.station.lat, r.station.lng, r.station.address) }
+                FuelPrices.formatPriceWithCurrency(r.price) + " · " + listOf(r.station.name, r.station.town).filter { it.isNotBlank() }.joinToString(", "),
+                FuelPrices.formatDistance(r.distanceKm),
+                onClick = { navigateTo(context, r.station.lat, r.station.lng, r.station.label) }
             )
         },
-        onClick = { navigateTo(context, best.station.lat, best.station.lng, best.station.address) }
+        onClick = { navigateTo(context, best.station.lat, best.station.lng, best.station.label) }
     )
 }

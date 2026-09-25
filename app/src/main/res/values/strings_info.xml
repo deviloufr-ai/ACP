@@ -156,4 +156,6 @@
     <string name="info_map_address_not_found">Address not found</string>
     <string name="info_map_duration_hm">%1$dh %2$02dmin</string>
     <string name="info_map_duration_min">%1$d min</string>
+    <string name="info_audio_by_keys">Volume set through the head unit\'s volume keys</string>
+    <string name="info_audio_unavailable">Volume can\'t be changed from here: use the knob</string>
 </resources>

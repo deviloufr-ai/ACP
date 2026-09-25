@@ -201,4 +201,10 @@
     <string name="vehicle_err_permission">Bluetooth permission not granted</string>
     <string name="vehicle_obd_connect_from_bar">Connect with the OBD button in the bar</string>
     <string name="vehicle_recent_alerts">Recent alerts</string>
+    <string name="vehicle_speed_fix">Speed correction</string>
+    <string name="vehicle_speed_fix_detail">Added to the speed the car reports, to match its speedometer</string>
+    <string name="vehicle_speed_fix_less">Lower the correction</string>
+    <string name="vehicle_speed_fix_more">Raise the correction</string>
+    <string name="vehicle_speed_fix_now">Speed now: %1$d km/h. Adjust until it matches your speedometer.</string>
+    <string name="vehicle_speed_fix_not_connected">Connect the OBD adapter to see the corrected speed live.</string>
 </resources>

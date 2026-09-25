@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ChevronRight
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -52,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -185,6 +189,7 @@ private fun CarPane(m: TopBarModel, onCar: () -> Unit, onAi: () -> Unit, onUpkee
     val car by CarProfileStore.profile.collectAsState()
     SettingsSection(stringResource(R.string.settings_section_car))
     SettingsRow(Icons.Filled.DirectionsCar, stringResource(R.string.car_menu), car.name, onCar)
+    SpeedCorrectionRow()
     SettingsRow(Icons.Filled.AutoAwesome, stringResource(R.string.ai_title), stringResource(R.string.settings_ai_detail), onAi)
     SettingsRow(Icons.Filled.Handyman, stringResource(R.string.upkeep_dialog_title), stringResource(R.string.upkeep_settings_detail), onUpkeep)
     SettingsRow(Icons.Filled.Science, stringResource(R.string.explore_title), stringResource(R.string.explore_settings_detail), onExplorer)
@@ -267,6 +272,70 @@ internal fun SettingsRow(icon: ImageVector, title: String, detail: String?, onCl
         Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = DashColors.Muted)
     }
     HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(horizontal = 12.dp))
+}
+
+/**
+ * The speed correction (see [SpeedCorrection]): − and + by 1 km/h, the value
+ * between, applied at once so the speed on screen can be matched to the car's
+ * speedometer while driving along. Also in the telemetry tile's dialog.
+ */
+@Composable
+internal fun SpeedCorrectionRow() {
+    val context = LocalContext.current
+    val offset by SpeedCorrection.offsetKmh.collectAsState()
+    val tap = rememberTapFeedback()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.Speed, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.vehicle_speed_fix), color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.vehicle_speed_fix_detail),
+                color = DashColors.TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        IconButton(
+            onClick = { tap(); SpeedCorrection.save(context, offset - 1) },
+            enabled = offset > -SpeedCorrection.MAX_OFFSET_KMH,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.vehicle_speed_fix_less), tint = DashColors.TextPrimary)
+        }
+        Text(
+            speedOffsetText(offset),
+            color = if (offset == 0) DashColors.TextSecondary else DashColors.Accent,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.width(88.dp)
+        )
+        IconButton(
+            onClick = { tap(); SpeedCorrection.save(context, offset + 1) },
+            enabled = offset < SpeedCorrection.MAX_OFFSET_KMH,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.vehicle_speed_fix_more), tint = DashColors.TextPrimary)
+        }
+    }
+    HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(horizontal = 12.dp))
+}
+
+/** "+3 km/h", "−2 km/h", or "0 km/h" when there's no correction. */
+internal fun speedOffsetText(offsetKmh: Int): String = when {
+    offsetKmh > 0 -> "+$offsetKmh km/h"
+    offsetKmh < 0 -> "\u2212${-offsetKmh} km/h"
+    else -> "0 km/h"
 }
 
 /** One on/off setting: icon, name, what it does, and a switch; the whole row toggles it. */

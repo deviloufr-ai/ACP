@@ -372,7 +372,8 @@ object ObdBluetoothManager {
 
         val d = _data.value
         val next = d.copy(
-            speedKmh = speed ?: d.speedKmh,
+            // With the driver's correction (Settings → Car), so every tile agrees with the car's own speedometer.
+            speedKmh = speed?.let(SpeedCorrection::corrected) ?: d.speedKmh,
             rpm = rpm ?: d.rpm,
             coolantTempC = coolant ?: d.coolantTempC,
             intakeTempC = intake ?: d.intakeTempC,

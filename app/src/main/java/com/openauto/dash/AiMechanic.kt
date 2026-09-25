@@ -482,6 +482,25 @@ object AiMechanic {
         }
     }
 
+    /** The language the advice on the tile was asked in; null while there's none. */
+    @Volatile private var explainedIn: AiLanguage? = null
+
+    /**
+     * The launcher's language may have changed (the screen was rebuilt in it):
+     * the advice already on the tile was written by Gemini in the old one, so
+     * it is asked again (or read from the cache) in the new one. The demo's
+     * canned advice is rebuilt the same way.
+     */
+    fun followLanguage(context: Context) {
+        val language = AiSettings.load(context).language
+        if (DemoMode.isOn) {
+            DemoMode.followLanguage(context, language)
+            return
+        }
+        val before = explainedIn ?: return
+        if (before != language) refresh()
+    }
+
     /** Checks one set of live readings against the warning rules, and rescans once the engine runs. */
     fun watch(data: ObdData) {
         if (DemoMode.isOn) return
@@ -497,6 +516,7 @@ object AiMechanic {
     /** Fills in the advice for [codes]; speaks only when some are [fresh] (new and to be announced). */
     private suspend fun explain(context: Context, codes: List<String>, fresh: List<String>) {
         val config = AiSettings.load(context)
+        explainedIn = config.language
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
         val resources = config.language.resources(context)
         val offline = MechanicLines.newCodes(fresh).text(resources)

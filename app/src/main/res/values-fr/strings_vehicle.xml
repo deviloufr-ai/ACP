@@ -201,4 +201,10 @@
     <string name="vehicle_err_permission">Permission Bluetooth non accordée</string>
     <string name="vehicle_obd_connect_from_bar">Connexion par le bouton OBD de la barre</string>
     <string name="vehicle_recent_alerts">Dernières alertes</string>
+    <string name="vehicle_speed_fix">Correction de vitesse</string>
+    <string name="vehicle_speed_fix_detail">Ajoutée à la vitesse donnée par la voiture, pour coller à son compteur</string>
+    <string name="vehicle_speed_fix_less">Baisser la correction</string>
+    <string name="vehicle_speed_fix_more">Augmenter la correction</string>
+    <string name="vehicle_speed_fix_now">Vitesse actuelle : %1$d km/h. Ajustez jusqu\'à lire la même chose qu\'au compteur.</string>
+    <string name="vehicle_speed_fix_not_connected">Branchez l\'adaptateur OBD pour voir la vitesse corrigée en direct.</string>
 </resources>

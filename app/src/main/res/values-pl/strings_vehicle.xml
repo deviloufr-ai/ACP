@@ -201,4 +201,10 @@
     <string name="vehicle_err_permission">Brak uprawnienia Bluetooth</string>
     <string name="vehicle_obd_connect_from_bar">Połącz przyciskiem OBD na pasku</string>
     <string name="vehicle_recent_alerts">Ostatnie ostrzeżenia</string>
+    <string name="vehicle_speed_fix">Korekta prędkości</string>
+    <string name="vehicle_speed_fix_detail">Dodawana do prędkości podawanej przez auto, by zgadzała się z prędkościomierzem</string>
+    <string name="vehicle_speed_fix_less">Zmniejsz korektę</string>
+    <string name="vehicle_speed_fix_more">Zwiększ korektę</string>
+    <string name="vehicle_speed_fix_now">Prędkość teraz: %1$d km/h. Dostosuj, aż zgodzi się z prędkościomierzem.</string>
+    <string name="vehicle_speed_fix_not_connected">Podłącz adapter OBD, aby widzieć skorygowaną prędkość na żywo.</string>
 </resources>
