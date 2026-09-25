@@ -178,9 +178,10 @@ internal fun StandardTopBar(m: TopBarModel) {
     // solid themes keep the flat full-width strip.
     val glass = DashColors.Glass
     Surface(color = if (glass) Color.Transparent else DashColors.Bar, modifier = Modifier.fillMaxWidth()) {
-        // A Box, not a Row, so the clock sits at the true centre whatever the
-        // two sides hold.
-        Box(
+        // Three columns in a Row: the two sides share what the centre leaves,
+        // equally, so the centre stays centred and nothing can draw over it.
+        // A long alert on the right shortens (ellipsis) instead of overlapping.
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
@@ -188,9 +189,9 @@ internal fun StandardTopBar(m: TopBarModel) {
                     else Modifier
                 )
                 .padding(horizontal = 6.dp, vertical = 2.dp),
-            contentAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = m.onApps) {
                     Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.dash_all_apps), tint = DashColors.TextPrimary)
                 }
@@ -206,7 +207,7 @@ internal fun StandardTopBar(m: TopBarModel) {
             // speed source it is the plain bar again.
             val speed = if (DashColors.BarStyle == DashBarStyle.CLUSTER) rememberSpeedKmh(m.obdData, m.obdConnection) else null
             val cluster = speed != null
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                 when {
                     cluster -> ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
                     // The head unit's status bar shows the time while it is up.
@@ -216,7 +217,11 @@ internal fun StandardTopBar(m: TopBarModel) {
                 BarPageDots(m)
             }
 
-            Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (cluster) {
                     BarClock(m.clock, MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.width(10.dp))
@@ -225,7 +230,10 @@ internal fun StandardTopBar(m: TopBarModel) {
                     DemoBadge(onStop = m.onDemo)
                     Spacer(Modifier.width(6.dp))
                 }
-                VehicleAlerts(m.obdConnection, m.obdData)
+                // Takes what is left and no more; its pills shorten first.
+                Row(modifier = Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
+                    VehicleAlerts(m.obdConnection, m.obdData)
+                }
                 ObdPill(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
                     IconButton(onClick = open) {
@@ -592,10 +600,11 @@ private fun MenuIcon(icon: ImageVector, enabled: Boolean = true) {
 @Composable
 internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) {
     val context = LocalContext.current
-    val live = if (obdConnection == ObdConnectionState.CONNECTED) vehicleAlerts(context, obdData) else emptyList()
-    // A critical reading goes to the centre, which says it once and keeps it.
+    val battery by BatteryWatch.state.collectAsState()
+    val live = if (obdConnection == ObdConnectionState.CONNECTED) vehicleAlerts(context, obdData, battery) else emptyList()
+    // A critical reading goes to the centre, which keeps it until it is tapped.
     LaunchedEffect(live) {
-        live.filter { it.level == AlertLevel.CRITICAL }.forEach { AlertCenter.raise(context, it, R.string.dash_alert_spoken) }
+        live.filter { it.level == AlertLevel.CRITICAL }.forEach { AlertCenter.raise(it) }
         AlertCenter.noteWarnings(live.filter { it.level == AlertLevel.WARNING })
     }
     val held = AlertCenter.critical
@@ -634,7 +643,10 @@ private fun AlertChip(alert: VehicleAlert, onAcknowledge: (() -> Unit)?) {
             color = colour,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelMedium,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            // Shortens first when the bar is tight; the icons keep their size.
+            modifier = Modifier.weight(1f, fill = false)
         )
         if (onAcknowledge != null) {
             Spacer(Modifier.width(6.dp))

@@ -153,7 +153,6 @@
     <string name="dash_effects_reduced_hint">Łagodniejsza poświata, szkło zostaje</string>
     <string name="dash_effects_full_hint">Każdy motyw z pełną poświatą i szkłem</string>
     <string name="dash_drive_lock_notice">Zatrzymaj się, aby wprowadzić zmiany</string>
-    <string name="dash_alert_spoken">%1$s. Zatrzymaj się, gdy tylko możesz.</string>
     <string name="dash_theme_group_recommended">Polecane</string>
     <string name="dash_theme_group_colours">Motywy</string>
     <string name="dash_theme_group_skins">Światy</string>

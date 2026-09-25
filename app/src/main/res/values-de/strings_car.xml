@@ -172,4 +172,5 @@
     <!-- Which side the driver sits on (templates) -->
     <string name="car_spec_driver_side">Fahrer rechts</string>
     <string name="car_spec_driver_side_detail">Rechtslenker: Vorlagen legen die wichtigsten Kacheln nach rechts</string>
+    <string name="car_battery_trip_range">Diese Fahrt: %1$s bis %2$s V</string>
 </resources>

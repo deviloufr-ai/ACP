@@ -19,7 +19,6 @@
     <string name="dash_obd_off">OBD off, tap to connect</string>
     <string name="dash_alert_battery">Battery %1$.1fV</string>
     <string name="dash_alert_coolant">Coolant %1$d°C</string>
-    <string name="dash_alert_spoken">%1$s. Stop when you can.</string>
 
     <!-- Top bar menu -->
     <string name="dash_menu_edit_dashboards">Edit dashboards</string>

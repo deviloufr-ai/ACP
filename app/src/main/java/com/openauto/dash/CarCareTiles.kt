@@ -195,6 +195,7 @@ internal fun WarmupCard(obd: ObdData, connected: Boolean, modifier: Modifier = M
 @Composable
 internal fun BatteryCard(obd: ObdData, connected: Boolean, modifier: Modifier = Modifier) {
     val car by CarProfileStore.profile.collectAsState()
+    val watch by BatteryWatch.state.collectAsState()
     CareCard(stringResource(R.string.car_battery_title), modifier) {
         val v = obd.voltage
         if (!connected || v < LiveWatch.MIN_PLAUSIBLE_V || v > LiveWatch.MAX_PLAUSIBLE_V) {
@@ -216,6 +217,11 @@ internal fun BatteryCard(obd: ObdData, connected: Boolean, modifier: Modifier = 
         }
         Meter(((v - 11.5) / (14.8 - 11.5)).toFloat(), tone.color)
         Status(status, tone)
+        // The trip's range, from the engine computer's readings once running: a
+        // spike or dip too short to alert still shows here.
+        val lo = watch.tripMin
+        val hi = watch.tripMax
+        if (lo != null && hi != null) Hint(stringResource(R.string.car_battery_trip_range, decimal(lo), decimal(hi)))
         Hint(
             car.batteryAh?.let { stringResource(R.string.car_battery_capacity, it) }
                 ?: stringResource(if (running) R.string.car_battery_hint_running else R.string.car_battery_hint_off)

@@ -153,7 +153,6 @@
     <string name="dash_effects_reduced_hint">Zachtere gloed, glas blijft</string>
     <string name="dash_effects_full_hint">Elk thema met al zijn gloed en glas</string>
     <string name="dash_drive_lock_notice">Parkeer om wijzigingen te maken</string>
-    <string name="dash_alert_spoken">%1$s. Stop zodra het kan.</string>
     <string name="dash_theme_group_recommended">Aanbevolen</string>
     <string name="dash_theme_group_colours">Thema\'s</string>
     <string name="dash_theme_group_skins">Werelden</string>

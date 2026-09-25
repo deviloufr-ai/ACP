@@ -153,7 +153,6 @@
     <string name="dash_effects_reduced_hint">Sanfteres Leuchten, Glas bleibt</string>
     <string name="dash_effects_full_hint">Jedes Design mit seinem vollen Leuchten und Glas</string>
     <string name="dash_drive_lock_notice">Zum Ändern anhalten</string>
-    <string name="dash_alert_spoken">%1$s. Halten Sie an, sobald es geht.</string>
     <string name="dash_theme_group_recommended">Empfohlen</string>
     <string name="dash_theme_group_colours">Designs</string>
     <string name="dash_theme_group_skins">Welten</string>

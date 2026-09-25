@@ -153,7 +153,6 @@
     <string name="dash_effects_reduced_hint">Halos suavizados, cristal conservado</string>
     <string name="dash_effects_full_hint">Cada tema con todos sus halos y su cristal</string>
     <string name="dash_drive_lock_notice">Aparca para hacer cambios</string>
-    <string name="dash_alert_spoken">%1$s. Detente en cuanto puedas.</string>
     <string name="dash_theme_group_recommended">Recomendados</string>
     <string name="dash_theme_group_colours">Temas</string>
     <string name="dash_theme_group_skins">Universos</string>

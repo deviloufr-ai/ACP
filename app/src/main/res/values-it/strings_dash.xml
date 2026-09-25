@@ -161,7 +161,6 @@
     <string name="dash_theme_mistral_desc">Il quadro centrale della C4 Picasso: cifre bianco freddo su grafite fumé, avvisi ambra</string>
     <string name="dash_theme_zenith">Zénith</string>
     <string name="dash_theme_zenith_desc">L\'abitacolo lounge: grigio perla, pannelli bianchi, un solo accento blu profondo</string>
-    <string name="dash_alert_spoken">%1$s. Fermati appena possibile.</string>
     <string name="dash_theme_group_recommended">Consigliati</string>
     <string name="dash_theme_group_colours">Temi</string>
     <string name="dash_theme_group_skins">Universi</string>

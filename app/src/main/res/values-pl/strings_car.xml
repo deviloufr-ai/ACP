@@ -177,4 +177,5 @@
     <!-- Which side the driver sits on (templates) -->
     <string name="car_spec_driver_side">Kierowca po prawej</string>
     <string name="car_spec_driver_side_detail">Kierownica po prawej: szablony umieszczają główne kafelki po prawej</string>
+    <string name="car_battery_trip_range">Ta jazda: od %1$s do %2$s V</string>
 </resources>

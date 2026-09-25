@@ -153,7 +153,6 @@
     <string name="dash_effects_reduced_hint">Brilho suavizado, vidro mantido</string>
     <string name="dash_effects_full_hint">Cada tema com todo o seu brilho e vidro</string>
     <string name="dash_drive_lock_notice">Estacione para fazer alterações</string>
-    <string name="dash_alert_spoken">%1$s. Pare assim que puder.</string>
     <string name="dash_theme_group_recommended">Recomendados</string>
     <string name="dash_theme_group_colours">Temas</string>
     <string name="dash_theme_group_skins">Universos</string>

@@ -28,7 +28,12 @@ data class ObdData(
     val throttlePct: Int = 0,
     val engineLoadPct: Int = 0,
     val fuelLevelPct: Int = 0,
-    val voltage: Double = 0.0
+    val voltage: Double = 0.0,
+    /**
+     * [voltage] came from the engine computer (PID 0142), not the adapter's own
+     * ATRV. Only the former is trusted for alerts: clone adapters misread ATRV.
+     */
+    val voltageFromEcu: Boolean = false
 )
 
 /** The engine warning lamp as the engine computer reports it (PID 0101). */
@@ -296,8 +301,8 @@ object ObdBluetoothManager {
         // bus voltage. Many ELM327 clones report a miscalibrated ATRV (e.g. 16.9V
         // when the bus is ~14.5V), so ATRV is only a fallback when 0142 is
         // unsupported.
-        val volt = sendCommand("0142")?.let { ObdParser.parseControlModuleVoltage(it) }
-            ?: sendCommand("ATRV")?.let { ObdParser.parseVoltage(it) }
+        val ecuVolt = sendCommand("0142")?.let { ObdParser.parseControlModuleVoltage(it) }
+        val volt = ecuVolt ?: sendCommand("ATRV")?.let { ObdParser.parseVoltage(it) }
 
         _data.value = _data.value.copy(
             speedKmh = speed ?: _data.value.speedKmh,
@@ -307,8 +312,10 @@ object ObdBluetoothManager {
             throttlePct = throttle ?: _data.value.throttlePct,
             engineLoadPct = load ?: _data.value.engineLoadPct,
             fuelLevelPct = fuel ?: _data.value.fuelLevelPct,
-            voltage = volt ?: _data.value.voltage
+            voltage = volt ?: _data.value.voltage,
+            voltageFromEcu = if (volt != null) ecuVolt != null else _data.value.voltageFromEcu
         )
+        BatteryWatch.feed(_data.value, System.currentTimeMillis())
     }
 
     /**

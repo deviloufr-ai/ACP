@@ -172,4 +172,5 @@
     <!-- Which side the driver sits on (templates) -->
     <string name="car_spec_driver_side">Driver on the right</string>
     <string name="car_spec_driver_side_detail">Right-hand drive: templates put the main tiles on the right</string>
+    <string name="car_battery_trip_range">This trip: %1$s to %2$s V</string>
 </resources>

@@ -174,4 +174,5 @@
     <!-- Which side the driver sits on (templates) -->
     <string name="car_spec_driver_side">Conducteur à droite</string>
     <string name="car_spec_driver_side_detail">Conduite à droite : les modèles placent les tuiles principales à droite</string>
+    <string name="car_battery_trip_range">Ce trajet : de %1$s à %2$s V</string>
 </resources>
