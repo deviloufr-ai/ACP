@@ -33,4 +33,10 @@
     <string name="remove_title">Remove %1$s?</string>
     <string name="remove_body">The car will no longer receive anything from this phone. Pairing again needs a new code.</string>
     <string name="paired_since">Paired on %1$s</string>
+    <string name="car_spot_title">Where\'s my car</string>
+    <string name="car_spot_left">Left here: %1$s</string>
+    <string name="car_spot_saved">Saved in the car: %1$s</string>
+    <string name="car_spot_none">Once the car is linked, the place where it stops shows up here.</string>
+    <string name="car_spot_map">Map</string>
+    <string name="car_spot_walk">Walk there</string>
 </resources>

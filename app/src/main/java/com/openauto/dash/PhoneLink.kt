@@ -271,6 +271,8 @@ object PhoneLink {
         }
         // While a pairing code is on screen, keep asking the phone whether it now knows it.
         val prober = if (isPending) null else scope.launch { probePending(gateway, link) }
+        // Where the car stops, for the phone's "where's my car".
+        val whereabouts = scope.launch { CarWhereabouts.report(context) { send(it) } }
         try {
             while (true) {
                 val message = link.receive() ?: continue
@@ -281,6 +283,7 @@ object PhoneLink {
         } finally {
             pinger.cancel()
             prober?.cancel()
+            whereabouts.cancel()
             link.close()
             if (session === link) session = null
             NotificationFeed.phoneClear()

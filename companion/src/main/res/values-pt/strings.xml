@@ -33,4 +33,10 @@
     <string name="remove_title">Remover %1$s?</string>
     <string name="remove_body">O carro deixa de receber o que quer que seja deste telefone. Para voltar a associar é preciso um novo código.</string>
     <string name="paired_since">Associado em %1$s</string>
+    <string name="car_spot_title">Onde está o meu carro</string>
+    <string name="car_spot_left">Deixado aqui: %1$s</string>
+    <string name="car_spot_saved">Guardado no carro: %1$s</string>
+    <string name="car_spot_none">Com o carro ligado, aqui aparece o sítio onde para.</string>
+    <string name="car_spot_map">Mapa</string>
+    <string name="car_spot_walk">Ir a pé</string>
 </resources>

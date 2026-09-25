@@ -33,4 +33,10 @@
     <string name="remove_title">%1$s entfernen?</string>
     <string name="remove_body">Das Auto erhält nichts mehr von diesem Telefon. Zum erneuten Koppeln braucht es einen neuen Code.</string>
     <string name="paired_since">Gekoppelt am %1$s</string>
+    <string name="car_spot_title">Wo ist mein Auto</string>
+    <string name="car_spot_left">Hier abgestellt: %1$s</string>
+    <string name="car_spot_saved">Im Auto gespeichert: %1$s</string>
+    <string name="car_spot_none">Sobald das Auto verbunden ist, steht hier, wo es angehalten hat.</string>
+    <string name="car_spot_map">Karte</string>
+    <string name="car_spot_walk">Zu Fuß hin</string>
 </resources>

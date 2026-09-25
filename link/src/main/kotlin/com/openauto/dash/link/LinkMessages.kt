@@ -39,6 +39,17 @@ data object Ping : LinkMessage
 @SerialName("pong")
 data object Pong : LinkMessage
 
+/**
+ * Head unit → phone: where the car is, so the companion app can lead back to
+ * it. Sent when the car comes to a stop (the last stop before it is switched
+ * off is where it was parked), when the spot is saved on the dashboard's
+ * Parking tile ([saved]), and when the link comes up. [at] is when the car was
+ * there; the phone keeps the newest.
+ */
+@Serializable
+@SerialName("car_location")
+data class CarLocation(val lat: Double, val lng: Double, val at: Long, val saved: Boolean = false) : LinkMessage
+
 /** Phone → head unit: every notification currently shown, sent after [Hello]. */
 @Serializable
 @SerialName("notif_sync")

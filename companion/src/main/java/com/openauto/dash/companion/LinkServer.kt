@@ -7,6 +7,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import com.openauto.dash.link.ActionResult
+import com.openauto.dash.link.CarLocation
 import com.openauto.dash.link.Dismiss
 import com.openauto.dash.link.Hello
 import com.openauto.dash.link.LINK_PORT
@@ -169,7 +170,7 @@ object LinkServer {
         try {
             while (true) {
                 val message = link.receive() ?: continue
-                handle(link, message)
+                handle(context, link, message)
             }
         } catch (e: IOException) {
             // Link gone: the head unit left the hotspot, stopped, or went quiet.
@@ -184,7 +185,7 @@ object LinkServer {
         }
     }
 
-    private fun handle(link: LinkSession, message: LinkMessage) {
+    private fun handle(context: Context, link: LinkSession, message: LinkMessage) {
         // A removed pairing ends the link it is using.
         if (PairedUnits.units.value.none { it.id == link.pairingId }) {
             link.close()
@@ -195,6 +196,7 @@ object LinkServer {
             is Reply -> onMain(message.key, ActionResult.Action.REPLY) { it.reply(message.key, message.text) }
             is MarkRead -> onMain(message.key, ActionResult.Action.MARK_READ) { it.markRead(message.key) }
             is Dismiss -> onMain(message.key, ActionResult.Action.DISMISS) { it.dismiss(message.key) }
+            is CarLocation -> CarSpot.update(context, message)
             else -> Unit
         }
     }

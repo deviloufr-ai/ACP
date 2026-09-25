@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,6 +32,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -86,6 +90,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         PairedUnits.load(this)
+        CarSpot.load(this)
         takeOffer(intent)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFF5B8DEF), secondary = Color(0xFF2DD4BF))) {
@@ -159,6 +164,7 @@ private fun CompanionScreen(resumes: Int, offer: PairingOffer?, onScanned: (Stri
                     }
                 )
             }
+            if (units.isNotEmpty()) item { CarSpotCard() }
             item { SectionTitle(stringResource(R.string.setup_title)) }
             item { SetupSteps(resumes) }
             item { SectionTitle(stringResource(R.string.cars_title)) }
@@ -260,6 +266,55 @@ private fun StatusCard(text: String, connected: Boolean, enabled: Boolean, canTo
         }
     }
 }
+
+/** Where the car was left (see [CarSpot]), with the map and walking directions to it. */
+@Composable
+private fun CarSpotCard() {
+    val context = LocalContext.current
+    val spot by CarSpot.spot.collectAsState()
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.LocalParking, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.car_spot_title), fontWeight = FontWeight.SemiBold)
+                    val s = spot
+                    Text(
+                        when {
+                            s == null -> stringResource(R.string.car_spot_none)
+                            s.saved -> stringResource(R.string.car_spot_saved, whenText(s.at))
+                            else -> stringResource(R.string.car_spot_left, whenText(s.at))
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            spot?.let { s ->
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { open(context, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=${s.lat},${s.lng}"))) }) {
+                        Icon(Icons.Filled.Map, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.car_spot_map))
+                    }
+                    Button(onClick = { open(context, Intent(Intent.ACTION_VIEW, walkingDirections(s))) }) {
+                        Icon(Icons.Filled.DirectionsWalk, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.car_spot_walk))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The time alone today, the date on other days. */
+private fun whenText(at: Long): String =
+    DateUtils.formatSameDayTime(at, System.currentTimeMillis(), DateFormat.MEDIUM, DateFormat.SHORT).toString()
+
+/** Walking directions in Google Maps (the app when installed, else the browser). */
+private fun walkingDirections(s: CarSpotInfo): Uri =
+    Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=walking")
 
 @Composable
 private fun SectionTitle(text: String) {
