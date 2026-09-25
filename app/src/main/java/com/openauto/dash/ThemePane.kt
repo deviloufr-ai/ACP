@@ -254,7 +254,7 @@ private fun MiniMeter(p: DashPalette, colour: Color, fraction: Float) {
 
 /** One line under a switch saying what the chosen segment does. */
 @Composable
-private fun SwitchHint(text: String) {
+internal fun SwitchHint(text: String) {
     Text(
         text,
         color = DashColors.TextSecondary,
@@ -265,7 +265,7 @@ private fun SwitchHint(text: String) {
 
 /** Segmented switch over [options]; the chosen segment wears the accent gradient. */
 @Composable
-private fun <T> SegmentedSwitch(
+internal fun <T> SegmentedSwitch(
     options: List<T>,
     chosen: T,
     icon: (T) -> ImageVector,

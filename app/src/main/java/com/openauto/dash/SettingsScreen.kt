@@ -19,6 +19,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ChevronRight
@@ -34,6 +36,9 @@ import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VolumeDown
+import androidx.compose.material.icons.filled.VolumeMute
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -226,6 +231,71 @@ private fun DrivingPane(m: TopBarModel, onWheelButtons: () -> Unit) {
         else pluralStringResource(R.plurals.wheel_settings_detail_count, wheelMappings.size, wheelMappings.size),
         onWheelButtons
     )
+    VolumeWaySetting()
+    SpeedVolumeSetting()
+}
+
+/** How the volume is changed (see [MediaVolume]): for units whose sound ignores Android's volume. */
+@Composable
+private fun VolumeWaySetting() {
+    val context = LocalContext.current
+    val way by MediaVolume.way.collectAsState()
+    Spacer(Modifier.height(12.dp))
+    Text(
+        stringResource(R.string.volume_way_title),
+        color = DashColors.TextPrimary,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
+    )
+    SegmentedSwitch(
+        options = VolumeWay.entries,
+        chosen = way,
+        icon = { option ->
+            when (option) {
+                VolumeWay.AUTO -> Icons.Filled.AutoAwesome
+                VolumeWay.ANDROID -> Icons.Filled.Android
+                VolumeWay.KEYS -> Icons.Filled.Adjust
+            }
+        },
+        title = { stringResource(it.titleRes) },
+        onChoose = { MediaVolume.saveWay(context, it) }
+    )
+    SwitchHint(stringResource(way.hintRes))
+}
+
+/** Volume follows speed (see [SpeedVolume]): off or one of three strengths. */
+@Composable
+private fun SpeedVolumeSetting() {
+    val context = LocalContext.current
+    val level by SpeedVolume.level.collectAsState()
+    Spacer(Modifier.height(12.dp))
+    Text(
+        stringResource(R.string.speed_volume_title),
+        color = DashColors.TextPrimary,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.padding(start = 12.dp)
+    )
+    Text(
+        stringResource(R.string.speed_volume_detail),
+        color = DashColors.TextSecondary,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
+    )
+    SegmentedSwitch(
+        options = SpeedVolumeLevel.entries,
+        chosen = level,
+        icon = { option ->
+            when (option) {
+                SpeedVolumeLevel.OFF -> Icons.Filled.VolumeOff
+                SpeedVolumeLevel.LOW -> Icons.Filled.VolumeMute
+                SpeedVolumeLevel.MEDIUM -> Icons.Filled.VolumeDown
+                SpeedVolumeLevel.HIGH -> Icons.Filled.VolumeUp
+            }
+        },
+        title = { stringResource(it.titleRes) },
+        onChoose = { SpeedVolume.save(context, it) }
+    )
+    SwitchHint(stringResource(level.hintRes))
 }
 
 @Composable
