@@ -42,4 +42,11 @@
     <string name="car_spot_none">Con l\'auto collegata, qui compare il punto in cui si ferma.</string>
     <string name="car_spot_map">Mappa</string>
     <string name="car_spot_walk">Vai a piedi</string>
+
+    <!-- A second-screen display's code, scanned here and passed to the car (DisplayPair). -->
+    <string name="display_confirm_title">Aggiungere lo schermo %1$s alla tua auto?</string>
+    <string name="display_confirm_body">Il telefono passa il codice di questo secondo schermo all\'auto a cui è collegato. L\'auto vi mostrerà il quadro strumenti o un\'app.</string>
+    <string name="display_confirm_send">Invia all\'auto</string>
+    <string name="display_sent">Inviato a %1$s: lo schermo si collega in pochi secondi.</string>
+    <string name="display_needs_car">Collegati prima all\'auto: attiva l\'hotspot e attendi che l\'app risulti connessa, poi scansiona di nuovo il codice dello schermo.</string>
 </resources>

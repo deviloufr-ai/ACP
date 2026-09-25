@@ -42,4 +42,11 @@
     <string name="car_spot_none">Con el coche conectado, aquí aparece dónde se detiene.</string>
     <string name="car_spot_map">Mapa</string>
     <string name="car_spot_walk">Ir a pie</string>
+
+    <!-- A second-screen display's code, scanned here and passed to the car (DisplayPair). -->
+    <string name="display_confirm_title">¿Añadir la pantalla %1$s a tu coche?</string>
+    <string name="display_confirm_body">Tu teléfono pasa el código de esta segunda pantalla al coche al que está conectado. El coche mostrará allí su cuadro o una app.</string>
+    <string name="display_confirm_send">Enviar al coche</string>
+    <string name="display_sent">Enviado a %1$s: la pantalla se conecta en unos segundos.</string>
+    <string name="display_needs_car">Conéctate primero al coche: activa el punto de acceso y espera a que la app indique que está conectada; después vuelve a escanear el código de la pantalla.</string>
 </resources>

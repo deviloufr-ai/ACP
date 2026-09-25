@@ -42,4 +42,11 @@
     <string name="car_spot_none">Une fois la voiture reliée, l\'endroit où elle s\'arrête s\'affiche ici.</string>
     <string name="car_spot_map">Carte</string>
     <string name="car_spot_walk">Y aller à pied</string>
+
+    <!-- A second-screen display's code, scanned here and passed to the car (DisplayPair). -->
+    <string name="display_confirm_title">Ajouter l\'écran %1$s à votre voiture ?</string>
+    <string name="display_confirm_body">Votre téléphone transmet le code de ce second écran à la voiture à laquelle il est relié. La voiture y affiche ensuite son combiné ou une appli.</string>
+    <string name="display_confirm_send">Envoyer à la voiture</string>
+    <string name="display_sent">Envoyé à %1$s : l\'écran se connecte dans quelques secondes.</string>
+    <string name="display_needs_car">Connectez-vous d\'abord à votre voiture : activez le partage de connexion et attendez que l\'appli indique être connectée, puis scannez à nouveau le code de l\'écran.</string>
 </resources>

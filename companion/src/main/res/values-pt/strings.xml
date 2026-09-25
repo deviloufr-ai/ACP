@@ -42,4 +42,11 @@
     <string name="car_spot_none">Com o carro ligado, aqui aparece o sítio onde para.</string>
     <string name="car_spot_map">Mapa</string>
     <string name="car_spot_walk">Ir a pé</string>
+
+    <!-- A second-screen display's code, scanned here and passed to the car (DisplayPair). -->
+    <string name="display_confirm_title">Adicionar o ecrã %1$s ao seu carro?</string>
+    <string name="display_confirm_body">O telemóvel passa o código deste segundo ecrã ao carro a que está ligado. O carro passa a mostrar lá o quadrante ou uma app.</string>
+    <string name="display_confirm_send">Enviar ao carro</string>
+    <string name="display_sent">Enviado para %1$s: o ecrã liga-se em poucos segundos.</string>
+    <string name="display_needs_car">Ligue-se primeiro ao carro: ative o hotspot e espere que a app indique que está ligada; depois leia de novo o código do ecrã.</string>
 </resources>
