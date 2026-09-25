@@ -44,7 +44,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -78,7 +77,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /*
- * Draws a [WidgetFace] in a [WidgetDesign]: the eight layouts, the materials
+ * Draws a [WidgetFace] in a [WidgetDesign]: the classic layouts (the newer
+ * ones live in WidgetFacesModern.kt), the materials
  * behind them, and the frame the view-hosting widgets (map, Maps window, 3D
  * car) get instead. Sizes scale with the tile, so a design reads the same on
  * a 3x2 clock and a 5x3 media card.
@@ -116,6 +116,12 @@ internal fun DesignedFace(face: WidgetFace, design: WidgetDesign, modifier: Modi
                 FaceLayout.TERMINAL -> TerminalLayout(face, look, m)
                 FaceLayout.DIAL -> DialLayout(face, look, m)
                 FaceLayout.FLAP -> FlapLayout(face, look, m)
+                FaceLayout.ORB -> OrbLayout(face, look, m)
+                FaceLayout.LIQUID -> LiquidLayout(face, look, m)
+                FaceLayout.DOTS -> DotsLayout(face, look, m)
+                FaceLayout.POSTER -> PosterLayout(face, look, m)
+                FaceLayout.DUO -> DuoLayout(face, look, m)
+                FaceLayout.ISLAND -> IslandLayout(face, look, m)
             }
         }
     }
@@ -182,7 +188,7 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
 }
 
 /** Decorations drawn behind the content (scanlines go over it). */
-private val BACKDROP_DECORATIONS = setOf(LookDecoration.CARBON, LookDecoration.BLUEPRINT, LookDecoration.GLASS, LookDecoration.NEON)
+private val BACKDROP_DECORATIONS = setOf(LookDecoration.CARBON, LookDecoration.DOTS, LookDecoration.GLASS, LookDecoration.NEON)
 
 private fun DrawScope.drawDecoration(look: FaceLook) {
     val w = size.width
@@ -200,19 +206,15 @@ private fun DrawScope.drawDecoration(look: FaceLook) {
             drawLine(look.accent, Offset(w - s, 0f), Offset(w, s), strokeWidth = s * 0.11f)
             drawLine(look.accent, Offset(w - s * 0.62f, 0f), Offset(w, s * 0.62f), strokeWidth = s * 0.05f)
         }
-        LookDecoration.BLUEPRINT -> {
-            val step = min(w, h) * 0.1f
-            var i = 0
-            var x = 0f
-            while (x < w) {
-                drawLine(Color.White.copy(alpha = if (i % 5 == 0) 0.12f else 0.05f), Offset(x, 0f), Offset(x, h), 1f)
-                x += step; i++
-            }
-            i = 0
-            var y = 0f
+        LookDecoration.DOTS -> {
+            // A faint pegboard of dots, like a phone's glyph matrix switched off.
+            val step = 9.dp.toPx()
+            val r = 0.9.dp.toPx()
+            var y = step / 2f
             while (y < h) {
-                drawLine(Color.White.copy(alpha = if (i % 5 == 0) 0.12f else 0.05f), Offset(0f, y), Offset(w, y), 1f)
-                y += step; i++
+                var x = step / 2f
+                while (x < w) { drawCircle(Color.White.copy(alpha = 0.05f), r, Offset(x, y)); x += step }
+                y += step
             }
         }
         LookDecoration.GLASS -> {
@@ -427,7 +429,7 @@ internal fun polarPoint(c: Offset, r: Float, deg: Float): Offset {
     return Offset(c.x + r * sin(t).toFloat(), c.y - r * cos(t).toFloat())
 }
 
-// --- Hero (also Minimal and LCD) ------------------------------------------------------
+// --- Hero (also LCD) ------------------------------------------------------
 
 @Composable
 private fun HeroLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
@@ -752,7 +754,7 @@ private fun TerminalLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     }
 }
 
-// --- Analogue dial (Blueprint, Chronograph) -------------------------------------------------
+// --- Analogue dial (Chronograph) -------------------------------------------------
 
 @Composable
 private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
@@ -788,7 +790,7 @@ private fun DialLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                     val labelStyle = TextStyle(fontFamily = look.numFont, fontWeight = FontWeight.Bold, fontSize = (r * 0.16f / density / fontScale).sp)
                     val labels = letters.mapIndexed { i, l -> measurer.measure(l, labelStyle.copy(color = if (i == 0) look.accent else look.ink)) }
                     val rim = if (chrome) Brush.linearGradient(listOf(Color(0xFFEEF0F3), Color(0xFF7C838C), Color(0xFFD9DDE2), Color(0xFF5D636B))) else null
-                    val rimStroke = Stroke(1.2f, pathEffect = if (look.kind == FaceLookKind.BLUEPRINT) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null)
+                    val rimStroke = Stroke(1.2f)
                     onDrawBehind {
                         if (rim != null) {
                             drawCircle(rim, r, c)
@@ -920,16 +922,14 @@ internal fun DesignFrame(
 ) {
     val look = faceLook(design.look)
     val labelAtBottom = design.layout == FaceLayout.BARS || design.layout == FaceLayout.STATS || design.layout == FaceLayout.TERMINAL
-    val showLabel = look.kind != FaceLookKind.MINIMAL
     val pad = when (look.kind) {
-        FaceLookKind.MINIMAL -> 0.dp
-        FaceLookKind.CHROME, FaceLookKind.BLUEPRINT -> 12.dp
+        FaceLookKind.CHROME -> 12.dp
         else -> 8.dp
     }
     val innerShape = RoundedCornerShape((look.radius - pad).coerceAtLeast(2.dp))
     FaceSurface(look, modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (showLabel && !labelAtBottom) FrameLabel(icon, title, look, big = design.layout == FaceLayout.HERO)
+            if (!labelAtBottom) FrameLabel(icon, title, look, big = design.layout == FaceLayout.HERO)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -937,27 +937,13 @@ internal fun DesignFrame(
                     .clip(innerShape)
                     .then(
                         when (look.kind) {
-                            FaceLookKind.THEME, FaceLookKind.MINIMAL -> Modifier
+                            FaceLookKind.THEME -> if (design.layout == FaceLayout.DUO) Modifier.border(2.dp, look.accent, innerShape) else Modifier
                             FaceLookKind.NEON -> Modifier.border(1.5.dp, look.accent2, innerShape)
                             else -> Modifier.border(1.dp, look.accent.copy(alpha = 0.6f), innerShape)
                         }
                     )
             ) { content() }
-            if (showLabel && labelAtBottom) FrameLabel(icon, title, look, big = false)
-        }
-        if (look.kind == FaceLookKind.BLUEPRINT) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val l = 18.dp.toPx()
-                val i = 3.dp.toPx()
-                val s = 2.dp.toPx()
-                listOf(
-                    Offset(i, i) to Offset(1f, 1f), Offset(size.width - i, i) to Offset(-1f, 1f),
-                    Offset(i, size.height - i) to Offset(1f, -1f), Offset(size.width - i, size.height - i) to Offset(-1f, -1f)
-                ).forEach { (p, d) ->
-                    drawLine(Color.White, p, Offset(p.x + d.x * l, p.y), s)
-                    drawLine(Color.White, p, Offset(p.x, p.y + d.y * l), s)
-                }
-            }
+            if (labelAtBottom) FrameLabel(icon, title, look, big = false)
         }
     }
 }
@@ -972,6 +958,7 @@ private fun FrameLabel(icon: ImageVector, title: String, look: FaceLook, big: Bo
         modifier = Modifier
             .clip(controlShape(look))
             .background(if (look.kind == FaceLookKind.THEME) Color.Transparent else look.fill)
+            .then(if (look.kind == FaceLookKind.DOTS) Modifier.border(1.dp, look.dim.copy(alpha = 0.5f), controlShape(look)) else Modifier)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
