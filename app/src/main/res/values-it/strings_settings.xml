@@ -13,4 +13,23 @@
     <string name="settings_tap_sound">Suono dei tocchi</string>
     <string name="settings_tap_sound_detail">Un breve bip a ogni tocco, per uno schermo che non vibra</string>
     <string name="settings_section_driving">Guida</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Volume in base alla velocità</string>
+    <string name="speed_volume_detail">Copre il rumore della strada: più alto quando acceleri, più basso quando rallenti. Le tue modifiche al volume restano.</string>
+    <string name="speed_volume_off">No</string>
+    <string name="speed_volume_low">Basso</string>
+    <string name="speed_volume_medium">Medio</string>
+    <string name="speed_volume_high">Alto</string>
+    <string name="speed_volume_off_hint">Il volume resta dove l\'hai impostato</string>
+    <string name="speed_volume_low_hint">Un po\' più alto da 40 km/h, al massimo 2 tacche in più in autostrada</string>
+    <string name="speed_volume_medium_hint">Più alto da 40 km/h, fino a 4 tacche in più in autostrada</string>
+    <string name="speed_volume_high_hint">Molto più alto da 40 km/h, fino a 6 tacche in più in autostrada</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Controllo del volume</string>
+    <string name="volume_way_auto">Automatico</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Tasti volume</string>
+    <string name="volume_way_auto_hint">Il volume di Android, o i tasti volume dove l\'autoradio lo ignora (sempre i tasti sulle autoradio ROCO K706)</string>
+    <string name="volume_way_android_hint">Il volume multimediale di Android, come su un telefono</string>
+    <string name="volume_way_keys_hint">Preme i tasti volume come i comandi al volante e la manopola. Richiede root o l\'ADB dell\'autoradio</string>
 </resources>

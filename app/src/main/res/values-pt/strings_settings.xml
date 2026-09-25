@@ -13,4 +13,23 @@
     <string name="settings_drive_lock_detail">A edição, as definições e a grelha de apps esperam que o carro pare</string>
     <string name="settings_tap_sound">Som ao tocar</string>
     <string name="settings_tap_sound_detail">Um bip curto a cada toque, para ecrãs que não vibram</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Volume conforme a velocidade</string>
+    <string name="speed_volume_detail">Cobre o ruído da estrada: mais alto ao acelerar, mais baixo ao abrandar. As suas próprias alterações de volume mantêm-se.</string>
+    <string name="speed_volume_off">Desligado</string>
+    <string name="speed_volume_low">Baixo</string>
+    <string name="speed_volume_medium">Médio</string>
+    <string name="speed_volume_high">Alto</string>
+    <string name="speed_volume_off_hint">O volume fica onde o deixou</string>
+    <string name="speed_volume_low_hint">Um pouco mais alto a partir de 40 km/h, no máximo 2 níveis a mais na autoestrada</string>
+    <string name="speed_volume_medium_hint">Mais alto a partir de 40 km/h, até 4 níveis a mais na autoestrada</string>
+    <string name="speed_volume_high_hint">Muito mais alto a partir de 40 km/h, até 6 níveis a mais na autoestrada</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Controlo do volume</string>
+    <string name="volume_way_auto">Automático</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Teclas de volume</string>
+    <string name="volume_way_auto_hint">O volume do Android, ou as teclas de volume onde o rádio o ignora (sempre as teclas nos rádios ROCO K706)</string>
+    <string name="volume_way_android_hint">O volume multimédia do Android, como num telemóvel</string>
+    <string name="volume_way_keys_hint">Carrega nas teclas de volume como os comandos do volante e o botão rotativo. Precisa de root ou do ADB do rádio</string>
 </resources>

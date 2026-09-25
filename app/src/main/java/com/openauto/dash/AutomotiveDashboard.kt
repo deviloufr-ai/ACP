@@ -524,6 +524,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         McuReader.setContext(context)
         CarProfileStore.setContext(context)
         SpeedCorrection.setContext(context)
+        MediaVolume.setContext(context)
+        SpeedVolume.start(context)
         CarCare.setContext(context)
         Maintenance.setContext(context)
         PidExplorer.setContext(context)

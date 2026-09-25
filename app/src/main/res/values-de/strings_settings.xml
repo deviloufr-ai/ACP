@@ -13,4 +13,23 @@
     <string name="settings_drive_lock_detail">Bearbeiten, Einstellungen und das App-Raster warten, bis das Auto steht</string>
     <string name="settings_tap_sound">Tippton</string>
     <string name="settings_tap_sound_detail">Ein kurzer Piepton bei jedem Tippen, für Bildschirme ohne Vibration</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Lautstärke nach Geschwindigkeit</string>
+    <string name="speed_volume_detail">Gleicht Fahrgeräusche aus: lauter beim Beschleunigen, wieder leiser beim Bremsen. Deine eigenen Lautstärkeänderungen bleiben erhalten.</string>
+    <string name="speed_volume_off">Aus</string>
+    <string name="speed_volume_low">Leicht</string>
+    <string name="speed_volume_medium">Mittel</string>
+    <string name="speed_volume_high">Stark</string>
+    <string name="speed_volume_off_hint">Die Lautstärke bleibt, wie du sie eingestellt hast</string>
+    <string name="speed_volume_low_hint">Etwas lauter ab 40 km/h, höchstens 2 Stufen mehr auf der Autobahn</string>
+    <string name="speed_volume_medium_hint">Lauter ab 40 km/h, bis zu 4 Stufen mehr auf der Autobahn</string>
+    <string name="speed_volume_high_hint">Deutlich lauter ab 40 km/h, bis zu 6 Stufen mehr auf der Autobahn</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Lautstärkeregelung</string>
+    <string name="volume_way_auto">Automatisch</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Lautstärketasten</string>
+    <string name="volume_way_auto_hint">Die Android-Lautstärke, oder die Lautstärketasten, wo das Radio sie ignoriert (bei ROCO-K706-Radios immer die Tasten)</string>
+    <string name="volume_way_android_hint">Die Medienlautstärke von Android, wie auf einem Telefon</string>
+    <string name="volume_way_keys_hint">Drückt die Lautstärketasten wie die Lenkradtasten und der Drehknopf. Braucht Root oder das ADB des Radios</string>
 </resources>
