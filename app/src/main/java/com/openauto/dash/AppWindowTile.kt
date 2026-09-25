@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -264,7 +263,7 @@ internal fun PipAnchorCard(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = DashShape.Medium,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     modifier = Modifier.fillMaxWidth(0.8f)
                 ) { Text(if (pkg == null) stringResource(R.string.apps_window_open, appLabel) else stringResource(R.string.apps_window_open_full, appLabel)) }

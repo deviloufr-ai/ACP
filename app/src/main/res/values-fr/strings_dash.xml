@@ -157,4 +157,9 @@
     <!-- En mouvement : les modifications attendent l'arrêt -->
     <string name="dash_drive_lock_notice">Garez-vous pour modifier</string>
 
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">Le combiné central de la C4 Picasso : chiffres blanc froid sur graphite fumé, alertes ambre</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">L\'habitacle lounge : gris perle, panneaux blancs, un seul accent bleu profond</string>
+    <string name="dash_alert_spoken">%1$s. Arrêtez-vous dès que possible.</string>
 </resources>

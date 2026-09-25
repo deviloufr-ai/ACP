@@ -54,8 +54,8 @@ internal fun formatKm(km: Int): String = String.format(Locale.getDefault(), "%,d
 
 private val UpkeepStage.color: Color
     @Composable get() = when (this) {
-        UpkeepStage.DUE -> DashColors.Warning
-        UpkeepStage.SOON -> if (DashColors.Light) Color(0xFFB45F06) else Color(0xFFFFB347)
+        UpkeepStage.DUE -> DashColors.Critical
+        UpkeepStage.SOON -> DashColors.Warning
         UpkeepStage.OK -> DashColors.Good
         UpkeepStage.UNKNOWN -> DashColors.Muted
     }
@@ -96,7 +96,7 @@ internal fun ServiceCard(modifier: Modifier = Modifier) {
     val first = dues.firstOrNull { it.stage != UpkeepStage.UNKNOWN }
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(14.dp),
+            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(DashSpace.Lg),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             TileHeader(stringResource(R.string.upkeep_title))

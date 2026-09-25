@@ -176,7 +176,7 @@ private val HubPin = Color(0xFF1A1816)
 private val LampOff get() = if (DashColors.Light) Color(0xFFAE9E87) else Color(0xFF3A332C)
 
 /** LCD segment ink: backlit amber at night, dark segments on the reflective day LCD. */
-private val LcdInk get() = if (DashColors.Light) Color(0xFF1F251A) else DashColors.Rpm
+private val LcdInk get() = if (DashColors.Light) Color(0xFF1F251A) else DashColors.Secondary
 
 /** Halo strength of lamps and LEDs: full at night, half by day, where a glow reads as a stain. */
 private val Halo get() = if (DashColors.Light) 0.5f else 1f
@@ -613,7 +613,7 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
     val idle = state.isIdle
     val color = when (state) {
         ObdConnectionState.CONNECTED -> DashColors.Good
-        ObdConnectionState.CONNECTING -> DashColors.Rpm
+        ObdConnectionState.CONNECTING -> DashColors.Secondary
         ObdConnectionState.ERROR -> DashColors.Warning
         ObdConnectionState.DISCONNECTED -> LampOff
     }
@@ -670,7 +670,7 @@ private fun LcdPanel(
     content: @Composable BoxScope.() -> Unit
 ) {
     val dots = rememberDotMatrix()
-    val amber = DashColors.Rpm
+    val amber = DashColors.Secondary
     val light = DashColors.Light
     Box(
         modifier = modifier.drawWithCache {
@@ -1289,7 +1289,7 @@ private fun TelemetryTellTales(env: SkinTileEnv, speed: Int?, idle: Boolean, mod
             Icons.Filled.Bluetooth,
             when (env.obdConnection) {
                 ObdConnectionState.CONNECTED -> DashColors.Good
-                ObdConnectionState.CONNECTING -> DashColors.Rpm
+                ObdConnectionState.CONNECTING -> DashColors.Secondary
                 ObdConnectionState.ERROR -> warn
                 ObdConnectionState.DISCONNECTED -> null
             },
@@ -2244,7 +2244,7 @@ private fun ToggleIcon(app: AppEntry?, iconSize: Dp) {
 /** Engraved caps label with a small amber LED that lights while the app plays or launches. */
 @Composable
 private fun ToggleLabel(label: String, ledOn: Boolean, labelSize: Dp) {
-    val amber = DashColors.Rpm
+    val amber = DashColors.Secondary
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier

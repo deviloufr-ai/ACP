@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
@@ -86,6 +85,7 @@ internal fun LaunchBarTile(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val tap = rememberTapFeedback()
     Card(modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
             val showLabels = maxHeight >= 110.dp
@@ -112,8 +112,8 @@ internal fun LaunchBarTile(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .clickable(enabled = !editing) { onLaunch(pkg) }
+                                    .clip(DashShape.Medium)
+                                    .clickable(enabled = !editing) { tap(); onLaunch(pkg) }
                                     .padding(vertical = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
@@ -188,7 +188,7 @@ internal fun LaunchBarEditorDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(DashShape.Small)
                             .background(DashColors.CardHi)
                             .padding(start = 10.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -261,12 +261,13 @@ internal fun AppShortcutTile(
     editing: Boolean = false,
     onClick: () -> Unit
 ) {
+    val tap = rememberTapFeedback()
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DashShape.Medium)
             // Disable launching while editing so the tile's long-press starts a
             // drag (to reorder / stack) instead of opening the app.
-            .clickable(enabled = !editing, onClick = onClick)
+            .clickable(enabled = !editing) { tap(); onClick() }
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -306,7 +307,7 @@ internal fun SplitPairTile(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DashShape.Medium)
             // Disabled while editing so a long-press starts a drag, not a launch.
             .clickable(enabled = !editing, onClick = onClick)
             .padding(vertical = 6.dp),
@@ -315,8 +316,8 @@ internal fun SplitPairTile(
         Box(
             modifier = Modifier
                 .height(64.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .itemFill(DashColors.CardHi, RoundedCornerShape(18.dp), rim = null)
+                .clip(DashShape.Medium)
+                .itemFill(DashColors.CardHi, DashShape.Medium, rim = null)
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -374,7 +375,7 @@ internal fun AddChoiceRow(icon: ImageVector, label: String, onClick: () -> Unit)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(DashShape.Small)
             .clickable(onClick = onClick)
             .background(DashColors.CardHi)
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -488,12 +489,13 @@ internal fun AppDrawer(
 /** One app on a 64 dp row: the drawer's layout while the car moves, hit without aiming. */
 @Composable
 private fun AppRow(app: AppEntry, onClick: () -> Unit) {
+    val tap = rememberTapFeedback()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clip(DashShape.Medium)
+            .clickable { tap(); onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -5,6 +5,20 @@ package com.openauto.dash
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.background
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -42,6 +56,59 @@ import androidx.compose.foundation.BorderStroke
  * Shared surfaces and controls: card, glass panel, page background, round buttons, helpers.
  */
 
+/**
+ * Feedback for a tap the driver does not watch: a haptic tick from the
+ * screen, plus a short beep when the tap sound is on (Settings → Advanced;
+ * for head units whose glass has no vibrator). Call it from the click handler.
+ */
+@Composable
+internal fun rememberTapFeedback(): () -> Unit {
+    val view = LocalView.current
+    val sound = FeedbackStore.sound
+    return remember(view, sound) {
+        {
+            view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            if (sound) TapSound.play()
+        }
+    }
+}
+
+/** The tap sound setting; [sound] is observable so a change applies at once. */
+object FeedbackStore {
+    private const val PREFS = "feedback"
+    private const val KEY_SOUND = "sound"
+    var sound by mutableStateOf(false)
+        private set
+
+    fun load(context: Context) {
+        sound = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SOUND, false)
+    }
+
+    fun save(context: Context, on: Boolean) {
+        sound = on
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SOUND, on).apply()
+    }
+}
+
+/** One short beep on the system stream; the generator is made once and kept. */
+private object TapSound {
+    private val generator: ToneGenerator? by lazy {
+        runCatching { ToneGenerator(AudioManager.STREAM_SYSTEM, 55) }.getOrNull()
+    }
+
+    fun play() {
+        runCatching { generator?.startTone(ToneGenerator.TONE_PROP_BEEP, 40) }
+    }
+}
+
+/** Shrinks a control to 96 % while pressed (80 ms), so a tap shows even when the finger hides the icon. */
+@Composable
+internal fun Modifier.pressScale(interaction: MutableInteractionSource): Modifier {
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, tween(80), label = "press")
+    return graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
 /** Secondary round control: frosted disc with a hairline rim. */
 @Composable
 internal fun GlassRoundButton(
@@ -56,13 +123,16 @@ internal fun GlassRoundButton(
         val (top, bottom) = if (DashColors.Light) 0.9f to 0.6f else 0.16f to 0.05f
         Brush.linearGradient(listOf(Color.White.copy(alpha = top), Color.White.copy(alpha = bottom)))
     } else SolidColor(DashColors.CardHi)
+    val interaction = remember { MutableInteractionSource() }
+    val tap = rememberTapFeedback()
     Box(
         modifier = Modifier
             .size(size)
+            .pressScale(interaction)
             .clip(CircleShape)
             .background(fill)
             .border(1.dp, DashColors.Line, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interaction, indication = LocalIndication.current) { tap(); onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, tint = DashColors.TextPrimary, modifier = Modifier.size(iconSize))
@@ -80,9 +150,12 @@ internal fun GradientRoundButton(
 ) {
     val accent = DashColors.Accent
     val glow = DashColors.Glow
+    val interaction = remember { MutableInteractionSource() }
+    val tap = rememberTapFeedback()
     Box(
         modifier = Modifier
             .size(size)
+            .pressScale(interaction)
             .drawBehind {
                 if (glow > 0f) {
                     val r = this.size.minDimension * 0.85f
@@ -98,7 +171,7 @@ internal fun GradientRoundButton(
             .clip(CircleShape)
             .background(DashColors.AccentBrush)
             .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interaction, indication = LocalIndication.current) { tap(); onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, tint = DashColors.OnAccent, modifier = Modifier.size(iconSize))
@@ -112,7 +185,7 @@ internal fun GradientRoundButton(
  */
 @Composable
 internal fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = DashShape.Large
     if (DashColors.Bare) {
         // Unclipped: with no panel edge to hide it, a clip would cut glows off in a hard line.
         Box(modifier = modifier) { content() }
@@ -138,7 +211,7 @@ internal fun SolidCard(modifier: Modifier = Modifier, content: @Composable () ->
     Surface(
         modifier = modifier,
         color = DashColors.Card.copy(alpha = 1f),
-        shape = RoundedCornerShape(24.dp),
+        shape = DashShape.Large,
         border = BorderStroke(1.dp, DashColors.Line),
         content = content
     )

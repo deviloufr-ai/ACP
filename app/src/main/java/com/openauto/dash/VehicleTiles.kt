@@ -147,7 +147,7 @@ internal fun CanMonitorCard(modifier: Modifier = Modifier) {
     }
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             Text(stringResource(R.string.vehicle_can_monitor_title), color = DashColors.Accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
             Text(
                 stringResource(R.string.vehicle_can_monitor_help),

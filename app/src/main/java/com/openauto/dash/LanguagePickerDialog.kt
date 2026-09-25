@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -68,7 +67,7 @@ fun LanguagePickerDialog(onDismiss: () -> Unit) {
 
 @Composable
 private fun LanguageOption(name: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = DashShape.Medium
     Row(
         modifier = Modifier.fillMaxWidth()
             .border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)

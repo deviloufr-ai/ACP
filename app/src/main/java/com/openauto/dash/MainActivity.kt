@@ -14,7 +14,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -48,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
         inMultiWindow.value = isInMultiWindowMode
         enableImmersiveFullscreen()
+        FeedbackStore.load(this)
 
         setContent {
             // An app window (docked or parked aside) forces the status bar on.
@@ -120,25 +120,41 @@ class MainActivity : ComponentActivity() {
  */
 @Composable
 fun OpenAutoDashTheme(content: @Composable () -> Unit) {
+    // Material's own scheme follows the dashboard palette, so a stock
+    // component (a progress ring, a switch, a menu) never falls back to
+    // Material's purple in the middle of a theme.
+    val surface = DashColors.Card.copy(alpha = 1f)
     val colorScheme = if (!DashColors.Light) {
         darkColorScheme(
-            primary = Color(0xFF5B8DEF),
-            secondary = Color(0xFF2DD4BF),
-            background = Color(0xFF0B0D10),
-            surface = Color(0xFF15181E),
-            onPrimary = Color.White,
-            onBackground = Color.White,
-            onSurface = Color.White
+            primary = DashColors.Accent,
+            onPrimary = DashColors.OnAccent,
+            secondary = DashColors.Secondary,
+            onSecondary = DashColors.OnAccent,
+            tertiary = DashColors.Accent2,
+            background = DashColors.Background,
+            onBackground = DashColors.TextPrimary,
+            surface = surface,
+            onSurface = DashColors.TextPrimary,
+            surfaceVariant = DashColors.CardHi,
+            onSurfaceVariant = DashColors.TextSecondary,
+            outline = DashColors.Muted,
+            error = DashColors.Critical
         )
     } else {
         lightColorScheme(
-            primary = Color(0xFF1A73E8),
-            secondary = Color(0xFF0FA895),
-            background = Color(0xFFF1F3F4),
-            surface = Color(0xFFFFFFFF),
-            onPrimary = Color.White,
-            onBackground = Color(0xFF202124),
-            onSurface = Color(0xFF202124)
+            primary = DashColors.Accent,
+            onPrimary = DashColors.OnAccent,
+            secondary = DashColors.Secondary,
+            onSecondary = DashColors.OnAccent,
+            tertiary = DashColors.Accent2,
+            background = DashColors.Background,
+            onBackground = DashColors.TextPrimary,
+            surface = surface,
+            onSurface = DashColors.TextPrimary,
+            surfaceVariant = DashColors.CardHi,
+            onSurfaceVariant = DashColors.TextSecondary,
+            outline = DashColors.Muted,
+            error = DashColors.Critical
         )
     }
     // The status bar is see-through (themes.xml), so the dashboard's background

@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Navigation
@@ -92,7 +91,7 @@ internal fun DirectionsCard(
                     if (hasAccess) openNavigationApp(context, nav)
                     else CarMediaController.openNotificationAccessSettings(context)
                 }
-                .padding(14.dp)
+                .padding(DashSpace.Lg)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -234,7 +233,7 @@ internal fun DirectionsEmpty(
         Button(
             onClick = onAction,
             colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-            shape = RoundedCornerShape(14.dp),
+            shape = DashShape.Medium,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
         ) { Text(action) }
     }
@@ -287,7 +286,7 @@ internal fun ManeuverIcon(nav: NavState, size: Dp) {
 /** Small glass pill for an ETA segment ("12 min", "6.4 km", "09:48"). */
 @Composable
 internal fun InfoPill(text: String) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = DashShape.Pill
     Text(
         text = text,
         color = DashColors.TextPrimary,
@@ -308,7 +307,7 @@ internal fun InfoPill(text: String) {
 @Composable
 internal fun DirectionsBanner(nav: NavState, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val shape = RoundedCornerShape(18.dp)
+    val shape = DashShape.Medium
     Row(
         modifier = modifier
             .then(if (DashColors.Glass) glassPanel(shape) else Modifier.clip(shape).background(DashColors.Card.copy(alpha = 0.92f)).border(1.dp, DashColors.Line, shape))

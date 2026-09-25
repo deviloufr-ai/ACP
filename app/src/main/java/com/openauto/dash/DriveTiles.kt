@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.Navigation
@@ -151,7 +150,7 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
 
     Card(modifier = modifier) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             val numSize = (min(maxWidth.value * 0.42f, maxHeight.value * 0.62f)).coerceIn(40f, 150f).roundToInt()
             Column(modifier = Modifier.fillMaxSize()) {
                 TileHeader(stringResource(R.string.info_speed_title)) {
@@ -166,13 +165,13 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
                         if (over) {
                             Text(
                                 text = speed.toString(),
-                                color = DashColors.Warning,
+                                color = DashColors.Critical,
                                 fontSize = numSize.sp,
                                 lineHeight = numSize.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.06).em,
                                 maxLines = 1,
-                                style = TextStyle(shadow = Shadow(DashColors.Warning.copy(alpha = 0.7f * DashColors.Glow), blurRadius = numSize * 0.5f))
+                                style = TextStyle(shadow = Shadow(DashColors.Critical.copy(alpha = 0.7f * DashColors.Glow), blurRadius = numSize * 0.5f))
                             )
                         } else {
                             HeroNumber(text = speed?.toString() ?: "--", size = numSize, dimmed = speed == null)
@@ -207,7 +206,7 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
     val muted = DashColors.TextSecondary
     val glow = DashColors.Glow
     val labelStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = muted)
-    val northStyle = labelStyle.copy(color = DashColors.Warning)
+    val northStyle = labelStyle.copy(color = DashColors.Critical)
     // Dial letters in the UI language (e.g. O for Ouest / Osten); North is always first.
     val dialLabels = listOf(
         stringResource(R.string.info_dir_n) to 0, stringResource(R.string.info_dir_e) to 90,
@@ -215,7 +214,7 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
     )
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_compass_title)) {
                 Text(
                     heading?.let { "${it.roundToInt()}° ${stringResource(cardinalRes(it))}" }
@@ -323,7 +322,7 @@ internal fun TripCard(modifier: Modifier = Modifier) {
     val km = trip.distanceM / 1000.0
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_trip_title)) {
                 TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text(stringResource(R.string.info_reset), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
@@ -391,7 +390,7 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
     val glow = DashColors.Glow
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_gforce_title)) {
                 TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text(stringResource(R.string.info_gforce_reset_peaks), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
@@ -465,7 +464,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
     @Suppress("UNUSED_EXPRESSION") tick
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_parking_title)) {
                 if (spot != null) {
                     TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
@@ -493,7 +492,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                         onClick = { location?.let { ParkingStore.save(context, it) } },
                         enabled = hasFix,
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = DashShape.Medium,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                     ) { Text(stringResource(R.string.info_parking_save)) }
                 }
@@ -547,7 +546,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
                     Button(
                         onClick = { walkTo(context, s) },
                         colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = DashShape.Medium,
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) { Text(stringResource(R.string.info_parking_walk)) }
                 }

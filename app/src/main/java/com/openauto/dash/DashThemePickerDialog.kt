@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessAuto
@@ -139,7 +138,7 @@ private fun <T> SegmentedSwitch(
     title: @Composable (T) -> String,
     onChoose: (T) -> Unit
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = DashShape.Medium
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -150,7 +149,7 @@ private fun <T> SegmentedSwitch(
     ) {
         options.forEach { option ->
             val picked = option == chosen
-            val segment = RoundedCornerShape(10.dp)
+            val segment = DashShape.Small
             val ink = if (picked) DashColors.OnAccent else DashColors.TextPrimary
             Row(
                 modifier = Modifier
@@ -173,7 +172,7 @@ private fun <T> SegmentedSwitch(
 
 @Composable
 private fun ThemeOption(mode: DashThemeMode, light: Boolean, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = DashShape.Medium
     Row(
         modifier = Modifier.fillMaxWidth().border(if (selected) 2.dp else 1.dp, if (selected) DashColors.Accent else DashColors.CardHi, shape)
             // Scale (not replace) the alpha: glass themes use a translucent CardHi.
@@ -183,8 +182,8 @@ private fun ThemeOption(mode: DashThemeMode, light: Boolean, selected: Boolean, 
     ) {
         Box(
             Modifier.size(width = 54.dp, height = 38.dp)
-                .background(previewBrush(mode, light), RoundedCornerShape(10.dp))
-                .border(1.dp, DashColors.Line, RoundedCornerShape(10.dp))
+                .background(previewBrush(mode, light), DashShape.Small)
+                .border(1.dp, DashColors.Line, DashShape.Small)
         )
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
@@ -209,6 +208,8 @@ private fun previewBrush(mode: DashThemeMode, light: Boolean): Brush = if (light
     DashThemeMode.COCKPIT -> Brush.linearGradient(listOf(Color(0xFFE3D5C1), Color(0xFFD8D5CF), Color(0xFFD9660A)))
     DashThemeMode.HORIZON -> Brush.verticalGradient(listOf(Color(0xFF8FC1EE), Color(0xFFCFE3F5), Color(0xFFFFF6E8), Color(0xFFE2D5B8)))
     DashThemeMode.TAPE_DECK -> Brush.verticalGradient(listOf(Color(0xFFFFE3F0), Color(0xFFFF7EAA), Color(0xFF00A0B4)))
+    DashThemeMode.MISTRAL -> Brush.linearGradient(listOf(Color(0xFFE9EDF1), Color(0xFF1F5F8F), Color(0xFFC97A12)))
+    DashThemeMode.ZENITH -> Brush.verticalGradient(listOf(Color(0xFFF8FAFC), Color(0xFFE4E9EE), Color(0xFF2A6FB0)))
 } else when (mode) {
     DashThemeMode.AUTO -> Brush.linearGradient(listOf(Color(0xFF0B0C0F), Color(0xFF2A2D33), Color(0xFFC58AF9)))
     DashThemeMode.ORIGINAL -> Brush.linearGradient(listOf(Color(0xFF0B0C0F), Color(0xFF1E2024), Color(0xFF8AB4F8)))
@@ -222,4 +223,6 @@ private fun previewBrush(mode: DashThemeMode, light: Boolean): Brush = if (light
     DashThemeMode.COCKPIT -> Brush.linearGradient(listOf(Color(0xFF231C16), Color(0xFFD8D5CF), Color(0xFFFF8A1F)))
     DashThemeMode.HORIZON -> Brush.verticalGradient(listOf(Color(0xFF0A0F2C), Color(0xFF8A3F72), Color(0xFFF9B274), Color(0xFF1A1030)))
     DashThemeMode.TAPE_DECK -> Brush.verticalGradient(listOf(Color(0xFF0D0221), Color(0xFFFF2A6D), Color(0xFF05D9E8)))
+    DashThemeMode.MISTRAL -> Brush.linearGradient(listOf(Color(0xFF0C0F13), Color(0xFFDCE9F7), Color(0xFFF2A33A)))
+    DashThemeMode.ZENITH -> Brush.verticalGradient(listOf(Color(0xFF15181C), Color(0xFF20252B), Color(0xFF6FB2E8)))
 }

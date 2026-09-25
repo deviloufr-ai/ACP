@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -285,7 +284,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         }
         Surface(
             color = OverlayBg,
-            shape = RoundedCornerShape(16.dp),
+            shape = DashShape.Medium,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(8.dp)
         ) {
             Row(modifier = Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -342,7 +341,7 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
         if (currentInfo != null || currentError != null || hasDest) {
             Surface(
                 color = OverlayBg,
-                shape = RoundedCornerShape(16.dp),
+                shape = DashShape.Medium,
                 modifier = Modifier.align(Alignment.BottomStart).padding(10.dp)
             ) {
                 Row(

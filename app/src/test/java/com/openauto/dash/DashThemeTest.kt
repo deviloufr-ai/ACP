@@ -45,6 +45,33 @@ class DashThemeTest {
         }
     }
 
+    @Test
+    fun alertColoursReadTheSameWayInEveryTheme() {
+        DashThemeMode.entries.forEach { mode ->
+            listOf(false, true).forEach { light ->
+                val p = paletteFor(mode, light)
+                val page = p.Background
+                // Amber and red are different colours, whatever the theme.
+                assertTrue("$mode light=$light warning vs critical", colourDistance(p.Warning, p.Critical) > 0.25f)
+                // Both, and the tachometer, read on the page (WCAG 3:1 for large text and graphics).
+                listOf("warning" to p.Warning, "critical" to p.Critical, "tacho" to p.Tacho).forEach { (name, c) ->
+                    assertTrue("$mode light=$light $name contrast", contrast(c.compositeOver(page), page) >= 3f)
+                }
+                // Amber is amber: more red than blue, and clearly some green.
+                assertTrue("$mode light=$light amber hue", p.Tacho.red > p.Tacho.blue && p.Tacho.green > p.Tacho.blue)
+                // Red is red: more red than green and blue.
+                assertTrue("$mode light=$light red hue", p.Critical.red > p.Critical.green && p.Critical.red > p.Critical.blue)
+            }
+        }
+    }
+
+    private fun colourDistance(a: Color, b: Color): Float {
+        val dr = a.red - b.red
+        val dg = a.green - b.green
+        val db = a.blue - b.blue
+        return kotlin.math.sqrt(dr * dr + dg * dg + db * db)
+    }
+
     private fun contrast(a: Color, b: Color): Float {
         val hi = maxOf(a.luminance(), b.luminance())
         val lo = minOf(a.luminance(), b.luminance())

@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -63,7 +62,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import kotlin.math.ceil
 import androidx.compose.ui.unit.Dp
@@ -175,7 +176,7 @@ internal fun DashboardPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(h)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(DashShape.Large)
                             .background(DashColors.Bar)
                     ) { tileContent(index, item, null) }
                 }
@@ -215,16 +216,16 @@ internal fun DashboardPage(
 
             // Snap-target ghost, above the resting tiles but below the dragged one.
             preview?.let { p ->
-                val previewColor = if (p.isValid) DashColors.Accent else DashColors.Warning
+                val previewColor = if (p.isValid) DashColors.Accent else DashColors.Critical
                 Box(
                     modifier = Modifier
                         .zIndex(0.5f)
                         .offset(cellW * p.x, cellH * p.y)
                         .size(cellW * p.w, cellH * p.h)
                         .padding(3.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(DashShape.Medium)
                         .background(previewColor.copy(alpha = 0.22f))
-                        .border(2.dp, previewColor, RoundedCornerShape(18.dp))
+                        .border(2.dp, previewColor, DashShape.Medium)
                 )
             }
         }
@@ -309,6 +310,8 @@ internal fun GridTile(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var resizeExtra by remember { mutableStateOf(Offset.Zero) }
     var active by remember { mutableStateOf(false) }
+    // The long press that lifts a tile, and the grab of its handle, are felt as well as seen.
+    val haptics = LocalHapticFeedback.current
 
     val basePxX = with(density) { (cellW * item.x).toPx() }
     val basePxY = with(density) { (cellH * item.y).toPx() }
@@ -342,7 +345,7 @@ internal fun GridTile(
                 .fillMaxSize()
                 // Bare themes draw no card, so outline each tile while arranging.
                 .then(
-                    if (editing && DashColors.Bare) Modifier.border(1.dp, DashColors.TextSecondary.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                    if (editing && DashColors.Bare) Modifier.border(1.dp, DashColors.TextSecondary.copy(alpha = 0.35f), DashShape.Large)
                     else Modifier
                 )
         ) { content() }
@@ -357,6 +360,7 @@ internal fun GridTile(
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 active = true; onModelTouch(true)
                                 onPreview(snapX(), snapY(), item.w, item.h, canMove(index, snapX(), snapY()))
                             },
@@ -384,7 +388,7 @@ internal fun GridTile(
                 onClick = { onRemove(index) },
                 modifier = Modifier.align(if (shortTile) Alignment.CenterStart else Alignment.TopEnd).padding(4.dp).size(48.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = DashColors.Warning, contentColor = Color.Black
+                    containerColor = DashColors.Critical, contentColor = Color.White
                 )
             ) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(22.dp))
@@ -421,11 +425,12 @@ internal fun GridTile(
                     .align(if (shortTile) Alignment.CenterEnd else Alignment.BottomEnd)
                     .padding(4.dp)
                     .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(DashShape.Large)
                     .background(DashColors.Accent.copy(alpha = 0.85f))
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGestures(
                             onDragStart = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 active = true; onModelTouch(true)
                                 onPreview(item.x, item.y, snapW(), snapH(), canPlace(index, item.x, item.y, snapW(), snapH()))
                             },
@@ -641,7 +646,7 @@ internal fun EmptyPage(onAdd: () -> Unit, onTemplates: () -> Unit, modifier: Mod
             Button(
                 onClick = onAdd,
                 colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                shape = RoundedCornerShape(12.dp)
+                shape = DashShape.Small
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
@@ -651,7 +656,7 @@ internal fun EmptyPage(onAdd: () -> Unit, onTemplates: () -> Unit, modifier: Mod
                 onClick = onTemplates,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = DashColors.TextPrimary),
                 border = BorderStroke(1.dp, DashColors.Line),
-                shape = RoundedCornerShape(12.dp)
+                shape = DashShape.Small
             ) {
                 Text(stringResource(R.string.templates_button))
             }
@@ -663,7 +668,7 @@ internal fun EmptyPage(onAdd: () -> Unit, onTemplates: () -> Unit, modifier: Mod
 internal fun AddTile(onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DashShape.Medium)
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally

@@ -125,7 +125,7 @@ internal fun NeedsAccess(icon: ImageVector, title: String, action: String, onAct
             Button(
                 onClick = onAction,
                 colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                shape = RoundedCornerShape(14.dp),
+                shape = DashShape.Medium,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
             ) { Text(action, maxLines = 1) }
         }
@@ -187,7 +187,7 @@ internal fun ClockCard(modifier: Modifier = Modifier) {
                         context.startActivity(Intent(AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     }
                 }
-                .padding(14.dp)
+                .padding(DashSpace.Lg)
         ) {
             val numSize = min(maxWidth.value * 0.28f, maxHeight.value * 0.55f).coerceIn(36f, 120f).roundToInt()
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -244,7 +244,7 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
     }
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_weather_title)) {
                 val l = location
                 if (l != null) {
@@ -350,7 +350,7 @@ internal fun CalendarCard(modifier: Modifier = Modifier) {
     }
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_agenda_title)) {
                 TextButton(
                     onClick = {
@@ -394,8 +394,8 @@ private fun AgendaRow(e: AgendaEvent) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
+            .clip(DashShape.Small)
+            .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -466,7 +466,7 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
     }
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_quickdial_title)) {
                 TextButton(
                     onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) },
@@ -488,7 +488,7 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(DashShape.Medium)
                                     .clickable(enabled = f.number != null) {
                                         runCatching {
                                             context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${f.number}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -538,7 +538,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_notif_title)) {
                 if (items.isNotEmpty()) {
                     TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
@@ -561,8 +561,8 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, RoundedCornerShape(12.dp))
+                                .clip(DashShape.Small)
+                                .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
                                 .clickable { runCatching { n.contentIntent?.send() } }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -622,7 +622,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
     val muted = volume == 0
 
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_audio_title)) {
                 Text("${(volume * 100f / max).roundToInt()}%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
             }
@@ -665,7 +665,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SmallAction(label: String, icon: ImageVector? = null, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = DashShape.Pill
     Row(
         modifier = Modifier
             .clip(shape)

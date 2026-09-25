@@ -98,10 +98,15 @@ import androidx.compose.runtime.setValue
 
 internal const val SPEED_WARNING_KMH = 110
 
-/** Battery bar: 11 V empty to 15 V full; healthy between 12 and 15 V. */
+/** Battery bar: 11 V empty to 15 V full; healthy between 12 and 15 V, critical under 11.5 V or over 15.5 V. */
 internal fun batteryFraction(voltage: Double): Float = ((voltage - 11.0) / 4.0).toFloat()
-internal fun batteryColor(voltage: Double): Color =
-    if (voltage in 12.0..15.0) DashColors.Good else DashColors.Warning
+internal fun batteryColor(voltage: Double): Color = when {
+    voltage in BATTERY_OK_V -> DashColors.Good
+    voltage in BATTERY_WARNING_V -> DashColors.Warning
+    else -> DashColors.Critical
+}
+internal val BATTERY_OK_V = 12.0..15.0
+internal val BATTERY_WARNING_V = 11.5..15.5
 
 /** The "connect first" body shared by the OBD cards. */
 @Composable
@@ -111,7 +116,7 @@ internal fun ObdNotConnected(connection: ObdConnectionState, onConnect: () -> Un
     // Looked up again on every state change: the name appears once the adapter is paired.
     val adapter = remember(connection) { ObdBluetoothManager.savedDeviceLabel() }
     if (connecting) {
-        Text(stringResource(R.string.vehicle_obd_connecting_to, adapter ?: "OBD"), color = DashColors.Speed)
+        Text(stringResource(R.string.vehicle_obd_connecting_to, adapter ?: "OBD"), color = DashColors.Accent)
     } else {
         Text(stringResource(R.string.vehicle_obd_not_connected), color = DashColors.Muted)
         // What the last attempt ran into, so a silent adapter is not a mystery.
@@ -147,7 +152,7 @@ internal fun ObdCard(
     }
     val connected = connection == ObdConnectionState.CONNECTED
     Card(modifier = modifier) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             // Short tiles drop the secondary chips; tall tiles stack the RPM bar
             // and chips under the gauge instead of beside it.
             val compact = maxHeight < 250.dp
@@ -190,7 +195,7 @@ internal fun ObdCard(
                                 containerColor = DashColors.Accent,
                                 contentColor = DashColors.OnAccent
                             ),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = DashShape.Medium,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
                             Icon(Icons.Filled.Bluetooth, null, modifier = Modifier.size(16.dp))
@@ -209,8 +214,8 @@ internal fun ObdCard(
                         valueText = if (connected) obdData.speedKmh.toString() else "--",
                         label = stringResource(R.string.vehicle_speed_caps),
                         unit = "km/h",
-                        accent = DashColors.Speed,
-                        redlineAccent = DashColors.Warning,
+                        accent = DashColors.Accent,
+                        redlineAccent = DashColors.Critical,
                         redlineFraction = SPEED_WARNING_KMH / 220f,
                         dimmed = !connected,
                         majorTicks = 12,
@@ -299,7 +304,7 @@ internal fun RpmBar(
     )
     val good = DashColors.Good
     val accent = DashColors.Accent
-    val warning = DashColors.Warning
+    val warning = DashColors.Critical
     val glow = DashColors.Glow
     // Bare themes have no card behind the bar, so a background-coloured track would vanish.
     val track = if (DashColors.Glass) DashColors.well(0.35f) else if (DashColors.Bare) DashColors.CardHi else DashColors.Background
@@ -314,7 +319,7 @@ internal fun RpmBar(
             Text(stringResource(R.string.vehicle_rpm_caps), color = DashColors.TextSecondary, letterSpacing = 1.5.sp, style = MaterialTheme.typography.labelSmall)
             Text(
                 text = if (dimmed) "--" else rpm.toString(),
-                color = if (dimmed) DashColors.Muted else if (overRedline) warning else DashColors.Rpm,
+                color = if (dimmed) DashColors.Muted else if (overRedline) warning else DashColors.Tacho,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1
@@ -356,11 +361,15 @@ internal fun RpmBar(
     }
 }
 
+/** Coolant: cold is accent (still warming up), 75–104 °C is good, 105 °C is a warning and 115 °C means stop. */
 internal fun coolantColor(tempC: Int): Color = when {
-    tempC >= 105 -> DashColors.Warning
+    tempC >= COOLANT_CRITICAL_C -> DashColors.Critical
+    tempC >= COOLANT_WARNING_C -> DashColors.Warning
     tempC >= 75 -> DashColors.Good
-    else -> DashColors.Speed
+    else -> DashColors.Accent
 }
+internal const val COOLANT_WARNING_C = 105
+internal const val COOLANT_CRITICAL_C = 115
 
 /**
  * A racing-style analog gauge: a 270° dark dial with tick marks, a coloured
@@ -376,7 +385,7 @@ internal fun AnalogGauge(
     unit: String,
     accent: Color,
     modifier: Modifier = Modifier,
-    redlineAccent: Color = DashColors.Warning,
+    redlineAccent: Color = DashColors.Critical,
     redlineFraction: Float = 0.8f,
     dimmed: Boolean = false,
     majorTicks: Int = 9,
@@ -619,7 +628,7 @@ internal fun MeterChip(
         return
     }
     val glass = DashColors.Glass
-    val chipShape = RoundedCornerShape(12.dp)
+    val chipShape = DashShape.Small
     Column(
         modifier = modifier
             .clip(chipShape)
@@ -676,9 +685,9 @@ internal fun ObdAllCard(
             if (!connected) {
                 ObdNotConnected(connection, onConnect, onPickDevice)
             } else {
-                MeterChip(stringResource(R.string.vehicle_speed), "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Speed, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_speed), "${obdData.speedKmh} km/h", obdData.speedKmh / 220f, DashColors.Accent, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip(stringResource(R.string.vehicle_rpm), "${obdData.rpm}", obdData.rpm / 7000f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_rpm), "${obdData.rpm}", obdData.rpm / 7000f, DashColors.Tacho, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 MeterChip(stringResource(R.string.vehicle_coolant), "${obdData.coolantTempC} °C", obdData.coolantTempC / 120f, coolantColor(obdData.coolantTempC), false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -686,7 +695,7 @@ internal fun ObdAllCard(
                 Spacer(Modifier.height(8.dp))
                 MeterChip(stringResource(R.string.vehicle_throttle), "${obdData.throttlePct} %", obdData.throttlePct / 100f, DashColors.Accent, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                MeterChip(stringResource(R.string.vehicle_engine_load), "${obdData.engineLoadPct} %", obdData.engineLoadPct / 100f, DashColors.Rpm, false, Modifier.fillMaxWidth())
+                MeterChip(stringResource(R.string.vehicle_engine_load), "${obdData.engineLoadPct} %", obdData.engineLoadPct / 100f, DashColors.Tacho, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 MeterChip(stringResource(R.string.vehicle_fuel_level), "${obdData.fuelLevelPct} %", obdData.fuelLevelPct / 100f, DashColors.Good, false, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -730,7 +739,7 @@ internal fun RangeCard(
 
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
+            modifier = Modifier.fillMaxSize().padding(DashSpace.Lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
@@ -801,7 +810,7 @@ internal fun RangeCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MeterChip(stringResource(R.string.vehicle_fuel), "$approx$fuelPct%", fuelPct / 100f, if (fuelPct <= 12) DashColors.Warning else DashColors.Good, false, Modifier.weight(1f))
-                    MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / fuel.tankL).toFloat(), DashColors.Speed, false, Modifier.weight(1f))
+                    MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / fuel.tankL).toFloat(), DashColors.Accent, false, Modifier.weight(1f))
                     MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(fuel.avgUse), (fuel.avgUse / (2 * CarProfileStore.current.typicalUse)).toFloat().coerceIn(0f, 1f), DashColors.Accent, false, Modifier.weight(1f))
                 }
                 // Always reachable, so a learned signal can be recalibrated or forgotten.

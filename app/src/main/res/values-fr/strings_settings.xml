@@ -10,4 +10,6 @@
     <string name="settings_system_detail">Le vrai Google Maps dans la tuile Maps. Nécessite le root.</string>
     <string name="settings_drive_lock">Modifications à l'arrêt seulement</string>
     <string name="settings_drive_lock_detail">Édition, réglages et grille d'apps attendent l'arrêt de la voiture</string>
+    <string name="settings_tap_sound">Son des appuis</string>
+    <string name="settings_tap_sound_detail">Un bip court à chaque appui, pour un écran qui ne vibre pas</string>
 </resources>

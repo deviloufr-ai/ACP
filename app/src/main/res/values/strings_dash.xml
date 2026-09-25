@@ -19,6 +19,7 @@
     <string name="dash_obd_off">OBD off, tap to connect</string>
     <string name="dash_alert_battery">Battery %1$.1fV</string>
     <string name="dash_alert_coolant">Coolant %1$d°C</string>
+    <string name="dash_alert_spoken">%1$s. Stop when you can.</string>
 
     <!-- Top bar menu -->
     <string name="dash_menu_edit_dashboards">Edit dashboards</string>
@@ -139,6 +140,10 @@
     <string name="dash_theme_horizon_desc">No widgets, just the sky and the road ahead</string>
     <string name="dash_theme_tape_deck">Tape Deck</string>
     <string name="dash_theme_tape_deck_desc">80s synthwave head unit: cassette, neon grid, LED digits</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">The C4 Picasso\'s central cluster: cold-white numerals on smoked graphite, amber alerts</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">The lounge cabin: pearl grey, white panels, one deep blue accent</string>
 
     <!-- Screen layouts (the enum names are what gets saved) -->
     <string name="dash_layout_grid">Dashboards only</string>

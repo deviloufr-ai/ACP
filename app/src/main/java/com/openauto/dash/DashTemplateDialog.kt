@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -91,7 +90,7 @@ internal fun DashTemplateDialog(
                 Button(
                     onClick = { onApply(chosen, true) },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = DashShape.Small
                 ) {
                     Text(stringResource(R.string.templates_replace_all))
                 }
@@ -108,7 +107,7 @@ private fun TemplateCard(
     modifier: Modifier,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = DashShape.Medium
     val pages = remember(template, screen) { TemplatePlacer.pages(template, screen) }
     Column(
         modifier = modifier

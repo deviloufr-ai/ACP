@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -231,9 +230,9 @@ internal fun BootLogoDialog(onDismiss: () -> Unit) {
                 .fillMaxWidth(0.94f)
                 .fillMaxHeight(0.92f)
                 .keepClearOfWindows()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(DashShape.Large)
                 .background(DashColors.Card.copy(alpha = 1f))
-                .border(1.dp, DashColors.Line, RoundedCornerShape(24.dp))
+                .border(1.dp, DashColors.Line, DashShape.Large)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -278,9 +277,9 @@ internal fun BootLogoDialog(onDismiss: () -> Unit) {
                         Modifier.height(170.dp)
                             .align(Alignment.CenterHorizontally)
                             .aspectRatio(screen.first.toFloat() / screen.second)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(DashShape.Medium)
                             .background(if (light) Color.White else Color.Black)
-                            .border(1.dp, DashColors.Line, RoundedCornerShape(14.dp)),
+                            .border(1.dp, DashColors.Line, DashShape.Medium),
                         contentAlignment = Alignment.Center
                     ) {
                         val p = preview
@@ -307,7 +306,7 @@ internal fun BootLogoDialog(onDismiss: () -> Unit) {
                             enabled = ready,
                             modifier = Modifier.weight(1f),
                             colors = buttonColors(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = DashShape.Small
                         ) {
                             Text(stringResource(R.string.boot_install), textAlign = TextAlign.Center)
                         }
@@ -316,7 +315,7 @@ internal fun BootLogoDialog(onDismiss: () -> Unit) {
                             enabled = ready,
                             modifier = Modifier.weight(1f),
                             border = BorderStroke(1.dp, if (ready) DashColors.Accent else DashColors.Line),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = DashShape.Small
                         ) {
                             Text(stringResource(R.string.boot_usb), color = if (ready) DashColors.Accent else DashColors.Muted, textAlign = TextAlign.Center)
                         }
@@ -351,7 +350,7 @@ internal fun BootLogoDialog(onDismiss: () -> Unit) {
 @Composable
 private fun BrandCell(brand: CarBrand, selected: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
-    val shape = RoundedCornerShape(14.dp)
+    val shape = DashShape.Medium
     val thumb by produceState(CarLogos.cachedThumb(brand.slug), brand.slug) {
         if (value == null) value = CarLogos.thumb(context, brand.slug)
     }
@@ -365,7 +364,7 @@ private fun BrandCell(brand: CarBrand, selected: Boolean, onClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
-            Modifier.fillMaxWidth().aspectRatio(1.4f).clip(RoundedCornerShape(10.dp)).background(Color.White).padding(8.dp),
+            Modifier.fillMaxWidth().aspectRatio(1.4f).clip(DashShape.Small).background(Color.White).padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
             val t = thumb

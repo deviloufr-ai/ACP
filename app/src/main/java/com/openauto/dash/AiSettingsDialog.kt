@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -292,7 +291,7 @@ internal fun <T> ChoiceRow(
     perRow: Int = options.size,
     onPick: (T) -> Unit
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = DashShape.Medium
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -305,7 +304,7 @@ internal fun <T> ChoiceRow(
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 row.forEach { option ->
                     val chosen = option == selected
-                    val segment = RoundedCornerShape(10.dp)
+                    val segment = DashShape.Small
                     Text(
                         label(option),
                         color = if (chosen) DashColors.OnAccent else DashColors.TextPrimary,

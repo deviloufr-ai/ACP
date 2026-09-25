@@ -235,7 +235,7 @@ internal fun orbitBackground(): Modifier {
     val bg = DashColors.Background
     val coral = DashColors.Accent
     val violet = DashColors.Accent2
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     // By day the glows and halos soften so the colour tints the pale page rather than stains it.
     val light = DashColors.Light
     val coralGlow = if (light) 0.12f else 0.14f
@@ -491,7 +491,7 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
     val idle = env.obdConnection.isIdle
     val data = env.obdData
     val warn = connected && data.speedKmh >= SPEED_WARNING_KMH
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     val satellites = listOf(
         Satellite(
             (data.coolantTempC - 40) / 90f,
@@ -570,7 +570,7 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
 /** Faint dashed orbit arc through the satellites of [layout], with a small dot riding its far end. */
 @Composable
 private fun OrbitPathThrough(layout: DialLayout) {
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     val line = mist(0.10f)
     Spacer(
         Modifier
@@ -621,7 +621,7 @@ private fun OrbitDial(
 ) {
     val coral = DashColors.Accent
     val warning = DashColors.Warning
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     val light = DashColors.Light
     val knobFill = if (light) Color.White else DashColors.TextPrimary
     val muted = DashColors.Muted
@@ -809,7 +809,7 @@ private fun OrbitSpeedHud(env: SkinTileEnv) {
                     else -> stringResource(R.string.orbit_no_signal)
                 },
                 max(11f, d * 0.042f),
-                if (speed != null) DashColors.Rpm else DashColors.Muted,
+                if (speed != null) DashColors.Secondary else DashColors.Muted,
                 weight = FontWeight.SemiBold
             )
         }
@@ -1386,7 +1386,7 @@ private fun OrbitClockRing(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     val light = DashColors.Light
     val openLabel = stringResource(R.string.orbit_open_alarms)
     Box(
@@ -1592,7 +1592,7 @@ private fun OrbitRange(item: DashboardItem, env: SkinTileEnv) {
 @Composable
 private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick: () -> Unit) {
     val low = fuel.percent <= 12
-    val fluid = if (low) DashColors.Warning else DashColors.Rpm
+    val fluid = if (low) DashColors.Warning else DashColors.Secondary
     val light = DashColors.Light
     val fluidInk = if (light) lerp(fluid, DashColors.TextPrimary, 0.3f) else fluid
     val level = animateFloatAsState(fuel.percent.coerceIn(0, 100) / 100f, tween(900), label = "fuel level")
@@ -1795,7 +1795,7 @@ private fun OrbitLaunchArc(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
 @Composable
 internal fun OrbitWindowFrame(modifier: Modifier) {
     val bg = DashColors.Background
-    val teal = DashColors.Rpm
+    val teal = DashColors.Secondary
     val haloColor = mist(0.025f)
     val orbitColor = mist(0.06f)
     val rimColor = mist(0.10f)

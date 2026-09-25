@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -84,7 +83,7 @@ internal fun WidgetDesignPickerDialog(
                 .keepClearOfWindows()
                 .fillMaxWidth(0.94f)
                 .widthIn(max = 1040.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = DashShape.Large,
             color = DashColors.Card.copy(alpha = 1f)
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -141,7 +140,7 @@ private fun DesignChoice(
     onClick: () -> Unit,
     preview: @Composable () -> Unit
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = DashShape.Medium
     Column(
         modifier = Modifier
             .clip(shape)
@@ -154,7 +153,7 @@ private fun DesignChoice(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspect.coerceIn(0.8f, 3f))
-                .clip(RoundedCornerShape(12.dp))
+                .clip(DashShape.Small)
                 .background(dashBackgroundBrush())
                 .padding(4.dp)
         ) {

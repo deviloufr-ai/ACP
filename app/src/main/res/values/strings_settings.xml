@@ -11,4 +11,6 @@
     <string name="settings_version" translatable="false">Dashwheel v%1$s</string>
     <string name="settings_drive_lock">Changes only while parked</string>
     <string name="settings_drive_lock_detail">Editing, settings and the app grid wait until the car has stopped</string>
+    <string name="settings_tap_sound">Tap sound</string>
+    <string name="settings_tap_sound_detail">A short beep on each tap, for a screen that cannot vibrate</string>
 </resources>

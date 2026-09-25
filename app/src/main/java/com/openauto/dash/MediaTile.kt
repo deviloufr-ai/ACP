@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
@@ -102,7 +101,7 @@ internal fun MediaCard(
     val glow = DashColors.Glow
     // The cover's dominant colour bleeds out beneath it, like light off a screen.
     val bleed = remember(art, accent) { art?.averageColor() ?: accent }
-    val artShape = RoundedCornerShape(20.dp)
+    val artShape = DashShape.Large
 
     Card(modifier = modifier) {
         Column(

@@ -222,11 +222,24 @@ Contrastes texte principal / page vérifiés : Mistral nuit 17:1, Mistral jour 1
 | 4 | Effets : Aucun / Réduits / Complets dans le sélecteur de thème ; Aucun = cartes opaques, chiffres nets, aucun halo sur tous les thèmes | `DashTheme.kt` (`DashEffects`, `DashColors.Glow` / `Glass`), `DashThemePickerDialog.kt` (`SegmentedSwitch`) |
 | 5 | Cibles 48 dp : boutons et poignée d'édition 48 dp (alignés sur une ligne pour les tuiles d'une rangée), zoom 48 dp, édition de la barre de lancement 48 dp, bouton « Live » 48 dp, précédent/suivant média 56 dp | `DashboardGrid.kt`, `AppTiles.kt`, `TelemetryTiles.kt`, `MediaTile.kt` |
 
+**P3 livré** (même branche) :
+
+| # | Proposition | Où dans le code |
+|---|---|---|
+| 10 | Tokens de forme et d'espacement : `DashShape` (Large 24 / Medium 16 / Small 10 / Pill) et `DashSpace` (4 / 8 / 12 / 16 / 24), appliqués aux rendus standard ; les skins, l'Original et les faces de widget gardent leurs formes | `DashTokens.kt`, tous les fichiers standard |
+| 11 | Tokens couleur : `Speed` supprimé (= `Accent`), `Rpm` renommé `Secondary`, `Tacho` ambre dans tous les thèmes, `Warning` ambre et `Critical` rouge distincts. Batterie sous 11,5 V ou liquide à 115 °C = rouge ; hors plage = ambre. Les ambres inventés localement (entretien, soin, codes défaut) utilisent le token. Test : les trois couleurs d'alerte lisibles (≥ 3:1) et distinctes dans les 26 palettes | `DashTheme.kt`, `DashThemeTest.kt`, `TelemetryTiles.kt` (seuils) |
+| 12 | Jour/nuit : Auto = mode système **et** soleil levé où se trouve la voiture (calcul solaire NOAA, repli 7 h–20 h sans position) ; fondu de 400 ms entre deux palettes ; `MaterialTheme.colorScheme` suit la palette active | `DayNight.kt`, `DayNightTest.kt`, `DashColors.Sync`, `MainActivity.kt` |
+| 13 | Retour d'action : tick haptique sur les appuis clés (médias, OBD, apps, Annuler, Terminé) et sur l'appui long qui soulève une tuile ; boutons ronds à 96 % pendant l'appui ; bip optionnel (Réglages → Avancé → Son des appuis) ; FAB d'échange split en `OnAccent` | `DashComponents.kt` (`rememberTapFeedback`, `pressScale`, `FeedbackStore`), `DashboardGrid.kt`, `TopBar.kt`, `AppTiles.kt` |
+| 15 | Alertes hiérarchisées : ambre tant que la lecture est hors plage, rouge pour le critique, annoncé une fois par la voix (si activée dans IA) et conservé sur la barre jusqu'à un appui, même après retour à la normale | `VehicleAlerts.kt` (`AlertCenter`), `TopBar.kt` (`VehicleAlerts`) |
+| §4 | Thèmes **Mistral** et **Zénith** ajoutés comme thèmes couleur (nuit + jour chacun) | `DashTheme.kt`, `DashThemePickerDialog.kt`, chaînes EN/FR/IT |
+
+Reste de P3 : le niveau « thème+ » (14 : police, formes et style de barre par thème, barre « combiné » de Mistral) est un chantier plus long, non commencé. L'historique des alertes dans la tuile Codes défaut (fin du 15) n'est pas fait.
+
 Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe de syntaxe Kotlin a été faite ; la CI Lint & Test doit valider la branche.
 
 ## 6. Ordre de mise en œuvre suggéré
 
 1. Semaine 1 : échelle typographique, cibles 48 dp, indicateur OBD, curseur d'effets (P1 1/3/4/5). **Fait.**
-2. Semaine 2 : tokens forme/couleur, jour/nuit robuste, retour d'action, palettes Mistral et Zénith en thèmes couleur (P3 10/11/12/13 + section 4).
+2. Semaine 2 : tokens forme/couleur, jour/nuit robuste, retour d'action, palettes Mistral et Zénith en thèmes couleur (P3 10/11/12/13 + section 4). **Fait**, avec les alertes hiérarchisées (15).
 3. Semaine 3–4 : écran Réglages, sélecteur de thème avec aperçu réel (P2 7/8). Le mode « en mouvement » (P1 2) est **fait**.
 4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14), refonte de la croix de pages (P2 6).

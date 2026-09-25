@@ -68,7 +68,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -801,7 +800,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         else showSplitEnable = true
                     },
                     containerColor = DashColors.Accent,
-                    contentColor = Color.Black,
+                    contentColor = DashColors.OnAccent,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp)

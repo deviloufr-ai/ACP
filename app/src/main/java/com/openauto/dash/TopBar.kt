@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -53,6 +52,7 @@ import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VerticalSplit
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -86,13 +86,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -192,7 +192,7 @@ internal fun StandardTopBar(m: TopBarModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (glass) Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp).then(glassPanel(RoundedCornerShape(20.dp)))
+                    if (glass) Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp).then(glassPanel(DashShape.Large))
                     else Modifier
                 )
                 .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -277,8 +277,8 @@ internal fun LayoutIcon(layout: DashLayout, contentDescription: String?, tint: C
 
 internal fun obdStatusColor(state: ObdConnectionState): Color = when (state) {
     ObdConnectionState.CONNECTED -> DashColors.Good
-    ObdConnectionState.CONNECTING -> DashColors.Speed
-    ObdConnectionState.ERROR -> DashColors.Warning
+    ObdConnectionState.CONNECTING -> DashColors.Accent
+    ObdConnectionState.ERROR -> DashColors.Critical
     ObdConnectionState.DISCONNECTED -> DashColors.Muted
 }
 
@@ -309,12 +309,13 @@ internal fun ObdPill(state: ObdConnectionState, onConnect: () -> Unit, modifier:
     val pulse = if (connecting) rememberLoop(900, reverse = true) else null
     val halo = DashColors.Glow
     val ink = if (off) DashColors.Muted else color
-    val shape = RoundedCornerShape(999.dp)
+    val shape = DashShape.Pill
+    val tap = rememberTapFeedback()
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(shape)
-            .clickable(enabled = idle, role = Role.Button, onClick = onConnect)
+            .clickable(enabled = idle, role = Role.Button) { tap(); onConnect() }
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center
@@ -470,6 +471,11 @@ private fun SettingsDialog(
                     Icons.Filled.DirectionsCar, stringResource(R.string.settings_drive_lock),
                     stringResource(R.string.settings_drive_lock_detail), m.lockWhileMoving, m.onLockWhileMoving
                 )
+                val context = LocalContext.current
+                SettingsToggle(
+                    Icons.Filled.VolumeUp, stringResource(R.string.settings_tap_sound),
+                    stringResource(R.string.settings_tap_sound_detail), FeedbackStore.sound
+                ) { FeedbackStore.save(context, it) }
                 SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), pick(m.onSystem))
                 SettingsRow(
                     Icons.Filled.SystemUpdate, stringResource(R.string.dash_menu_check_updates),
@@ -500,7 +506,7 @@ private fun SettingsRow(icon: ImageVector, title: String, detail: String?, onCli
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(DashShape.Small)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -529,7 +535,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, detail: String, che
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(DashShape.Small)
             .clickable(role = Role.Switch) { onChange(!checked) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -577,7 +583,7 @@ private fun DriveLockRow() {
 /** Floats over the pages for a moment after a tap the drive lock held back. */
 @Composable
 internal fun DriveLockChip(modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = DashShape.Pill
     Row(
         modifier = modifier
             .clip(shape)
@@ -608,7 +614,7 @@ private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable 
         expanded = open,
         onDismissRequest = onDismiss,
         modifier = Modifier.keepClearOfWindows(),
-        shape = RoundedCornerShape(16.dp),
+        shape = DashShape.Medium,
         containerColor = DashColors.Card.copy(alpha = 1f),
         border = BorderStroke(1.dp, DashColors.Line)
     ) {
@@ -651,51 +657,67 @@ private fun MenuIcon(icon: ImageVector, enabled: Boolean = true) {
 }
 
 /**
- * Warning pills for out-of-range readings (battery outside 12–15 V, coolant at
- * 105 °C or more); emits nothing while everything is normal or OBD is off.
+ * Alert pills on the bar (VehicleAlerts.kt): amber ones while a reading is
+ * out of range, red ones for a critical reading, kept until tapped. Nothing
+ * shows while everything is normal or OBD is off.
  */
 @Composable
 internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) {
-    if (obdConnection != ObdConnectionState.CONNECTED) return
-    val volts = obdData.voltage
-    // 0.0 is "no reading yet", not a flat battery.
-    if (volts > 0.0 && volts !in 12.0..15.0) {
-        AlertChip(Icons.Filled.BatteryAlert, stringResource(R.string.dash_alert_battery, volts))
+    val context = LocalContext.current
+    val live = if (obdConnection == ObdConnectionState.CONNECTED) vehicleAlerts(context, obdData) else emptyList()
+    // A critical reading goes to the centre, which says it once and keeps it.
+    LaunchedEffect(live) {
+        live.filter { it.level == AlertLevel.CRITICAL }.forEach { AlertCenter.raise(context, it, R.string.dash_alert_spoken) }
     }
-    if (obdData.coolantTempC >= 105) {
-        AlertChip(Icons.Filled.Thermostat, stringResource(R.string.dash_alert_coolant, obdData.coolantTempC))
+    val held = AlertCenter.critical
+    held.values.sortedBy { it.key }.forEach { alert ->
+        AlertChip(alert, onAcknowledge = { AlertCenter.acknowledge(alert.key) })
+    }
+    live.filter { it.level == AlertLevel.WARNING && !held.containsKey(it.key) }.forEach { alert ->
+        AlertChip(alert, onAcknowledge = null)
     }
 }
 
-/** Warning pill for an out-of-range reading; the bar shows these only when something needs attention. */
+/** One alert pill: amber for a warning, red for a critical one, which also takes a tap to dismiss. */
 @Composable
-private fun AlertChip(icon: ImageVector, text: String) {
-    val shape = RoundedCornerShape(999.dp)
+private fun AlertChip(alert: VehicleAlert, onAcknowledge: (() -> Unit)?) {
+    val colour = if (alert.level == AlertLevel.CRITICAL) DashColors.Critical else DashColors.Warning
+    val shape = DashShape.Pill
+    val tap = rememberTapFeedback()
     Row(
         modifier = Modifier
             .padding(end = 6.dp)
+            .heightIn(min = 36.dp)
             .clip(shape)
-            .background(DashColors.Warning.copy(alpha = 0.14f))
-            .border(1.dp, DashColors.Warning.copy(alpha = 0.45f), shape)
+            .background(colour.copy(alpha = if (alert.level == AlertLevel.CRITICAL) 0.22f else 0.14f))
+            .border(1.dp, colour.copy(alpha = if (alert.level == AlertLevel.CRITICAL) 0.7f else 0.45f), shape)
+            .then(
+                if (onAcknowledge != null) Modifier.clickable(role = Role.Button, onClickLabel = stringResource(R.string.dash_dismiss)) { tap(); onAcknowledge() }
+                else Modifier
+            )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(16.dp))
+        Icon(alert.icon, contentDescription = null, tint = colour, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
         Text(
-            text,
-            color = DashColors.Warning,
+            alert.text,
+            color = colour,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1
         )
+        if (onAcknowledge != null) {
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.Filled.Close, contentDescription = null, tint = colour, modifier = Modifier.size(16.dp))
+        }
     }
 }
 
 /** Floats over the dashboard while [DemoMode] runs, so made-up readings are never taken for the car's; tap to stop. */
 @Composable
 internal fun DemoBadge(onStop: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = DashShape.Pill
     Row(
         modifier = modifier
             .clip(shape)
@@ -742,7 +764,8 @@ internal fun EditBar(
     onDone: () -> Unit
 ) {
     val glass = DashColors.Glass
-    val shape = RoundedCornerShape(16.dp)
+    val shape = DashShape.Medium
+    val tap = rememberTapFeedback()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -778,7 +801,7 @@ internal fun EditBar(
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.dash_add), color = DashColors.TextPrimary)
         }
-        TextButton(onClick = onUndo, enabled = canUndo) {
+        TextButton(onClick = { tap(); onUndo() }, enabled = canUndo) {
             Icon(
                 Icons.Filled.Undo, contentDescription = null,
                 tint = if (canUndo) DashColors.TextPrimary else DashColors.Muted, modifier = Modifier.size(18.dp)
@@ -792,12 +815,12 @@ internal fun EditBar(
             Text(stringResource(R.string.templates_button), color = DashColors.TextPrimary)
         }
         TextButton(onClick = onReset) {
-            Text(stringResource(R.string.dash_reset_page), color = DashColors.Warning)
+            Text(stringResource(R.string.dash_reset_page), color = DashColors.Critical)
         }
         Button(
-            onClick = onDone,
+            onClick = { tap(); onDone() },
             colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.OnAccent),
-            shape = RoundedCornerShape(12.dp),
+            shape = DashShape.Small,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
         ) {
             Icon(Icons.Filled.Done, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -901,8 +924,8 @@ internal fun UpdateBanner(
     if (!visible) return
 
     Surface(
-        color = if (status is UpdateStatus.Error) DashColors.Warning else DashColors.Accent,
-        shape = RoundedCornerShape(20.dp),
+        color = if (status is UpdateStatus.Error) DashColors.Critical else DashColors.Accent,
+        shape = DashShape.Large,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 10.dp, end = 10.dp, top = 10.dp)

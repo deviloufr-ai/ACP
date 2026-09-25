@@ -87,7 +87,7 @@ internal fun FuelPricesCard(modifier: Modifier = Modifier) {
             return@Card
         }
         val nearby = rememberFuelNearby()
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             TileHeader(stringResource(R.string.fuel_title)) {
                 nearby?.let { Text(it.grade.label, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall) }
             }

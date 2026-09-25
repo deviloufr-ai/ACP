@@ -50,13 +50,9 @@ private val Tone.color: Color
     get() = when (this) {
         Tone.GOOD -> DashColors.Good
         Tone.INFO -> DashColors.Accent
-        Tone.CAUTION -> cautionColor
-        Tone.BAD -> DashColors.Warning
+        Tone.CAUTION -> DashColors.Warning
+        Tone.BAD -> DashColors.Critical
     }
-
-/** Amber: no palette colour means "caution" everywhere (the rev colour is green in some). */
-private val cautionColor: Color
-    get() = if (DashColors.Light) Color(0xFFB45F06) else Color(0xFFFFB347)
 
 /** Ticks every second so elapsed times move. */
 @Composable
@@ -74,7 +70,7 @@ private fun rememberNow(): Long {
 @Composable
 private fun CareCard(title: String, modifier: Modifier, content: @Composable () -> Unit) {
     Card(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             TileHeader(title)
             content()
         }
@@ -271,7 +267,7 @@ internal fun EcoDriveCard(modifier: Modifier = Modifier) {
         if (car.gearbox == GearboxType.ROBOTISED) {
             InfoRow(
                 stringResource(R.string.car_eco_clutch), drive.clutchHolds.toString(),
-                if (drive.clutchHolds > 0) cautionColor else DashColors.TextPrimary
+                if (drive.clutchHolds > 0) DashColors.Warning else DashColors.TextPrimary
             )
         }
         // What the drive burned at the car's usual consumption, and what it cost.
@@ -348,7 +344,7 @@ internal fun MyCarCard(modifier: Modifier = Modifier) {
     val unknown = stringResource(R.string.car_unknown)
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(14.dp),
+            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(DashSpace.Lg),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             TileHeader(stringResource(R.string.car_my_car_title)) {

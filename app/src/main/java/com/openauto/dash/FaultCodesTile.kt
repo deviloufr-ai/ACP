@@ -252,13 +252,10 @@ internal fun adviceFor(diagnosis: Diagnosis?, codes: List<String>, code: String,
 /** A Scan / Clear outcome; [failed] picks the colour, so it never depends on the wording. */
 private class DtcMessage(val text: String, val failed: Boolean)
 
-// The palette has no amber; "get it checked soon" needs one between Good and Warning.
-private val SoonAmber = Color(0xFFF5A623)
-
 private fun severityColor(severity: Severity?): Color = when (severity) {
     Severity.OK -> DashColors.Good
-    Severity.STOP -> DashColors.Warning
-    Severity.SOON, null -> SoonAmber
+    Severity.STOP -> DashColors.Critical
+    Severity.SOON, null -> DashColors.Warning
 }
 
 private fun severityIcon(severity: Severity): ImageVector = when (severity) {
@@ -299,7 +296,7 @@ private fun VerdictBand(d: Diagnosis, aiText: Resources) {
         }
     )
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = DashShape.Medium,
         color = color.copy(alpha = 0.14f),
         border = BorderStroke(1.dp, color.copy(alpha = 0.55f)),
         modifier = Modifier.fillMaxWidth()
@@ -346,7 +343,7 @@ private fun CodeCard(code: String, advice: CodeAdvice?, severity: Severity?, pen
     val builtIn = remember(code) { ObdCodes.describe(code) }
     val title = advice?.meaning?.ifBlank { null } ?: builtIn.localizedTitle()
     val hint = advice?.checkFirst?.ifBlank { null }?.let { aiText.getString(R.string.ai_check_first, it) } ?: builtIn.localizedFix()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = DashShape.Medium
     val content: @Composable () -> Unit = {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -413,7 +410,7 @@ private fun FaultDetailSheet(
     DisposableEffect(Unit) { onDispose { AskMechanic.cancel() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = DashShape.Large,
             color = DashColors.Card.copy(alpha = 1f),
             // Docked app windows are drawn above dialogs on this unit; the ones under it step aside.
             modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.94f).keepClearOfWindows()
@@ -604,7 +601,7 @@ private fun DetailList(items: List<String>, numbered: Boolean) {
 @Composable
 private fun CheckFirstBox(text: String, aiText: Resources) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = DashShape.Medium,
         color = DashColors.Good.copy(alpha = 0.12f),
         border = BorderStroke(1.dp, DashColors.Good.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth()
