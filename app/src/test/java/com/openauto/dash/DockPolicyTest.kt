@@ -14,6 +14,44 @@ class DockPolicyTest {
     private fun window(bounds: ScreenRect?, mode: String = "freeform", visible: Boolean = true, behind: Boolean = false, stack: Int = 7, offDisplay: Boolean = false) =
         FloatingWindow(stack, 63, "com.google.android.apps.maps", bounds, mode, visible, behind, if (offDisplay) 3 else 0, offDisplay)
 
+    // --- fullscreen instead of in the window -----------------------------------
+
+    @Test
+    fun ourLaunchComingUpFullscreenIsSentBack() {
+        assertTrue(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 0, returns = 0, now = 104_000))
+    }
+
+    @Test
+    fun appOpenedFullscreenAfterATapIsLeftAlone() {
+        // The dashboard was tapped just before the app covered it: the user's doing.
+        assertFalse(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 102_000, returns = 0, now = 104_000))
+    }
+
+    @Test
+    fun anOlderTapDoesNotExcuseOurLaunch() {
+        // A tap while Maps was still loading, long before it covered the dashboard.
+        assertTrue(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 101_000, returns = 0, now = 101_000 + DockPolicy.TAP_OPENS_APP_MS + 1))
+        // A tap before the tile's own launch neither.
+        assertTrue(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 99_500, returns = 0, now = 101_000))
+    }
+
+    @Test
+    fun fullscreenLongAfterOurLaunchIsLeftAlone() {
+        assertFalse(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 0, returns = 0, now = 100_000 + DockPolicy.FULLSCREEN_GRACE_MS + 1))
+        assertFalse(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 0, lastTouchAt = 0, returns = 0, now = 5_000))
+    }
+
+    @Test
+    fun fullscreenIsSentBackOnlyAFewTimes() {
+        assertTrue(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 0, returns = DockPolicy.MAX_FULLSCREEN_RETURNS - 1, now = 101_000))
+        assertFalse(DockPolicy.sendBackFromFullscreen(autoOpen = true, ownLaunchAt = 100_000, lastTouchAt = 0, returns = DockPolicy.MAX_FULLSCREEN_RETURNS, now = 101_000))
+    }
+
+    @Test
+    fun appTheTileNoLongerKeepsOpenIsLeftAlone() {
+        assertFalse(DockPolicy.sendBackFromFullscreen(autoOpen = false, ownLaunchAt = 100_000, lastTouchAt = 0, returns = 0, now = 101_000))
+    }
+
     // --- no window ------------------------------------------------------------
 
     @Test

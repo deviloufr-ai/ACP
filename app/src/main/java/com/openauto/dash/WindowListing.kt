@@ -136,6 +136,29 @@ object WindowListing {
         return block?.takeWhile { it.isDigit() }?.toIntOrNull()
     }
 
+    /**
+     * [packageName]'s task when it is the front-most fullscreen one on the
+     * dashboard's display, i.e. the app covers the whole screen, dashboard
+     * included; null otherwise. Floating windows above it do not count: they
+     * never hide the dashboard.
+     */
+    internal fun fullscreenInFront(output: String, packageName: String, selfPackage: String = "com.openauto.dash"): FloatingWindow? {
+        val blocks = stackBlocks(output)
+        val selfDisplay = blocks.firstOrNull { TASK.find(it)?.groupValues?.get(2) == selfPackage }
+            ?.let { displayId(it) } ?: DEFAULT_DISPLAY
+        val front = blocks.firstOrNull {
+            windowingMode(it) == "fullscreen" && (displayId(it) ?: DEFAULT_DISPLAY) == selfDisplay
+        } ?: return null
+        val task = TASK.find(front) ?: return null
+        if (task.groupValues[2] != packageName) return null
+        val taskLine = front.substring(task.range.first).lineSequence().first()
+        if (taskLine.contains("visible=false")) return null
+        val id = front.takeWhile { it.isDigit() }.toIntOrNull() ?: return null
+        val b = BOUNDS.find(taskLine)?.groupValues
+        val bounds = b?.let { ScreenRect(it[1].toInt(), it[2].toInt(), it[3].toInt(), it[4].toInt()) }
+        return FloatingWindow(id, task.groupValues[1].toIntOrNull(), packageName, bounds, "fullscreen", displayId = selfDisplay)
+    }
+
     /** Android's id for the screen itself (`Display.DEFAULT_DISPLAY`, kept out of the Android types here). */
     const val DEFAULT_DISPLAY = 0
 

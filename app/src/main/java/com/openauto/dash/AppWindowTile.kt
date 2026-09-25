@@ -258,6 +258,7 @@ internal fun PipAnchorCard(
                         val rect = target
                         val bounds = rect?.let { android.graphics.Rect(it.left, it.top, it.right, it.bottom) }
                         PipAnchor.setAutoOpen(context, true, packageName)
+                        PipAnchor.openedByTile(packageName)
                         if (!SplitLauncher.launchFreeform(context, packageName, bounds)) {
                             context.packageManager.getLaunchIntentForPackage(packageName)?.let { context.launchSafely(it) }
                         }

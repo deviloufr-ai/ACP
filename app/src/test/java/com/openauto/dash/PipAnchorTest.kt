@@ -105,6 +105,59 @@ class PipAnchorTest {
         assertNull(WindowListing.fullscreenStackId(""))
     }
 
+    private val mapsFullscreen = """
+        Stack id=12 bounds=[0,0][1280,720] displayId=0 userId=0
+         configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+          taskId=80: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,0][1280,720] userId=0 visible=true
+        Stack id=0 bounds=[0,0][1280,720] displayId=0 userId=0
+         configuration={... mWindowingMode=fullscreen mActivityType=home ...}
+          taskId=2: com.openauto.dash/com.openauto.dash.MainActivity bounds=[0,0][1280,720] userId=0 visible=false
+    """.trimIndent()
+
+    @Test
+    fun appCoveringTheDashboardIsFoundInFront() {
+        val full = WindowListing.fullscreenInFront(mapsFullscreen, "com.google.android.apps.maps")!!
+        assertEquals("fullscreen", full.mode)
+        assertEquals(12, full.stackId)
+        assertEquals(80, full.taskId)
+        // Not a floating window: the tile's usual lookup does not see it.
+        assertNull(WindowListing.parseFloatingWindow(mapsFullscreen, packageName = "com.google.android.apps.maps"))
+    }
+
+    @Test
+    fun appBehindTheDashboardIsNotInFront() {
+        val behind = """
+            Stack id=0 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={... mWindowingMode=fullscreen mActivityType=home ...}
+              taskId=2: com.openauto.dash/com.openauto.dash.MainActivity bounds=[0,0][1280,720] userId=0 visible=true
+            Stack id=12 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=80: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[0,0][1280,720] userId=0 visible=false
+        """.trimIndent()
+        assertNull(WindowListing.fullscreenInFront(behind, "com.google.android.apps.maps"))
+        assertNull(WindowListing.fullscreenInFront("", "com.google.android.apps.maps"))
+    }
+
+    @Test
+    fun windowAboveAnotherFullscreenAppIsNotTheAppInFront() {
+        // Maps in its window over Chrome: Chrome covers the screen, not Maps.
+        val overChrome = """
+            Stack id=7 bounds=[640,80][1240,660] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=freeform mActivityType=standard} }
+              taskId=63: com.google.android.apps.maps/com.google.android.maps.MapsActivity bounds=[640,80][1240,660] userId=0 visible=true
+            Stack id=4 bounds=[0,0][1280,720] displayId=0 userId=0
+             configuration={ winConfig={ mWindowingMode=fullscreen mActivityType=standard} }
+              taskId=70: com.android.chrome/com.google.android.apps.chrome.Main bounds=[0,0][1280,720] userId=0 visible=true
+        """.trimIndent()
+        assertNull(WindowListing.fullscreenInFront(overChrome, "com.google.android.apps.maps"))
+    }
+
+    @Test
+    fun appFullscreenOnTheHiddenDisplayCoversNothing() {
+        val hidden = mapsFullscreen.replace("Stack id=12 bounds=[0,0][1280,720] displayId=0", "Stack id=12 bounds=[0,0][1280,720] displayId=3")
+        assertNull(WindowListing.fullscreenInFront(hidden, "com.google.android.apps.maps"))
+    }
+
     @Test
     fun numericWindowingModeIsUnderstood() {
         val numeric = """
