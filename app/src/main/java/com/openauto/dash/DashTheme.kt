@@ -446,7 +446,8 @@ internal fun DashAppearance.isLight(): Boolean = when (this) {
 object DashColors {
     /** What is drawn now: the target palette, or a blend on the way to it. */
     private var current by mutableStateOf(AutoDarkPalette)
-    private var effects by mutableStateOf(DashEffects.FULL)
+    // Not "effects": its getter would clash with the public Effects accessor on the JVM.
+    private var effectsLevel by mutableStateOf(DashEffects.FULL)
 
     /**
      * Follows the chosen theme, fading the colours over [FADE_MS] so a day /
@@ -456,7 +457,7 @@ object DashColors {
     @Composable
     fun Sync(mode: DashThemeMode, appearance: DashAppearance, effects: DashEffects = DashEffects.FULL) {
         val target = paletteFor(mode, appearance.isLight())
-        if (this.effects != effects) this.effects = effects
+        if (effectsLevel != effects) effectsLevel = effects
         val fade = remember { Animatable(1f) }
         var from by remember { mutableStateOf(target) }
         var to by remember { mutableStateOf(target) }
@@ -526,10 +527,10 @@ object DashColors {
     val TextSecondary get() = current.TextSecondary
     val Line get() = current.Line
     /** Translucent panels, unless the effects are off: then every theme gets opaque cards. */
-    val Glass get() = current.Glass && effects != DashEffects.NONE
+    val Glass get() = current.Glass && effectsLevel != DashEffects.NONE
     /** The theme's halo strength, scaled by the effects setting (0 with effects off). */
-    val Glow get() = current.Glow * effects.scale
-    val Effects get() = effects
+    val Glow get() = current.Glow * effectsLevel.scale
+    val Effects get() = effectsLevel
     val Original get() = current.Original
     val Bare get() = current.Bare
     val BackgroundStops get() = current.BackgroundStops
