@@ -22,11 +22,6 @@ object DockShell {
 
     private var dadb: Dadb? = null
 
-    /**
-     * Keeps the PiP window on [rect] (screen pixels) until cancelled: finds the
-     * pinned stack every few seconds and resizes it whenever it drifted.
-     */
-
     /** Drags the window by its centre onto the target centre (SystemUI handles PiP drags itself). */
     suspend fun swipeTo(context: Context, from: ScreenRect, to: ScreenRect): String {
         val x1 = (from.left + from.right) / 2; val y1 = (from.top + from.bottom) / 2
@@ -39,10 +34,9 @@ object DockShell {
     }
 
     /**
-     * The tile left the screen: move the window out of the way, to a small
-     * rectangle in the bottom-right corner of the display.
+     * Moves and sizes [win] to [rect] (screen pixels): onto its tile, or out of
+     * the way into the bottom-right corner when the tile left the screen.
      */
-
     suspend fun resize(context: Context, win: FloatingWindow, rect: ScreenRect): String {
         // `am stack resize` / `am task resize` read LEFT TOP RIGHT BOTTOM as four
         // separate arguments (the help text's "L,T,R,B" is wrong: a comma-joined
@@ -159,30 +153,19 @@ object DockShell {
 
     /** `su -c cmd`, bounded so a stuck root prompt can't pin the poller. */
     private fun suShell(cmd: String): String {
-        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-        process.outputStream.close()
-        // One builder per stream: the two readers run concurrently.
-        val out = StringBuilder()
-        val err = StringBuilder()
-        val reader = Thread { out.append(process.inputStream.bufferedReader().readText()) }
-        val errReader = Thread { err.append(process.errorStream.bufferedReader().readText()) }
-        reader.start(); errReader.start()
-        if (!process.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
-            process.destroy()
-            throw IllegalStateException("su timed out")
-        }
-        reader.join(2000); errReader.join(2000)
-        val exit = process.exitValue()
-        if (exit != 0) {
+        val res = RootShell.su(cmd, SU_TIMEOUT_S)
+        if (res.exit != 0) {
             // "Permission denied", "not found"...: a failure, whatever it printed.
-            val why = (err.toString().ifBlank { out.toString() }).trim().lines().firstOrNull().orEmpty()
-            throw IllegalStateException("su exit $exit: $why".trim())
+            val why = (res.err.ifBlank { res.out }).trim().lines().firstOrNull().orEmpty()
+            throw IllegalStateException("su exit ${res.exit}: $why".trim())
         }
-        return out.toString() + err.toString()
+        return res.all
     }
 
+    private const val SU_TIMEOUT_S = 8L
+
     private fun adbShell(context: Context, cmd: String): String {
-        val conn = dadb ?: AdbInstaller.connect(context, adbPort(), ADB_TIMEOUT_MS).also { dadb = it }
+        val conn = dadb ?: AdbInstaller.connect(context, AdbInstaller.announcedPort(), ADB_TIMEOUT_MS).also { dadb = it }
         try {
             val res = conn.shell(cmd)
             return res.output + res.errorOutput
@@ -191,12 +174,6 @@ object DockShell {
             throw e
         }
     }
-
-    /** The unit's ADB TCP port from `service.adb.tcp.port`, else the K706 default. */
-    fun adbPort(): Int = runCatching {
-        val p = Runtime.getRuntime().exec(arrayOf("getprop", "service.adb.tcp.port"))
-        p.inputStream.bufferedReader().readText().trim().toIntOrNull()
-    }.getOrNull() ?: AdbInstaller.DEFAULT_PORT
 
     /** A hung adbd must not hold the shell lock forever. */
     private const val ADB_TIMEOUT_MS = 5_000

@@ -3,11 +3,13 @@ package com.openauto.dash
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /*
  * The drive lock: while the car moves, anything that needs more than a glance
@@ -34,31 +36,45 @@ internal const val MOVING_KMH = 8
 internal const val STOPPED_KMH = 3
 internal const val STOPPED_HOLD_MS = 2_000L
 
+private val NotMoving: State<Boolean> = mutableStateOf(false)
+
 /**
  * True while the car is moving, when the lock is [enabled]. Never in demo
  * mode: its made-up speed must not lock the person exploring the launcher out.
  * With the lock off no speed is read, so the GPS stays off on a phone.
+ *
+ * The speed is followed in an effect rather than read in composition, so the
+ * caller (the whole dashboard) only recomposes when the answer flips.
  */
 @Composable
-internal fun rememberMoving(
-    enabled: Boolean,
-    obdData: ObdData,
-    connection: ObdConnectionState,
-    demo: Boolean
-): Boolean {
-    if (!enabled || demo) return false
-    val speed = rememberSpeedKmh(obdData, connection) ?: 0
-    var moving by remember { mutableStateOf(false) }
-    val fast = speed >= MOVING_KMH
-    val slow = speed <= STOPPED_KMH
-    LaunchedEffect(fast, slow) {
-        when {
-            fast -> moving = true
-            slow -> {
-                delay(STOPPED_HOLD_MS)
-                moving = false
+internal fun rememberMoving(enabled: Boolean, demo: Boolean): State<Boolean> {
+    if (!enabled || demo) return NotMoving
+    val moving = remember { mutableStateOf(false) }
+    UseLocationFeed()
+    LaunchedEffect(Unit) {
+        combine(
+            ObdBluetoothManager.connectionState,
+            ObdBluetoothManager.data,
+            LocationFeed.freshSpeedKmh
+        ) { connection, obd, gps ->
+            val speed = (if (connection == ObdConnectionState.CONNECTED) obd.speedKmh else gps) ?: 0
+            when {
+                speed >= MOVING_KMH -> true
+                speed <= STOPPED_KMH -> false
+                else -> null
             }
         }
+            .distinctUntilChanged()
+            .collectLatest { fast ->
+                when (fast) {
+                    true -> moving.value = true
+                    false -> {
+                        delay(STOPPED_HOLD_MS)
+                        moving.value = false
+                    }
+                    null -> Unit
+                }
+            }
     }
     return moving
 }

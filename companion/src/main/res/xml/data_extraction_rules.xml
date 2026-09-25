@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: the paired cars' secrets never leave the phone, neither in a
+     cloud backup nor in a transfer to a new phone. Pair again there instead. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="paired_units.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="paired_units.xml" />
+    </device-transfer>
+</data-extraction-rules>

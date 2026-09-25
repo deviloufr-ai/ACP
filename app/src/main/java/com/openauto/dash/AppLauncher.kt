@@ -2,8 +2,10 @@ package com.openauto.dash
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.os.UserHandle
 import androidx.compose.runtime.Immutable
 
 /**
@@ -56,6 +58,24 @@ object AppLauncher {
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
+    }
+
+    /**
+     * Calls [onChange] (on the main thread) whenever an app is installed,
+     * removed or updated, so a launcher that stays up for days still lists
+     * what is really there. Returns the call that stops watching.
+     */
+    fun watchPackages(context: Context, onChange: () -> Unit): () -> Unit {
+        val launcherApps = context.getSystemService(LauncherApps::class.java) ?: return {}
+        val callback = object : LauncherApps.Callback() {
+            override fun onPackageRemoved(packageName: String, user: UserHandle) = onChange()
+            override fun onPackageAdded(packageName: String, user: UserHandle) = onChange()
+            override fun onPackageChanged(packageName: String, user: UserHandle) = onChange()
+            override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = onChange()
+            override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = onChange()
+        }
+        launcherApps.registerCallback(callback)
+        return { launcherApps.unregisterCallback(callback) }
     }
 
     /**

@@ -34,13 +34,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.FloatState
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,7 +89,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -146,15 +143,16 @@ private val DisplayLineHeight = LineHeightStyle(LineHeightStyle.Alignment.Center
 /**
  * Soft shadow scaled to the text size, so type stays legible over the whole scene:
  * a dark drop shadow in the evening, a pale halo centred on the ink by day.
+ * Blurred only with effects at full (see [softTextShadow]).
  */
 @Composable
-private fun softShadow(sizeSp: Float): Shadow {
+private fun softShadow(sizeSp: Float): Shadow? {
     val d = LocalDensity.current.density
     val light = DashColors.Light
-    return Shadow(
+    return softTextShadow(
         color = Shade.copy(alpha = if (light) 0.7f else 0.6f),
-        offset = if (light) Offset.Zero else Offset(0f, (1f + sizeSp * 0.015f) * d),
-        blurRadius = (sizeSp * 0.22f).coerceIn(5f, 26f) * d
+        blurRadius = (sizeSp * 0.22f).coerceIn(5f, 26f) * d,
+        offset = if (light) Offset.Zero else Offset(0f, (1f + sizeSp * 0.015f) * d)
     )
 }
 
@@ -239,14 +237,16 @@ private fun fitSp(sample: String, style: TextStyle, maxW: Dp, maxH: Dp, minSp: F
     }
 }
 
-/** The first of [candidates] (longest first) that fits [maxW] on one line, else the last. */
+/** The first of [candidates] (longest first) that fits [maxW] on one line, else the last; measured again only when they change. */
 @Composable
 private fun firstFitting(candidates: List<String>, style: TextStyle, maxW: Dp): String {
     val measurer = rememberTextMeasurer()
     val px = with(LocalDensity.current) { maxW.toPx() }
-    return candidates.firstOrNull {
-        measurer.measure(it, style, softWrap = false, maxLines = 1).size.width <= px
-    } ?: candidates.last()
+    return remember(candidates, style, px, measurer) {
+        candidates.firstOrNull {
+            measurer.measure(it, style, softWrap = false, maxLines = 1).size.width <= px
+        } ?: candidates.last()
+    }
 }
 
 /** Digits replaced by '8' so a readout keeps one size while its value changes. */
@@ -261,8 +261,7 @@ private fun Modifier.tap(enabled: Boolean, label: String, onClick: () -> Unit): 
 private const val REF_W = 1280f
 private const val REF_H = 720f
 private const val REF_HORIZON = 472f
-private const val LOOP_MS = 120_000L
-private const val FRAME_MS = 33L
+private const val LOOP_MS = 120_000
 private const val TWO_PI = 6.2831855f
 private const val STAR_COUNT = 170
 private const val DUSK_STARS = 80
@@ -468,32 +467,15 @@ private class HorizonScene {
     }
 }
 
-/** A 0..1 loop over [LOOP_MS], advanced about 30 times a second (the scene moves slowly). */
-@Composable
-private fun rememberSceneTime(): FloatState {
-    val time = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        var lastTick = -1L
-        while (true) {
-            withFrameMillis { ms ->
-                val tick = ms / FRAME_MS
-                if (tick != lastTick) {
-                    lastTick = tick
-                    time.floatValue = (ms % LOOP_MS).toFloat() / LOOP_MS
-                }
-            }
-        }
-    }
-    return time
-}
-
 /**
  * The whole page as a living scene: in dark mode a sky that follows the real
  * time of day (indigo night with stars and a crescent moon, the warm dusk /
  * dawn gradient the rest of the day), in light mode a pale noon sky with a soft
  * sun; then hills, a skyline whose buildings pulse like an equalizer, the
  * ground and a road running to a vanishing point with centre dashes moving
- * toward the viewer. Animated values are read only while drawing.
+ * toward the viewer. Animated values are read only while drawing; the scene
+ * moves slowly, so it steps with the ambient ticker (about 20 times a second,
+ * and stands still with effects off).
  */
 @Composable
 internal fun horizonBackground(): Modifier {
@@ -501,7 +483,7 @@ internal fun horizonBackground(): Modifier {
     val light = DashColors.Light
     val look = remember(now, light) { skyLookAt(now, light) }
     val scene = remember { HorizonScene() }
-    val time = rememberSceneTime()
+    val time = rememberLoop(LOOP_MS)
     return remember(look, scene, time) { sceneModifier(look, scene, time) }
 }
 
@@ -524,7 +506,7 @@ private fun hillPath(points: FloatArray, sx: Float, s: Float, hy: Float, w: Floa
     }
 }
 
-private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState): Modifier = Modifier.drawWithCache {
+private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: State<Float>): Modifier = Modifier.drawWithCache {
     val w = size.width
     val h = size.height
     val hy = h * HORIZON
@@ -620,7 +602,7 @@ private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState):
     scene.edgePaint.strokeWidth = 2f * s
 
     onDrawBehind {
-        val t = time.floatValue
+        val t = time.value
 
         drawRect(skyBrush, size = Size(w, hy))
         if (look.sun > 0.01f) {
@@ -723,7 +705,7 @@ private fun sceneModifier(look: SkyLook, scene: HorizonScene, time: FloatState):
 internal fun HorizonTopBar(m: TopBarModel) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val dateFmt = remember(locale) { SimpleDateFormat(longDatePattern(locale), locale) }
+    val dateFmt = rememberDateFormat(LONG_DATE, best = true)
     val date = dateFmt.format(now).replaceFirstChar { it.titlecase(locale) }
     val ink = DashColors.TextPrimary
     val soft = DashColors.TextSecondary
@@ -743,7 +725,7 @@ internal fun HorizonTopBar(m: TopBarModel) {
                 SceneText(date, ui(15f, soft), Modifier.alignByBaseline())
             }
         }
-        VehicleAlerts(m.obdConnection, m.obdData)
+        VehicleAlerts(m.obdConnection, m.obd)
         IconButton(onClick = m.onApps) {
             Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.horizon_cd_all_apps), tint = ink)
         }
@@ -836,11 +818,12 @@ private fun SpeedFigure(speed: Int?, maxW: Dp, maxH: Dp) {
     }
 }
 
-private fun groupThousands(n: Int): String = if (n < 1000) "$n" else "${n / 1000}\u2009${"%03d".format(n % 1000)}"
+/** Horizon splits thousands with a thin space ("2 400"). */
+private const val THIN_SPACE = '\u2009'
 
 /** The stats line under the telemetry speed, longest first. */
 private fun telemetryLines(d: ObdData, context: android.content.Context): List<String> {
-    val rpm = context.getString(R.string.horizon_rpm_value, groupThousands(d.rpm))
+    val rpm = context.getString(R.string.horizon_rpm_value, groupThousands(d.rpm, THIN_SPACE))
     val coolant = context.getString(R.string.horizon_coolant_value, d.coolantTempC)
     val volts = if (d.voltage > 0.0) "%.1f V".format(d.voltage) else null
     val core = listOfNotNull(rpm, coolant, volts)
@@ -900,12 +883,10 @@ private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
         contentAlignment = side.box
     ) {
         val capsSp = (maxWidth.value / 26f).coerceIn(11f, 16f)
-        val source = when {
-            obd -> "OBD"
-            speed != null -> "GPS"
-            idle -> stringResource(R.string.horizon_no_signal_tap_obd)
-            else -> stringResource(R.string.horizon_no_signal)
-        }
+        val source = speedSource(
+            obd, speed,
+            stringResource(if (idle) R.string.horizon_no_signal_tap_obd else R.string.horizon_no_signal)
+        )
         val figureW = maxWidth
         val figureH = maxHeight - (capsSp * 1.3f + 8f).dp
         Column(horizontalAlignment = side.h) {
@@ -989,8 +970,6 @@ private fun MediaControls(env: SkinTileEnv, size: Dp) {
 private fun HorizonMedia(env: SkinTileEnv, side: Side) {
     val ms = env.mediaState
     val access = env.hasMediaAccess
-    val positionMs = rememberMediaPosition(ms, env.mediaController)
-    val fraction = if (ms.durationMs > 0L) (positionMs.toFloat() / ms.durationMs).coerceIn(0f, 1f) else 0f
     val hasTrack = ms.hasMedia && ms.title.isNotBlank()
     val context = env.context
     BoxWithConstraints(
@@ -1061,14 +1040,7 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                 }
                 if (showProgress) {
                     Spacer(Modifier.height(10.dp))
-                    ThinLine(fraction, DashColors.Accent, fromEnd = false, dot = true, modifier = Modifier.width(lineW))
-                    if (showTimes) {
-                        Row(Modifier.width(lineW)) {
-                            SceneText(formatTrackTime(positionMs), ui(12f, DashColors.Muted))
-                            Spacer(Modifier.weight(1f))
-                            SceneText(formatTrackTime(ms.durationMs), ui(12f, DashColors.Muted))
-                        }
-                    }
+                    MediaProgress(ms, env.mediaController, showTimes, Modifier.width(lineW))
                 }
             }
         }
@@ -1089,6 +1061,24 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                     MediaControls(env, ctrl)
                 }
             }
+        }
+    }
+}
+
+/**
+ * The progress line with its playhead dot and, when [showTimes], elapsed and
+ * total time under it; in its own scope so only it follows the playback position.
+ */
+@Composable
+private fun MediaProgress(ms: MediaState, controller: CarMediaController, showTimes: Boolean, modifier: Modifier) {
+    val positionMs = rememberMediaPosition(ms, controller)
+    val fraction = if (ms.durationMs > 0L) (positionMs.toFloat() / ms.durationMs).coerceIn(0f, 1f) else 0f
+    ThinLine(fraction, DashColors.Accent, fromEnd = false, dot = true, modifier = modifier)
+    if (showTimes) {
+        Row(modifier) {
+            SceneText(formatTrackTime(positionMs), ui(12f, DashColors.Muted))
+            Spacer(Modifier.weight(1f))
+            SceneText(formatTrackTime(ms.durationMs), ui(12f, DashColors.Muted))
         }
     }
 }
@@ -1213,17 +1203,16 @@ private fun partOfDayMood(date: Date): Int {
     }
 }
 
-/** Weekday, day and month ("Wednesday 23 September") in the order and punctuation of [locale]. */
-private fun longDatePattern(locale: Locale): String =
-    android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM")
+/** Skeleton of weekday, day and month ("Wednesday 23 September"), set in the order and punctuation of the locale. */
+private const val LONG_DATE = "EEEEdMMMM"
 
 /** Clock: huge serif time, the date in sans and, on tall tiles, "20° · clear evening". Tap opens alarms. */
 @Composable
 private fun HorizonClock(env: SkinTileEnv, side: Side) {
     val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val dateFmt = remember(locale) { SimpleDateFormat(longDatePattern(locale), locale) }
+    val timeFmt = rememberDateFormat("HH:mm")
+    val dateFmt = rememberDateFormat(LONG_DATE, best = true)
     val weather by WeatherRepo.weather.collectAsState()
     val context = env.context
     BoxWithConstraints(
@@ -1325,7 +1314,7 @@ private fun HorizonRange(item: DashboardItem, env: SkinTileEnv, side: Side) {
         val below = (lineSp * 1.3f + 24f).dp
         val numSp = fitSp("888", display(100f), maxWidth * 0.7f, maxHeight - below, 26f, 300f)
         val unitSp = (numSp * 0.36f).coerceIn(14f, 72f)
-        val low = fuel.percent <= 12
+        val low = fuel.percent <= SKIN_LOW_FUEL_PCT
         val gaugeW = min(maxWidth.value * 0.8f, 420f).dp
         Column(horizontalAlignment = side.h) {
             Row {

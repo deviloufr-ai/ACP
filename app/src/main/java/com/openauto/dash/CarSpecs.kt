@@ -5,6 +5,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
+ * A Gemini answer read as JSON. Asked for JSON it sometimes still wraps it in
+ * a markdown code fence ("```json ... ```"), which goes first.
+ */
+internal fun aiJson(raw: String): JSONObject =
+    JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim())
+
+/**
  * Asks Gemini for the specs of the car the driver named, and reads the answer
  * into a [CarProfile]. Only the car's name leaves the unit. The question and
  * the reading are pure, so they're unit-tested.
@@ -57,7 +64,7 @@ object CarSpecs {
      * fuel price and currency. Known specs replace the base's; nulls keep it.
      */
     fun read(raw: String, base: CarProfile, now: Long): CarProfile {
-        val o = JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim())
+        val o = aiJson(raw)
         fun int(k: String) = if (o.isNull(k)) null else o.optDouble(k).takeIf { !it.isNaN() && it > 0 }?.let { Math.round(it).toInt() }
         fun dbl(k: String) = if (o.isNull(k)) null else o.optDouble(k).takeIf { !it.isNaN() && it > 0 }
         fun text(k: String) = o.optString(k).takeIf { !o.isNull(k) && it.isNotBlank() && it != "null" }

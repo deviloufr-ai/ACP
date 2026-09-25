@@ -63,6 +63,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.openauto.dash.link.ActionResult
 import com.openauto.dash.link.ConversationLine
+import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
 
@@ -71,6 +72,9 @@ import java.util.Date
  * it with a quick reply or by voice), and Settings → Phone with the pairing
  * code the companion app scans.
  */
+
+/** How long a reply / mark-as-read / dismiss may wait for the phone's answer. */
+private const val SEND_TIMEOUT_MS = 20_000L
 
 /** A phone notification, opened from the Notifications card. */
 @Composable
@@ -109,6 +113,19 @@ internal fun PhoneMessageSheet(item: NotifItem, onDismiss: () -> Unit) {
     fun sent(ok: Boolean) {
         problem = if (ok) null else noLink
         sending = ok
+    }
+
+    // The phone's answer may never come: the link dropped, or it went unheard.
+    LaunchedEffect(sending, connected) {
+        if (!sending) return@LaunchedEffect
+        if (!connected) {
+            sending = false
+            problem = noLink
+            return@LaunchedEffect
+        }
+        delay(SEND_TIMEOUT_MS)
+        sending = false
+        problem = failed
     }
 
     val dictate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

@@ -39,9 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +62,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -102,8 +99,8 @@ internal fun TileHeader(title: String, trailing: @Composable () -> Unit = {}) {
 internal fun UseLocationFeed() {
     val context = LocalContext.current
     DisposableEffect(Unit) {
-        LocationFeed.acquire(context)
-        onDispose { LocationFeed.release() }
+        val acquired = LocationFeed.acquire(context)
+        onDispose { if (acquired) LocationFeed.release() }
     }
 }
 
@@ -135,17 +132,10 @@ internal fun HeroNumber(text: String, size: Int, modifier: Modifier = Modifier, 
 /** Just the speed, as large as the tile allows. OBD when connected, GPS otherwise. */
 @Composable
 internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Modifier = Modifier) {
-    UseLocationFeed()
-    val location by LocationFeed.location.collectAsState()
-    val gpsFresh = location?.let { System.currentTimeMillis() - it.time < 5_000L } == true
-    val speed = when {
-        obdConnected -> obdData.speedKmh
-        gpsFresh -> ((location?.speed ?: 0f) * 3.6f).roundToInt()
-        else -> null
-    }
+    val speed = rememberSpeedKmh(obdData, if (obdConnected) ObdConnectionState.CONNECTED else ObdConnectionState.DISCONNECTED)
     val source = when {
         obdConnected -> "OBD"
-        gpsFresh -> "GPS"
+        speed != null -> "GPS"
         else -> stringResource(R.string.info_speed_no_signal)
     }
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
@@ -313,15 +303,8 @@ internal fun StatBlock(label: String, value: String, modifier: Modifier = Modifi
 internal fun TripCard(modifier: Modifier = Modifier) {
     UseLocationFeed()
     val trip by LocationFeed.trip.collectAsState()
-    var tick by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            tick = System.currentTimeMillis()
-            delay(1000)
-        }
-    }
-    @Suppress("UNUSED_EXPRESSION") tick
     val km = trip.distanceM / 1000.0
+    val since = remember(trip.startedAt) { formatClock(trip.startedAt) }
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
@@ -341,10 +324,10 @@ internal fun TripCard(modifier: Modifier = Modifier) {
                         Text("KM", color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold, letterSpacing = 0.2.em,
                             style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
                     }
-                    Text(stringResource(R.string.info_trip_since, formatClock(trip.startedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.info_trip_since, since), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TripRow(stringResource(R.string.info_trip_time), formatDuration(trip.elapsedMs))
+                    TripElapsedRow(stringResource(R.string.info_trip_time), trip)
                     TripRow(stringResource(R.string.info_trip_moving), formatDuration(trip.movingMs))
                     TripRow(stringResource(R.string.info_trip_average), "${trip.avgSpeedKmh.roundToInt()} km/h")
                     TripRow(stringResource(R.string.info_trip_top), "${trip.maxSpeedKmh.roundToInt()} km/h")
@@ -352,6 +335,13 @@ internal fun TripCard(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** The trip's running time, ticking each second on its own so it moves while parked without redrawing the card. */
+@Composable
+private fun TripElapsedRow(label: String, trip: TripState) {
+    rememberWallClock(1_000L).longValue
+    TripRow(label, formatDuration(trip.elapsedMs))
 }
 
 @Composable
@@ -385,7 +375,9 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
         GForceFeed.acquire(context)
         onDispose { GForceFeed.release() }
     }
-    val g by GForceFeed.g.collectAsState()
+    // Read only by the dial's draw and the readouts' own scope, so ~15 samples a
+    // second don't recompose the whole card.
+    val feed = GForceFeed.g.collectAsState()
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
     val warning = DashColors.Warning
@@ -401,6 +393,7 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
             val ink = DashColors.TextPrimary
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    val g = feed.value
                     val r = size.minDimension / 2f - 4.dp.toPx()
                     val c = Offset(size.width / 2f, size.height / 2f)
                     val scale = r / 1.2f   // 1.2 g at the rim
@@ -428,6 +421,7 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
                 BoxWithConstraints(modifier = Modifier.weight(0.9f).fillMaxHeight()) {
                     // Two-row tiles only have room for the live values; peaks need a taller tile.
                     val showPeaks = maxHeight >= 150.dp
+                    val g = feed.value
                     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
                         StatBlock(stringResource(R.string.info_gforce_lateral), String.format(Locale.getDefault(), "%+.2f g", g.lateral), Modifier.fillMaxWidth())
                         StatBlock(stringResource(R.string.info_gforce_accel_brake), String.format(Locale.getDefault(), "%+.2f g", g.longitudinal), Modifier.fillMaxWidth())
@@ -456,14 +450,8 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
     val spot by ParkingStore.spot.collectAsState()
     val location by LocationFeed.location.collectAsState()
     val hasFix = location != null
-    var tick by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(spot) {
-        while (spot != null) {
-            tick = System.currentTimeMillis()
-            delay(30_000)
-        }
-    }
-    @Suppress("UNUSED_EXPRESSION") tick
+    // "Parked 5 min ago" moves by the minute, and only once a spot is saved.
+    if (spot != null) rememberWallClock(60_000L).longValue
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {

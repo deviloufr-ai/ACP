@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
@@ -14,21 +16,31 @@ import androidx.compose.ui.Modifier
  * the skin's (bare) palette.
  */
 
-/** What a skinned tile needs: the same values [TileContent] receives. */
+/**
+ * What a skinned tile needs: the same values [TileContent] receives.
+ *
+ * The live readings arrive as [State]s and are only read through [obdData] /
+ * [mediaState], so an OBD sample or a song change recomposes just the tiles
+ * that show it, not every tile on the page.
+ */
+@Stable
 internal class SkinTileEnv(
     val editing: Boolean,
     val appsByPackage: Map<String, AppEntry>,
-    val mediaState: MediaState,
+    private val media: State<MediaState>,
     val mediaController: CarMediaController,
     val hasMediaAccess: Boolean,
     val context: Context,
-    val obdData: ObdData,
+    private val obd: State<ObdData>,
     val obdConnection: ObdConnectionState,
     val onConnectObd: () -> Unit,
     val onPickDevice: () -> Unit,
     val onLaunchApp: (String) -> Unit,
     val onEditLaunchBar: () -> Unit
-)
+) {
+    val mediaState: MediaState get() = media.value
+    val obdData: ObdData get() = obd.value
+}
 
 /** Builtin widgets every skin redraws. App shortcuts and launch bars are redrawn too. */
 internal val SKINNED_KINDS = setOf(

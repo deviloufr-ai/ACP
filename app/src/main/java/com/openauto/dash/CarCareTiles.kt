@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.text.format.DateUtils
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,10 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -54,18 +53,94 @@ private val Tone.color: Color
         Tone.BAD -> DashColors.Critical
     }
 
-/** Ticks every second so elapsed times move. */
-@Composable
-private fun rememberNow(): Long {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            now = System.currentTimeMillis()
-        }
+private val CareCall.tone: Tone
+    get() = when {
+        neutral -> Tone.INFO
+        level >= 2 -> Tone.BAD
+        level == 1 -> Tone.CAUTION
+        else -> Tone.GOOD
     }
-    return now
+
+// --- What each reading comes to (shared with the designed faces) ------------------
+
+/**
+ * What a car-care reading comes to: its status line and how urgent it is
+ * (0 fine, 1 needs attention, 2 act now). [neutral] marks an in-between state
+ * (warming up, too early to score) the cards show in the accent colour.
+ * The cards here and the designed faces (WidgetFaceData.kt) both read these,
+ * so the two can never disagree.
+ */
+internal class CareCall(@StringRes val text: Int, val level: Int, val neutral: Boolean = false)
+
+internal fun filterCall(shortStreak: Int): CareCall = when {
+    shortStreak >= 6 -> CareCall(R.string.car_filter_needs_drive_now, 2)
+    shortStreak >= CareRules.FILTER_WARN_STREAK -> CareCall(R.string.car_filter_needs_drive, 1)
+    else -> CareCall(R.string.car_filter_ok, 0)
 }
+
+/** The cold line takes the car's cold rev limit as its argument (the others take none). */
+internal fun warmupCall(coolantC: Int, car: CarProfile): CareCall = when {
+    coolantC < car.coldC -> CareCall(R.string.car_warmup_cold, 1)
+    coolantC < car.hotC - 10 -> CareCall(R.string.car_warmup_warming, 0, neutral = true)
+    else -> CareCall(R.string.car_warmup_warm, 0)
+}
+
+/** Charging while the engine runs, charge left while it's off. */
+internal fun batteryCall(volts: Double, running: Boolean): CareCall = if (running) when {
+    volts >= LiveWatch.CHARGE_CLEAR_V -> CareCall(R.string.car_battery_charging, 0)
+    volts >= LiveWatch.NOT_CHARGING_V -> CareCall(R.string.car_battery_charging_low, 1)
+    else -> CareCall(R.string.car_battery_not_charging, 2)
+} else when {
+    volts >= 12.6 -> CareCall(R.string.car_battery_full, 0)
+    volts >= LiveWatch.BATTERY_CLEAR_V -> CareCall(R.string.car_battery_good, 0)
+    volts >= LiveWatch.WEAK_BATTERY_V -> CareCall(R.string.car_battery_low, 1)
+    else -> CareCall(R.string.car_battery_weak, 2)
+}
+
+/**
+ * The battery-care meter: 11.5 V (flat) to 14.8 V (charging hard). Tighter
+ * than the OBD tile's plain voltage bar ([batteryFraction], 11 to 15 V) on
+ * purpose, so resting and charging levels spread across the whole meter.
+ */
+internal fun batteryCareFraction(volts: Double): Float = ((volts - 11.5) / (14.8 - 11.5)).toFloat()
+
+internal fun ecoCall(score: Int?): CareCall = when {
+    score == null -> CareCall(R.string.car_eco_too_early, 0, neutral = true)
+    score >= 80 -> CareCall(R.string.car_eco_smooth, 0)
+    score >= 60 -> CareCall(R.string.car_eco_fair, 1)
+    else -> CareCall(R.string.car_eco_harsh, 2)
+}
+
+internal fun fuelCall(verdict: FuelVerdict): CareCall = when (verdict) {
+    FuelVerdict.ENOUGH -> CareCall(R.string.car_fuel_dest_enough, 0)
+    FuelVerdict.TIGHT -> CareCall(R.string.car_fuel_dest_tight, 1)
+    FuelVerdict.SHORT -> CareCall(R.string.car_fuel_dest_short, 2)
+}
+
+/** The car's range against the distance left to drive; [verdict] is null without a route. */
+internal class FuelToDest(val rangeKm: Int, val toGoKm: Double?) {
+    val verdict: FuelVerdict? = CareRules.fuelVerdict(rangeKm, toGoKm)
+    val km: Double get() = toGoKm ?: 0.0
+    val spareKm: Int get() = (rangeKm - km).toInt()
+    /** How much of the range the trip uses; 0 while the range reads 0, rather than 0 / 0. */
+    val usedFraction: Float get() = if (rangeKm > 0) (km / rangeKm).toFloat().coerceIn(0f, 1f) else 0f
+}
+
+/** Range and route for the fuel-to-destination card and face; null until a range is known. */
+@Composable
+internal fun rememberFuelToDest(): FuelToDest? {
+    val nav by NavDirections.state.collectAsState()
+    val canFuel by McuReader.fuelPercent.collectAsState()
+    val canRange by McuReader.rangeKm.collectAsState()
+    // Only the fuel level counts here, not every OBD sample.
+    val obd = ObdBluetoothManager.data.collectAsState()
+    val obdFuel by remember { derivedStateOf { obd.value.fuelLevelPct } }
+    val car by CarProfileStore.profile.collectAsState()
+    val range = remember(canFuel, canRange, obdFuel, car) { carFuelInfo(canFuel, obdFuel, canRange)?.rangeKm } ?: return null
+    return FuelToDest(range, if (nav.active) CareRules.remainingKm(nav.eta) else null)
+}
+
+// --- Card pieces ----------------------------------------------------------------
 
 @Composable
 private fun CareCard(title: String, modifier: Modifier, content: @Composable () -> Unit) {
@@ -101,6 +176,13 @@ private fun Hint(text: String) {
     Text(text, color = DashColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
 }
 
+/** "Running for 12m 30s": ticks each second on its own, so the rest of its card stays put. */
+@Composable
+private fun RunningFor(startedAt: Long) {
+    val now by rememberWallClock(1_000L)
+    Hint(stringResource(R.string.car_running_for, formatDuration(now - startedAt)))
+}
+
 @Composable
 private fun Meter(fraction: Float, color: Color) {
     val shape = RoundedCornerShape(3.dp)
@@ -130,20 +212,15 @@ private fun decimal(v: Double, digits: Int = 1): String = String.format(Locale.g
 internal fun FilterCareCard(modifier: Modifier = Modifier) {
     val car by CarProfileStore.profile.collectAsState()
     val care by CarCare.state.collectAsState()
-    val now = rememberNow()
     CareCard(stringResource(R.string.car_filter_title), modifier) {
         if (!car.particleFilter) {
             Hint(stringResource(R.string.car_filter_none))
             return@CareCard
         }
         val streak = care.filter.shortStreak
-        val (status, tone) = when {
-            streak >= 6 -> stringResource(R.string.car_filter_needs_drive_now) to Tone.BAD
-            streak >= CareRules.FILTER_WARN_STREAK -> stringResource(R.string.car_filter_needs_drive) to Tone.CAUTION
-            else -> stringResource(R.string.car_filter_ok) to Tone.GOOD
-        }
+        val call = filterCall(streak)
         Reading(streak.toString(), stringResource(R.string.car_filter_short_unit))
-        Status(status, tone)
+        Status(stringResource(call.text), call.tone)
         // The real soot load, when the experimental reading finder got the car to give it up.
         val extra by PidExplorer.readings.collectAsState()
         extra[ExtraReading.SOOT_LOAD]?.let { soot ->
@@ -156,10 +233,13 @@ internal fun FilterCareCard(modifier: Modifier = Modifier) {
             Hint(stringResource(R.string.car_filter_this_drive, minutes, (CareRules.LONG_DRIVE_MS / 60_000).toInt()))
         }
         val last = care.filter.lastLongAt
-        Hint(
-            if (last > 0) stringResource(R.string.car_filter_last_long, DateUtils.getRelativeTimeSpanString(last, now, DateUtils.MINUTE_IN_MILLIS).toString())
-            else stringResource(R.string.car_filter_last_long_never)
-        )
+        if (last > 0) {
+            // Minutes are the finest this line shows, so a tick each minute will do.
+            val now by rememberWallClock(60_000L)
+            Hint(stringResource(R.string.car_filter_last_long, DateUtils.getRelativeTimeSpanString(last, now, DateUtils.MINUTE_IN_MILLIS).toString()))
+        } else {
+            Hint(stringResource(R.string.car_filter_last_long_never))
+        }
         if (car.filterAdditive) Hint(stringResource(R.string.car_filter_additive))
     }
 }
@@ -170,7 +250,6 @@ internal fun FilterCareCard(modifier: Modifier = Modifier) {
 internal fun WarmupCard(obd: ObdData, connected: Boolean, modifier: Modifier = Modifier) {
     val car by CarProfileStore.profile.collectAsState()
     val care by CarCare.state.collectAsState()
-    val now = rememberNow()
     CareCard(stringResource(R.string.car_warmup_title), modifier) {
         val t = obd.coolantTempC
         if (!connected || t == 0) {
@@ -179,14 +258,10 @@ internal fun WarmupCard(obd: ObdData, connected: Boolean, modifier: Modifier = M
             return@CareCard
         }
         Reading(t.toString(), "°C")
-        val (status, tone) = when {
-            t < car.coldC -> stringResource(R.string.car_warmup_cold, car.coldRpmLimit) to Tone.CAUTION
-            t < car.hotC - 10 -> stringResource(R.string.car_warmup_warming) to Tone.INFO
-            else -> stringResource(R.string.car_warmup_warm) to Tone.GOOD
-        }
-        Meter(t.toFloat() / car.hotC, tone.color)
-        Status(status, tone)
-        care.drive?.let { Hint(stringResource(R.string.car_running_for, formatDuration(now - it.startedAt))) }
+        val call = warmupCall(t, car)
+        Meter(t.toFloat() / car.hotC, call.tone.color)
+        Status(stringResource(call.text, car.coldRpmLimit), call.tone)
+        care.drive?.let { RunningFor(it.startedAt) }
     }
 }
 
@@ -205,18 +280,9 @@ internal fun BatteryCard(obd: ObdData, connected: Boolean, modifier: Modifier = 
         }
         Reading(decimal(v), "V")
         val running = obd.rpm > LiveWatch.RUNNING_RPM
-        val (status, tone) = if (running) when {
-            v >= LiveWatch.CHARGE_CLEAR_V -> stringResource(R.string.car_battery_charging) to Tone.GOOD
-            v >= LiveWatch.NOT_CHARGING_V -> stringResource(R.string.car_battery_charging_low) to Tone.CAUTION
-            else -> stringResource(R.string.car_battery_not_charging) to Tone.BAD
-        } else when {
-            v >= 12.6 -> stringResource(R.string.car_battery_full) to Tone.GOOD
-            v >= LiveWatch.BATTERY_CLEAR_V -> stringResource(R.string.car_battery_good) to Tone.GOOD
-            v >= LiveWatch.WEAK_BATTERY_V -> stringResource(R.string.car_battery_low) to Tone.CAUTION
-            else -> stringResource(R.string.car_battery_weak) to Tone.BAD
-        }
-        Meter(((v - 11.5) / (14.8 - 11.5)).toFloat(), tone.color)
-        Status(status, tone)
+        val call = batteryCall(v, running)
+        Meter(batteryCareFraction(v), call.tone.color)
+        Status(stringResource(call.text), call.tone)
         // The trip's range, from the engine computer's readings once running: a
         // spike or dip too short to alert still shows here.
         val lo = watch.tripMin
@@ -247,23 +313,8 @@ internal fun EcoDriveCard(modifier: Modifier = Modifier) {
             Reading(score?.toString() ?: "--", "/ 100", dimmed = score == null)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                val tone = when {
-                    score == null -> Tone.INFO
-                    score >= 80 -> Tone.GOOD
-                    score >= 60 -> Tone.CAUTION
-                    else -> Tone.BAD
-                }
-                Status(
-                    stringResource(
-                        when {
-                            score == null -> R.string.car_eco_too_early
-                            score >= 80 -> R.string.car_eco_smooth
-                            score >= 60 -> R.string.car_eco_fair
-                            else -> R.string.car_eco_harsh
-                        }
-                    ),
-                    tone
-                )
+                val call = ecoCall(score)
+                Status(stringResource(call.text), call.tone)
             }
         }
         drive.sweetPercent?.let {
@@ -289,35 +340,24 @@ internal fun EcoDriveCard(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun FuelToDestCard(modifier: Modifier = Modifier) {
-    val nav by NavDirections.state.collectAsState()
-    val canFuel by McuReader.fuelPercent.collectAsState()
-    val canRange by McuReader.rangeKm.collectAsState()
-    val obd by ObdBluetoothManager.data.collectAsState()
-    val car by CarProfileStore.profile.collectAsState()
-    val range = remember(canFuel, canRange, obd.fuelLevelPct, car) { carFuelInfo(canFuel, obd.fuelLevelPct, canRange)?.rangeKm }
-    val toGo = if (nav.active) CareRules.remainingKm(nav.eta) else null
+    val trip = rememberFuelToDest()
     CareCard(stringResource(R.string.car_fuel_dest_title), modifier) {
-        if (range == null) {
+        if (trip == null) {
             Reading("--", "km", dimmed = true)
             Hint(stringResource(R.string.car_fuel_dest_no_range))
             return@CareCard
         }
-        val verdict = CareRules.fuelVerdict(range, toGo)
+        val verdict = trip.verdict
         if (verdict == null) {
-            Reading(range.toString(), "km")
+            Reading(trip.rangeKm.toString(), "km")
             Hint(stringResource(R.string.car_fuel_dest_no_nav))
             return@CareCard
         }
-        val (status, tone) = when (verdict) {
-            FuelVerdict.ENOUGH -> stringResource(R.string.car_fuel_dest_enough) to Tone.GOOD
-            FuelVerdict.TIGHT -> stringResource(R.string.car_fuel_dest_tight) to Tone.CAUTION
-            FuelVerdict.SHORT -> stringResource(R.string.car_fuel_dest_short) to Tone.BAD
-        }
-        val km = toGo ?: 0.0
-        Reading(((range - km).toInt()).toString(), stringResource(R.string.car_fuel_dest_spare_unit))
-        Meter((km / range).toFloat(), tone.color)
-        Status(status, tone)
-        Hint(stringResource(R.string.car_fuel_dest_detail, range, km.toInt()))
+        val call = fuelCall(verdict)
+        Reading(trip.spareKm.toString(), stringResource(R.string.car_fuel_dest_spare_unit))
+        Meter(trip.usedFraction, call.tone.color)
+        Status(stringResource(call.text), call.tone)
+        Hint(stringResource(R.string.car_fuel_dest_detail, trip.rangeKm, trip.km.toInt()))
     }
 }
 

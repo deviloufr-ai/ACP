@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -56,7 +58,8 @@ object WidgetHostHolder {
     private var host: AppWidgetHost? = null
     private var active = 0
 
-    private fun host(context: Context): AppWidgetHost =
+    /** The shared host, without starting it listening (see [acquire]). */
+    fun host(context: Context): AppWidgetHost =
         host ?: AppWidgetHost(context.applicationContext, HOST_ID).also { host = it }
 
     fun acquire(context: Context): AppWidgetHost {
@@ -85,10 +88,13 @@ object WidgetHostHolder {
 @Composable
 fun HostedSystemWidget(appWidgetId: Int, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val host = remember { WidgetHostHolder.acquire(context) }
+    val host = remember { WidgetHostHolder.host(context) }
     val manager = remember { AppWidgetManager.getInstance(context) }
 
+    // Listening is taken and given back by the effect, so a composition that is
+    // thrown away before it lands never leaves the count raised.
     DisposableEffect(Unit) {
+        WidgetHostHolder.acquire(context)
         onDispose { WidgetHostHolder.release() }
     }
 
@@ -104,11 +110,14 @@ fun HostedSystemWidget(appWidgetId: Int, modifier: Modifier = Modifier) {
         return
     }
 
-    AndroidView(
-        factory = { ctx -> host.createView(ctx, appWidgetId, info) },
-        modifier = modifier.fillMaxSize().padding(8.dp),
-        update = { }
-    )
+    // A new id gets a new view: the factory only runs once per view.
+    key(appWidgetId) {
+        AndroidView(
+            factory = { ctx -> host.createView(ctx, appWidgetId, info) },
+            modifier = modifier.fillMaxSize().padding(8.dp),
+            update = { }
+        )
+    }
 }
 
 /**
@@ -131,10 +140,11 @@ class SystemWidgetAdder(
 @Composable
 fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
     val context = LocalContext.current
-    val host = remember { WidgetHostHolder.acquire(context) }
+    val host = remember { WidgetHostHolder.host(context) }
     val manager = remember { AppWidgetManager.getInstance(context) }
 
     DisposableEffect(Unit) {
+        WidgetHostHolder.acquire(context)
         onDispose { WidgetHostHolder.release() }
     }
 
@@ -190,9 +200,9 @@ fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
     }
 
     if (showPicker) {
-        // Every installed provider (labels + previews) is enumerated on IO so
+        // Every installed provider (labels + icons) is enumerated on IO so
         // opening the picker doesn't stall the UI thread.
-        var providers by remember { mutableStateOf<List<AppWidgetProviderInfo>>(emptyList()) }
+        var providers by remember { mutableStateOf<List<PickerProvider>>(emptyList()) }
         LaunchedEffect(Unit) {
             providers = withContext(Dispatchers.IO) { collectProviders(manager, context) }
         }
@@ -213,6 +223,9 @@ fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
     return SystemWidgetAdder(pickFromList = { showPicker = true }, addPackage = ::addPackage)
 }
 
+/** A provider as the picker lists it, label and icon loaded up front (off the main thread). */
+private class PickerProvider(val info: AppWidgetProviderInfo, val label: String, val icon: ImageBitmap?)
+
 /**
  * Build the picker's provider list. [AppWidgetManager.installedProviders] only
  * returns providers in the HOME_SCREEN category, which silently drops widgets
@@ -225,7 +238,7 @@ fun rememberSystemWidgetAdder(onAdded: (Int) -> Unit): SystemWidgetAdder {
 private fun collectProviders(
     manager: AppWidgetManager,
     context: Context
-): List<AppWidgetProviderInfo> {
+): List<PickerProvider> {
     val pm = context.packageManager
     val byComponent = LinkedHashMap<String, AppWidgetProviderInfo>()
 
@@ -247,20 +260,29 @@ private fun collectProviders(
         byComponent.putIfAbsent(info.provider.flattenToString(), info)
     }
 
-    val all = byComponent.values.toList()
+    // Labels and icons are loaded here, on IO, once each: the list rows only show them.
+    val all = byComponent.values.map { info ->
+        PickerProvider(
+            info,
+            runCatching { info.loadLabel(pm) }.getOrDefault(info.provider.packageName),
+            runCatching {
+                (info.loadIcon(context, 0) ?: pm.getApplicationIcon(info.provider.packageName))
+                    .toBitmap(width = 96, height = 96).asImageBitmap()
+            }.getOrNull()
+        )
+    }
     val priority = all.take(priorityCount)
-    val rest = all.drop(priorityCount).sortedBy { it.loadLabel(pm).lowercase() }
+    val rest = all.drop(priorityCount).sortedBy { it.label.lowercase() }
     return priority + rest
 }
 
 /** Our full widget picker: every installed AppWidget provider, icon + label. */
 @Composable
 private fun SystemWidgetPickerDialog(
-    providers: List<AppWidgetProviderInfo>,
+    providers: List<PickerProvider>,
     onPick: (AppWidgetProviderInfo) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
     AlertDialog(
         modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
@@ -270,19 +292,9 @@ private fun SystemWidgetPickerDialog(
                 Text(stringResource(R.string.dash_no_widgets_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().height(380.dp)) {
-                    items(providers) { info ->
-                        val label = remember(info) {
-                            runCatching { info.loadLabel(context.packageManager) }.getOrDefault(
-                                info.provider.packageName
-                            )
-                        }
-                        val iconBitmap = remember(info) {
-                            runCatching {
-                                (info.loadIcon(context, 0)
-                                    ?: context.packageManager.getApplicationIcon(info.provider.packageName))
-                                    .toBitmap(width = 96, height = 96).asImageBitmap()
-                            }.getOrNull()
-                        }
+                    items(providers) { p ->
+                        val info = p.info
+                        val iconBitmap = p.icon
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -297,7 +309,7 @@ private fun SystemWidgetPickerDialog(
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text(label, color = MaterialTheme.colorScheme.onSurface)
+                                Text(p.label, color = MaterialTheme.colorScheme.onSurface)
                                 Text(
                                     info.provider.packageName,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

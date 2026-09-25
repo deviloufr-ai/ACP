@@ -90,17 +90,14 @@ internal fun MediaCard(
         OriginalMediaCard(mediaState, controller, hasAccess, context, modifier)
         return
     }
-    val positionMs = rememberMediaPosition(mediaState, controller)
-    val fraction = if (mediaState.durationMs > 0L) {
-        (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f)
-    } else 0f
-
-    val art = mediaState.artwork
+    val artwork = mediaState.artwork
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
     val glow = DashColors.Glow
     // The cover's dominant colour bleeds out beneath it, like light off a screen.
-    val bleed = remember(art, accent) { art?.averageColor() ?: accent }
+    // Both are worked out once per cover, not on every recomposition.
+    val bleed = remember(artwork) { artwork?.averageColor() } ?: accent
+    val art = remember(artwork) { artwork?.asImageBitmap() }
     val artShape = DashShape.Large
 
     Card(modifier = modifier) {
@@ -132,7 +129,7 @@ internal fun MediaCard(
                 ) {
                     if (art != null) {
                         Image(
-                            bitmap = art.asImageBitmap(),
+                            bitmap = art,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -205,14 +202,7 @@ internal fun MediaCard(
             if (hasAccess) {
                 if (mediaState.durationMs > 0L) {
                     Spacer(Modifier.height(10.dp))
-                    MediaProgress(fraction = fraction)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(formatTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                        Text(formatTime(mediaState.durationMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                    }
+                    MediaTimeline(mediaState, controller)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -263,6 +253,20 @@ internal fun MediaCard(
     }
 }
 
+/** Seek bar and times: the only part of the card that follows the 2 Hz position poll. */
+@Composable
+private fun MediaTimeline(mediaState: MediaState, controller: CarMediaController) {
+    val positionMs = rememberMediaPosition(mediaState, controller)
+    MediaProgress(fraction = (positionMs.toFloat() / mediaState.durationMs).coerceIn(0f, 1f))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(formatTrackTime(positionMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+        Text(formatTrackTime(mediaState.durationMs), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
 /** Seek bar: recessed track, accent-gradient fill with a glow, bright knob at the playhead. */
 @Composable
 internal fun MediaProgress(fraction: Float, modifier: Modifier = Modifier) {
@@ -304,11 +308,4 @@ internal fun MediaProgress(fraction: Float, modifier: Modifier = Modifier) {
         drawCircle(color = accent.copy(alpha = 0.35f), radius = 8.dp.toPx(), center = Offset(w, y))
         drawCircle(color = Color.White, radius = 5.dp.toPx(), center = Offset(w, y))
     }
-}
-
-internal fun formatTime(ms: Long): String {
-    val totalSeconds = (ms / 1000).coerceAtLeast(0)
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
 }

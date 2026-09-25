@@ -66,11 +66,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +82,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,6 +91,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -111,10 +116,19 @@ internal class PermissionState(val granted: Boolean, val request: () -> Unit)
 @Composable
 internal fun rememberPermission(permission: String): PermissionState {
     val context = LocalContext.current
-    var granted by remember {
-        mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
-    }
+    fun check() = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    var granted by remember { mutableStateOf(check()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+    // Checked again on every return to the launcher: the permission may have
+    // been granted (or taken back) in the system settings meanwhile.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, permission) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) granted = check()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     return PermissionState(granted) { launcher.launch(permission) }
 }
 
@@ -164,21 +178,6 @@ internal fun NeedsAccess(icon: ImageVector, title: String, action: String, onAct
 @Composable
 internal fun ClockCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var now by remember { mutableStateOf(Date()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = Date()
-            delay(1000)
-        }
-    }
-    val locale = Locale.getDefault()
-    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale) }
-    val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
-    val time = timeFmt.format(now)
-    val date = dateFmt.format(now)
-    val seconds = secFmt.format(now)
-
     Card(modifier = modifier) {
         BoxWithConstraints(
             modifier = Modifier
@@ -191,28 +190,42 @@ internal fun ClockCard(modifier: Modifier = Modifier) {
                 .padding(DashSpace.Lg)
         ) {
             val numSize = min(maxWidth.value * 0.28f, maxHeight.value * 0.55f).coerceIn(36f, 120f).roundToInt()
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    HeroNumber(text = time, size = numSize)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        seconds,
-                        color = DashColors.TextSecondary,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = (numSize * 0.16f).dp)
-                    )
-                }
-                Text(
-                    date.replaceFirstChar { it.uppercase() },
-                    color = DashColors.TextSecondary,
-                    letterSpacing = 1.sp,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            ClockReadout(numSize)
         }
+    }
+}
+
+/** The ticking part of the clock tile, so each second recomposes only these lines. */
+@Composable
+private fun ClockReadout(numSize: Int) {
+    val now = rememberNow(1_000L)
+    val locale = Locale.getDefault()
+    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
+    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale) }
+    val secFmt = remember(locale) { SimpleDateFormat("ss", locale) }
+    val time = timeFmt.format(now)
+    val date = dateFmt.format(now)
+    val seconds = secFmt.format(now)
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            HeroNumber(text = time, size = numSize)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                seconds,
+                color = DashColors.TextSecondary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = (numSize * 0.16f).dp)
+            )
+        }
+        Text(
+            date.replaceFirstChar { it.uppercase() },
+            color = DashColors.TextSecondary,
+            letterSpacing = 1.sp,
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -620,27 +633,9 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val max = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
     var dragging by remember { mutableStateOf(false) }
     // Follow the hardware knob / other apps while nobody is dragging the slider.
-    // The system broadcasts VOLUME_CHANGED_ACTION on every change; a slow poll
-    // remains as a fallback for ROMs that don't send it.
-    DisposableEffect(Unit) {
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) {
-                if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-            }
-        }
-        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
-        runCatching { androidx.core.content.ContextCompat.registerReceiver(context, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) }
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            if (!dragging) volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        }
-    }
+    var volume by rememberMusicVolume(audio, hold = { dragging })
     val muted = volume == 0
 
     Card(modifier = modifier) {
@@ -683,6 +678,37 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * The media volume, following the hardware knob and other apps: the system
+ * broadcasts VOLUME_CHANGED_ACTION on every change, and a slow poll remains as
+ * a fallback for ROMs that don't send it. Outside changes are ignored while
+ * [hold] is true (the slider is being dragged). Shared by the audio tile and
+ * its designed face.
+ */
+@Composable
+internal fun rememberMusicVolume(audio: AudioManager, hold: () -> Boolean = { false }): MutableIntState {
+    val context = LocalContext.current
+    val volume = remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    val held by rememberUpdatedState(hold)
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                if (!held()) volume.intValue = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }
+        }
+        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+        runCatching { ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED) }
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5000)
+            if (!held()) volume.intValue = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        }
+    }
+    return volume
 }
 
 @Composable

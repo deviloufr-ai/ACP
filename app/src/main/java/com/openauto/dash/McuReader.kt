@@ -3,11 +3,13 @@ package com.openauto.dash
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,7 +110,7 @@ object McuReader {
     /** Persist the learned range word; decodes from the frame already seen, else the next one. */
     internal fun saveRangeMapping(m: RangeMapping) {
         rangeMapping = m
-        _rangeKm.value = _entries.value.firstOrNull { it.key == m.key }?.let { m.decode(it.bytes) }
+        setRange(_entries.value.firstOrNull { it.key == m.key }?.let { m.decode(it.bytes) })
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
             ?.putString("range_key", m.key)
             ?.putInt("range_byte", m.index)
@@ -120,7 +122,7 @@ object McuReader {
     /** Forget the learned range word (e.g. to pick another one). */
     fun clearRangeMapping() {
         rangeMapping = null
-        _rangeKm.value = null
+        setRange(null)
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
             ?.remove("range_key")?.remove("range_byte")?.remove("range_be")?.remove("range_scale")?.apply()
     }
@@ -185,99 +187,188 @@ object McuReader {
     /** Forget the learned fuel byte (e.g. to re-run the finder). */
     fun clearFuelMapping() {
         fuelMapping = null
-        _fuelPercent.value = null
+        setFuel(null)
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
             ?.remove("fuel_key")?.remove("fuel_byte")?.remove("fuel_fullraw")?.apply()
     }
 
-    /** [DemoMode]'s doors, fuel and range (and, when it ends, the real ones back). */
+    // The car's real doors, fuel and range, kept up to date while the demo shows
+    // its own and put back when it ends.
+    @Volatile private var realDoors: DoorState? = null
+    @Volatile private var realFuel: Int? = null
+    @Volatile private var realRange: Int? = null
+
+    private fun setDoors(v: DoorState?) {
+        realDoors = v
+        if (!DemoMode.isOn) _doorState.value = v
+    }
+
+    private fun setFuel(v: Int?) {
+        realFuel = v
+        if (!DemoMode.isOn) _fuelPercent.value = v
+    }
+
+    private fun setRange(v: Int?) {
+        realRange = v
+        if (!DemoMode.isOn) _rangeKm.value = v
+    }
+
+    /** [DemoMode]'s doors, fuel and range. */
     internal fun demoWrite(doors: DoorState?, fuelPercent: Int?, rangeKm: Int?) {
         _doorState.value = doors
         _fuelPercent.value = fuelPercent
         _rangeKm.value = rangeKm
     }
 
+    /** The demo is over: the car's doors, fuel and range back, as they are now. */
+    internal fun endDemo() {
+        _doorState.value = realDoors
+        _fuelPercent.value = realFuel
+        _rangeKm.value = realRange
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // All guarded by this object's lock.
     private var job: Job? = null
     private var process: Process? = null
     private var refCount = 0
-    // Sorted by key so publishing is a plain copy, no per-line sort.
+    private var shutdown: Job? = null
+    // Sorted by key so publishing is a plain copy, no per-line sort. Only the reader thread touches it.
     private val latest = java.util.TreeMap<String, Entry>()
 
     private val regex = Regex("""dispatchToClients - cmdId:\s*(\d+)\s*-\s*data\s*:\s*\[([0-9a-fA-F ]*)]""")
+    private val whitespace = Regex("\\s+")
+    private const val HEX_DIGITS = "0123456789ABCDEF"
+
+    /** How long the root logcat outlives its last user: a page swipe lets go and takes it again at once. */
+    private const val LINGER_MS = 30_000L
+    private const val RETRY_MIN_MS = 2_000L
+    private const val RETRY_MAX_MS = 5 * 60_000L
+    /** A logcat that ran this long was working: the next failure starts the backoff over. */
+    private const val HEALTHY_MS = 60_000L
 
     @Synchronized
     fun start() {
         refCount++
-        if (job != null) return
-        job = scope.launch {
-            runCatching {
-                val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "logcat -s mcu_services:D"))
-                process = p
-                p.inputStream.bufferedReader().forEachLine { line ->
-                    if (isActive) parse(line)
-                }
-            }
-        }
+        shutdown?.cancel()
+        shutdown = null
+        if (job?.isActive == true) return
+        job = scope.launch { tail() }
     }
 
     @Synchronized
     fun stop() {
-        refCount--
-        if (refCount > 0) return
-        refCount = 0
-        runCatching { process?.destroy() }
-        process = null
-        job?.cancel()
-        job = null
+        if (refCount == 0) return
+        if (--refCount > 0) return
+        shutdown?.cancel()
+        shutdown = scope.launch {
+            delay(LINGER_MS)
+            synchronized(this@McuReader) {
+                if (refCount > 0) return@launch
+                job?.cancel()
+                job = null
+                process?.let(::kill)
+                process = null
+            }
+        }
+    }
+
+    /**
+     * Runs `su logcat` and reads it for as long as the reader is wanted. When
+     * it ends by itself (su refused at boot, logcat killed), it starts again,
+     * waiting longer each time it fails quickly.
+     */
+    private suspend fun tail() {
+        val ctx = currentCoroutineContext()
+        var backoff = RETRY_MIN_MS
+        while (ctx.isActive) {
+            val startedAt = System.currentTimeMillis()
+            // Started under the lock: a stop() can't slip in between and miss it.
+            val p = synchronized(this) {
+                if (!ctx.isActive) return
+                runCatching { Runtime.getRuntime().exec(arrayOf("su", "-c", "exec logcat -s mcu_services:D")) }
+                    .getOrNull()?.also { process = it }
+            }
+            if (p != null) {
+                try {
+                    val reader = p.inputStream.bufferedReader()
+                    while (ctx.isActive) parse(reader.readLine() ?: break)
+                } catch (e: IOException) {
+                    // Killed by stop(), or logcat went away: same as its end.
+                } finally {
+                    synchronized(this) { if (process === p) process = null }
+                    kill(p)
+                }
+            }
+            if (System.currentTimeMillis() - startedAt >= HEALTHY_MS) backoff = RETRY_MIN_MS
+            delay(backoff)
+            backoff = (backoff * 2).coerceAtMost(RETRY_MAX_MS)
+        }
+    }
+
+    /**
+     * Ends [p]. Closing its output also ends the logcat that su started: a su
+     * may not pass the kill on, but logcat dies on its next line to a closed pipe.
+     */
+    private fun kill(p: Process) {
+        runCatching { p.inputStream.close() }
+        runCatching { p.destroy() }
+        runCatching { p.destroyForcibly() }
     }
 
     private fun parse(line: String) {
         val m = regex.find(line) ?: return
         val cmdId = m.groupValues[1].toIntOrNull() ?: return
-        val bytes = m.groupValues[2].trim().split(Regex("\\s+"))
+        val bytes = m.groupValues[2].trim().split(whitespace)
             .filter { it.isNotEmpty() }
             .mapNotNull { it.toIntOrNull(16) }
         if (bytes.isEmpty()) return
 
         val sub = if (bytes.size >= 3 && bytes[1] == 0xfd) bytes[2] else -1
-        val key = if (sub >= 0) "%d.%02X".format(Locale.US, cmdId, sub) else cmdId.toString()
-        val hex = bytes.joinToString(" ") { "%02X".format(Locale.US, it) }
-        val now = System.currentTimeMillis()
+        val key = if (sub >= 0) cmdId.toString() + "." + hex2(sub) else cmdId.toString()
+        // Runs for every line the CANbox logs (dozens a second): no String.format per byte.
+        val hex = buildString(bytes.size * 3) {
+            bytes.forEachIndexed { i, b ->
+                if (i > 0) append(' ')
+                append(HEX_DIGITS[(b shr 4) and 0x0F]).append(HEX_DIGITS[b and 0x0F])
+            }
+        }
         val prev = latest[key]
-        val changed = prev == null || prev.hex != hex
-        val changedAt = if (changed) now else prev.changedAt
-        latest[key] = Entry(key, cmdId, bytes, hex, changedAt)
         // The CANbox repeats most frames several times a second; only a new
-        // value is worth waking every collector for.
-        if (changed) _entries.value = latest.values.toList()
-        // The demo shows its own doors, fuel and range; the raw frames above stay real.
-        if (DemoMode.isOn) return
+        // value is worth a new entry and waking every collector for.
+        if (prev == null || prev.hex != hex) {
+            latest[key] = Entry(key, cmdId, bytes, hex, System.currentTimeMillis())
+            _entries.value = latest.values.toList()
+        }
 
         // Fuel: the learned CANbox byte → percent, calibrated against a full tank.
         fuelMapping?.let { fm ->
             if (key == fm.key && bytes.size > fm.byteIndex && fm.fullRaw > 0) {
-                _fuelPercent.value = (bytes[fm.byteIndex] * 100 / fm.fullRaw).coerceIn(0, 100)
+                setFuel((bytes[fm.byteIndex] * 100 / fm.fullRaw).coerceIn(0, 100))
             }
         }
 
         // Range: the learned 16-bit word → km, straight from the car's trip computer.
         rangeMapping?.let { rm ->
-            if (key == rm.key) rm.decode(bytes)?.let { _rangeKm.value = it }
+            if (key == rm.key) rm.decode(bytes)?.let { setRange(it) }
         }
 
         // Door bitfield: cmdId 65, [.. 0C 38 <bits> ..] → byte index 4.
         if (cmdId == 65 && bytes.size > 4 && bytes[2] == 0x0C && bytes[3] == 0x38) {
             val b = bytes[4]
             _doorBits.value = b
-            _doorState.value = DoorState(
-                frontLeft = b and 0x80 != 0,
-                frontRight = b and 0x40 != 0,
-                rearLeft = b and 0x20 != 0,
-                rearRight = b and 0x10 != 0,
-                tailgate = b and 0x08 != 0,
-                bonnet = b and 0x04 != 0
+            setDoors(
+                DoorState(
+                    frontLeft = b and 0x80 != 0,
+                    frontRight = b and 0x40 != 0,
+                    rearLeft = b and 0x20 != 0,
+                    rearRight = b and 0x10 != 0,
+                    tailgate = b and 0x08 != 0,
+                    bonnet = b and 0x04 != 0
+                )
             )
         }
     }
+
+    private fun hex2(b: Int): String = charArrayOf(HEX_DIGITS[(b shr 4) and 0x0F], HEX_DIGITS[b and 0x0F]).concatToString()
 }

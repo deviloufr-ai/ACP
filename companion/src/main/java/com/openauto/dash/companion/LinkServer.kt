@@ -1,6 +1,7 @@
 package com.openauto.dash.companion
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -13,7 +14,6 @@ import com.openauto.dash.link.LINK_PORT
 import com.openauto.dash.link.LinkMessage
 import com.openauto.dash.link.LinkSession
 import com.openauto.dash.link.MarkRead
-import com.openauto.dash.link.NotificationSync
 import com.openauto.dash.link.Ping
 import com.openauto.dash.link.Pong
 import com.openauto.dash.link.Reply
@@ -22,10 +22,17 @@ import com.openauto.dash.link.UnknownPairingException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.IOException
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.InterfaceAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 
 sealed interface LinkState {
     data object Off : LinkState
@@ -35,17 +42,26 @@ sealed interface LinkState {
 }
 
 /**
- * The phone's end of the link: a TCP server on [LINK_PORT]. The head unit, on
- * this phone's hotspot, dials the hotspot gateway (this phone), proves it
- * holds a pairing secret, then receives the notifications and sends back
- * replies. One head unit at a time; a new connection replaces the old one.
- * Run by [LinkService], which keeps the process alive.
+ * The phone's end of the link: a TCP server on [LINK_PORT], on the hotspot's
+ * address only, so nothing on a café's Wi-Fi or the mobile network can reach
+ * it. The head unit, on this phone's hotspot, dials the hotspot gateway (this
+ * phone), proves it holds a pairing secret, then receives the notifications
+ * and sends back replies. One head unit at a time; a new connection replaces
+ * the old one. Run by [LinkService], which keeps the process alive.
  */
 object LinkServer {
     private const val TAG = "LinkServer"
     private const val HANDSHAKE_TIMEOUT_MS = 10_000
     /** The head unit pings every 15 s; three missed pings and the link is dropped. */
     private const val IDLE_TIMEOUT_MS = 45_000
+    /** How often to check the hotspot: switched on or off, or moved to another address. */
+    private const val WATCH_MS = 5_000L
+    /** Connections still proving their pairing at once; more are turned away. */
+    private const val MAX_HANDSHAKES = 4
+    // How phones name the hotspot's interface: wlan1, swlan0, ap0, softap0, ap_br_wlan2...
+    private val HOTSPOT_NAME = Regex("(wlan|swlan|ap|softap|wifi|wigig).*")
+    // Never the hotspot: mobile data, VPNs, tunnels, Wi-Fi Direct.
+    private val NOT_HOTSPOT = Regex("(rmnet|ccmni|seth|epdg|tun|ppp|dummy|v4-|clat|ip6|sit|ifb|lo|p2p).*")
 
     private val _state = MutableStateFlow<LinkState>(LinkState.Off)
     val state: StateFlow<LinkState> = _state
@@ -53,31 +69,29 @@ object LinkServer {
     private val main = Handler(Looper.getMainLooper())
     // Everything written to the socket goes through one thread, in order, off the main thread.
     private val sender = Executors.newSingleThreadExecutor()
+    private val handshakes = Semaphore(MAX_HANDSHAKES)
+    private var running = false
+    private var watcher: ScheduledExecutorService? = null
     private var server: ServerSocket? = null
     @Volatile private var session: LinkSession? = null
 
     @Synchronized
     fun start(context: Context) {
-        if (server != null) return
+        if (running) return
+        running = true
         val app = context.applicationContext
-        val socket = try {
-            ServerSocket().apply {
-                reuseAddress = true
-                bind(InetSocketAddress(LINK_PORT))
-            }
-        } catch (e: IOException) {
-            Log.w(TAG, "cannot listen on $LINK_PORT", e)
-            return
-        }
-        server = socket
         _state.value = LinkState.Waiting
-        Thread({ acceptLoop(app, socket) }, "link-accept").start()
+        watcher = Executors.newSingleThreadScheduledExecutor().also {
+            it.scheduleWithFixedDelay({ follow(app) }, 0, WATCH_MS, TimeUnit.MILLISECONDS)
+        }
     }
 
     @Synchronized
     fun stop() {
-        runCatching { server?.close() }
-        server = null
+        running = false
+        watcher?.shutdownNow()
+        watcher = null
+        closeServer()
         session?.close()
         session = null
         _state.value = LinkState.Off
@@ -86,21 +100,81 @@ object LinkServer {
     /** Sends to the connected head unit, if any. Safe from any thread. */
     fun send(message: LinkMessage) {
         val current = session ?: return
-        sender.execute {
-            try {
-                current.send(message)
-            } catch (e: IOException) {
-                current.close()
+        sender.execute { current.sendOrClose(message) }
+    }
+
+    /** Listens on the hotspot's current address, and not at all while there is no hotspot. */
+    private fun follow(context: Context) {
+        try {
+            val hotspot = hotspotAddress(context)
+            synchronized(this) {
+                if (!running) return
+                val current = server
+                if (current != null && !current.isClosed && current.inetAddress == hotspot?.address) return
+                closeServer()
+                if (hotspot == null) return
+                val socket = ServerSocket().apply {
+                    reuseAddress = true
+                    bind(InetSocketAddress(hotspot.address, LINK_PORT))
+                }
+                server = socket
+                Thread({ acceptLoop(context, socket, hotspot) }, "link-accept").start()
             }
+        } catch (e: Exception) {
+            // Thrown out of here, the check would never run again.
+            Log.w(TAG, "cannot listen on the hotspot", e)
         }
     }
 
-    private fun acceptLoop(context: Context, socket: ServerSocket) {
+    private fun closeServer() {
+        runCatching { server?.close() }
+        server = null
+    }
+
+    /**
+     * This phone's hotspot address. Its own networks (Wi-Fi it joined, mobile
+     * data, a VPN) are exactly the ones to stay off; the hotspot's interface
+     * isn't one of them. Android 11+ picks a random hotspot subnet, so the
+     * address is read, never assumed to be 192.168.43.1.
+     */
+    private fun hotspotAddress(context: Context): InterfaceAddress? {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        @Suppress("DEPRECATION") // allNetworks: every network the phone itself uses, not just the default one.
+        val own = cm.allNetworks.mapNotNullTo(HashSet()) { cm.getLinkProperties(it)?.interfaceName }
+        val candidates = NetworkInterface.getNetworkInterfaces()?.toList().orEmpty().filter { nif ->
+            nif.name !in own && !NOT_HOTSPOT.matches(nif.name) && runCatching { nif.isUp && !nif.isLoopback }.getOrDefault(false)
+        }
+        return candidates.sortedByDescending { HOTSPOT_NAME.matches(it.name) }.firstNotNullOfOrNull { nif ->
+            nif.interfaceAddresses.firstOrNull { it.address is Inet4Address && it.address.isSiteLocalAddress }
+        }
+    }
+
+    /** Whether [remote] is on the hotspot's own subnet, as a head unit that joined it is. */
+    private fun onHotspot(remote: InetAddress?, hotspot: InterfaceAddress): Boolean {
+        val a = remote?.address ?: return false
+        val b = hotspot.address.address
+        if (a.size != b.size) return false
+        val bits = hotspot.networkPrefixLength.toInt().takeIf { it in 8..30 } ?: 24
+        for (i in a.indices) {
+            val take = (bits - i * 8).coerceIn(0, 8)
+            if (take == 0) break
+            val mask = (0xFF shl (8 - take)) and 0xFF
+            if (a[i].toInt() and mask != b[i].toInt() and mask) return false
+        }
+        return true
+    }
+
+    private fun acceptLoop(context: Context, socket: ServerSocket, hotspot: InterfaceAddress) {
         while (!socket.isClosed) {
             val client = try {
                 socket.accept()
             } catch (e: IOException) {
                 break
+            }
+            // Turned away before a byte is read: anyone not on the hotspot, and floods.
+            if (!onHotspot(client.inetAddress, hotspot) || !handshakes.tryAcquire()) {
+                runCatching { client.close() }
+                continue
             }
             Thread({ serve(context, client) }, "link-session").start()
         }
@@ -118,19 +192,30 @@ object LinkServer {
         } catch (e: UnknownPairingException) {
             runCatching { client.close() }
             return
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Log.i(TAG, "handshake failed: ${e.message}")
             runCatching { client.close() }
             return
+        } finally {
+            handshakes.release()
         }
         client.soTimeout = IDLE_TIMEOUT_MS
-        session?.close()
-        session = link
         val unitName = PairedUnits.nameOf(context, link.pairingId) ?: "?"
-        _state.value = LinkState.Connected(unitName)
+        // Published under the lock, so a stop() during the handshake is never missed.
+        val replaced: LinkSession?
+        synchronized(this) {
+            if (!running) {
+                link.close()
+                return
+            }
+            replaced = session
+            session = link
+            _state.value = LinkState.Connected(unitName)
+        }
+        replaced?.close()
 
         send(Hello(deviceName(context), appVersion(context)))
-        send(NotificationSync(PhoneNotificationListener.snapshot()))
+        send(PhoneNotificationListener.syncMessage())
         try {
             while (true) {
                 val message = link.receive() ?: continue
@@ -143,7 +228,7 @@ object LinkServer {
             synchronized(this) {
                 if (session === link) {
                     session = null
-                    if (server != null) _state.value = LinkState.Waiting
+                    if (running) _state.value = LinkState.Waiting
                 }
             }
         }

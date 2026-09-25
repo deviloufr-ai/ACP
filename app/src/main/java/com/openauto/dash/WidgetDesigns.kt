@@ -2,6 +2,7 @@ package com.openauto.dash
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -132,9 +133,11 @@ internal val WidgetDesign.description: String
 
 // --- What a design draws -----------------------------------------------------
 
-internal class FaceStat(val label: String, val value: String)
+@Immutable
+internal data class FaceStat(val label: String, val value: String)
 
-internal class FaceRow(
+@Immutable
+internal data class FaceRow(
     val title: String,
     val detail: String,
     val alert: Boolean = false,
@@ -144,15 +147,18 @@ internal class FaceRow(
 )
 
 /** A small gauge: label, value, unit and how far round it goes (0..1). */
-internal class FaceGauge(val label: String, val value: String, val unit: String, val fraction: Float)
+@Immutable
+internal data class FaceGauge(val label: String, val value: String, val unit: String, val fraction: Float)
 
 /** Something at a time of day: an agenda event ([endMs] set) or a notification (a moment). */
-internal class FaceEvent(val startMs: Long, val endMs: Long?, val title: String)
+@Immutable
+internal data class FaceEvent(val startMs: Long, val endMs: Long?, val title: String)
 
 /** Which road sign a widget reads as. */
 internal enum class SignKind { SPEED, PARKING, DIRECTIONS, FUEL, REST }
 
-internal class FaceAction(
+@Immutable
+internal data class FaceAction(
     val icon: ImageVector,
     val label: String,
     val onClick: () -> Unit,
@@ -169,8 +175,12 @@ internal class FaceAction(
  * designs set smaller. [fullCircle] makes gauges run the whole way round
  * (compass, clock seconds). [clock] (h, m, s) and [compass] let the dial
  * designs draw hands or cardinal letters.
+ *
+ * A value type: a face equal to the last one lets its design skip redrawing,
+ * so a feed that repeats itself costs nothing on screen.
  */
-internal class WidgetFace(
+@Immutable
+internal data class WidgetFace(
     val icon: ImageVector,
     val title: String,
     val value: String,

@@ -130,24 +130,57 @@ class CarMediaController(private val context: Context) {
         activeController = session
     }
 
+    /**
+     * Every callback of every session lands here (position ticks, buffering,
+     * other players), mostly with nothing new for the tiles. The state only
+     * changes when a field does, so the tiles don't redraw for nothing.
+     */
     private fun publish(controller: MediaController?) {
         if (controller == null) {
             _mediaState.value = MediaState()
             return
         }
         // Remember which app owns this session so the split-screen cockpit can
-        // reopen the last-used media app.
-        controller.packageName?.let { rememberLastMediaPackage(context, it) }
+        // reopen the last-used media app (written only when it changes).
+        controller.packageName?.let { pkg ->
+            if (pkg != rememberedPackage) {
+                rememberedPackage = pkg
+                rememberLastMediaPackage(context, pkg)
+            }
+        }
         val metadata = controller.metadata
         val playback = controller.playbackState
+        val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty()
+        val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty()
+        val track = listOf(controller.packageName, title, artist, metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM))
         _mediaState.value = MediaState(
-            title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty(),
-            artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty(),
+            title = title,
+            artist = artist,
             isPlaying = playback?.state == PlaybackState.STATE_PLAYING,
             hasMedia = metadata != null,
             durationMs = (metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L),
-            artwork = metadata?.artwork()
+            artwork = artworkFor(track, metadata?.artwork())
         )
+    }
+
+    /** The package whose name is saved as the last media app, so it's written only when it changes. */
+    private var rememberedPackage: String? = null
+    private var artTrack: List<String?>? = null
+    private var art: Bitmap? = null
+
+    /**
+     * Each read of the session's metadata brings its cover as a new bitmap;
+     * the one already shown is kept for as long as the same track plays, so
+     * a callback that changed nothing leaves the state equal. A cover that
+     * shows up late or changes (a placeholder replaced by the real one, a
+     * radio show under a fixed title) is taken.
+     */
+    private fun artworkFor(track: List<String?>, fresh: Bitmap?): Bitmap? {
+        val kept = art
+        if (fresh != null && kept != null && track == artTrack && !kept.isRecycled && kept.sameAs(fresh)) return kept
+        artTrack = track
+        art = fresh
+        return fresh
     }
 
     /** First available artwork bitmap from the session metadata, if any. */

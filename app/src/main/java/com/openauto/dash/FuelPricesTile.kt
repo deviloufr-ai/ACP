@@ -31,7 +31,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /*
  * "Fuel nearby": the cheapest stations around the car for its fuel, one tap
@@ -66,13 +68,23 @@ internal fun rememberFuelNearby(): FuelNearby? {
     val stations by FuelPriceRepo.stations.collectAsState()
     val grades = remember(car) { FuelPrices.gradesFor(car) }
     val here = location ?: return null
-    LaunchedEffect(here.latitude, here.longitude, grades.first()) {
-        FuelPriceRepo.refresh(here.latitude, here.longitude, grades.first())
+    // Asked again once the car has moved about a kilometre (or the grade changed),
+    // and each minute meanwhile so an old list still gets refreshed; the repo
+    // skips any fetch it doesn't need. Not restarted on every GPS fix.
+    LaunchedEffect((here.latitude * 100).roundToInt(), (here.longitude * 100).roundToInt(), grades.first()) {
+        while (true) {
+            FuelPriceRepo.refresh(here.latitude, here.longitude, grades.first())
+            delay(60_000)
+        }
     }
     val list = stations ?: return null
-    // A petrol car falls back to SP95/98 where no E10 is sold.
-    val grade = grades.firstOrNull { g -> list.any { it.prices.containsKey(g) } } ?: grades.first()
-    return FuelNearby(grade, here.latitude, here.longitude, FuelPrices.rank(list, grade, here.latitude, here.longitude))
+    // Ranked again when the list, the grade or the position (to ~100 m) changes,
+    // not on every recomposition.
+    return remember(list, grades, (here.latitude * 1000).roundToInt(), (here.longitude * 1000).roundToInt()) {
+        // A petrol car falls back to SP95/98 where no E10 is sold.
+        val grade = grades.firstOrNull { g -> list.any { it.prices.containsKey(g) } } ?: grades.first()
+        FuelNearby(grade, here.latitude, here.longitude, FuelPrices.rank(list, grade, here.latitude, here.longitude))
+    }
 }
 
 @Composable

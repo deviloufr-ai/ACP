@@ -26,6 +26,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.delay
 
 /*
  * Tile designs: routing a built-in tile to its design, and the picker that
@@ -75,8 +81,8 @@ internal fun WidgetDesignPickerDialog(
     onPick: (WidgetDesign) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val live = if (kind in FRAMED_KINDS) null else rememberWidgetFace(kind, env)
-    val face = live ?: sampleFace(kind)
+    val frozen = rememberFaceSnapshot(kind, env)
+    val sample = sampleFace(kind)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier
@@ -109,7 +115,7 @@ internal fun WidgetDesignPickerDialog(
                             when {
                                 design == WidgetDesign.STANDARD -> standardPreview()
                                 kind in FRAMED_KINDS -> DesignFrame(design, kindIcon(kind), kind.label, Modifier.fillMaxSize()) { FramedPlaceholder(kind) }
-                                else -> DesignedFace(face, design, Modifier.fillMaxSize())
+                                else -> DesignedFace(frozen.value ?: sample, design, Modifier.fillMaxSize())
                             }
                         }
                     }
@@ -130,6 +136,25 @@ internal fun WidgetDesignPickerDialog(
             }
         }
     }
+}
+
+/**
+ * The widget's live reading for the picker's previews, refreshed at most once
+ * a second: some twenty previews at feed rate (15 Hz g-force, OBD) would bog
+ * the unit down while the driver just picks a look. Null for framed kinds.
+ */
+@Composable
+private fun rememberFaceSnapshot(kind: BuiltinKind, env: SkinTileEnv): State<WidgetFace?> {
+    val live = if (kind in FRAMED_KINDS) null else rememberWidgetFace(kind, env)
+    val latest = rememberUpdatedState(live)
+    val frozen = remember { mutableStateOf(live) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            frozen.value = latest.value
+        }
+    }
+    return frozen
 }
 
 @Composable

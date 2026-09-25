@@ -3,7 +3,6 @@ package com.openauto.dash
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,14 +41,12 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,19 +78,14 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -130,7 +122,6 @@ private val OrbitArmBase: Color get() = if (DashColors.Light) Color(0xFFE7E9F1) 
 private val OrbitFrost = Color.White.copy(alpha = 0.92f)
 
 private const val DIAL_MAX_KMH = 200f
-private const val DIAL_MAX_RPM = 7000f
 private const val DIAL_START = 135f
 private const val DIAL_SWEEP = 270f
 private const val TAU = (2 * PI).toFloat()
@@ -152,9 +143,11 @@ private fun frost(alpha: Float): Color = if (DashColors.Light) OrbitFrost else w
  * By day, a soft ink drop shadow under a bubble; put it before any clip. The
  * bubble is the circle inscribed in the bounds or, for one inside a clipped
  * item, a circle [diameter] dp across centred horizontally [top] dp below the
- * top edge. At night bubbles cast none and this adds nothing.
+ * top edge. At night bubbles cast none and this adds nothing. Remembered, so
+ * a recomposing bubble (a live gauge) keeps its cached shadow.
  */
-private fun Modifier.orbitShadow(diameter: Float = 0f, top: Float = 0f): Modifier = if (!DashColors.Light) this else drawWithCache {
+@Composable
+private fun Modifier.orbitShadow(diameter: Float = 0f, top: Float = 0f): Modifier = if (!DashColors.Light) this else cachedDraw(diameter, top) {
     val r = if (diameter > 0f) diameter.dp.toPx() / 2f else size.minDimension / 2f
     val cy = if (diameter > 0f) top.dp.toPx() + r else size.height / 2f
     val blur = min(r * 0.2f, 10.dp.toPx())
@@ -181,14 +174,10 @@ private fun DrawScope.frostedFace(r: Float, rim: Stroke, rimColor: Color) {
 }
 
 /**
- * A render layer of the tile's own. The page background animates every frame;
+ * A render layer of the tile's own. The page background animates on every ambient step;
  * without it the tile's drawing would be replayed along with the background.
  */
 private fun Modifier.ownLayer(): Modifier = graphicsLayer { }
-
-/** Text size that follows the tile's dp geometry whatever the system font scale, so scaled layouts never overflow. */
-@Composable
-private fun fsp(dp: Float): TextUnit = (dp / LocalDensity.current.fontScale).sp
 
 /** One line (or [maxLines]) of Orbit text in the system sans; [tight] gives big numerals their tight tracking. */
 @Composable
@@ -206,8 +195,8 @@ private fun OrbitText(
         text = text,
         modifier = modifier,
         color = color,
-        fontSize = fsp(size),
-        lineHeight = fsp(size * if (tight) 1.05f else 1.25f),
+        fontSize = fixedSp(size),
+        lineHeight = fixedSp(size * if (tight) 1.05f else 1.25f),
         fontFamily = FontFamily.SansSerif,
         fontWeight = weight,
         letterSpacing = if (tight) (-0.04).em else 0.em,
@@ -217,18 +206,15 @@ private fun OrbitText(
     )
 }
 
-/** "2 400": thousands split by a narrow space, as the dial prints revs. */
-private fun groupThousands(n: Int): String =
-    if (n < 1000) "$n" else "${n / 1000}\u202F${(n % 1000).toString().padStart(3, '0')}"
-
 // --- Page background -----------------------------------------------------------------
 
 /**
  * Navy page (pale lavender by day) with a coral glow near the middle and a
  * violet one towards the right, faint dashed orbit rings, and a teal and a
  * coral dot circling two of them in opposite directions (26 s and 44 s a lap).
- * The still part is rendered once into an offscreen layer; each frame only
- * composites it and draws the two dots, whose angles are read inside the draw lambda.
+ * The still part is rendered once into an offscreen layer; each step of the
+ * ambient ticker (about 20 a second, none with effects off) only composites it
+ * and draws the two dots, whose angles are read inside the draw lambda.
  */
 @Composable
 internal fun orbitBackground(): Modifier {
@@ -295,8 +281,7 @@ internal fun orbitBackground(): Modifier {
 @Composable
 internal fun OrbitTopBar(m: TopBarModel) {
     val now = rememberNow(60_000L)
-    val locale = Locale.getDefault()
-    val dateFmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale) }
+    val dateFmt = rememberDateFormat("EEEdMMM", best = true)
     val shape = RoundedCornerShape(28.dp)
     val light = DashColors.Light
     val ink = DashColors.TextPrimary
@@ -342,7 +327,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                         text = m.clock,
                         modifier = Modifier.alignByBaseline(),
                         color = DashColors.TextPrimary,
-                        fontSize = fsp(24f),
+                        fontSize = fixedSp(24f),
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.02).em,
@@ -353,7 +338,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                         text = dateFmt.format(now),
                         modifier = Modifier.alignByBaseline(),
                         color = DashColors.Muted,
-                        fontSize = fsp(13f),
+                        fontSize = fixedSp(13f),
                         fontFamily = FontFamily.SansSerif,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -373,7 +358,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 .padding(start = (maxWidth + pillWidth) / 2 + 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            VehicleAlerts(m.obdConnection, m.obdData)
+            VehicleAlerts(m.obdConnection, m.obd)
         }
     }
 }
@@ -509,13 +494,14 @@ private fun OrbitTelemetry(env: SkinTileEnv) {
         )
     )
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val layout = dialLayout(maxWidth.value, maxHeight.value, satellites.size)
+        // Kept across OBD samples, so the orbit path's cached drawing is too.
+        val layout = remember(maxWidth, maxHeight, satellites.size) { dialLayout(maxWidth.value, maxHeight.value, satellites.size) }
         if (layout.orbit > 0f) OrbitPathThrough(layout)
         val d = layout.dial
         OrbitDial(
             diameter = d,
             speedFraction = if (connected) data.speedKmh / DIAL_MAX_KMH else 0f,
-            outerFraction = if (connected) data.rpm / DIAL_MAX_RPM else 0f,
+            outerFraction = if (connected) data.rpm / SKIN_RPM_MAX else 0f,
             active = connected,
             warn = warn,
             onClick = if (idle && !env.editing) env.onConnectObd else null,
@@ -801,11 +787,7 @@ private fun OrbitSpeedHud(env: SkinTileEnv) {
             OrbitText("km/h", max(11f, d * 0.044f), DashColors.Muted)
             Spacer(Modifier.height((d * 0.025f).dp))
             OrbitText(
-                when {
-                    obd -> "OBD"
-                    speed != null -> "GPS"
-                    else -> stringResource(R.string.orbit_no_signal)
-                },
+                speedSource(obd, speed, stringResource(R.string.orbit_no_signal)),
                 max(11f, d * 0.042f),
                 if (speed != null) DashColors.Secondary else DashColors.Muted,
                 weight = FontWeight.SemiBold
@@ -968,30 +950,31 @@ private fun OrbitRecordDeck(size: Float, state: MediaState, controller: CarMedia
  */
 @Composable
 private fun OrbitProgressRing(state: MediaState, controller: CarMediaController, center: Offset, r: Float, modifier: Modifier) {
-    val fraction = rememberMediaFraction(state, controller)
+    // Read while drawing, so a new position only redraws the cached ring.
+    val fraction = rememberUpdatedState(rememberMediaFraction(state, controller))
     val coral = DashColors.Accent
     val shadow = if (DashColors.Light) DashColors.TextPrimary.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.55f)
     val track = mist(0.06f)
-    Canvas(modifier) {
-        val c = Offset(center.x.dp.toPx(), center.y.dp.toPx())
-        val rec = r.dp.toPx()
-        val ring = rec * 146f / 135f
-        val width = max(2.dp.toPx(), rec * 0.028f)
-        val shadowCenter = Offset(c.x, c.y + rec * 0.12f)
-        drawCircle(
-            Brush.radialGradient(listOf(shadow, Color.Transparent), shadowCenter, rec * 1.2f),
-            rec * 1.2f,
-            shadowCenter
-        )
-        drawCircle(track, ring, c, style = Stroke(width))
-        if (fraction > 0f) {
-            drawArc(
-                coral, -90f, 360f * fraction, false,
-                Offset(c.x - ring, c.y - ring), Size(ring * 2, ring * 2),
-                style = Stroke(width, cap = StrokeCap.Round)
-            )
+    Spacer(
+        modifier.cachedDraw(center, r, coral, shadow, track) {
+            val c = Offset(center.x.dp.toPx(), center.y.dp.toPx())
+            val rec = r.dp.toPx()
+            val ring = rec * 146f / 135f
+            val width = max(2.dp.toPx(), rec * 0.028f)
+            val shadowCenter = Offset(c.x, c.y + rec * 0.12f)
+            val shadowBrush = Brush.radialGradient(listOf(shadow, Color.Transparent), shadowCenter, rec * 1.2f)
+            val trackStroke = Stroke(width)
+            val arcStroke = Stroke(width, cap = StrokeCap.Round)
+            val arcTopLeft = Offset(c.x - ring, c.y - ring)
+            val arcSize = Size(ring * 2, ring * 2)
+            onDrawBehind {
+                drawCircle(shadowBrush, rec * 1.2f, shadowCenter)
+                drawCircle(track, ring, c, style = trackStroke)
+                val f = fraction.value
+                if (f > 0f) drawArc(coral, -90f, 360f * f, false, arcTopLeft, arcSize, style = arcStroke)
+            }
         }
-    }
+    )
 }
 
 /** Title, artist and "2:14 / 4:03" over the round transport controls ([k] scales them on big tiles). */
@@ -1336,16 +1319,14 @@ private fun OrbitNoRoute(access: Boolean, wide: Boolean, bubble: Float) {
 @Composable
 private fun OrbitClock(env: SkinTileEnv) {
     val now = rememberNow(60_000L)
-    val locale = Locale.getDefault()
-    val timeFmt = remember(locale) { SimpleDateFormat("HH:mm", locale) }
-    val shortDate = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale) }
-    val dayFmt = remember(locale) { SimpleDateFormat("EEEE", locale) }
-    val longDate = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMM"), locale) }
-    // Progress through the current minute, refreshed every frame and read only while drawing.
-    val seconds = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        while (true) withFrameMillis { seconds.floatValue = (System.currentTimeMillis() % 60_000L) / 60_000f }
-    }
+    val timeFmt = rememberDateFormat("HH:mm")
+    val shortDate = rememberDateFormat("EEEdMMM", best = true)
+    val dayFmt = rememberDateFormat("EEEE")
+    val longDate = rememberDateFormat("dMMMM", best = true)
+    // Progress through the current minute, read only while drawing: four steps a
+    // second with full effects (1.5° each, still a sweep), one a second otherwise.
+    val wall = rememberWallClock(if (DashColors.Effects == DashEffects.FULL) 250L else 1_000L)
+    val seconds = remember(wall) { { (wall.longValue % 60_000L) / 60_000f } }
     val context = env.context
     val open = { openClockApp(context) }
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1354,7 +1335,7 @@ private fun OrbitClock(env: SkinTileEnv) {
         if (w >= h * 2f) {
             val d = min(h - 8f, w * 0.45f)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OrbitClockRing(d, timeFmt.format(now), null, { seconds.floatValue }, !env.editing, open)
+                OrbitClockRing(d, timeFmt.format(now), null, seconds, !env.editing, open)
                 Spacer(Modifier.width((16f + d * 0.08f).dp))
                 Column {
                     OrbitText(
@@ -1365,7 +1346,7 @@ private fun OrbitClock(env: SkinTileEnv) {
                 }
             }
         } else {
-            OrbitClockRing(min(w, h) - 8f, timeFmt.format(now), shortDate.format(now), { seconds.floatValue }, !env.editing, open)
+            OrbitClockRing(min(w, h) - 8f, timeFmt.format(now), shortDate.format(now), seconds, !env.editing, open)
         }
     }
 }
@@ -1589,7 +1570,7 @@ private fun OrbitRange(item: DashboardItem, env: SkinTileEnv) {
  */
 @Composable
 private fun OrbitFuelBubble(d: Float, fuel: FuelInfo, enabled: Boolean, onClick: () -> Unit) {
-    val low = fuel.percent <= 12
+    val low = fuel.percent <= SKIN_LOW_FUEL_PCT
     val fluid = if (low) DashColors.Warning else DashColors.Secondary
     val light = DashColors.Light
     val fluidInk = if (light) lerp(fluid, DashColors.TextPrimary, 0.3f) else fluid

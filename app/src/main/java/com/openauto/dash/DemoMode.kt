@@ -95,10 +95,12 @@ object DemoMode {
         if (!isOn) return
         job?.cancel()
         job = null
+        // Off first: a real event from here on publishes itself, and the feeds
+        // that kept their real state up to date meanwhile hand it back below.
+        _active.value = false
         before?.restore()
         before = null
         _media.value = MediaState()
-        _active.value = false
     }
 
     /** The fault-code tile's state for [codes]: the advice comes with them, as after a real scan. */
@@ -461,7 +463,12 @@ object DemoMode {
         FuelStation(4, "28, Quai De La Rapée", "Paris", 48.8452, 2.3689, mapOf(FuelGrade.GAZOLE to 1.699, FuelGrade.E10 to 1.779, FuelGrade.GPLC to 0.959))
     )
 
-    /** What the real sources showed when the demo began, put back when it ends. */
+    /**
+     * What the real sources showed when the demo began, put back when it ends.
+     * The feeds whose real state can change meanwhile (a route ending, a
+     * message arriving, a fetch landing, the CANbox) keep it up to date
+     * themselves and hand back their latest instead.
+     */
     private class Snapshot(
         val lamp: EngineLamp?,
         val pending: Set<String>,
@@ -469,29 +476,20 @@ object DemoMode {
         val trip: TripState,
         val heading: Float?,
         val g: GForce,
-        val doors: McuReader.DoorState?,
-        val fuel: Int?,
-        val range: Int?,
-        val weather: Weather?,
-        val weatherError: String?,
-        val nav: NavState,
-        val notifications: List<NotifItem>,
         val care: CareState,
-        val ai: AiMechanic.State,
-        val stations: List<FuelStation>?,
-        val stationsError: String?
+        val ai: AiMechanic.State
     ) {
         fun restore() {
             ObdBluetoothManager.endDemo(lamp, pending)
             LocationFeed.demoWrite(location, trip, heading)
             GForceFeed.demoWrite(g)
-            McuReader.demoWrite(doors, fuel, range)
-            WeatherRepo.demoWrite(weather, weatherError)
-            NavDirections.demoWrite(nav)
-            NotificationFeed.demoWrite(notifications)
+            McuReader.endDemo()
+            WeatherRepo.endDemo()
+            NavDirections.endDemo()
+            NotificationFeed.endDemo()
             CarCare.demoWrite(care)
             AiMechanic.demoWrite(ai)
-            FuelPriceRepo.demoWrite(stations, stationsError)
+            FuelPriceRepo.endDemo()
         }
 
         companion object {
@@ -499,11 +497,7 @@ object DemoMode {
                 ObdBluetoothManager.lamp.value, ObdBluetoothManager.pending.value,
                 LocationFeed.location.value, LocationFeed.trip.value, LocationFeed.headingDeg.value,
                 GForceFeed.g.value,
-                McuReader.doorState.value, McuReader.fuelPercent.value, McuReader.rangeKm.value,
-                WeatherRepo.weather.value, WeatherRepo.error.value,
-                NavDirections.state.value, NotificationFeed.items.value,
-                CarCare.state.value, AiMechanic.state.value,
-                FuelPriceRepo.stations.value, FuelPriceRepo.error.value
+                CarCare.state.value, AiMechanic.state.value
             )
         }
     }

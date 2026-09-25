@@ -143,7 +143,7 @@ internal fun PidExplorerDialog(onDismiss: () -> Unit) {
                         // What the adapter actually said: "NO DATA", "CAN ERROR", "?"... tells a silent car from a refused command.
                         if (!ok) {
                             Text(
-                                r.reply?.replace(Regex("\\s+"), " ")?.trim()?.ifEmpty { null } ?: stringResource(R.string.explore_silent),
+                                r.reply?.replace(WHITESPACE, " ")?.trim()?.ifEmpty { null } ?: stringResource(R.string.explore_silent),
                                 color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -168,3 +168,5 @@ private val ProbeVerdict.labelRes: Int
         ProbeVerdict.UNSTABLE -> R.string.explore_v_unstable
         ProbeVerdict.OK -> R.string.explore_v_ok
     }
+
+private val WHITESPACE = Regex("\\s+")

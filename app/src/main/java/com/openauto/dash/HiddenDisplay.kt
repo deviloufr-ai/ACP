@@ -84,7 +84,8 @@ internal object HiddenDisplay {
         // as they come, so the compositor never waits on a full queue; PRIVATE
         // keeps them on the GPU, nothing is ever read back.
         val sink = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, ImageFormat.PRIVATE, 2)
-        sink.setOnImageAvailableListener({ r -> r.acquireLatestImage()?.close() }, Handler(worker.looper))
+        // Guarded: a frame can still be on its way while release() closes the reader.
+        sink.setOnImageAvailableListener({ r -> runCatching { r.acquireLatestImage()?.close() } }, Handler(worker.looper))
         val made = runCatching {
             dm.createVirtualDisplay(
                 NAME, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi, sink.surface,
@@ -134,6 +135,7 @@ internal object HiddenDisplay {
         val d = display ?: run { disabled = true; return }
         Log.w(TAG, "releasing the hidden display ($reason)")
         runCatching { d.release() }.onFailure { Log.w(TAG, "release failed", it) }
+        runCatching { reader?.setOnImageAvailableListener(null, null) }
         runCatching { reader?.close() }
         thread?.quitSafely()
         display = null

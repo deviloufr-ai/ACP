@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
@@ -126,22 +125,43 @@ object FuelPriceRepo {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val client = OkHttpClient.Builder()
-        .dns(Ipv4First)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
+    private val client by lazy {
+        Http.client.newBuilder()
+            .dns(Ipv4First)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+    }
 
     private var lastLat = Double.NaN
     private var lastLng = Double.NaN
     private var lastGrade: FuelGrade? = null
     private var lastFetch = 0L
 
+    // The real answer, kept while the demo shows its own and put back when it ends.
+    @Volatile private var realStations: List<FuelStation>? = null
+    @Volatile private var realError: String? = null
+
     private const val REFRESH_MS = 30 * 60_000L
     private const val MOVE_DEG = 0.03   // ~3 km: the neighbourhood has changed
 
-    /** [DemoMode]'s stations (and, when it ends, the real ones back). */
+    /** [DemoMode]'s stations. */
     internal fun demoWrite(stations: List<FuelStation>?, error: String?) {
+        _stations.value = stations
+        _error.value = error
+    }
+
+    /** The demo is over: the real stations back, including an answer that came in meanwhile. */
+    internal fun endDemo() {
+        _stations.value = realStations
+        _error.value = realError
+    }
+
+    private fun publish(stations: List<FuelStation>?, error: String?) {
+        realStations = stations
+        realError = error
+        // A fetch that was already on its way when the demo started must not replace the demo's stations.
+        if (DemoMode.isOn) return
         _stations.value = stations
         _error.value = error
     }
@@ -163,10 +183,9 @@ object FuelPriceRepo {
                     FuelPrices.parse(resp.body?.string().orEmpty())
                 }
             }.onSuccess {
-                _stations.value = it
-                _error.value = null
+                publish(it, null)
             }.onFailure {
-                _error.value = it.message.orEmpty()
+                publish(realStations, it.message.orEmpty())
                 // Allow a retry before the normal interval.
                 lastFetch = now - REFRESH_MS + 60_000L
             }

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -112,7 +113,76 @@ private fun levelColor(level: Int) = when {
     else -> LampGreen
 }
 
-private fun frac(v: Float?) = (v ?: 0f).coerceIn(0f, 1f)
+/** 0..1, with a missing or NaN reading as 0 (see [fraction01]). */
+private fun frac(v: Float?) = fraction01(v)
+
+/**
+ * The fixed outlines the drawings reuse, in their Vb units. Built once rather
+ * than on every draw: a turning record or a sweeping radar redraws each frame.
+ */
+private object Shapes {
+    val fuelTank = Path().apply {
+        val top = 16f
+        val bot = 92f
+        moveTo(8f, top + 8f); quadraticBezierTo(8f, top, 16f, top); lineTo(46f, top); quadraticBezierTo(54f, top, 54f, top + 8f)
+        lineTo(54f, bot - 6f); quadraticBezierTo(54f, bot, 48f, bot); lineTo(14f, bot); quadraticBezierTo(8f, bot, 8f, bot - 6f); close()
+    }
+    val speedBox = Path().apply { moveTo(1f, 39f); lineTo(45f, 39f); lineTo(55f, 50f); lineTo(45f, 61f); lineTo(1f, 61f); close() }
+    val signArrow = Path().apply {
+        moveTo(26f, 78f); lineTo(26f, 50f); quadraticBezierTo(26f, 40f, 36f, 40f); lineTo(52f, 40f); lineTo(52f, 28f)
+        lineTo(72f, 46f); lineTo(52f, 64f); lineTo(52f, 52f); lineTo(40f, 52f); lineTo(40f, 78f); close()
+    }
+    val restCup = Path().apply {
+        moveTo(27f, 38f); lineTo(71f, 38f); lineTo(71f, 58f); quadraticBezierTo(71f, 76f, 53f, 76f)
+        lineTo(45f, 76f); quadraticBezierTo(27f, 76f, 27f, 58f); close()
+    }
+    val restSteam = listOf(40f, 52f).map { x -> Path().apply { moveTo(x, 20f); quadraticBezierTo(x - 5f, 26f, x, 32f) } }
+    val headingMark = Path().apply { moveTo(100f, 38f); lineTo(95f, 45f); lineTo(105f, 45f); close() }
+    val roseNeedle = Path().apply { moveTo(50f, 30f); lineTo(54f, 50f); lineTo(50f, 70f); lineTo(46f, 50f); close() }
+    val roseToCar = Path().apply {
+        moveTo(50f, 12f); lineTo(60f, 32f); lineTo(54f, 32f); lineTo(54f, 62f); lineTo(46f, 62f); lineTo(46f, 32f); lineTo(40f, 32f); close()
+    }
+    val roseTop = Path().apply { moveTo(50f, 0.5f); lineTo(45f, 8.5f); lineTo(55f, 8.5f); close() }
+    val pointerArrow = Path().apply { moveTo(50f, 13f); lineTo(76f, 58f); lineTo(59f, 58f); lineTo(59f, 84f); lineTo(41f, 84f); lineTo(41f, 58f); lineTo(24f, 58f); close() }
+    /** G bars' direction marks: the triangle at each bar end and the angle it turns by. */
+    val gBarMarks = listOf(Offset(3f, 50f) to 270f, Offset(97f, 50f) to 90f, Offset(50f, 3f) to 0f, Offset(50f, 97f) to 180f).map { (p, a) ->
+        Triple(Path().apply { moveTo(p.x, p.y - 3f); lineTo(p.x - 3f, p.y + 2f); lineTo(p.x + 3f, p.y + 2f); close() }, p, a)
+    }
+    val turnArrow = Path().apply {
+        moveTo(20f, 80f); lineTo(20f, 52f); quadraticBezierTo(20f, 42f, 30f, 42f); lineTo(38f, 42f); lineTo(38f, 29f)
+        lineTo(56f, 47f); lineTo(38f, 65f); lineTo(38f, 54f); lineTo(32f, 54f); lineTo(32f, 80f); close()
+    }
+    /** Half the road's width at height [y] (it narrows towards the horizon). */
+    fun roadHalf(y: Float) = 3f + (y - 12f) / (96f - 12f) * 72f
+    val road = Path().apply { moveTo(100f - roadHalf(12f), 12f); lineTo(100f + roadHalf(12f), 12f); lineTo(100f + roadHalf(96f), 96f); lineTo(100f - roadHalf(96f), 96f); close() }
+    /** The destination flag, its pole's foot at the origin. */
+    val flag = Path().apply { moveTo(0f, -16f); lineTo(12f, -16f); lineTo(9f, -12f); lineTo(12f, -8f); lineTo(0f, -8f); close() }
+    val carWindscreen = Path().apply { moveTo(35f, 40f); quadraticBezierTo(50f, 32f, 65f, 40f); lineTo(62f, 50f); lineTo(38f, 50f); close() }
+    val carRearWindow = Path().apply { moveTo(37f, 94f); lineTo(63f, 94f); lineTo(65f, 104f); quadraticBezierTo(50f, 110f, 35f, 104f); close() }
+    val hillBack = Path().apply { moveTo(-60f, 88f); quadraticBezierTo(40f, 70f, 80f, 84f); quadraticBezierTo(120f, 98f, 160f, 80f); quadraticBezierTo(200f, 62f, 260f, 78f); lineTo(260f, 170f); lineTo(-60f, 170f); close() }
+    val hillFront = Path().apply { moveTo(-60f, 98f); quadraticBezierTo(60f, 86f, 120f, 96f); quadraticBezierTo(180f, 106f, 260f, 90f); lineTo(260f, 170f); lineTo(-60f, 170f); close() }
+    val cassetteFoot = Path().apply { moveTo(36f, 96f); lineTo(44f, 76f); lineTo(116f, 76f); lineTo(124f, 96f); close() }
+    val vinylLabel = Path().apply { addOval(androidx.compose.ui.geometry.Rect(33f, 33f, 67f, 67f)) }
+    /** The filter's 20 cells, bottom row first (the order they fill with soot): centre and outline. */
+    val filterCells = buildList {
+        for (r in 3 downTo 0) for (c in 0 until 5) {
+            val center = Offset(16f + c * 17f + (if (r % 2 == 1) 8.5f else 0f), 16f + r * 15f)
+            add(center to Path().apply {
+                for (i in 0 until 6) {
+                    val a = PI.toFloat() / 3f * i + PI.toFloat() / 6f
+                    val p = Offset(center.x + 9.2f * cos(a), center.y + 9.2f * sin(a))
+                    if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+                }
+                close()
+            })
+        }
+    }
+    val hourglass = Path().apply {
+        moveTo(13f, 10f); lineTo(47f, 10f); quadraticBezierTo(47f, 32f, 32f, 50f); quadraticBezierTo(47f, 68f, 47f, 90f)
+        lineTo(13f, 90f); quadraticBezierTo(13f, 68f, 28f, 50f); quadraticBezierTo(13f, 32f, 13f, 10f); close()
+    }
+    val leaf = Path().apply { moveTo(50f, 94f); cubicTo(12f, 72f, 8f, 32f, 50f, 6f); cubicTo(92f, 32f, 88f, 72f, 50f, 94f); close() }
+}
 
 /** [face] drawn in the widget-specific [design] (one whose [WidgetDesign.kinds] is set). */
 @Composable
@@ -186,7 +256,9 @@ private fun Vb(
     slice: Boolean = false,
     content: DrawScope.(TextMeasurer) -> Unit
 ) {
-    val tm = rememberTextMeasurer()
+    // Tapes and dials draw a dozen or more labels a frame; the default cache of 8
+    // layouts would measure most of them again on every draw.
+    val tm = rememberTextMeasurer(cacheSize = 48)
     Canvas(modifier = modifier) {
         val s = if (slice) max(size.width / w, size.height / h) else min(size.width / w, size.height / h)
         val dx = (size.width - w * s) / 2f - x0 * s
@@ -318,10 +390,7 @@ private fun FuelTank(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             val fr = frac(f.fraction)
             val lv = bot - (bot - top) * fr
             val low = fr < 0.15f
-            val body = Path().apply {
-                moveTo(8f, top + 8f); quadraticBezierTo(8f, top, 16f, top); lineTo(46f, top); quadraticBezierTo(54f, top, 54f, top + 8f)
-                lineTo(54f, bot - 6f); quadraticBezierTo(54f, bot, 48f, bot); lineTo(14f, bot); quadraticBezierTo(8f, bot, 8f, bot - 6f); close()
-            }
+            val body = Shapes.fuelTank
             fun wave(y: Float) = Path().apply {
                 moveTo(-4f, y); quadraticBezierTo(8f, y - 3f, 20f, y); quadraticBezierTo(32f, y + 3f, 44f, y); quadraticBezierTo(56f, y - 3f, 68f, y)
                 lineTo(68f, 100f); lineTo(-4f, 100f); close()
@@ -394,7 +463,7 @@ private fun SpeedTape(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, 
             }
             v += 5
         }
-        val box = Path().apply { moveTo(1f, 39f); lineTo(45f, 39f); lineTo(55f, 50f); lineTo(45f, 61f); lineTo(1f, 61f); close() }
+        val box = Shapes.speedBox
         drawPath(box, Color(0xFF111418))
         drawPath(box, look.accent, style = Stroke(1.4f))
         label(tm, n.toString(), 24f, 55.5f, 15f, if (f.alert) look.warn else Color.White)
@@ -421,10 +490,7 @@ private fun RoadSign(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 if (art != null) {
                     drawImage(art, dstOffset = IntOffset(18, 26), dstSize = IntSize(56, 56), colorFilter = ColorFilter.tint(Color.White))
                 } else {
-                    drawPath(Path().apply {
-                        moveTo(26f, 78f); lineTo(26f, 50f); quadraticBezierTo(26f, 40f, 36f, 40f); lineTo(52f, 40f); lineTo(52f, 28f)
-                        lineTo(72f, 46f); lineTo(52f, 64f); lineTo(52f, 52f); lineTo(40f, 52f); lineTo(40f, 78f); close()
-                    }, Color.White)
+                    drawPath(Shapes.signArrow, Color.White)
                 }
                 label(tm, "${f.value} ${f.unit}".trim(), 86f, 52f, 30f, Color.White, align = 0f, weight = FontWeight.ExtraBold, family = Condensed)
                 label(tm, if (f.caption.length > 27) f.caption.take(26) + "…" else f.caption, 87f, 72f, 11f, Color.White, align = 0f, weight = FontWeight.Normal)
@@ -437,15 +503,10 @@ private fun RoadSign(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 when (f.sign) {
                     SignKind.PARKING -> label(tm, "P", 50f, 73f, 64f, Color.White, weight = FontWeight.ExtraBold)
                     SignKind.REST -> {
-                        drawPath(Path().apply {
-                            moveTo(27f, 38f); lineTo(71f, 38f); lineTo(71f, 58f); quadraticBezierTo(71f, 76f, 53f, 76f)
-                            lineTo(45f, 76f); quadraticBezierTo(27f, 76f, 27f, 58f); close()
-                        }, Color.White)
+                        drawPath(Shapes.restCup, Color.White)
                         drawArc(Color.White, -90f, 180f, false, Offset(68f, 44f), Size(16f, 16f), style = Stroke(5f))
                         drawRoundRect(Color.White, Offset(24f, 80f), Size(52f, 5f), CornerRadius(2.5f))
-                        listOf(40f, 52f).forEach { x ->
-                            drawPath(Path().apply { moveTo(x, 20f); quadraticBezierTo(x - 5f, 26f, x, 32f) }, Color.White, style = Stroke(3f, cap = StrokeCap.Round))
-                        }
+                        Shapes.restSteam.forEach { drawPath(it, Color.White, style = Stroke(3f, cap = StrokeCap.Round)) }
                     }
                     else -> translate(21f, 20f) { with(pump) { draw(Size(57.6f, 57.6f), colorFilter = ColorFilter.tint(Color.White)) } }
                 }
@@ -532,7 +593,7 @@ private fun HeadingTape(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 d += 5
             }
             drawLine(look.accent, Offset(100f, 4f), Offset(100f, 38f), strokeWidth = 1.6f)
-            drawPath(Path().apply { moveTo(100f, 38f); lineTo(95f, 45f); lineTo(105f, 45f); close() }, look.accent)
+            drawPath(Shapes.headingMark, look.accent)
         }
     }
 }
@@ -553,16 +614,12 @@ private fun CompassRose(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                     val p = polarPoint(c, 29f, i * 90f)
                     rotate(i * 90f, p) { label(tm, l, p.x, p.y + 4f, 11f, if (i == 0) look.warn else look.ink, weight = FontWeight.ExtraBold) }
                 }
-                drawPath(Path().apply { moveTo(50f, 30f); lineTo(54f, 50f); lineTo(50f, 70f); lineTo(46f, 50f); close() }, look.dim.copy(alpha = 0.45f))
+                drawPath(Shapes.roseNeedle, look.dim.copy(alpha = 0.45f))
             }
             if (toCar) {
-                rotate(a, c) {
-                    drawPath(Path().apply {
-                        moveTo(50f, 12f); lineTo(60f, 32f); lineTo(54f, 32f); lineTo(54f, 62f); lineTo(46f, 62f); lineTo(46f, 32f); lineTo(40f, 32f); close()
-                    }, look.accent)
-                }
+                rotate(a, c) { drawPath(Shapes.roseToCar, look.accent) }
             } else {
-                drawPath(Path().apply { moveTo(50f, 0.5f); lineTo(45f, 8.5f); lineTo(55f, 8.5f); close() }, look.accent)
+                drawPath(Shapes.roseTop, look.accent)
             }
             drawCircle(look.ink, 3f, c)
         }
@@ -577,7 +634,7 @@ private fun Pointer(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, lo
         drawCircle(look.track, 46f, c, style = Stroke(6f))
         arcDeg(look.accent, c, 46f, a - 14f, a + 14f, 6f)
         rotate(a, c) {
-            val arrow = Path().apply { moveTo(50f, 13f); lineTo(76f, 58f); lineTo(59f, 58f); lineTo(59f, 84f); lineTo(41f, 84f); lineTo(41f, 58f); lineTo(24f, 58f); close() }
+            val arrow = Shapes.pointerArrow
             drawPath(arrow, look.accent.copy(alpha = 0.25f), style = Stroke(6f))
             drawPath(arrow, look.accent)
         }
@@ -621,9 +678,7 @@ private fun GBars(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, look
         drawRoundRect(look.accent2, Offset(45f, min(50f, 50f + ly)), Size(10f, abs(ly)), CornerRadius(3f))
         drawCircle(look.ink, 6f, Offset(50f, 50f))
         // Direction marks at the ends of each bar.
-        listOf(Offset(3f, 50f) to 270f, Offset(97f, 50f) to 90f, Offset(50f, 3f) to 0f, Offset(50f, 97f) to 180f).forEach { (p, a) ->
-            rotate(a, p) { drawPath(Path().apply { moveTo(p.x, p.y - 3f); lineTo(p.x - 3f, p.y + 2f); lineTo(p.x + 3f, p.y + 2f); close() }, look.dim) }
-        }
+        Shapes.gBarMarks.forEach { (mark, p, a) -> rotate(a, p) { drawPath(mark, look.dim) } }
     }
 }
 
@@ -656,10 +711,7 @@ private fun TurnCard(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, l
         if (art != null) {
             drawImage(art, dstOffset = IntOffset(9, 26), dstSize = IntSize(48, 48), colorFilter = ColorFilter.tint(look.onAccent))
         } else {
-            drawPath(Path().apply {
-                moveTo(20f, 80f); lineTo(20f, 52f); quadraticBezierTo(20f, 42f, 30f, 42f); lineTo(38f, 42f); lineTo(38f, 29f)
-                lineTo(56f, 47f); lineTo(38f, 65f); lineTo(38f, 54f); lineTo(32f, 54f); lineTo(32f, 80f); close()
-            }, look.onAccent)
+            drawPath(Shapes.turnArrow, look.onAccent)
         }
         // Distance left to the turn: the bar empties as the car gets there.
         drawRoundRect(look.track, Offset(72f, 8f), Size(8f, 84f), CornerRadius(4f))
@@ -670,8 +722,8 @@ private fun TurnCard(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, l
 @Composable
 private fun RoadAhead(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Stack(f, look, m) {
     Vb(200f, 100f) { tm ->
-        fun hw(y: Float) = 3f + (y - 12f) / (96f - 12f) * 72f
-        drawPath(Path().apply { moveTo(100f - hw(12f), 12f); lineTo(100f + hw(12f), 12f); lineTo(100f + hw(96f), 96f); lineTo(100f - hw(96f), 96f); close() }, Color(0xFF2B2F36))
+        fun hw(y: Float) = Shapes.roadHalf(y)
+        drawPath(Shapes.road, Color(0xFF2B2F36))
         drawLine(Color.White.copy(alpha = 0.8f), Offset(100f - hw(12f), 12f), Offset(100f - hw(96f), 96f), 1.2f)
         drawLine(Color.White.copy(alpha = 0.8f), Offset(100f + hw(12f), 12f), Offset(100f + hw(96f), 96f), 1.2f)
         for (i in 0 until 9) {
@@ -685,7 +737,7 @@ private fun RoadAhead(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Stack(f, 
             val y = 94f - frac(fr).pow(0.7f) * 78f
             val x = 100f + hw(y) + 6f
             drawLine(look.ink, Offset(x, y), Offset(x, y - 16f), 1.2f)
-            drawPath(Path().apply { moveTo(x, y - 16f); lineTo(x + 12f, y - 16f); lineTo(x + 9f, y - 12f); lineTo(x + 12f, y - 8f); lineTo(x, y - 8f); close() }, look.accent)
+            translate(x, y) { drawPath(Shapes.flag, look.accent) }
             f.marker?.let { label(tm, it, x + 15f, y - 9f, 7f, look.dim, align = 0f, weight = FontWeight.Normal) }
         }
         drawRoundRect(look.accent, Offset(93f, 80f), Size(14f, 18f), CornerRadius(4f))
@@ -695,7 +747,9 @@ private fun RoadAhead(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Stack(f, 
 
 @Composable
 private fun Radar(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
-    val sweep by rememberSpin(4000)
+    // The beam turns only while there's a spot to point at, and at 30 frames a
+    // second: plenty for a sweep, half the redraws of an animation clock.
+    val clock = if (f.angle != null) rememberWallClock(33L) else null
     Split(f, look, m, 1f) {
         Vb(100f, 100f) {
             val c = Offset(50f, 50f)
@@ -704,6 +758,7 @@ private fun Radar(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             drawLine(look.accent.copy(alpha = 0.2f), Offset(4f, 50f), Offset(96f, 50f))
             drawLine(look.accent.copy(alpha = 0.2f), Offset(50f, 4f), Offset(50f, 96f))
             // The beam: a 45° wedge fading in towards its leading edge, turned as one piece.
+            val sweep = clock?.let { (it.longValue % 4000L) * 360f / 4000f } ?: 0f
             rotate(sweep, c) {
                 drawArc(
                     Brush.sweepGradient(0.625f to Color.Transparent, 0.75f to look.accent.copy(alpha = 0.45f), center = c),
@@ -879,9 +934,9 @@ private fun CarTop(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, loo
         fun open(i: Int) = d.getOrElse(i) { false }
         drawRoundRect(look.fill, Offset(30f, 8f), Size(40f, 112f), CornerRadius(15f))
         drawRoundRect(look.dim, Offset(30f, 8f), Size(40f, 112f), CornerRadius(15f), style = Stroke(1f))
-        drawPath(Path().apply { moveTo(35f, 40f); quadraticBezierTo(50f, 32f, 65f, 40f); lineTo(62f, 50f); lineTo(38f, 50f); close() }, look.track)
+        drawPath(Shapes.carWindscreen, look.track)
         drawRoundRect(look.track, Offset(37f, 52f), Size(26f, 40f), CornerRadius(4f))
-        drawPath(Path().apply { moveTo(37f, 94f); lineTo(63f, 94f); lineTo(65f, 104f); quadraticBezierTo(50f, 110f, 35f, 104f); close() }, look.track)
+        drawPath(Shapes.carRearWindow, look.track)
         fun door(hx: Float, hy: Float, dir: Float, isOpen: Boolean) {
             val rad = if (isOpen) 50f * PI.toFloat() / 180f else 0f
             val end = Offset(hx + dir * 24f * sin(rad), hy + 24f * cos(rad))
@@ -946,8 +1001,8 @@ private fun SkyScene(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
             val snow = code in 71..77 || code == 85 || code == 86
             if (rain) repeat(16) { i -> drawLine(Color(0xFFDDEBFF), Offset(20f + i * 11f, 50f + (i % 3) * 6f), Offset(16f + i * 11f, 60f + (i % 3) * 6f), 1.2f) }
             if (snow) repeat(18) { i -> drawCircle(Color.White, 1.4f, Offset(14f + i * 10f, 52f + (i % 4) * 7f)) }
-            drawPath(Path().apply { moveTo(-60f, 88f); quadraticBezierTo(40f, 70f, 80f, 84f); quadraticBezierTo(120f, 98f, 160f, 80f); quadraticBezierTo(200f, 62f, 260f, 78f); lineTo(260f, 170f); lineTo(-60f, 170f); close() }, if (day) Color(0xFF3C7A4A) else Color(0xFF11203A))
-            drawPath(Path().apply { moveTo(-60f, 98f); quadraticBezierTo(60f, 86f, 120f, 96f); quadraticBezierTo(180f, 106f, 260f, 90f); lineTo(260f, 170f); lineTo(-60f, 170f); close() }, if (day) Color(0xFF2E6139) else Color(0xFF0B1628))
+            drawPath(Shapes.hillBack, if (day) Color(0xFF3C7A4A) else Color(0xFF11203A))
+            drawPath(Shapes.hillFront, if (day) Color(0xFF2E6139) else Color(0xFF0B1628))
         }
         Column(modifier = Modifier.fillMaxSize().padding(m.pad.dp), verticalArrangement = Arrangement.spacedBy(m.dp(1.5f))) {
             FaceHeader(f, over, m)
@@ -981,9 +1036,12 @@ private fun SunPath(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
 
 @Composable
 private fun BinaryClock(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
-    val now = rememberNow(1_000L)
-    val cal = remember(now) { Calendar.getInstance().apply { time = now } }
-    val (h, mi, s) = f.clock ?: Triple(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND))
+    // The clock face already brings the time (and ticks); only a face without one needs a ticker here.
+    val (h, mi, s) = f.clock ?: run {
+        val now = rememberNow(1_000L)
+        val cal = remember(now) { Calendar.getInstance().apply { time = now } }
+        Triple(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND))
+    }
     Split(f, look, m, 1.32f) {
         Vb(132f, 100f) {
             val digits = listOf(h / 10, h % 10, mi / 10, mi % 10, s / 10, s % 10)
@@ -1042,7 +1100,7 @@ private fun Timeline(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
 }
 
 private inline fun DrawScope.clipPathRect(x: Float, y: Float, w: Float, h: Float, block: DrawScope.() -> Unit) {
-    clipPath(Path().apply { addRect(androidx.compose.ui.geometry.Rect(x, y, x + w, y + h)) }) { block() }
+    clipRect(x, y, x + w, y + h) { block() }
 }
 
 @Composable
@@ -1207,8 +1265,7 @@ private fun Vinyl(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 while (r < 46f) { drawCircle(Color.White.copy(alpha = 0.06f), r, c, style = Stroke(1f)); r += 2.4f }
                 drawArc(Color.White.copy(alpha = 0.18f), 200f, 40f, false, Offset(14f, 14f), Size(72f, 72f), style = Stroke(3f))
                 val art = f.art
-                val labelPath = Path().apply { addOval(androidx.compose.ui.geometry.Rect(33f, 33f, 67f, 67f)) }
-                if (art != null) clipPath(labelPath) { drawImage(art, dstOffset = IntOffset(33, 33), dstSize = IntSize(34, 34)) }
+                if (art != null) clipPath(Shapes.vinylLabel) { drawImage(art, dstOffset = IntOffset(33, 33), dstSize = IntSize(34, 34)) }
                 else drawCircle(Brush.linearGradient(listOf(Color(0xFFFF7A59), Color(0xFFC58AF9), Color(0xFF5AD0FF)), Offset(33f, 33f), Offset(67f, 67f)), 17f, c)
                 drawCircle(Color.White.copy(alpha = 0.7f), 2.5f, Offset(50f, 42f))
                 drawCircle(Color(0xFF111111), 2f, c)
@@ -1252,7 +1309,7 @@ private fun Cassette(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 }
                 drawCircle(Color(0xFF333333), 2f, c)
             }
-            drawPath(Path().apply { moveTo(36f, 96f); lineTo(44f, 76f); lineTo(116f, 76f); lineTo(124f, 96f); close() }, Color(0xFF1C1D20))
+            drawPath(Shapes.cassetteFoot, Color(0xFF1C1D20))
             drawCircle(Color.Black, 3f, Offset(62f, 86f))
             drawCircle(Color.Black, 3f, Offset(98f, 86f))
         }
@@ -1297,7 +1354,9 @@ private fun VolumeKnob(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f,
 
 @Composable
 private fun LevelMeter(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
-    val t by rememberLoop(1400)
+    // The bounce runs only while something plays with the volume up; otherwise
+    // the bars stand still instead of redrawing 160 cells every frame.
+    val loop = if (f.active && frac(f.fraction) > 0f) rememberLoop(1400) else null
     Stack(f, look, m, foot = {
         Row(verticalAlignment = Alignment.CenterVertically) {
             FaceValue(f, look, m, min(m.h * 0.16f, m.w * 0.11f), Modifier.weight(1f))
@@ -1306,6 +1365,7 @@ private fun LevelMeter(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     }) {
         Vb(196f, 76f) {
             val fr = frac(f.fraction)
+            val t = loop?.value ?: 0f
             val pattern = listOf(0.5f, 0.8f, 0.95f, 0.7f, 0.6f, 0.85f, 0.9f, 0.65f, 0.5f, 0.72f, 0.8f, 0.55f, 0.42f, 0.6f, 0.46f, 0.3f)
             pattern.forEachIndexed { c, p ->
                 // A gentle bounce so the meter looks alive; silent when the volume is off.
@@ -1327,18 +1387,8 @@ private fun FilterCells(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f
     Vb(108f, 78f) {
         val n = 20
         val sooty = (frac(f.fraction) * n).roundToInt()
-        var k = 0
-        for (r in 3 downTo 0) for (c in 0 until 5) {
-            val center = Offset(16f + c * 17f + (if (r % 2 == 1) 8.5f else 0f), 16f + r * 15f)
-            val hex = Path().apply {
-                for (i in 0 until 6) {
-                    val a = PI.toFloat() / 3f * i + PI.toFloat() / 6f
-                    val p = Offset(center.x + 9.2f * cos(a), center.y + 9.2f * sin(a))
-                    if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
-                }
-                close()
-            }
-            val dark = k++ < sooty
+        Shapes.filterCells.forEachIndexed { k, (center, hex) ->
+            val dark = k < sooty
             drawPath(hex, if (dark) Color(0xFF2A2A2A) else look.fill)
             drawPath(hex, if (dark) Color(0xFF555555) else look.accent, style = Stroke(if (dark) 0.6f else 0.9f))
             if (dark) {
@@ -1353,10 +1403,7 @@ private fun FilterCells(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f
 private fun Hourglass(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, look, m, 0.6f) {
     Vb(60f, 100f) {
         val fr = frac(f.fraction)
-        val glass = Path().apply {
-            moveTo(13f, 10f); lineTo(47f, 10f); quadraticBezierTo(47f, 32f, 32f, 50f); quadraticBezierTo(47f, 68f, 47f, 90f)
-            lineTo(13f, 90f); quadraticBezierTo(13f, 68f, 28f, 50f); quadraticBezierTo(13f, 32f, 13f, 10f); close()
-        }
+        val glass = Shapes.hourglass
         drawPath(glass, look.track)
         val topY = 12f + 36f * fr
         val botY = 90f - 30f * fr
@@ -1375,7 +1422,7 @@ private fun Hourglass(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, 
 private fun Leaf(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, look, m, 100f / 104f) {
     Vb(100f, 104f) {
         val fr = frac(f.fraction)
-        val leaf = Path().apply { moveTo(50f, 94f); cubicTo(12f, 72f, 8f, 32f, 50f, 6f); cubicTo(92f, 32f, 88f, 72f, 50f, 94f); close() }
+        val leaf = Shapes.leaf
         val vein = Color(0xFF1B5E20)
         drawPath(leaf, look.track)
         clipPath(leaf) {
@@ -1383,8 +1430,8 @@ private fun Leaf(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Split(f, look,
         }
         drawPath(leaf, vein, style = Stroke(1.4f))
         drawLine(vein, Offset(50f, 100f), Offset(50f, 12f), 1.2f)
-        listOf(70f to 30f, 56f to 70f, 42f to 34f, 80f to 68f).forEachIndexed { i, (y, x) ->
-            drawLine(vein, Offset(50f, y), Offset(x, y - (if (i % 2 == 0) 16f else 16f)), 1.2f)
+        listOf(70f to 30f, 56f to 70f, 42f to 34f, 80f to 68f).forEach { (y, x) ->
+            drawLine(vein, Offset(50f, y), Offset(x, y - 16f), 1.2f)
         }
     }
 }

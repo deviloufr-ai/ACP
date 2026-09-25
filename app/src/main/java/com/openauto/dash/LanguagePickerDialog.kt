@@ -11,14 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,25 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-
-/** Picks the launcher's language; each option is named in its own language. */
-@Composable
-fun LanguagePickerDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        modifier = Modifier.keepClearOfWindows(),
-        onDismissRequest = onDismiss,
-        containerColor = DashColors.Card,
-        title = { Text(stringResource(R.string.language_title), color = DashColors.TextPrimary) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                LanguageChoices(onPicked = onDismiss)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.language_close), color = DashColors.Accent) }
-        }
-    )
-}
 
 /** The language options, one row each; picking one restarts the activity in that language. */
 @Composable

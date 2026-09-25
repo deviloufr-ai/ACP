@@ -6,6 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -19,6 +20,10 @@ import java.util.Locale
 object CarVoice {
 
     private const val TAG = "CarVoice"
+    /** After the engine failed to start, how long before trying again (not once per sentence). */
+    private const val RETRY_MS = 60_000L
+    /** Nothing heard from the engine this long while talking: it died, so the music comes back. */
+    private const val SILENCE_MS = 45_000L
 
     private val main = Handler(Looper.getMainLooper())
     private val attributes = AudioAttributes.Builder()
@@ -29,6 +34,8 @@ object CarVoice {
     private var appContext: Context? = null
     private var tts: TextToSpeech? = null
     private var ready = false
+    // When the engine last failed to start (uptime), so the next try waits.
+    private var failedAt = 0L
     private val queued = mutableListOf<Pair<String, Locale>>()
     private var focus: AudioFocusRequest? = null
     private var nextId = 0
@@ -84,27 +91,38 @@ object CarVoice {
     private fun engine(): TextToSpeech? {
         tts?.let { return it }
         val context = appContext ?: return null
-        return TextToSpeech(context) { status ->
+        if (failedAt != 0L && SystemClock.elapsedRealtime() - failedAt < RETRY_MS) return null
+        lateinit var created: TextToSpeech
+        created = TextToSpeech(context) { status ->
             main.post {
+                if (tts !== created) return@post
                 if (status == TextToSpeech.SUCCESS) {
                     ready = true
-                    tts?.let { engine -> queued.forEach { (t, l) -> say(engine, t, l) } }
+                    failedAt = 0L
+                    queued.forEach { (t, l) -> say(created, t, l) }
                 } else {
                     Log.w(TAG, "Text-to-speech failed to start ($status)")
+                    // Shut down, or each failed try leaves its service connection behind.
+                    created.shutdown()
                     tts = null
+                    failedAt = SystemClock.elapsedRealtime()
                 }
                 queued.clear()
             }
-        }.also { engine ->
-            engine.setAudioAttributes(attributes)
-            engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) = Unit
-                override fun onDone(utteranceId: String?) = releaseFocusWhenQuiet(finished = 1)
-                @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) = releaseFocusWhenQuiet(finished = 1)
-            })
-            tts = engine
         }
+        created.setAudioAttributes(attributes)
+        created.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                main.post { stillTalking() }
+            }
+            override fun onDone(utteranceId: String?) = releaseFocusWhenQuiet(finished = 1)
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) = releaseFocusWhenQuiet(finished = 1)
+            // Flushed or stopped before its end: never gets onDone.
+            override fun onStop(utteranceId: String?, interrupted: Boolean) = releaseFocusWhenQuiet(finished = 1)
+        })
+        tts = created
+        return created
     }
 
     private fun say(engine: TextToSpeech, text: String, locale: Locale) {
@@ -113,22 +131,48 @@ object CarVoice {
             Log.w(TAG, "No ${locale.displayLanguage} voice installed; not speaking")
             return
         }
-        requestFocus()
+        // Quiet during a call. Otherwise speak even if focus is refused: some
+        // head-unit ROMs refuse or delay it for their own radio, and a missed
+        // fault alert is worse than talking over the music.
+        if (!requestFocus() && inCall()) {
+            Log.i(TAG, "In a call; not speaking")
+            return
+        }
         if (engine.speak(text, TextToSpeech.QUEUE_ADD, null, "carvoice-${nextId++}") == TextToSpeech.SUCCESS) {
             talking++
+            stillTalking()
         } else {
             releaseFocusWhenQuiet(finished = 0)
         }
     }
 
-    private fun requestFocus() {
-        if (focus != null) return
-        val audio = appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    private fun inCall(): Boolean {
+        val audio = appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+        return audio.mode == AudioManager.MODE_IN_CALL || audio.mode == AudioManager.MODE_IN_COMMUNICATION
+    }
+
+    private fun requestFocus(): Boolean {
+        if (focus != null) return true
+        val audio = appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return true
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             .setAudioAttributes(attributes)
             .build()
-        audio.requestAudioFocus(request)
+        if (audio.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
         focus = request
+        return true
+    }
+
+    // If the engine dies mid-sentence no callback ever comes, and the music
+    // would stay ducked: past [SILENCE_MS] without news, give the focus back.
+    private val giveUp = Runnable {
+        talking = 0
+        abandonFocus()
+    }
+
+    /** The engine is (still) speaking: pushes back the give-up deadline. Main thread. */
+    private fun stillTalking() {
+        main.removeCallbacks(giveUp)
+        if (talking > 0) main.postDelayed(giveUp, SILENCE_MS)
     }
 
     // Utterance callbacks arrive on a binder thread; hop to main and only let
@@ -136,10 +180,14 @@ object CarVoice {
     private fun releaseFocusWhenQuiet(finished: Int) {
         main.post {
             talking = (talking - finished).coerceAtLeast(0)
-            if (talking > 0) return@post
-            val request = focus ?: return@post
-            (appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.abandonAudioFocusRequest(request)
-            focus = null
+            stillTalking()
+            if (talking == 0) abandonFocus()
         }
+    }
+
+    private fun abandonFocus() {
+        val request = focus ?: return
+        (appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.abandonAudioFocusRequest(request)
+        focus = null
     }
 }

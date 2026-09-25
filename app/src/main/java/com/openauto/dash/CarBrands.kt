@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import java.io.File
@@ -22,7 +21,10 @@ internal data class CarBrand(val name: String, val slug: String) {
 }
 
 internal fun searchKey(text: String): String =
-    Normalizer.normalize(text, Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "").lowercase()
+    Normalizer.normalize(text, Normalizer.Form.NFD).replace(ACCENTS, "").lowercase()
+
+// Compiled once: every brand's key is built with it when the picker opens.
+private val ACCENTS = Regex("\\p{Mn}+")
 
 /**
  * Every car make, from `assets/car_brands.json` (names and slugs of the
@@ -60,10 +62,12 @@ internal object CarBrands {
 internal object CarLogos {
     private const val BASE = "https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos"
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client by lazy {
+        Http.client.newBuilder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
     private val thumbs = LruCache<String, Bitmap>(120)
     // A scrolling grid asks for dozens at once; a few downloads at a time is plenty.
     private val gate = Semaphore(4)
@@ -90,9 +94,15 @@ internal object CarLogos {
         client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
             check(resp.isSuccessful) { "HTTP ${resp.code}" }
             file.parentFile?.mkdirs()
-            val tmp = File(file.path + ".part")
-            tmp.outputStream().use { out -> resp.body!!.byteStream().copyTo(out) }
-            tmp.renameTo(file)
+            // Two tiles may fetch the same logo at once: each writes its own file,
+            // and the finished one is moved into place whole.
+            val tmp = File.createTempFile(file.name, ".part", file.parentFile)
+            try {
+                tmp.outputStream().use { out -> resp.body!!.byteStream().copyTo(out) }
+                tmp.renameTo(file)
+            } finally {
+                tmp.delete()
+            }
         }
     }
 

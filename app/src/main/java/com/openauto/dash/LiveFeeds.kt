@@ -15,7 +15,9 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.service.notification.StatusBarNotification
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -61,6 +63,18 @@ object LocationFeed {
     private val _headingDeg = MutableStateFlow<Float?>(null)
     val headingDeg: StateFlow<Float?> = _headingDeg
 
+    /**
+     * Speed in km/h from a fix under [FRESH_MS] old, else null. Unlike
+     * [location] (the last known position, kept for weather or fuel prices),
+     * this goes back to null by itself when fixes stop, in a tunnel or a car park.
+     */
+    private val _freshSpeedKmh = MutableStateFlow<Int?>(null)
+    val freshSpeedKmh: StateFlow<Int?> = _freshSpeedKmh
+
+    private const val FRESH_MS = 5_000L
+    private val main = Handler(Looper.getMainLooper())
+    private val expire = Runnable { _freshSpeedKmh.value = null }
+
     private var refs = 0
     private var manager: LocationManager? = null
     private var lastFix: Location? = null
@@ -73,14 +87,18 @@ object LocationFeed {
         override fun onProviderDisabled(provider: String) = Unit
     }
 
+    /**
+     * Starts the GPS for one more user. Returns false (and counts nothing)
+     * without the permission; call [release] only after a true.
+     */
     @SuppressLint("MissingPermission")
-    fun acquire(context: Context) {
+    fun acquire(context: Context): Boolean {
         // Only count the ref once we really register; if permission is missing
         // the next acquire (after the grant) must be allowed to try again.
-        if (!hasLocationPermission(context)) return
+        if (!hasLocationPermission(context)) return false
         val lm = context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            ?: return
-        if (refs++ > 0) return
+            ?: return false
+        if (refs++ > 0) return true
         manager = lm
         runCatching {
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, Looper.getMainLooper())
@@ -92,6 +110,7 @@ object LocationFeed {
             (lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER))?.let { _location.value = it }
         }
+        return true
     }
 
     fun release() {
@@ -99,6 +118,8 @@ object LocationFeed {
         refs = 0
         manager?.removeUpdates(listener)
         manager = null
+        main.removeCallbacks(expire)
+        _freshSpeedKmh.value = null
     }
 
     fun resetTrip() {
@@ -110,12 +131,26 @@ object LocationFeed {
         _location.value = location
         _trip.value = trip
         _headingDeg.value = heading
+        publishSpeed(location)
+    }
+
+    /** Publishes [l]'s speed if the fix is recent, and schedules it to expire. */
+    private fun publishSpeed(l: Location?) {
+        main.removeCallbacks(expire)
+        val age = if (l == null) Long.MAX_VALUE else System.currentTimeMillis() - l.time
+        if (l == null || age >= FRESH_MS) {
+            _freshSpeedKmh.value = null
+            return
+        }
+        _freshSpeedKmh.value = Math.round(l.speed * 3.6f)
+        main.postAtTime(expire, SystemClock.uptimeMillis() + (FRESH_MS - age.coerceAtLeast(0L)))
     }
 
     private fun onFix(l: Location) {
         if (DemoMode.isOn) return
         val prev = lastFix
         _location.value = l
+        publishSpeed(l)
         val speedKmh = l.speed * 3.6f
         if (l.hasBearing() && speedKmh > 3f) _headingDeg.value = l.bearing
 
@@ -154,8 +189,15 @@ object GForceFeed : SensorEventListener {
     private var refs = 0
     private var manager: SensorManager? = null
     private val gravity = FloatArray(3)
+    private var gravitySeeded = false
     private var lat = 0f
     private var lon = 0f
+    private var peakLat = 0f
+    private var peakLon = 0f
+    private var lastPublishNs = 0L
+
+    /** The filters run on every sample; the tiles only need ~15 frames a second. */
+    private const val PUBLISH_EVERY_NS = 66_000_000L
 
     fun acquire(context: Context) {
         val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
@@ -163,6 +205,7 @@ object GForceFeed : SensorEventListener {
         val sensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
         if (refs++ > 0) return
         manager = sm
+        gravitySeeded = false
         sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
     }
 
@@ -174,6 +217,8 @@ object GForceFeed : SensorEventListener {
     }
 
     fun resetPeaks() {
+        peakLat = 0f
+        peakLon = 0f
         _g.value = _g.value.copy(peakLateral = 0f, peakLongitudinal = 0f)
     }
 
@@ -185,6 +230,11 @@ object GForceFeed : SensorEventListener {
     override fun onSensorChanged(event: SensorEvent) {
         if (DemoMode.isOn) return
         // Low-pass to isolate gravity, subtract it for linear acceleration.
+        // Seeded from the first sample: starting from 0 read as a hard jolt.
+        if (!gravitySeeded) {
+            for (i in 0..2) gravity[i] = event.values[i]
+            gravitySeeded = true
+        }
         for (i in 0..2) gravity[i] = 0.9f * gravity[i] + 0.1f * event.values[i]
         val lx = event.values[0] - gravity[0]
         val lz = event.values[2] - gravity[2]
@@ -193,13 +243,11 @@ object GForceFeed : SensorEventListener {
         // rear, so forward acceleration shows up as -Z.
         lat = 0.7f * lat + 0.3f * (lx / SensorManager.GRAVITY_EARTH)
         lon = 0.7f * lon + 0.3f * (-lz / SensorManager.GRAVITY_EARTH)
-        val cur = _g.value
-        _g.value = GForce(
-            lateral = lat,
-            longitudinal = lon,
-            peakLateral = max(cur.peakLateral, abs(lat)),
-            peakLongitudinal = max(cur.peakLongitudinal, abs(lon))
-        )
+        peakLat = max(peakLat, abs(lat))
+        peakLon = max(peakLon, abs(lon))
+        if (event.timestamp - lastPublishNs < PUBLISH_EVERY_NS) return
+        lastPublishNs = event.timestamp
+        _g.value = GForce(lateral = lat, longitudinal = lon, peakLateral = peakLat, peakLongitudinal = peakLon)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
@@ -266,13 +314,31 @@ object NotificationFeed {
     private val _items = MutableStateFlow<List<NotifItem>>(emptyList())
     val items: StateFlow<List<NotifItem>> = _items
 
-    /** [DemoMode]'s notifications (and, when it ends, the real ones back). */
+    /**
+     * The real notifications. Kept up to date while the demo shows its own,
+     * so what was posted or went away meanwhile is right when it ends.
+     */
+    private var real: List<NotifItem> = emptyList()
+
+    /** Applies [change] to the real list; published unless the demo is on. */
+    @Synchronized
+    private fun edit(change: (List<NotifItem>) -> List<NotifItem>) {
+        real = change(real)
+        if (!DemoMode.isOn) _items.value = real
+    }
+
+    /** [DemoMode]'s notifications. */
     internal fun demoWrite(items: List<NotifItem>) {
         _items.value = items
     }
 
+    /** The demo is over: the real notifications back, as they are now. */
+    @Synchronized
+    internal fun endDemo() {
+        _items.value = real
+    }
+
     fun onPosted(context: Context, sbn: StatusBarNotification) {
-        if (DemoMode.isOn) return
         if (sbn.packageName == context.packageName) return
         if (sbn.isOngoing) return
         val n = sbn.notification ?: return
@@ -282,12 +348,11 @@ object NotificationFeed {
         if (title.isEmpty() && text.isEmpty()) return
         val (label, icon) = appIdentity(context, sbn.packageName)
         val item = NotifItem(sbn.key, sbn.packageName, label, title, text, sbn.postTime, icon, n.contentIntent)
-        _items.update { items -> (listOf(item) + items.filter { it.key != sbn.key }).take(MAX) }
+        edit { items -> (listOf(item) + items.filter { it.key != sbn.key }).take(MAX) }
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
-        if (DemoMode.isOn) return
-        _items.update { items -> items.filter { it.key != sbn.key } }
+        edit { items -> items.filter { it.key != sbn.key } }
     }
 
     // --- The phone's notifications (keys prefixed so they never clash with this head unit's) ---
@@ -299,24 +364,22 @@ object NotificationFeed {
 
     /** Everything the phone shows right now, sent when the link comes up. */
     fun phoneSync(notifications: List<PhoneNotification>) {
-        if (DemoMode.isOn) return
         val fromPhone = notifications.map(::fromPhone)
-        _items.update { items -> (fromPhone + items.filter { !it.fromPhone }).sortedByDescending { it.postedAt }.take(MAX) }
+        edit { items -> (fromPhone + items.filter { !it.fromPhone }).sortedByDescending { it.postedAt }.take(MAX) }
     }
 
     fun phonePosted(notification: PhoneNotification) {
-        if (DemoMode.isOn) return
         val item = fromPhone(notification)
-        _items.update { items -> (listOf(item) + items.filter { it.key != item.key }).take(MAX) }
+        edit { items -> (listOf(item) + items.filter { it.key != item.key }).take(MAX) }
     }
 
     fun phoneRemoved(key: String) {
-        _items.update { items -> items.filter { it.key != PHONE + key } }
+        edit { items -> items.filter { it.key != PHONE + key } }
     }
 
     /** The link ended: the phone's notifications are no longer current. */
     fun phoneClear() {
-        _items.update { items -> items.filter { !it.fromPhone } }
+        edit { items -> items.filter { !it.fromPhone } }
     }
 
     private val phoneIcons = HashMap<String, Bitmap?>()
@@ -353,12 +416,16 @@ object NotificationFeed {
             label to icon
         }
 
+    /** Clears the card; during the demo only the demo's items go, the real ones come back when it ends. */
+    @Synchronized
     fun dismissAll() {
-        _items.value = emptyList()
+        if (DemoMode.isOn) _items.value = emptyList() else edit { emptyList() }
     }
 
     /** Takes one item off the card (a phone message answered or dismissed from the car). */
+    @Synchronized
     fun remove(key: String) {
-        _items.update { items -> items.filter { it.key != key } }
+        if (DemoMode.isOn) _items.update { items -> items.filter { it.key != key } }
+        edit { items -> items.filter { it.key != key } }
     }
 }

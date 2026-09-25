@@ -61,6 +61,12 @@ android {
             // head unit, so size matters. Keep rules live in proguard-rules.pro.
             isMinifyEnabled = true
             isShrinkResources = true
+            // Head units are ARM. MapLibre and Filament otherwise also ship their
+            // x86 / x86_64 native code (emulators only), tens of MB in every OTA
+            // download and in the /system copy. Debug builds keep every ABI.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             // Sign with the persistent release key when available, otherwise the
             // debug key so the APK is still installable.
             signingConfig = if (releaseKeystore != null) {

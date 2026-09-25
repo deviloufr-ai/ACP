@@ -2,8 +2,10 @@ package com.openauto.dash
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,7 +68,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.maplibre.android.MapLibre
@@ -209,22 +210,38 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
 
     DisposableEffect(lifecycleOwner) {
         mapView.onCreate(null)
-        mapView.onStart()
-        mapView.onResume()
+        // The observer is replayed up to the lifecycle's current state when
+        // added, so it alone forwards start / resume: calling them here as well
+        // started the map twice. What it forwarded is tracked, so disposing
+        // only undoes what was done.
+        var started = false
+        var resumed = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_START -> if (!started) { started = true; mapView.onStart() }
+                Lifecycle.Event.ON_RESUME -> if (!resumed) { resumed = true; mapView.onResume() }
+                Lifecycle.Event.ON_PAUSE -> if (resumed) { resumed = false; mapView.onPause() }
+                Lifecycle.Event.ON_STOP -> if (started) { started = false; mapView.onStop() }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        // Low memory: the map drops its tile caches.
+        val memory = object : ComponentCallbacks2 {
+            @Suppress("DEPRECATION")
+            override fun onTrimMemory(level: Int) {
+                if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) mapView.onLowMemory()
+            }
+            override fun onConfigurationChanged(newConfig: Configuration) {}
+            @Deprecated("Deprecated in Java")
+            override fun onLowMemory() = mapView.onLowMemory()
+        }
+        context.applicationContext.registerComponentCallbacks(memory)
         onDispose {
+            context.applicationContext.unregisterComponentCallbacks(memory)
             lifecycleOwner.lifecycle.removeObserver(observer)
-            runCatching { mapView.onPause() }
-            runCatching { mapView.onStop() }
+            if (resumed) runCatching { mapView.onPause() }
+            if (started) runCatching { mapView.onStop() }
             runCatching { mapView.onDestroy() }
         }
     }
@@ -488,7 +505,7 @@ private fun startGoogleNavigation(context: Context, dest: Point) {
 private fun geocode(query: String): Point? {
     val url = "$NOMINATIM_URL?format=json&limit=1&q=" + URLEncoder.encode(query, "UTF-8")
     val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
-    OkHttpClient().newCall(request).execute().use { resp ->
+    Http.client.newCall(request).execute().use { resp ->
         if (!resp.isSuccessful) return null
         val body = resp.body?.string() ?: return null
         val arr = JsonParser.parseString(body).asJsonArray
@@ -520,7 +537,7 @@ private fun valhallaRoute(origin: Point, dest: Point, language: String): Directi
         .url(VALHALLA_URL)
         .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
         .build()
-    OkHttpClient().newCall(request).execute().use { resp ->
+    Http.client.newCall(request).execute().use { resp ->
         if (!resp.isSuccessful) error("HTTP ${resp.code}")
         val rb = resp.body?.string() ?: error("Empty routing response")
         return DirectionsResponse.fromJson(rb)

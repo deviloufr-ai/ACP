@@ -2,7 +2,9 @@ package com.openauto.dash
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.util.Log
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /**
  * Self-installs the app into `/system/priv-app` on a **rooted** device, so it
@@ -39,16 +41,26 @@ object SystemInstaller {
      * IO thread forever.
      */
     fun isRootAvailable(): Boolean = runCatching {
-        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-        process.outputStream.close()
-        if (!process.waitFor(ROOT_PROBE_TIMEOUT_S, TimeUnit.SECONDS)) {
-            process.destroy()
-            return@runCatching false
-        }
-        process.exitValue() == 0
+        RootShell.su("id", ROOT_PROBE_TIMEOUT_S).exit == 0
     }.getOrDefault(false)
 
     private const val ROOT_PROBE_TIMEOUT_S = 8L
+
+    /** Copying the APK and syncing /data or /system is slow on this unit, but must not hang forever. */
+    private const val INSTALL_TIMEOUT_S = 120L
+
+    /** Name of the privileged-permission whitelist, the same for every install path. */
+    internal const val PRIVAPP_XML_NAME = "privapp-permissions-openautodash.xml"
+
+    /**
+     * Every privileged permission the app asks for. A ROM that enforces the
+     * whitelist refuses to boot with a priv-app missing one. One line, no
+     * single quotes: it is echoed inside single quotes by the install scripts.
+     */
+    internal const val PRIVAPP_XML =
+        "<permissions><privapp-permissions package=\"com.openauto.dash\">" +
+            "<permission name=\"android.permission.BIND_APPWIDGET\"/>" +
+            "</privapp-permissions></permissions>"
 
     /**
      * Installs the app as a privileged system app using `su`.
@@ -75,13 +87,7 @@ object SystemInstaller {
             author=OpenAutoDash
             description=Installs OpenAuto Dash as a privileged system app (systemless).
             P
-              cat > $mod/system/etc/permissions/privapp-permissions-openautodash.xml <<'X'
-            <permissions>
-              <privapp-permissions package="com.openauto.dash">
-                <permission name="android.permission.BIND_APPWIDGET"/>
-              </privapp-permissions>
-            </permissions>
-            X
+              echo '$PRIVAPP_XML' > $mod/system/etc/permissions/$PRIVAPP_XML_NAME || exit 23
               echo OKINSTALL:magisk
             else
               mount -o remount,rw / 2>/dev/null
@@ -90,18 +96,25 @@ object SystemInstaller {
               cp '$apk' /system/priv-app/OpenAutoDash/OpenAutoDash.apk || exit 32
               chmod 644 /system/priv-app/OpenAutoDash/OpenAutoDash.apk
               chcon u:object_r:system_file:s0 /system/priv-app/OpenAutoDash/OpenAutoDash.apk 2>/dev/null
+              mkdir -p /system/etc/permissions
+              # Fatal only where the ROM enforces the whitelist (see AdbInstaller).
+              echo '$PRIVAPP_XML' > /system/etc/permissions/$PRIVAPP_XML_NAME || {
+                if [ "$(getprop ro.control_privapp_permissions)" = enforce ]; then rm -rf /system/priv-app/OpenAutoDash; exit 33; fi
+              }
+              chmod 644 /system/etc/permissions/$PRIVAPP_XML_NAME
+              chcon u:object_r:system_file:s0 /system/etc/permissions/$PRIVAPP_XML_NAME 2>/dev/null
               sync
+              mount -o remount,ro /system 2>/dev/null
+              mount -o remount,ro / 2>/dev/null
               echo OKINSTALL:system
             fi
         """.trimIndent()
 
-        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", script))
-        val out = process.inputStream.bufferedReader().use { it.readText() }
-        val err = process.errorStream.bufferedReader().use { it.readText() }
-        process.waitFor()
-        if (!out.contains("OKINSTALL")) {
-            error((err.ifBlank { out }).trim().ifBlank { context.getString(R.string.sys_install_su_failed) })
+        val res = RootShell.su(script, INSTALL_TIMEOUT_S)
+        if (!res.out.contains("OKINSTALL")) {
+            error((res.err.ifBlank { res.out }).trim().ifBlank { context.getString(R.string.sys_install_su_failed) })
         }
+        compileInBackground { cmd -> RootShell.su(cmd, COMPILE_TIMEOUT_MS / 1000L).all }
     }
 
     /** Reboots the device via root so the system-app install takes effect. */
@@ -111,11 +124,11 @@ object SystemInstaller {
     }
 
     /**
-     * Installs the app as a privileged system app, preferring the head unit's
-     * internal root ADB socket ([AdbInstaller]) and falling back to `su`.
+     * Installs the app as a privileged system app, trying `su` first (Magisk:
+     * systemless, survives a full /system) and falling back to the head unit's
+     * internal root ADB socket ([AdbInstaller]).
      */
     fun install(context: Context): Result<Unit> {
-        // Prefer su/Magisk (systemless, survives a full /system); fall back to ADB.
         val viaSu = installAsSystemApp(context)
         if (viaSu.isSuccess) return viaSu
         val viaAdb = AdbInstaller.installViaAdb(context)
@@ -127,4 +140,58 @@ object SystemInstaller {
     /** Reboots via su, falling back to the root ADB socket. */
     fun rebootDevice(context: Context): Result<Unit> =
         reboot().recoverCatching { AdbInstaller.rebootViaAdb(context).getOrThrow() }
+
+    /** A full AOT compile of a Compose app on this CPU takes minutes. */
+    internal const val COMPILE_TIMEOUT_MS = 600_000
+
+    /**
+     * Compiles the app ahead of time from the baseline profiles it ships, so
+     * Compose does not run interpreted on the unit's slow CPU after the
+     * install. Runs on a thread of its own through [run] (the shell the install
+     * used) and never holds anything up; a failure only costs speed.
+     */
+    fun compileInBackground(run: (String) -> String) {
+        thread(isDaemon = true, name = "dexopt") {
+            runCatching { run("cmd package compile -m speed-profile -f $APP_PACKAGE") }
+                .onSuccess { Log.i(TAG, "compiled: ${it.trim()}") }
+                .onFailure { Log.w(TAG, "compile after install failed", it) }
+        }
+    }
+
+    private const val APP_PACKAGE = "com.openauto.dash"
+    private const val TAG = "SystemInstaller"
+}
+
+/**
+ * The one way the app runs `su`: both output streams read at once (a full
+ * pipe cannot stall the command) and the command killed after a timeout, so
+ * an unanswered Magisk prompt or a stuck command cannot hang its caller.
+ */
+internal object RootShell {
+
+    class Output(val exit: Int, val out: String, val err: String) {
+        val all: String get() = out + err
+    }
+
+    /**
+     * `su -c [cmd]`, or, with [cmd] null, `su` running [stdin] as its script
+     * (no quoting gets in the way). Throws when [timeoutS] runs out.
+     */
+    fun su(cmd: String?, timeoutS: Long, stdin: String? = null): Output {
+        val process = Runtime.getRuntime().exec(if (cmd != null) arrayOf("su", "-c", cmd) else arrayOf("su"))
+        // One builder per stream: the two readers run concurrently.
+        val out = StringBuilder()
+        val err = StringBuilder()
+        val reader = Thread { runCatching { out.append(process.inputStream.bufferedReader().readText()) } }
+        val errReader = Thread { runCatching { err.append(process.errorStream.bufferedReader().readText()) } }
+        reader.start(); errReader.start()
+        // su gone before reading its script: the exit status says why.
+        runCatching { process.outputStream.bufferedWriter().use { w -> stdin?.let(w::write) } }
+        if (!process.waitFor(timeoutS, TimeUnit.SECONDS)) {
+            process.destroy()
+            throw IllegalStateException("su timed out")
+        }
+        reader.join(2000); errReader.join(2000)
+        return Output(process.exitValue(), out.toString(), err.toString())
+    }
 }

@@ -19,13 +19,10 @@ class MediaNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
-        // Pick up a navigation already in progress when the listener binds.
-        runCatching { activeNotifications }.getOrNull()
-            ?.filter { it.packageName in NavDirections.PACKAGES }
-            ?.forEach { NavDirections.onPosted(this, it) }
-        runCatching { activeNotifications }.getOrNull()
-            ?.sortedBy { it.postTime }
-            ?.forEach { NotificationFeed.onPosted(this, it) }
+        // One IPC for both: a navigation already in progress, and the notifications already up.
+        val active = runCatching { activeNotifications }.getOrNull() ?: return
+        active.filter { it.packageName in NavDirections.PACKAGES }.forEach { NavDirections.onPosted(this, it) }
+        active.sortedBy { it.postTime }.forEach { NotificationFeed.onPosted(this, it) }
     }
 
     override fun onListenerDisconnected() {

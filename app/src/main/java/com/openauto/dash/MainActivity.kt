@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
         FeedbackStore.load(this)
         // Dials the paired phone whenever its hotspot is around.
         PhoneLink.start(this)
+        // A new version runs JIT-only until it is compiled ahead of time.
+        CompileAfterUpdate.schedule(this)
 
         setContent {
             // An app window (docked or parked aside) forces the status bar on.

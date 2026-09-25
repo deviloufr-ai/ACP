@@ -158,6 +158,19 @@ class DashboardStoreTest {
         assertTrue(saved.contains("com.example.a"))
     }
 
+    @Test
+    fun unknownTilesStayWithTheirOwnLayout() {
+        val full = """{"v":9,"pages":[[{"t":"hologram","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
+        val half = """{"v":9,"pages":[[{"t":"jetpack","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
+        val fullPages = DashboardStore.parsePages(full, "")!!
+        // Reading the other arrangement (as a page swipe does) must not swap its unknown tiles in.
+        DashboardStore.parsePages(half, "_half")
+
+        val saved = DashboardStore.serializePages(List(DashboardStore.PAGE_COUNT) { fullPages.getOrElse(it) { emptyList() } }, "")
+        assertTrue(saved.contains("hologram"))
+        assertFalse(saved.contains("jetpack"))
+    }
+
     // --- tile designs ---------------------------------------------------------
 
     @Test

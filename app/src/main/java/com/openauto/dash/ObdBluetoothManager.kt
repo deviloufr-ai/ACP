@@ -5,9 +5,12 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +38,9 @@ data class ObdData(
      */
     val voltageFromEcu: Boolean = false
 )
+
+/** The readings once the engine computer has gone quiet (engine off): nothing turns, nothing moves. */
+internal fun ObdData.engineStopped(): ObdData = copy(speedKmh = 0, rpm = 0, throttlePct = 0, engineLoadPct = 0)
 
 /** The engine warning lamp as the engine computer reports it (PID 0101). */
 data class EngineLamp(val on: Boolean, val storedCodes: Int)
@@ -76,9 +82,31 @@ object ObdBluetoothManager {
     private val commandMutex = Mutex()
 
     private var appContext: Context? = null
-    private var socket: BluetoothSocket? = null
-    private var inputStream: InputStream? = null
-    private var outputStream: OutputStream? = null
+    // Opened under commandMutex on IO, but closed by disconnect() from any thread.
+    @Volatile private var socket: BluetoothSocket? = null
+    @Volatile private var inputStream: InputStream? = null
+    @Volatile private var outputStream: OutputStream? = null
+
+    /**
+     * Bumped by [disconnect]. A connect that was still opening its link when
+     * the driver disconnected sees it changed and closes that link instead of
+     * reporting CONNECTED.
+     */
+    @Volatile private var generation = 0
+    private val linkLock = Any()
+
+    // What the polls learned about this car since the link came up (only touched under commandMutex).
+    /** The PIDs the engine computer says it serves; null when it wasn't asked yet or didn't say. */
+    private var supported: SupportedPids? = null
+    /** The poll number [supported] was last asked on, so an asleep computer isn't asked every poll. */
+    private var supportedAskedAt = 0
+    private var pollCount = 0
+    /** Polls in a row where neither speed nor revs answered: engine off, key in accessory. */
+    private var silentPolls = 0
+    /** When speed or revs last answered (elapsed ms); a short glitch mid-drive must not read as engine off. */
+    private var lastAliveAt = 0L
+    /** Per PID: polls in a row it went unanswered while the engine computer answered others. */
+    private val misses = IntArray(256)
 
     private val _data = MutableStateFlow(ObdData())
     val data: StateFlow<ObdData> = _data.asStateFlow()
@@ -130,6 +158,7 @@ object ObdBluetoothManager {
         if (!connectLock.tryLock()) return false
         try {
             if (_connectionState.value == ObdConnectionState.CONNECTED) return true
+            val gen = generation
             _connectionState.value = ObdConnectionState.CONNECTING
             val ok = withContext(Dispatchers.IO) {
                 // No poll or fault-code scan may talk to the link being replaced.
@@ -143,9 +172,16 @@ object ObdBluetoothManager {
                         .getOrDefault(false)
                 }
             }
-            if (!ok) closeQuietly() else _lastError.value = null
-            // A demo started meanwhile owns the state; it hands back the real one when it ends.
-            if (!DemoMode.isOn) _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
+            synchronized(linkLock) {
+                // Disconnected while opening: that link is no longer wanted.
+                if (gen != generation) {
+                    closeQuietly()
+                    return false
+                }
+                if (!ok) closeQuietly() else _lastError.value = null
+                // A demo started meanwhile owns the state; it hands back the real one when it ends.
+                if (!DemoMode.isOn) _connectionState.value = if (ok) ObdConnectionState.CONNECTED else ObdConnectionState.ERROR
+            }
             return ok
         } finally {
             // Cancelled mid-attempt (the screen went away): a CONNECTING left
@@ -170,6 +206,13 @@ object ObdBluetoothManager {
             return fail(R.string.vehicle_err_bt_off)
         }
         closeQuietly()
+        // Another adapter, or the same one in another car: learn it afresh.
+        supported = null
+        supportedAskedAt = 0
+        pollCount = 0
+        silentPolls = 0
+        lastAliveAt = SystemClock.elapsedRealtime()
+        misses.fill(0)
         val device = adapter.getRemoteDevice(deviceAddress)
         val label = runCatching { device.name }.getOrNull() ?: deviceAddress
         // Only a paired adapter can be reached; an unpaired one fails slowly and says nothing.
@@ -252,7 +295,8 @@ object ObdBluetoothManager {
             sendCommand("ATSP0")  // automatic protocol selection
         )
         if (replies.all { it == null }) return false
-        sendCommand("0100")  // probe supported PIDs (wakes the ECU link)
+        // Which PIDs the car serves (0100 also wakes the ECU link); unanswered, everything is polled.
+        supported = ObdParser.supportedPids { sendCommand(it) }
         return outputStream != null
     }
 
@@ -289,34 +333,93 @@ object ObdBluetoothManager {
         }
     }
 
+    /**
+     * One poll. Speed and revs are asked every time; throttle and load every
+     * other poll; the slow readings (temperatures, fuel, voltage) take turns,
+     * one per poll. Each request is a round trip to the car, so fewer of them
+     * means fresher speed and revs. The first poll asks for everything.
+     */
     private fun pollLocked() {
+        val cycle = pollCount++
+        val first = cycle == 0
         val speed = sendCommand("010D")?.let { ObdParser.parseSpeed(it) }
         val rpm = sendCommand("010C")?.let { ObdParser.parseRpm(it) }
-        val coolant = sendCommand("0105")?.let { ObdParser.parseCoolant(it) }
-        val intake = sendCommand("010F")?.let { ObdParser.tempFrom(it, "410F") }
-        val throttle = sendCommand("0111")?.let { ObdParser.percentFrom(it, "4111") }
-        val load = sendCommand("0104")?.let { ObdParser.percentFrom(it, "4104") }
-        val fuel = sendCommand("012F")?.let { ObdParser.percentFrom(it, "412F") }
-        // Prefer the ECU's control-module voltage (PID 0142) — it reads the real
-        // bus voltage. Many ELM327 clones report a miscalibrated ATRV (e.g. 16.9V
-        // when the bus is ~14.5V), so ATRV is only a fallback when 0142 is
-        // unsupported.
-        val ecuVolt = sendCommand("0142")?.let { ObdParser.parseControlModuleVoltage(it) }
-        val volt = ecuVolt ?: sendCommand("ATRV")?.let { ObdParser.parseVoltage(it) }
+        val alive = speed != null || rpm != null
+        silentPolls = if (alive) 0 else silentPolls + 1
+        if (alive) lastAliveAt = SystemClock.elapsedRealtime()
+        // Asleep at connect (ignition off), the engine computer never said which PIDs it serves: ask once it talks.
+        if (alive && supported == null && (first || cycle - supportedAskedAt >= SUPPORTED_RETRY_POLLS)) {
+            supportedAskedAt = cycle
+            supported = ObdParser.supportedPids { sendCommand(it) }
+        }
 
-        _data.value = _data.value.copy(
-            speedKmh = speed ?: _data.value.speedKmh,
-            rpm = rpm ?: _data.value.rpm,
-            coolantTempC = coolant ?: _data.value.coolantTempC,
-            intakeTempC = intake ?: _data.value.intakeTempC,
-            throttlePct = throttle ?: _data.value.throttlePct,
-            engineLoadPct = load ?: _data.value.engineLoadPct,
-            fuelLevelPct = fuel ?: _data.value.fuelLevelPct,
-            voltage = volt ?: _data.value.voltage,
-            voltageFromEcu = if (volt != null) ecuVolt != null else _data.value.voltageFromEcu
+        val throttle = if (first || cycle % 2 == 0) read(0x11, alive, cycle) { ObdParser.percentFrom(it, "4111") } else null
+        val load = if (first || cycle % 2 == 1) read(0x04, alive, cycle) { ObdParser.percentFrom(it, "4104") } else null
+        val slot = cycle % SLOW_SLOTS
+        val coolant = if (first || slot == 0) read(0x05, alive, cycle) { ObdParser.parseCoolant(it) } else null
+        val intake = if (first || slot == 1) read(0x0F, alive, cycle) { ObdParser.tempFrom(it, "410F") } else null
+        val fuel = if (first || slot == 2) read(0x2F, alive, cycle) { ObdParser.percentFrom(it, "412F") } else null
+        var ecuVolt: Double? = null
+        var volt: Double? = null
+        if (first || slot == 3) {
+            // Prefer the ECU's control-module voltage (PID 0142) — it reads the real
+            // bus voltage. Many ELM327 clones report a miscalibrated ATRV (e.g. 16.9V
+            // when the bus is ~14.5V), so ATRV is only a fallback when 0142 is
+            // unsupported (then it is the only request, not a second one each time).
+            ecuVolt = read(0x42, alive, cycle) { ObdParser.parseControlModuleVoltage(it) }
+            volt = ecuVolt ?: sendCommand("ATRV")?.let { ObdParser.parseVoltage(it) }
+        }
+
+        val d = _data.value
+        val next = d.copy(
+            speedKmh = speed ?: d.speedKmh,
+            rpm = rpm ?: d.rpm,
+            coolantTempC = coolant ?: d.coolantTempC,
+            intakeTempC = intake ?: d.intakeTempC,
+            throttlePct = throttle ?: d.throttlePct,
+            engineLoadPct = load ?: d.engineLoadPct,
+            fuelLevelPct = fuel ?: d.fuelLevelPct,
+            voltage = volt ?: d.voltage,
+            voltageFromEcu = if (volt != null) ecuVolt != null else d.voltageFromEcu
         )
+        // Engine off with the key in accessory: every PID says NO DATA while the
+        // adapter stays linked. The last revs and speed would otherwise stay up
+        // for good (a drive that never ends, a battery judged on old readings);
+        // the temperatures, fuel and voltage keep their last value, as a gauge would.
+        val silentFor = SystemClock.elapsedRealtime() - lastAliveAt
+        _data.value = if (silentPolls >= STALE_POLLS && silentFor >= STALE_MS) next.engineStopped() else next
         BatteryWatch.feed(_data.value, System.currentTimeMillis())
     }
+
+    /**
+     * Mode-01 [pid] read with [parse], or null. Skipped when the car said it
+     * doesn't serve it. With no such list, a PID that went unanswered
+     * [MAX_MISSES] times in a row while the engine computer answered others is
+     * only tried again every [RETRY_DROPPED_POLLS] polls. One the car claims is
+     * always asked: a busy computer (cranking, filter regeneration) can miss a
+     * few, and giving up would freeze e.g. the coolant for the whole drive.
+     */
+    private inline fun <T> read(pid: Int, alive: Boolean, cycle: Int, parse: (String) -> T?): T? {
+        val list = supported
+        if (list?.has(pid) == false) return null
+        if (list == null && misses[pid] >= MAX_MISSES && cycle % RETRY_DROPPED_POLLS != 0) return null
+        val value = sendCommand(PID_COMMANDS[pid])?.let(parse)
+        if (value != null) misses[pid] = 0 else if (alive) misses[pid]++
+        return value
+    }
+
+    /** "0100".."01FF", built once. */
+    private val PID_COMMANDS = Array(256) { "01" + "%02X".format(java.util.Locale.US, it) }
+
+    /** Polls without speed or revs, and for how long, before those count as gone. */
+    private const val STALE_POLLS = 3
+    private const val STALE_MS = 10_000L
+    /** An unlisted PID that stopped answering is tried again this often (~1 min). */
+    private const val RETRY_DROPPED_POLLS = 120
+    private const val MAX_MISSES = 3
+    /** The slow readings share this many polls, one each. */
+    private const val SLOW_SLOTS = 4
+    private const val SUPPORTED_RETRY_POLLS = 20
 
     /**
      * Reads stored Diagnostic Trouble Codes (OBD mode 03). Returns the decoded
@@ -328,7 +431,11 @@ object ObdBluetoothManager {
             return@withContext failure(R.string.vehicle_obd_not_connected)
         }
         commandMutex.withLock {
-            fun ask(command: String, timeoutMs: Long = DTC_TIMEOUT_MS): String? = sendCommand(command, timeoutMs)
+            // A scan takes seconds: stop between requests when whoever asked is gone.
+            suspend fun ask(command: String, timeoutMs: Long = DTC_TIMEOUT_MS): String? {
+                currentCoroutineContext().ensureActive()
+                return sendCommand(command, timeoutMs)
+            }
             val stored = linkedSetOf<String>()
             val pending = linkedSetOf<String>()
             var answered = false
@@ -337,6 +444,7 @@ object ObdBluetoothManager {
                 if (mode == 0x43) answered = true
                 (if (mode == 0x43) stored else pending) += codes
             }
+            var addressed = false
             try {
                 // Give slow computers time: adaptive timing can cut the wait short,
                 // and a busy running engine then reads as "NO DATA".
@@ -349,16 +457,18 @@ object ObdBluetoothManager {
                 collect(ask("07"), 0x47)
                 // On CAN, also ask the engine computer on its own address: with
                 // everyone answering at once, its reply can be the one lost.
-                if (ask("ATDPN", READ_TIMEOUT_MS)?.let(ObdParser::isCan11Bit) == true &&
-                    ask("ATSH7E0", READ_TIMEOUT_MS)?.contains("OK") == true
-                ) {
-                    collect(ask("03"), 0x43)
-                    collect(ask("07"), 0x47)
-                    ask("ATSH7DF", READ_TIMEOUT_MS)
+                if (ask("ATDPN", READ_TIMEOUT_MS)?.let(ObdParser::isCan11Bit) == true) {
+                    addressed = true
+                    if (ask("ATSH7E0", READ_TIMEOUT_MS)?.contains("OK") == true) {
+                        collect(ask("03"), 0x43)
+                        collect(ask("07"), 0x47)
+                    }
                 }
             } finally {
-                ask("ATAT1", READ_TIMEOUT_MS)
-                ask("ATST32", READ_TIMEOUT_MS)
+                // Put the address and timing back even when cancelled: the regular polls rely on them.
+                if (addressed) sendCommand("ATSH7DF", READ_TIMEOUT_MS)
+                sendCommand("ATAT1", READ_TIMEOUT_MS)
+                sendCommand("ATST32", READ_TIMEOUT_MS)
             }
             if (!answered) return@withLock failure(R.string.vehicle_no_dtc_answer)
             _pending.value = pending - stored
@@ -383,11 +493,26 @@ object ObdBluetoothManager {
         timeoutMs: Long = READ_TIMEOUT_MS,
         replyAddress: String? = null,
         session: String? = null
-    ): String? = withContext(Dispatchers.IO) {
-        if (DemoMode.isOn || _connectionState.value != ObdConnectionState.CONNECTED) return@withContext null
+    ): String? = queryAll(header, listOf(request), timeoutMs, replyAddress, session).firstOrNull()
+
+    /**
+     * Like [query] for several [requests] to the same computer: the addresses
+     * are set and the session opened once for all of them, then put back once,
+     * instead of five or more set-up commands around every request. One reply
+     * (or null) per request; empty when not connected.
+     */
+    suspend fun queryAll(
+        header: String?,
+        requests: List<String>,
+        timeoutMs: Long = READ_TIMEOUT_MS,
+        replyAddress: String? = null,
+        session: String? = null
+    ): List<String?> = withContext(Dispatchers.IO) {
+        if (DemoMode.isOn || _connectionState.value != ObdConnectionState.CONNECTED) return@withContext emptyList()
         commandMutex.withLock {
-            if (_connectionState.value != ObdConnectionState.CONNECTED) return@withLock null
+            if (_connectionState.value != ObdConnectionState.CONNECTED) return@withLock emptyList()
             val ownAddresses = header != null && replyAddress != null
+            val replies = ArrayList<String?>(requests.size)
             try {
                 if (header != null) sendCommand("ATSH$header", READ_TIMEOUT_MS)
                 if (ownAddresses) {
@@ -396,8 +521,16 @@ object ObdBluetoothManager {
                     sendCommand("ATFCSD300000", READ_TIMEOUT_MS)
                     sendCommand("ATFCSM1", READ_TIMEOUT_MS)
                 }
-                if (header != null && session != null) sendCommand(session, timeoutMs)
-                sendCommand(request, timeoutMs)
+                var sessionAt = 0L
+                for (request in requests) {
+                    currentCoroutineContext().ensureActive()
+                    // Opened once, and again only if a slow answer may have let it lapse.
+                    if (header != null && session != null && System.currentTimeMillis() - sessionAt > SESSION_KEEP_MS) {
+                        sendCommand(session, timeoutMs)
+                        sessionAt = System.currentTimeMillis()
+                    }
+                    replies += sendCommand(request, timeoutMs)
+                }
             } finally {
                 if (ownAddresses) {
                     sendCommand("ATFCSM0", READ_TIMEOUT_MS)
@@ -405,8 +538,12 @@ object ObdBluetoothManager {
                 }
                 if (header != null) sendCommand("ATSH7DF", READ_TIMEOUT_MS)
             }
+            replies
         }
     }
+
+    /** A diagnostic session lapses after about five seconds without a request; reopen it well before. */
+    private const val SESSION_KEEP_MS = 2_000L
 
     /** Clears stored trouble codes and turns off the MIL (OBD mode 04). */
     suspend fun clearTroubleCodes(): Result<Unit> = withContext(Dispatchers.IO) {
@@ -464,7 +601,8 @@ object ObdBluetoothManager {
                     response.append(String(buffer, 0, read))
                     if (response.contains(">")) break
                 } else {
-                    Thread.sleep(20)
+                    // Only paces the wait for the reply; the loop still ends on the prompt.
+                    Thread.sleep(5)
                 }
             }
             response.toString().replace(">", "").trim().ifEmpty { null }
@@ -495,9 +633,12 @@ object ObdBluetoothManager {
     }
 
     suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
-        closeQuietly()
-        _connectionState.value = ObdConnectionState.DISCONNECTED
-        _data.value = ObdData()
+        synchronized(linkLock) {
+            generation++
+            closeQuietly()
+            _connectionState.value = ObdConnectionState.DISCONNECTED
+            _data.value = ObdData()
+        }
     }
 
     private fun closeQuietly() {

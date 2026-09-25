@@ -7,11 +7,14 @@
   button — to read only those two windows' package names so it can recreate the
   split with the apps reversed (this ROM has no working swap gesture). It reads
   window types, bounds and owning package names only; never any window content.
+  notificationTimeout batches the events: a split settles in several window
+  changes, and only the swap button's show / hide follows them, so a fraction
+  of a second later costs nothing and saves a window-list fetch per change.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
-    android:notificationTimeout="0"
+    android:notificationTimeout="300"
     android:description="@string/split_a11y_description" />

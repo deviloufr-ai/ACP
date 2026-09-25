@@ -8,7 +8,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Call
 import okhttp3.Callback
@@ -77,7 +76,7 @@ object GeminiClient {
     /** How long one [generate] may take in all, models and retries included, unless told otherwise. */
     const val BUDGET_MS = 90_000L
 
-    private val client = OkHttpClient.Builder()
+    private val client: OkHttpClient = Http.client.newBuilder()
         .dns(Ipv4First)
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
@@ -162,13 +161,17 @@ object GeminiClient {
      * Whether the unit reaches Google at all, through Google's own tiny
      * connectivity check: tells "no internet" apart from "Gemini is slow".
      */
-    suspend fun reachGoogle(timeoutMs: Long = 6_000L): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun reachGoogle(timeoutMs: Long = 6_000L): Result<Unit> =
+        try {
             val call = client.newCall(Request.Builder().url("https://www.gstatic.com/generate_204").build())
             call.timeout().timeout(timeoutMs, TimeUnit.MILLISECONDS)
-            call.execute().use { if (it.code != 204) throw NoInternetAccessException(it.code) }
+            call.await().use { if (it.code != 204) throw NoInternetAccessException(it.code) }
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-    }
 
     /** The request, built once and sent to every model in the race. */
     internal fun requestBody(prompt: String, schema: JSONObject?, audio: ByteArray?, audioMime: String): String {
@@ -197,8 +200,9 @@ object GeminiClient {
             .header("x-goog-api-key", apiKey)
             .post(body.toRequestBody(JSON_TYPE))
             .build()
-        client.newCall(request).await().use { resp ->
-            val text = withContext(Dispatchers.IO) { resp.body?.string().orEmpty() }
+        val call = client.newCall(request)
+        call.await().use { resp ->
+            val text = call.readBody(resp)
             if (!resp.isSuccessful) throw GeminiException(errorMessage(text) ?: "HTTP ${resp.code}", resp.code)
             return answerText(text) ?: throw GeminiException("Gemini gave an empty answer", resp.code)
         }
@@ -213,6 +217,22 @@ object GeminiClient {
                 if (cont.isActive) cont.resume(response) else response.close()
             }
         })
+    }
+
+    /**
+     * The body, read off the main thread. The call is still cancelled when the
+     * caller gives up: a lost race or a spent budget must not keep downloading.
+     */
+    private suspend fun Call.readBody(resp: Response): String = coroutineScope {
+        val call = this@readBody
+        val reading = async(Dispatchers.IO) { resp.body?.string().orEmpty() }
+        try {
+            reading.await()
+        } catch (e: CancellationException) {
+            // Unblocks the read, so the scope can end.
+            call.cancel()
+            throw e
+        }
     }
 
     /** The answer's text parts joined, skipping any "thought" parts; null when there is none. */

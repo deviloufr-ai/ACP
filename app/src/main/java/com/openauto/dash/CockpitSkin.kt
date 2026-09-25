@@ -3,12 +3,8 @@ package com.openauto.dash
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -50,7 +46,9 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -117,7 +115,6 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -280,10 +277,6 @@ private fun rememberScanlines(): ShaderBrush {
 
 // --- Type -------------------------------------------------------------------------
 
-/** Dp → sp ignoring the font scale, so text sized from a tile never outgrows it. */
-@Composable
-private fun Dp.textSize(): TextUnit = with(LocalDensity.current) { this@textSize.toSp() }
-
 /** Engraved caps: condensed, letter-spaced, sunk into the dash (a dark lip at night, a lit one by day). */
 private fun engraved(size: TextUnit, color: Color = DashColors.TextSecondary): TextStyle = TextStyle(
     color = color,
@@ -301,6 +294,7 @@ private fun engraved(size: TextUnit, color: Color = DashColors.TextSecondary): T
 /**
  * LCD text in monospace: backlit with a soft glow of its own colour at night;
  * by day dark segments casting a faint shadow on the reflector behind them.
+ * Blurred only with effects at full (see [softTextShadow]).
  */
 private fun lcd(size: TextUnit, color: Color): TextStyle = TextStyle(
     color = color,
@@ -308,22 +302,26 @@ private fun lcd(size: TextUnit, color: Color): TextStyle = TextStyle(
     fontSize = size,
     shadow = if (DashColors.Light) {
         val d = (size.value * 0.06f).coerceAtLeast(1f)
-        Shadow(color.copy(alpha = 0.22f * color.alpha), Offset(d, d * 1.3f), d)
+        softTextShadow(color.copy(alpha = 0.22f * color.alpha), d, Offset(d, d * 1.3f))
     } else {
-        Shadow(color.copy(alpha = 0.6f * color.alpha), blurRadius = (size.value * 0.45f).coerceAtLeast(3f))
+        softTextShadow(color.copy(alpha = 0.6f * color.alpha), (size.value * 0.45f).coerceAtLeast(3f))
     }
 )
 
 // --- Clocks & motion ----------------------------------------------------------------
 
-/** The small idle tremble of a live needle, in degrees. */
+/**
+ * The small idle tremble of a live needle, in degrees: ambient motion, so it
+ * steps with the ambient ticker. Callers skip it with effects off.
+ */
 @Composable
-private fun rememberWobble(): State<Float> = rememberInfiniteTransition(label = "wobble").animateFloat(
-    initialValue = -1.2f,
-    targetValue = 1.4f,
-    animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-    label = "wobble"
-)
+private fun rememberWobble(): State<Float> {
+    val loop = rememberLoop(1800, reverse = true)
+    return remember(loop) { derivedStateOf { -1.2f + 2.6f * FastOutSlowInEasing.transform(loop.value) } }
+}
+
+/** Step of a clock's second hand: four a second with full effects (a smooth sweep), one a second otherwise. */
+private val secondHandStepMs: Long get() = if (DashColors.Effects == DashEffects.FULL) 250L else 1_000L
 
 /** Hours and minutes out of an "HH:mm" string, or the current time if it does not parse. */
 private fun parseClock(clock: String): Pair<Int, Int> {
@@ -437,7 +435,7 @@ internal fun CockpitTopBar(m: TopBarModel) {
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            VehicleAlerts(m.obdConnection, m.obdData)
+            VehicleAlerts(m.obdConnection, m.obd)
             OutsideTempLcd()
             Spacer(Modifier.width(8.dp))
             ObdLamp(m.obdConnection, m.onConnectObd)
@@ -520,7 +518,7 @@ private fun ChromePill(
 @Composable
 private fun ClockPod(clock: String, modifier: Modifier = Modifier) {
     val (hh, mm) = remember(clock) { parseClock(clock) }
-    val wall = rememberWallClock(100L)
+    val wall = rememberWallClock(secondHandStepMs)
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
     val timeLabel = stringResource(R.string.cockpit_time_desc, clock)
@@ -618,7 +616,7 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
         ObdConnectionState.DISCONNECTED -> LampOff
     }
     val lit = state != ObdConnectionState.DISCONNECTED
-    val pulse = if (state == ObdConnectionState.CONNECTING) rememberLoop(900, reverse = true) else null
+    val pulse = if (state == ObdConnectionState.CONNECTING) rememberLoop(900, reverse = true, status = true) else null
     val statusLabel = obdStatusLabel(state)
     Row(
         modifier = Modifier
@@ -631,23 +629,21 @@ private fun ObdLamp(state: ObdConnectionState, onConnect: () -> Unit) {
         Box(
             Modifier
                 .size(15.dp)
-                .drawBehind {
+                .cachedDraw(color, lit, pulse) {
                     val r = size.minDimension / 2f
-                    val a = pulse?.let { 0.35f + 0.65f * it.value } ?: 1f
-                    if (lit) {
-                        drawCircle(
-                            Brush.radialGradient(listOf(color.copy(alpha = 0.55f * a * Halo), Color.Transparent), center, r * 2.2f),
-                            r * 2.2f
-                        )
-                    }
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(lerp(color, Color.White, if (lit) 0.65f else 0.25f), color, lerp(color, Color.Black, 0.5f)),
-                            center = center + Offset(-r * 0.3f, -r * 0.3f), radius = r * 1.3f
-                        ),
-                        r, alpha = if (lit) a else 1f
+                    // The pulse only fades both gradients, so they are built once and drawn at its alpha.
+                    val halo = Brush.radialGradient(listOf(color.copy(alpha = 0.55f * Halo), Color.Transparent), center, r * 2.2f)
+                    val glass = Brush.radialGradient(
+                        listOf(lerp(color, Color.White, if (lit) 0.65f else 0.25f), color, lerp(color, Color.Black, 0.5f)),
+                        center = center + Offset(-r * 0.3f, -r * 0.3f), radius = r * 1.3f
                     )
-                    drawCircle(Color.Black.copy(alpha = 0.6f), r, style = Stroke(1.dp.toPx()))
+                    val rim = Stroke(1.dp.toPx())
+                    onDrawBehind {
+                        val a = pulse?.let { 0.35f + 0.65f * it.value } ?: 1f
+                        if (lit) drawCircle(halo, r * 2.2f, alpha = a)
+                        drawCircle(glass, r, alpha = if (lit) a else 1f)
+                        drawCircle(Color.Black.copy(alpha = 0.6f), r, style = rim)
+                    }
                 }
         )
         Spacer(Modifier.width(7.dp))
@@ -712,12 +708,12 @@ private fun BoxScope.LcdMessage(title: String, hint: String, height: Dp) {
     Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             title,
-            style = lcd((height * 0.2f).coerceIn(14.dp, 40.dp).textSize(), ink.copy(alpha = 0.45f)),
+            style = lcd((height * 0.2f).coerceIn(14.dp, 40.dp).fixedSp(), ink.copy(alpha = 0.45f)),
             maxLines = 1
         )
         if (height >= 70.dp) {
             Spacer(Modifier.height(4.dp))
-            Text(hint, style = lcd((height * 0.1f).coerceIn(10.dp, 18.dp).textSize(), ink.copy(alpha = 0.75f)), maxLines = 1)
+            Text(hint, style = lcd((height * 0.1f).coerceIn(10.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)), maxLines = 1)
         }
     }
 }
@@ -788,14 +784,7 @@ private fun TellTale(icon: ImageVector, lit: Color?, description: String, iconSi
         tint = lit ?: LampOff,
         modifier = Modifier
             .size(iconSize)
-            .drawBehind {
-                if (lit != null) {
-                    drawCircle(
-                        Brush.radialGradient(listOf(lit.copy(alpha = 0.35f * Halo), Color.Transparent), center, size.minDimension),
-                        size.minDimension
-                    )
-                }
-            }
+            .then(if (lit != null) Modifier.glowHalo(lit.copy(alpha = 0.35f * Halo), 1f) else Modifier)
     )
 }
 
@@ -904,9 +893,12 @@ private fun fuelFace(w: DialWords) = DialFace(
  * The dial's static face: bezel, face, red zone, ticks, numerals, title,
  * sub-dials, LCD window. At night a black face with glowing orange numerals;
  * by day an ivory face printed in black, like a classic white-face instrument.
+ * Remembered on its inputs: the dial recomposes on every OBD sample, and a new
+ * cache would measure all its lettering again.
  */
+@Composable
 private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Color, cream: Color, lcdInk: Color): Modifier =
-    drawWithCache {
+    cachedDraw(face, measurer, accent, cream, lcdInk) {
         val light = DashColors.Light
         val u = size.minDimension / 380f
         val c = center
@@ -925,7 +917,7 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
         val intervals = (face.labels.size - 1) * face.minor
         val numStyle = TextStyle(
             color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
-            fontSize = (face.numeral * u).toSp(), shadow = if (light) null else Shadow(accent.copy(alpha = 0.7f), blurRadius = 6f * u)
+            fontSize = (face.numeral * u).toSp(), shadow = if (light) null else softTextShadow(accent.copy(alpha = 0.7f), 6f * u)
         )
         val numerals = face.labels.mapIndexed { i, label ->
             measurer.measure(label, numStyle) to polar(c, 117f * u, face.start + face.sweep * i / (face.labels.size - 1))
@@ -1025,7 +1017,7 @@ private fun ChromeDial(
     val light = DashColors.Light
     val target = face.start + face.sweep * (fraction ?: 0f).coerceIn(0f, 1f)
     val angle = animateFloatAsState(target, spring(dampingRatio = 0.72f, stiffness = 90f), label = "needle")
-    val wobble = if (live) rememberWobble() else null
+    val wobble = if (live && DashColors.Effects != DashEffects.NONE) rememberWobble() else null
     val du = side / 380f
 
     Box(Modifier.size(side)) {
@@ -1121,17 +1113,17 @@ private fun ChromeDial(
                 buildAnnotatedString {
                     append(readout)
                     if (unit.isNotEmpty()) {
-                        withStyle(SpanStyle(fontSize = (lcdTextSize * 0.55f * unitScale).textSize(), color = lcdColor.copy(alpha = 0.7f))) {
+                        withStyle(SpanStyle(fontSize = (lcdTextSize * 0.55f * unitScale).fixedSp(), color = lcdColor.copy(alpha = 0.7f))) {
                             append(" $unit")
                         }
                     }
                 },
-                style = lcd(lcdTextSize.textSize(), lcdColor),
+                style = lcd(lcdTextSize.fixedSp(), lcdColor),
                 maxLines = 1,
                 softWrap = false
             )
             if (second != null) {
-                Text(second, style = lcd((du * 12f).textSize(), ink.copy(alpha = 0.8f)), maxLines = 1, softWrap = false)
+                Text(second, style = lcd((du * 12f).fixedSp(), ink.copy(alpha = 0.8f)), maxLines = 1, softWrap = false)
             }
         }
     }
@@ -1153,12 +1145,12 @@ private fun SpeedLcd(speed: Int?, caption: String, modifier: Modifier) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     speed?.toString() ?: "--",
-                    style = lcd(min(h * 0.46f, w * 0.32f).textSize(), color),
+                    style = lcd(min(h * 0.46f, w * 0.32f).fixedSp(), color),
                     maxLines = 1
                 )
                 Text(
                     caption,
-                    style = lcd((h * 0.11f).coerceIn(10.dp, 18.dp).textSize(), ink.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.11f).coerceIn(10.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,
@@ -1216,7 +1208,7 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
             val face = remember(fuel != null, compact, words) { tachFace(fuel != null, compact, words) }
             ChromeDial(
                 face = face,
-                fraction = rpm?.let { it / 7000f },
+                fraction = rpm?.let { it / SKIN_RPM_MAX },
                 subFractions = if (fuel != null) listOf(coolant, fuelFrac) else listOf(coolant),
                 live = connected,
                 readout = rpm?.toString() ?: "--",
@@ -1323,11 +1315,7 @@ private fun TelemetryTellTales(env: SkinTileEnv, speed: Int?, idle: Boolean, mod
 @Composable
 private fun CockpitSpeedHud(env: SkinTileEnv) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
-    val source = when {
-        env.obdConnection == ObdConnectionState.CONNECTED -> "OBD"
-        speed != null -> "GPS"
-        else -> stringResource(R.string.cockpit_no_signal)
-    }
+    val source = speedSource(env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.cockpit_no_signal))
     val color = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else LcdInk
     val words = dialWords()
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
@@ -1383,25 +1371,28 @@ private fun CockpitMedia(env: SkinTileEnv) {
     val access = env.hasMediaAccess
     val hasTrack = access && state.hasMedia && state.title.isNotBlank()
     val playing = hasTrack && state.isPlaying
-    val positionMs = rememberMediaPosition(state, env.mediaController)
     val text = when {
         !access -> stringResource(R.string.cockpit_media_access_needed)
         !hasTrack -> stringResource(R.string.cockpit_nothing_playing)
         state.artist.isNotBlank() -> "${state.artist} · ${state.title}".uppercase()
         else -> state.title.uppercase()
     }
-    val time = if (hasTrack) formatTrackTime(positionMs) else ""
+    // Elapsed time for the LCD, read in its own scope so only that line follows the position.
+    val timeOf = if (hasTrack) state else null
     val glyph = when {
         playing -> Icons.Filled.PlayArrow
         hasTrack -> Icons.Filled.Pause
         else -> Icons.Filled.MusicNote
     }
 
-    // Two VU needles bounce on one shared loop; they settle to rest when playback stops.
+    // Two VU needles bounce on one shared loop; when playback stops they settle to
+    // rest from where they were (the loop's last phase), not from its start.
     val loop = if (playing) rememberLoop(4800) else null
     val settle = animateFloatAsState(if (playing) 1f else 0f, tween(700), label = "vu")
+    val lastPhase = remember { floatArrayOf(0f) }
     fun level(phase: Float): Float {
-        val x = (loop?.value ?: 0f) * 2f * Math.PI.toFloat()
+        val t = loop?.value?.also { lastPhase[0] = it } ?: lastPhase[0]
+        val x = t * 2f * Math.PI.toFloat()
         val v = 0.4f + 0.26f * abs(sin(3f * x + phase)) + 0.2f * abs(sin(7f * x + 2f * phase)) + 0.1f * sin(17f * x + phase)
         return (v * settle.value).coerceIn(0f, 1f)
     }
@@ -1426,13 +1417,13 @@ private fun CockpitMedia(env: SkinTileEnv) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                MediaLcd(text, time, glyph, !hasTrack, Modifier.weight(1f).height(min(h, 72.dp)))
+                MediaLcd(text, timeOf, env.mediaController, glyph, !hasTrack, Modifier.weight(1f).height(min(h, 72.dp)))
                 if (access) MediaButtons(env, playing, h.coerceIn(48.dp, 64.dp))
             }
         } else {
             val lcdH = (h * 0.3f).coerceIn(52.dp, 80.dp)
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                MediaLcd(text, time, glyph, !hasTrack, Modifier.fillMaxWidth().height(lcdH))
+                MediaLcd(text, timeOf, env.mediaController, glyph, !hasTrack, Modifier.fillMaxWidth().height(lcdH))
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     val rowH = maxHeight
                     val btn = (rowH * 0.6f).coerceIn(48.dp, 76.dp)
@@ -1458,9 +1449,16 @@ private fun CockpitMedia(env: SkinTileEnv) {
     }
 }
 
-/** The media LCD strip: status glyph, marquee text, elapsed time. */
+/** The media LCD strip: status glyph, marquee text, and the elapsed time of [timeOf]'s track when there is one. */
 @Composable
-private fun MediaLcd(text: String, time: String, glyph: ImageVector, dim: Boolean, modifier: Modifier) {
+private fun MediaLcd(
+    text: String,
+    timeOf: MediaState?,
+    controller: CarMediaController,
+    glyph: ImageVector,
+    dim: Boolean,
+    modifier: Modifier
+) {
     val ink = if (dim) LcdInk.copy(alpha = 0.5f) else LcdInk
     LcdPanel(modifier, corner = 12.dp) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
@@ -1468,22 +1466,35 @@ private fun MediaLcd(text: String, time: String, glyph: ImageVector, dim: Boolea
             Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(glyph, contentDescription = null, tint = ink, modifier = Modifier.size(fs))
                 Spacer(Modifier.width(10.dp))
-                Text(
-                    text,
-                    style = lcd(fs.textSize(), ink),
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier
-                        .weight(1f)
-                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1500, velocity = 40.dp)
-                )
-                if (time.isNotEmpty()) {
+                // A long title scrolls a few times when it changes, then rests: a
+                // marquee redraws every frame for as long as it runs. None with effects off.
+                val scroll = DashColors.Effects != DashEffects.NONE
+                key(text) {
+                    Text(
+                        text,
+                        style = lcd(fs.fixedSp(), ink),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = if (scroll) TextOverflow.Clip else TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(if (scroll) Modifier.basicMarquee(iterations = 3, repeatDelayMillis = 1500, velocity = 40.dp) else Modifier)
+                    )
+                }
+                if (timeOf != null) {
                     Spacer(Modifier.width(12.dp))
-                    Text(time, style = lcd((fs * 0.85f).textSize(), ink.copy(alpha = 0.85f)), maxLines = 1)
+                    LcdTrackTime(timeOf, controller, lcd((fs * 0.85f).fixedSp(), ink.copy(alpha = 0.85f)))
                 }
             }
         }
     }
+}
+
+/** Elapsed track time on the LCD, in its own scope so only it follows the playback position. */
+@Composable
+private fun LcdTrackTime(state: MediaState, controller: CarMediaController, style: TextStyle) {
+    val positionMs = rememberMediaPosition(state, controller)
+    Text(formatTrackTime(positionMs), style = style, maxLines = 1)
 }
 
 /** Previous / play-pause / next as chrome push buttons; inert while arranging. */
@@ -1668,14 +1679,7 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
         Box(
             modifier = Modifier
                 .size(glyph)
-                .drawBehind {
-                    if (backlit) {
-                        drawCircle(
-                            Brush.radialGradient(listOf(ink.copy(alpha = 0.22f), Color.Transparent), center, size.minDimension * 0.7f),
-                            size.minDimension * 0.7f
-                        )
-                    }
-                },
+                .then(if (backlit) Modifier.glowHalo(ink.copy(alpha = 0.22f), 0.7f) else Modifier),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
@@ -1696,16 +1700,16 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
                     buildAnnotatedString {
                         append(value)
                         if (unit.isNotEmpty()) {
-                            withStyle(SpanStyle(fontSize = (distSize * 0.5f).textSize())) { append(" ${unit.uppercase()}") }
+                            withStyle(SpanStyle(fontSize = (distSize * 0.5f).fixedSp())) { append(" ${unit.uppercase()}") }
                         }
                     },
-                    style = lcd(distSize.textSize(), ink),
+                    style = lcd(distSize.fixedSp(), ink),
                     maxLines = 1
                 )
             }
             Text(
                 nav.instruction.uppercase(),
-                style = lcd(lineSize.textSize(), ink.copy(alpha = 0.9f)),
+                style = lcd(lineSize.fixedSp(), ink.copy(alpha = 0.9f)),
                 maxLines = if (h >= 150.dp) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1713,7 +1717,7 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     nav.etaParts.joinToString(" · ").uppercase(),
-                    style = lcd((lineSize * 0.85f).textSize(), ink.copy(alpha = 0.7f)),
+                    style = lcd((lineSize * 0.85f).fixedSp(), ink.copy(alpha = 0.7f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1728,11 +1732,12 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
 @Composable
 private fun TurnSignal(side: Int, blinking: Boolean, diameter: Dp) {
     val green = DashColors.Good
-    val blink = if (blinking) rememberLoop(900) else null
+    // A real signal: on 450 ms, off 450 ms, whatever the effects setting.
+    val blink = if (blinking) rememberBlink(450L) else null
     Box(
         Modifier
             .size(diameter)
-            .graphicsLayer { alpha = if (blink == null || blink.value < 0.5f) 1f else 0.15f }
+            .graphicsLayer { alpha = if (blink == null || blink.value) 1f else 0.15f }
             .drawWithCache {
                 val s = size.minDimension
                 val arrow = Path().apply {
@@ -1795,11 +1800,12 @@ private fun CockpitClock(env: SkinTileEnv) {
  */
 @Composable
 private fun AnalogClock(side: Dp) {
-    val wall = rememberWallClock(if (side >= 160.dp) 50L else 100L)
+    val wall = rememberWallClock(secondHandStepMs)
     val zone = remember { TimeZone.getDefault() }
     val today = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val dateText = remember(today, locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEd"), locale).format(today).uppercase(locale) }
+    val dateFmt = rememberDateFormat("EEEd", best = true)
+    val dateText = remember(today, dateFmt) { dateFmt.format(today).uppercase(locale) }
     val measurer = rememberTextMeasurer()
     val accent = DashColors.Accent
     val cream = DashColors.TextPrimary
@@ -1832,7 +1838,7 @@ private fun AnalogClock(side: Dp) {
                     val paper = if (light) Color.White else cream
                     val numStyle = TextStyle(
                         color = if (light) TickInk else accent, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
-                        fontSize = (r * 0.2f).toSp(), shadow = if (light) null else Shadow(accent.copy(alpha = 0.7f), blurRadius = r * 0.04f)
+                        fontSize = (r * 0.2f).toSp(), shadow = if (light) null else softTextShadow(accent.copy(alpha = 0.7f), r * 0.04f)
                     )
                     val numerals = listOf("12" to 0f, "3" to 90f, "6" to 180f, "9" to 270f).map { (n, a) ->
                         measurer.measure(n, numStyle) to polar(c, faceR * 0.72f, a)
@@ -1941,20 +1947,23 @@ private fun ClockHand(rotation: () -> Float, length: Float, width: Float, color:
 /** Digital time and the full date on an LCD, beside the analog clock in wide tiles. */
 @Composable
 private fun DateLcd(modifier: Modifier) {
-    val now = rememberNow(1_000L)
+    // Minutes only, so one tick a minute, on the minute.
+    val now = rememberNow(60_000L)
     val locale = Locale.getDefault()
-    val time = remember(now, locale) { SimpleDateFormat("HH:mm", locale).format(now) }
-    val date = remember(now, locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), locale).format(now).uppercase(locale) }
+    val timeFmt = rememberDateFormat("HH:mm")
+    val dateFmt = rememberDateFormat("EEEEdMMMM", best = true)
+    val time = remember(now, timeFmt) { timeFmt.format(now) }
+    val date = remember(now, dateFmt) { dateFmt.format(now).uppercase(locale) }
     val ink = LcdInk
     BoxWithConstraints(modifier) {
         val h = maxHeight
         val w = maxWidth
         LcdPanel(Modifier.fillMaxSize()) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(time, style = lcd(min(h * 0.44f, w * 0.22f).textSize(), ink), maxLines = 1)
+                Text(time, style = lcd(min(h * 0.44f, w * 0.22f).fixedSp(), ink), maxLines = 1)
                 Text(
                     date,
-                    style = lcd((h * 0.12f).coerceIn(10.dp, 20.dp).textSize(), ink.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.12f).coerceIn(10.dp, 20.dp).fixedSp(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 10.dp)
@@ -1991,35 +2000,30 @@ private fun CockpitWeather() {
                         tint = ink,
                         modifier = Modifier
                             .size(big * 1.1f)
-                            .drawBehind {
-                                if (backlit) {
-                                    val glowR = size.minDimension * 0.7f
-                                    drawCircle(Brush.radialGradient(listOf(ink.copy(alpha = 0.22f), Color.Transparent), center, glowR), glowR)
-                                }
-                            }
+                            .then(if (backlit) Modifier.glowHalo(ink.copy(alpha = 0.22f), 0.7f) else Modifier)
                     )
                     Spacer(Modifier.width(16.dp))
                 }
                 Column {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(stringResource(R.string.cockpit_out), style = lcd((big * 0.36f).textSize(), ink.copy(alpha = 0.7f)), maxLines = 1)
+                        Text(stringResource(R.string.cockpit_out), style = lcd((big * 0.36f).fixedSp(), ink.copy(alpha = 0.7f)), maxLines = 1)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--°C",
-                            style = lcd(big.textSize(), if (weather == null) ink.copy(alpha = 0.4f) else ink),
+                            style = lcd(big.fixedSp(), if (weather == null) ink.copy(alpha = 0.4f) else ink),
                             maxLines = 1
                         )
                     }
                     Text(
                         weather?.condition?.uppercase() ?: stringResource(R.string.cockpit_loading),
-                        style = lcd(line.textSize(), ink.copy(alpha = 0.9f)),
+                        style = lcd(line.fixedSp(), ink.copy(alpha = 0.9f)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (weather != null && h >= 110.dp) {
                         Text(
                             stringResource(R.string.cockpit_feels_wind, weather.feelsC.roundToInt(), weather.windKmh.roundToInt()),
-                            style = lcd((line * 0.85f).textSize(), ink.copy(alpha = 0.7f)),
+                            style = lcd((line * 0.85f).fixedSp(), ink.copy(alpha = 0.7f)),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -2045,7 +2049,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
         return
     }
     var finder by remember { mutableStateOf(false) }
-    val low = fuel.percent <= 12
+    val low = fuel.percent <= SKIN_LOW_FUEL_PCT
     val segment = LcdInk
     val ink = if (low) DashColors.Warning else segment
     val cream = DashColors.TextPrimary
@@ -2095,17 +2099,17 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 stringResource(R.string.cockpit_range),
-                                style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).textSize(), segment.copy(alpha = 0.7f)),
+                                style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).fixedSp(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
                             Text(
                                 "${fuel.rangeKm} KM",
-                                style = lcd(min(ph * 0.34f, pw * 0.16f).textSize(), ink),
+                                style = lcd(min(ph * 0.34f, pw * 0.16f).fixedSp(), ink),
                                 maxLines = 1
                             )
                             Text(
                                 "%.0f L · %s".format(fuel.liters, fuel.source.uppercase()),
-                                style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).textSize(), segment.copy(alpha = 0.7f)),
+                                style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).fixedSp(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
                         }
@@ -2149,7 +2153,7 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
     val openLabel = stringResource(R.string.cockpit_open_app, label)
     BoxWithConstraints(
         modifier = modifier
-            .then(if (onPlate) Modifier.togglePlate() else Modifier)
+            .then(if (onPlate) TogglePlate else Modifier)
             .clickable(enabled = !env.editing, onClickLabel = openLabel, role = Role.Button) {
                 if (busy) return@clickable
                 busy = true
@@ -2200,9 +2204,10 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
 
 /**
  * The toggle's plate: a rounded panel with a faint bevel and two screws;
- * black at night, pale aluminium by day with a hairline dark edge.
+ * black at night, pale aluminium by day with a hairline dark edge. One shared
+ * modifier, so the cache survives recomposition.
  */
-private fun Modifier.togglePlate(): Modifier = drawWithCache {
+private val TogglePlate = Modifier.drawWithCache {
     val light = DashColors.Light
     val corner = CornerRadius(10.dp.toPx())
     val bevel = Brush.verticalGradient(
@@ -2249,18 +2254,13 @@ private fun ToggleLabel(label: String, ledOn: Boolean, labelSize: Dp) {
         Box(
             Modifier
                 .size(6.dp)
-                .drawBehind {
-                    if (ledOn) {
-                        val glowR = size.minDimension * 1.6f
-                        drawCircle(Brush.radialGradient(listOf(amber.copy(alpha = 0.6f * Halo), Color.Transparent), center, glowR), glowR)
-                    }
-                    drawCircle(if (ledOn) amber else LampOff)
-                }
+                .then(if (ledOn) Modifier.glowHalo(amber.copy(alpha = 0.6f * Halo), 1.6f) else Modifier)
+                .drawBehind { drawCircle(if (ledOn) amber else LampOff) }
         )
         Spacer(Modifier.width(5.dp))
         Text(
             label.uppercase(),
-            style = engraved(labelSize.textSize()),
+            style = engraved(labelSize.fixedSp()),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -2318,7 +2318,7 @@ private fun CockpitLaunchRail(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
         modifier = Modifier
             .fillMaxSize()
             .padding(2.dp)
-            .togglePlate()
+            .then(TogglePlate)
             .padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -1,8 +1,5 @@
 package com.openauto.dash
 
-import android.content.Context
-import android.content.Intent
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,18 +35,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import dadb.Dadb
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
@@ -119,6 +106,8 @@ internal fun PipAnchorCard(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> { started = true; PipAnchor.expectReturn(packageName) }
+                // Back from a touch on the window (or any pause): look again at the quick pace.
+                Lifecycle.Event.ON_RESUME -> PipAnchor.pollAgainSoon()
                 // Another app took the whole screen: stop polling and park the
                 // window aside, still running; coming back, track() docks it
                 // again. (Touching the Maps window only *pauses* the launcher,
@@ -273,7 +262,11 @@ internal fun PipAnchorCard(
     }
 }
 
-/** A tile status older than three polls is stale: the window is not being tracked right now. */
+/**
+ * A tile status older than one idle poll (the tracker slows to one every 5 s
+ * while nothing moves) and a quick one is stale: the window is not being
+ * tracked right now.
+ */
 private const val STALE_STATUS_MS = 7_500L
 
 /** How long a tile being dragged must hold still before its window is moved after it. */

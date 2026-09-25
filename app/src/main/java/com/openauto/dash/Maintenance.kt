@@ -171,7 +171,7 @@ object UpkeepPlan {
 
     /** The intervals in Gemini's [raw] answer; unknown kinds are skipped. */
     fun read(raw: String): List<UpkeepInterval> {
-        val o = JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim())
+        val o = aiJson(raw)
         val items = o.optJSONArray("items") ?: return emptyList()
         return (0 until items.length()).mapNotNull { i ->
             val it = items.optJSONObject(i) ?: return@mapNotNull null
@@ -244,11 +244,25 @@ object Maintenance {
         if (!_state.value.planFromAi) autoFetch(car, hash)
     }
 
+    /**
+     * Once per car, then again only after [AUTO_RETRY_MS]: every save of the
+     * car profile lands here, and asking again each time while offline would
+     * spend the free AI quota for nothing.
+     */
     private fun autoFetch(car: CarProfile, hash: Int) {
         val context = appContext ?: return
         if (AiSettings.load(context).apiKey.isBlank() || DemoMode.isOn) return
+        val now = System.currentTimeMillis()
+        if (hash == autoTriedFor && now - autoTriedAt < AUTO_RETRY_MS) return
+        autoTriedFor = hash
+        autoTriedAt = now
         scope.launch { fetchPlan(car, hash) }
     }
+
+    /** The car the plan was last fetched for by itself, and when; in memory, so a restart tries again. */
+    private var autoTriedFor = 0
+    private var autoTriedAt = 0L
+    private const val AUTO_RETRY_MS = 6 * 60 * 60_000L
 
     /** Fetches the maker's intervals for [car] (the current one by default); the failure text is ready to show. */
     suspend fun fetchPlan(car: CarProfile = CarProfileStore.current, hash: Int = car.promptDescription().hashCode()): Result<Unit> =

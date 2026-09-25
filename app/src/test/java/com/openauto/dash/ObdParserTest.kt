@@ -145,6 +145,65 @@ class ObdParserTest {
     }
 
     @Test
+    fun supportedPidBitmapIsReadMostSignificantFirst() {
+        // BE 3E B8 11: 01 03-07, 0B-0F, 11 13-15, 1C 20.
+        val pids = ObdParser.parseSupportedPids("41 00 BE 3E B8 11", 0x00)!!
+        assertEquals(setOf(0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x11, 0x13, 0x14, 0x15, 0x1C, 0x20), pids)
+        assertNull(ObdParser.parseSupportedPids("SEARCHING...\rUNABLE TO CONNECT", 0x00))
+    }
+
+    @Test
+    fun everyAnsweringComputerAddsItsPids() {
+        // Engine and gearbox answer on their own lines; with headers the sender comes first.
+        val pids = ObdParser.parseSupportedPids("SEARCHING...\r7E8 06 41 00 80 00 00 00\r7E9 06 41 00 00 00 00 01", 0x00)!!
+        assertEquals(setOf(0x01, 0x20), pids)
+    }
+
+    @Test
+    fun supportedPidsFollowTheRanges() {
+        val replies = mapOf(
+            "0100" to "41 00 BE 3E B8 11",
+            // 0120: only 0x21 and the next-range bit.
+            "0120" to "41 20 80 00 00 01",
+            // 0140: 0x42 (control-module voltage), no further range.
+            "0140" to "41 40 40 00 00 00"
+        )
+        val asked = mutableListOf<String>()
+        val s = ObdParser.supportedPids { asked += it; replies[it] }!!
+        assertEquals(listOf("0100", "0120", "0140"), asked)
+        assertTrue(s.has(0x0D))
+        assertTrue(s.has(0x42))
+        // The fuel level (012F) this car doesn't serve is skipped.
+        assertFalse(s.has(0x2F))
+        assertFalse(s.has(0x5C))
+    }
+
+    @Test
+    fun anUnansweredRangeGivesItsPidsTheBenefitOfTheDoubt() {
+        assertNull(ObdParser.supportedPids { "NO DATA" })
+        // 0100 says a next range exists, but 0120 goes unanswered.
+        val s = ObdParser.supportedPids { if (it == "0100") "41 00 BE 3E B8 11" else null }!!
+        assertFalse(s.has(0x02))
+        assertTrue(s.has(0x2F))
+        assertTrue(s.has(0x42))
+        // No next range: nothing past it is served.
+        val short = ObdParser.supportedPids { if (it == "0100") "41 00 BE 3E B8 10" else null }!!
+        assertFalse(short.has(0x42))
+    }
+
+    @Test
+    fun aSilentEngineComputerReadsAsEngineOff() {
+        val stopped = ObdData(speedKmh = 12, rpm = 820, coolantTempC = 88, throttlePct = 14, engineLoadPct = 22, voltage = 12.4).engineStopped()
+        assertEquals(0, stopped.speedKmh)
+        assertEquals(0, stopped.rpm)
+        assertEquals(0, stopped.throttlePct)
+        assertEquals(0, stopped.engineLoadPct)
+        // What a gauge would still show stays.
+        assertEquals(88, stopped.coolantTempC)
+        assertEquals(12.4, stopped.voltage, 1e-9)
+    }
+
+    @Test
     fun dtcLettersFollowTheTopTwoBits() {
         assertEquals("P0133", ObdParser.decodeDtc(0x01, 0x33))
         assertEquals("C0300", ObdParser.decodeDtc(0x43, 0x00))

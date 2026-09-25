@@ -51,6 +51,12 @@ object SplitLauncher {
      * launch strategy was dispatched.
      */
     fun launchSplit(context: Context, packageName: String): Boolean {
+        // Already split: the toggle would *exit* split on this ROM and the app
+        // would land full screen. The other half takes it as it is.
+        if (SplitAccessibilityService.isSplit()) {
+            if (launchIntoAdjacent(context, packageName)) return true
+            return launchFreeform(context, packageName)
+        }
         if (SplitAccessibilityService.requestSplit()) {
             // The foreground app (the dashboard) is now docked into one half.
             // Fill the other half once the system settles into split mode.

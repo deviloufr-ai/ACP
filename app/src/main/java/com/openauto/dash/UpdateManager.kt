@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.core.content.FileProvider
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -70,12 +72,13 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun fetchLatestRelease(): UpdateInfo? {
+        var connection: HttpURLConnection? = null
         return try {
             val endpoint = URL(
                 "https://api.github.com/repos/" +
                     "${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases/latest"
             )
-            val connection = (endpoint.openConnection() as HttpURLConnection).apply {
+            connection = (endpoint.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("User-Agent", "OpenAutoDash-Updater")
@@ -83,7 +86,10 @@ class UpdateManager(private val context: Context) {
                 readTimeout = 10_000
             }
 
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                connection.errorStream?.close()
+                return null
+            }
 
             connection.inputStream.bufferedReader().use { reader ->
                 val json = JSONObject(reader.readText())
@@ -100,6 +106,8 @@ class UpdateManager(private val context: Context) {
             }
         } catch (e: Exception) {
             null
+        } finally {
+            connection?.disconnect()
         }
     }
 
@@ -120,7 +128,6 @@ class UpdateManager(private val context: Context) {
         return null
     }
 
-    /** Extracts the trailing integer from a tag, e.g. "v1.0.42" → 42. */
     /** True if the app may install APKs (Android 8+ requires a per-app grant). */
     fun canInstallPackages(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -157,7 +164,15 @@ class UpdateManager(private val context: Context) {
         _status.value = UpdateStatus.Downloading(0)
         val downloadId = downloadManager.enqueue(request)
 
-        val success = withContext(Dispatchers.IO) { awaitDownload(downloadManager, downloadId) }
+        var success = false
+        try {
+            success = withContext(Dispatchers.IO) {
+                withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) { awaitDownload(downloadManager, downloadId) } ?: false
+            }
+        } finally {
+            // Failed, stuck or abandoned: nothing left queued in the system's downloader.
+            if (!success) downloadManager.remove(downloadId)
+        }
         if (!success) {
             _status.value = UpdateStatus.Error(R.string.sys_update_download_failed)
             return
@@ -167,10 +182,17 @@ class UpdateManager(private val context: Context) {
         launchInstaller(apkFile)
     }
 
+    /**
+     * Follows the download to its end. A download paused or pending (no
+     * network, the server gone quiet) that makes no progress for [STALL_MS]
+     * counts as failed rather than showing the same percentage forever.
+     */
     private suspend fun awaitDownload(downloadManager: DownloadManager, id: Long): Boolean {
+        var lastBytes = -1L
+        var lastProgressAt = SystemClock.elapsedRealtime()
         while (true) {
             val query = DownloadManager.Query().setFilterById(id)
-            downloadManager.query(query).use { cursor ->
+            downloadManager.query(query)?.use { cursor ->
                 if (!cursor.moveToFirst()) return false
                 when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
                     DownloadManager.STATUS_SUCCESSFUL -> return true
@@ -183,9 +205,15 @@ class UpdateManager(private val context: Context) {
                         if (total > 0) {
                             _status.value = UpdateStatus.Downloading(((soFar * 100) / total).toInt())
                         }
+                        if (soFar != lastBytes) {
+                            lastBytes = soFar
+                            lastProgressAt = SystemClock.elapsedRealtime()
+                        } else if (SystemClock.elapsedRealtime() - lastProgressAt > STALL_MS) {
+                            return false
+                        }
                     }
                 }
-            }
+            } ?: return false
             delay(400)
         }
     }
@@ -209,6 +237,13 @@ class UpdateManager(private val context: Context) {
             Regex("(\\d+)").findAll(text).lastOrNull()?.value?.toLongOrNull()
 
         private const val APK_NAME = "openauto-dash-update.apk"
+        /** The whole download, however slowly it still moves. */
+        private const val DOWNLOAD_TIMEOUT_MS = 30 * 60_000L
+        /**
+         * No byte arrived for this long: paused for good, as far as the driver is
+         * concerned. Generous, as car Wi-Fi (a phone hotspot) drops out in tunnels.
+         */
+        private const val STALL_MS = 5 * 60_000L
         /** The phone companion app's asset in each release (see build.yml). */
         const val COMPANION_APK_NAME = "dashwheel-companion.apk"
         private val ALLOWED_DOWNLOAD_HOSTS = setOf("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")

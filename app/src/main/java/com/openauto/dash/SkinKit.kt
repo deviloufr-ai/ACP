@@ -3,13 +3,6 @@ package com.openauto.dash
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,12 +12,31 @@ import androidx.compose.runtime.LongState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
+import androidx.compose.ui.draw.DrawResult
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /*
@@ -66,8 +78,145 @@ internal fun rememberNow(periodMs: Long = 1_000L): Date {
 @Composable
 internal fun rememberBlink(halfPeriodMs: Long = 500L): State<Boolean> {
     val clock = rememberWallClock(halfPeriodMs)
-    return remember(clock) { derivedStateOf { (clock.longValue / halfPeriodMs) % 2L == 0L } }
+    return remember(clock, halfPeriodMs) { derivedStateOf { (clock.longValue / halfPeriodMs) % 2L == 0L } }
 }
+
+/**
+ * A date format for [pattern] used as is ("HH:mm", "EEEE"), or with [best] the
+ * locale's own pattern for that skeleton ("EEEdMMM" → "Wed 23 Sep" / "mer. 23 sept.");
+ * built once per locale.
+ */
+@Composable
+internal fun rememberDateFormat(pattern: String, best: Boolean = false): SimpleDateFormat {
+    val locale = Locale.getDefault()
+    return remember(pattern, best, locale) {
+        SimpleDateFormat(if (best) android.text.format.DateFormat.getBestDateTimePattern(locale, pattern) else pattern, locale)
+    }
+}
+
+/** Text size that follows a dp geometry whatever the system font scale, so text sized from a tile never outgrows it. */
+@Composable
+internal fun fixedSp(dp: Float): TextUnit = (dp / LocalDensity.current.fontScale).sp
+
+/** [fixedSp] for a [Dp]. */
+@Composable
+internal fun Dp.fixedSp(): TextUnit = fixedSp(value)
+
+/** "2 400": thousands split by [separator] (a narrow no-break space unless a skin sets its own). */
+internal fun groupThousands(n: Int, separator: Char = '\u202F'): String =
+    if (n < 1000) "$n" else "${n / 1000}$separator${(n % 1000).toString().padStart(3, '0')}"
+
+/** Where a speed readout comes from: "OBD", "GPS", or the skin's own [none] wording when there is no speed. */
+internal fun speedSource(obd: Boolean, speed: Int?, none: String): String = when {
+    obd -> "OBD"
+    speed != null -> "GPS"
+    else -> none
+}
+
+/** Fuel at or under this share (%) reads as the reserve in every skin. */
+internal const val SKIN_LOW_FUEL_PCT = 12
+
+/** Top of the skins' rev scales (the 1.6 HDi's tachometer), in r/min. */
+internal const val SKIN_RPM_MAX = 7000f
+
+// --- Effects ----------------------------------------------------------------------
+//
+// The effects setting (DashColors.Effects) decides how much decoration the skins
+// draw. FULL is the designed look; REDUCED halves the lamp halos, drops blurred
+// text glows and runs background motion at half the rate; NONE is still: no
+// ambient motion, no lamp halos, no blur. Functional motion (needles on live
+// values, media progress, clocks, status blinks) runs whatever the setting.
+
+/** Ambient motion's step in ms for [effects]: about 20 fps at full, 10 when reduced, none (a still frame) when off. */
+/** Status pulses step at this rate whatever the effects setting. */
+private const val STATUS_STEP_MS = 50L
+
+private fun ambientStepMs(effects: DashEffects): Long? = when (effects) {
+    DashEffects.FULL -> 50L
+    DashEffects.REDUCED -> 100L
+    DashEffects.NONE -> null
+}
+
+/**
+ * Wall-clock ms for background motion, advanced every [stepMs] (all ambient
+ * tickers share the same boundaries, so they land in one frame). It waits
+ * for a frame before each step, so it sleeps while the app is in the background.
+ */
+@Composable
+private fun rememberAmbientClock(stepMs: Long): LongState {
+    val now = remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(stepMs) {
+        while (true) {
+            delay(stepMs - System.currentTimeMillis() % stepMs)
+            withFrameMillis { now.longValue = System.currentTimeMillis() }
+        }
+    }
+    return now
+}
+
+/**
+ * A text glow or soft shadow of [color] blurred [blurRadius] px, only with
+ * effects at full: a blurred text shadow is costly on the head unit. Reduced
+ * keeps an offset shadow crisp (it still lifts text off a busy page) and drops
+ * a pure glow; with effects off there is none.
+ */
+internal fun softTextShadow(color: Color, blurRadius: Float, offset: Offset = Offset.Zero): Shadow? = when (DashColors.Effects) {
+    DashEffects.FULL -> Shadow(color, offset, blurRadius)
+    DashEffects.REDUCED -> if (offset != Offset.Zero) Shadow(color, offset, 0f) else null
+    DashEffects.NONE -> null
+}
+
+/**
+ * A soft round halo of [color] behind the content, centred, its radius [reach]
+ * times the box's smaller side, fading to [fade]. Half as strong with reduced
+ * effects, gone with effects off. The gradient is built once per size.
+ */
+internal fun Modifier.glowHalo(color: Color, reach: Float, fade: Color = Color.Transparent): Modifier =
+    this then GlowHaloElement(color, reach, fade)
+
+private data class GlowHaloElement(val color: Color, val reach: Float, val fade: Color) : ModifierNodeElement<GlowHaloNode>() {
+    override fun create() = GlowHaloNode(color, reach, fade)
+
+    override fun update(node: GlowHaloNode) {
+        node.color = color
+        node.reach = reach
+        node.fade = fade
+        node.brush = null
+        node.invalidateDraw()
+    }
+}
+
+private class GlowHaloNode(var color: Color, var reach: Float, var fade: Color) : Modifier.Node(), DrawModifierNode {
+    var brush: Brush? = null
+    private var brushSize = Size.Unspecified
+    private var brushScale = -1f
+
+    override fun ContentDrawScope.draw() {
+        val scale = DashColors.Effects.scale
+        if (scale > 0f) {
+            val r = size.minDimension * reach
+            val cached = brush
+            val b = if (cached != null && brushSize == size && brushScale == scale) cached else {
+                Brush.radialGradient(listOf(color.copy(alpha = color.alpha * scale), fade), center, r).also {
+                    brush = it
+                    brushSize = size
+                    brushScale = scale
+                }
+            }
+            drawCircle(b, r)
+        }
+        drawContent()
+    }
+}
+
+/**
+ * [drawWithCache] that survives recomposition: the cache is only rebuilt when
+ * one of [keys] changes (or the size, or a state read inside [block]). Every
+ * value [block] captures from the composition must be one of the [keys].
+ */
+@Composable
+internal fun Modifier.cachedDraw(vararg keys: Any?, block: CacheDrawScope.() -> DrawResult): Modifier =
+    this then remember(*keys) { Modifier.drawWithCache(block) }
 
 /**
  * Speed in km/h from OBD when connected, else from a GPS fix under 5 s old,
@@ -76,13 +225,8 @@ internal fun rememberBlink(halfPeriodMs: Long = 500L): State<Boolean> {
 @Composable
 internal fun rememberSpeedKmh(obdData: ObdData, connection: ObdConnectionState): Int? {
     UseLocationFeed()
-    val location by LocationFeed.location.collectAsState()
-    val gpsFresh = location?.let { System.currentTimeMillis() - it.time < 5_000L } == true
-    return when {
-        connection == ObdConnectionState.CONNECTED -> obdData.speedKmh
-        gpsFresh -> ((location?.speed ?: 0f) * 3.6f).roundToInt()
-        else -> null
-    }
+    val gpsKmh by LocationFeed.freshSpeedKmh.collectAsState()
+    return if (connection == ObdConnectionState.CONNECTED) obdData.speedKmh else gpsKmh
 }
 
 /** Weather at the car, refreshed the way the standard weather tile does it; null until the first fetch. */
@@ -145,31 +289,52 @@ internal fun openClockApp(context: Context) {
 /**
  * Rotation in degrees that keeps turning while [running] and holds its angle
  * when paused (a record or reel that stops where it is). Read it in a draw or
- * graphicsLayer lambda so only drawing reruns each frame.
+ * graphicsLayer lambda so only drawing reruns each step. Ambient motion: it
+ * steps at the effects setting's rate and stands still with effects off.
  */
 @Composable
 internal fun rememberSpin(periodMs: Int, running: Boolean = true): State<Float> {
-    val angle = remember { Animatable(0f) }
-    LaunchedEffect(running, periodMs) {
-        if (!running) return@LaunchedEffect
+    val angle = remember { mutableFloatStateOf(0f) }
+    val step = ambientStepMs(DashColors.Effects)
+    LaunchedEffect(running, periodMs, step) {
+        if (!running || step == null) return@LaunchedEffect
+        var last = System.currentTimeMillis()
         while (true) {
-            val start = angle.value % 360f
-            angle.snapTo(start)
-            angle.animateTo(start + 360f, tween(periodMs, easing = LinearEasing))
+            delay(step - System.currentTimeMillis() % step)
+            withFrameMillis {
+                val now = System.currentTimeMillis()
+                angle.floatValue = (angle.floatValue + (now - last) * 360f / periodMs) % 360f
+                last = now
+            }
         }
     }
-    return angle.asState()
+    return angle
 }
 
-/** 0→1 looping every [periodMs] (restarting, or reversing when [reverse]), for background motion. */
+/**
+ * 0→1 looping every [periodMs] (restarting, or reversing when [reverse]), for
+ * background motion, in phase with the wall clock. It steps at the effects
+ * setting's rate; with effects off it holds at [rest]. A [status] loop (a
+ * link being made) tells the driver something, so it always runs.
+ */
 @Composable
-internal fun rememberLoop(periodMs: Int, reverse: Boolean = false): State<Float> =
-    rememberInfiniteTransition(label = "loop").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            tween(periodMs, easing = LinearEasing),
-            if (reverse) RepeatMode.Reverse else RepeatMode.Restart
-        ),
-        label = "loop"
-    )
+internal fun rememberLoop(
+    periodMs: Int,
+    reverse: Boolean = false,
+    rest: Float = if (reverse) 1f else 0f,
+    status: Boolean = false
+): State<Float> {
+    val step = (if (status) STATUS_STEP_MS else ambientStepMs(DashColors.Effects))
+        ?: return remember(rest) { mutableFloatStateOf(rest) }
+    val clock = rememberAmbientClock(step)
+    return remember(clock, periodMs, reverse) {
+        derivedStateOf {
+            if (reverse) {
+                val p = (clock.longValue % (2L * periodMs)).toFloat() / periodMs
+                if (p > 1f) 2f - p else p
+            } else {
+                (clock.longValue % periodMs).toFloat() / periodMs
+            }
+        }
+    }
+}
