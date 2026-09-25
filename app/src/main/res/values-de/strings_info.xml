@@ -156,4 +156,6 @@
     <string name="info_map_address_not_found">Adresse nicht gefunden</string>
     <string name="info_map_duration_hm">%1$d h %2$02d min</string>
     <string name="info_map_duration_min">%1$d min</string>
+    <string name="info_audio_by_keys">Lautstärke über die Lautstärketasten des Radios</string>
+    <string name="info_audio_unavailable">Lautstärke hier nicht einstellbar: Drehknopf benutzen</string>
 </resources>

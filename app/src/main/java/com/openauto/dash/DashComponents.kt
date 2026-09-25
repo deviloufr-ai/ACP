@@ -31,9 +31,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -373,3 +379,19 @@ internal fun DockDivider(onDrag: (Float) -> Unit, onDragEnd: () -> Unit) {
 
 internal fun currentClock(): String =
     SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+/**
+ * [content] that goes away with a swipe to either side, like a notification on
+ * Android: let go past about a third of its width and it slides out, then
+ * [onDismiss] runs. A shorter swipe springs back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val dismiss by rememberUpdatedState(onDismiss)
+    val state = rememberSwipeToDismissBoxState(positionalThreshold = { it * 0.35f })
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue != SwipeToDismissBoxValue.Settled) dismiss()
+    }
+    SwipeToDismissBox(state = state, backgroundContent = {}, modifier = modifier) { content() }
+}

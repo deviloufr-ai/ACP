@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity() {
         inMultiWindow.value = isInMultiWindowMode
         enableImmersiveFullscreen()
         FeedbackStore.load(this)
+        // Rebuilt after a language change: the fault codes' advice follows it.
+        AiMechanic.followLanguage(this)
         // Dials the paired phone whenever its hotspot is around.
         PhoneLink.start(this)
         // A new version runs JIT-only until it is compiled ahead of time.

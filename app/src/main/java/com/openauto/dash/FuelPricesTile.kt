@@ -116,7 +116,7 @@ internal fun FuelPricesCard(modifier: Modifier = Modifier) {
                     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         nearby.ranked.forEachIndexed { i, r ->
                             StationRow(r, cheapest = i == 0) {
-                                navigateTo(context, r.station.lat, r.station.lng, r.station.address)
+                                navigateTo(context, r.station.lat, r.station.lng, r.station.label)
                             }
                         }
                     }
@@ -132,14 +132,25 @@ private fun StationRow(r: RankedStation, cheapest: Boolean, onClick: () -> Unit)
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            FuelPrices.formatPrice(r.price), color = if (cheapest) DashColors.Good else DashColors.TextPrimary,
-            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge
-        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                FuelPrices.formatPrice(r.price), color = if (cheapest) DashColors.Good else DashColors.TextPrimary,
+                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(Modifier.width(3.dp))
+            Text(
+                FuelPrices.CURRENCY, color = if (cheapest) DashColors.Good else DashColors.TextSecondary,
+                fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium
+            )
+        }
         Spacer(Modifier.width(10.dp))
+        // The station's name over its town; the town alone when the name isn't known.
         Column(Modifier.weight(1f)) {
-            Text(r.station.address, color = DashColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
-            Text(r.station.town, color = DashColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+            val name = r.station.name
+            Text(name.ifBlank { r.station.town }, color = DashColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
+            if (name.isNotBlank()) {
+                Text(r.station.town, color = DashColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+            }
         }
         Spacer(Modifier.width(8.dp))
         Text(FuelPrices.formatDistance(r.distanceKm), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)

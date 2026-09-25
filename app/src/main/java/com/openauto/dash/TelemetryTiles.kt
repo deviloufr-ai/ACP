@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +49,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -153,6 +155,7 @@ internal fun ObdCard(
         return
     }
     val connected = connection == ObdConnectionState.CONNECTED
+    var speedFix by remember { mutableStateOf(false) }
     Card(modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             // Short tiles drop the secondary chips; tall tiles stack the RPM bar
@@ -172,8 +175,13 @@ internal fun ObdCard(
                         color = DashColors.Accent,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.weight(1f)
                     )
+                    // The speed correction, to match the car's speedometer.
+                    IconButton(onClick = { speedFix = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.vehicle_speed_fix), tint = DashColors.Muted, modifier = Modifier.size(20.dp))
+                    }
                     if (connected) {
                         TextButton(
                             onClick = onPickDevice,
@@ -285,6 +293,32 @@ internal fun ObdCard(
             }
         }
     }
+    if (speedFix) SpeedCorrectionDialog(obdData.speedKmh.takeIf { connected }, onDismiss = { speedFix = false })
+}
+
+/**
+ * The speed correction from the telemetry tile, with the corrected speed live
+ * above it: nudge it until it reads what the car's speedometer says.
+ */
+@Composable
+internal fun SpeedCorrectionDialog(speedKmh: Int?, onDismiss: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text(stringResource(R.string.vehicle_speed_fix), color = DashColors.TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    speedKmh?.let { stringResource(R.string.vehicle_speed_fix_now, it) } ?: stringResource(R.string.vehicle_speed_fix_not_connected),
+                    color = DashColors.TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                SpeedCorrectionRow()
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_close), color = DashColors.Accent) } }
+    )
 }
 
 /**

@@ -149,7 +149,10 @@ internal data class FaceRow(
     val alert: Boolean = false,
     /** Initials drawn in a round badge instead of the row's dot (contacts). */
     val badge: String? = null,
-    val onClick: (() -> Unit)? = null
+    val onClick: (() -> Unit)? = null,
+    /** Set when the row can be swiped away (a notification); [key] then tells rows apart. */
+    val onDismiss: (() -> Unit)? = null,
+    val key: Any? = null
 )
 
 /** A small gauge: label, value, unit and how far round it goes (0..1). */

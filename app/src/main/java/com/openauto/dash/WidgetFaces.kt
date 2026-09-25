@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -368,34 +369,46 @@ internal fun FaceStatBlock(stat: FaceStat, look: FaceLook, m: FaceMetrics, modif
 internal fun FaceRows(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int, modifier: Modifier = Modifier) {
     if (f.rows.isEmpty()) return
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(m.dp(1.8f).coerceAtLeast(3.dp))) {
-        f.rows.take(max).forEach { r ->
-            val shape = RoundedCornerShape(look.radius * 0.45f)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shape)
-                    .background(look.fill)
-                    .then(r.onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
-                    .padding(horizontal = m.dp(2.6f).coerceAtLeast(6.dp), vertical = m.dp(1.8f).coerceAtLeast(4.dp)),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val badge = r.badge
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier.size(m.dp(9f).coerceAtLeast(22.dp)).clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(look.accent, look.accent2))),
-                        contentAlignment = Alignment.Center
-                    ) { FaceText(badge, look, m.sp(max(m.u * 3.6f, 9f)), color = look.onAccent, weight = FontWeight.Bold) }
-                } else {
-                    Box(Modifier.width(3.dp).height(m.dp(5f).coerceAtLeast(12.dp)).clip(CircleShape).background(if (r.alert) look.warn else look.accent))
+        f.rows.take(max).forEachIndexed { i, r ->
+            // A notification goes with a swipe; its key keeps the next row from taking over the swiped one's state.
+            key(r.key ?: i) {
+                FaceRowSwipe(r) {
+                    val shape = RoundedCornerShape(look.radius * 0.45f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(shape)
+                            .background(look.fill)
+                            .then(r.onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
+                            .padding(horizontal = m.dp(2.6f).coerceAtLeast(6.dp), vertical = m.dp(1.8f).coerceAtLeast(4.dp)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val badge = r.badge
+                        if (badge != null) {
+                            Box(
+                                modifier = Modifier.size(m.dp(9f).coerceAtLeast(22.dp)).clip(CircleShape)
+                                    .background(Brush.linearGradient(listOf(look.accent, look.accent2))),
+                                contentAlignment = Alignment.Center
+                            ) { FaceText(badge, look, m.sp(max(m.u * 3.6f, 9f)), color = look.onAccent, weight = FontWeight.Bold) }
+                        } else {
+                            Box(Modifier.width(3.dp).height(m.dp(5f).coerceAtLeast(12.dp)).clip(CircleShape).background(if (r.alert) look.warn else look.accent))
+                        }
+                        Spacer(Modifier.width(m.dp(2.6f).coerceAtLeast(6.dp)))
+                        FaceText(r.title, look, m.body, Modifier.weight(1f), weight = FontWeight.Medium)
+                        Spacer(Modifier.width(6.dp))
+                        FaceText(r.detail, look, m.body, color = if (r.alert) look.warn else look.dim)
+                    }
                 }
-                Spacer(Modifier.width(m.dp(2.6f).coerceAtLeast(6.dp)))
-                FaceText(r.title, look, m.body, Modifier.weight(1f), weight = FontWeight.Medium)
-                Spacer(Modifier.width(6.dp))
-                FaceText(r.detail, look, m.body, color = if (r.alert) look.warn else look.dim)
             }
         }
     }
+}
+
+/** [content] for [row], swipeable away when the row has an [FaceRow.onDismiss]. */
+@Composable
+private fun FaceRowSwipe(row: FaceRow, content: @Composable () -> Unit) {
+    val dismiss = row.onDismiss
+    if (dismiss == null) content() else SwipeAway(onDismiss = dismiss) { content() }
 }
 
 @Composable
