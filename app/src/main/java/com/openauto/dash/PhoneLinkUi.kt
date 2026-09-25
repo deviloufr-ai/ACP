@@ -272,6 +272,7 @@ internal fun PhonePane() {
         Column(Modifier.weight(1f)) {
             Text(title, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
             Text(detail, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (state !is PhoneLinkState.Connected) LinkAttemptLine()
         }
     }
     HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(horizontal = 12.dp))
@@ -349,6 +350,7 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                             Spacer(Modifier.width(10.dp))
                             Text(stringResource(R.string.phone_pair_waiting), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
                         }
+                        LinkAttemptLine()
                     }
                 }
             }
@@ -377,4 +379,16 @@ internal fun QrCode(text: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** The link's last try (see [PhoneLink.lastAttempt]), small, for when it does not come up. */
+@Composable
+private fun LinkAttemptLine() {
+    val line = PhoneLink.lastAttempt.collectAsState().value ?: return
+    Text(
+        line,
+        color = DashColors.Muted,
+        style = MaterialTheme.typography.labelSmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+        maxLines = 2
+    )
 }

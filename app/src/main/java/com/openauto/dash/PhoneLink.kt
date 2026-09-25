@@ -111,6 +111,14 @@ object PhoneLink {
     private val _pending = MutableStateFlow<PairingOffer?>(null)
     val pending: StateFlow<PairingOffer?> = _pending
 
+    /**
+     * The last try, as a short technical line for the pairing dialog and
+     * Settings: the address dialled and what came back. Not translated: it is
+     * read out when the link does not come up, to tell where it stops.
+     */
+    private val _lastAttempt = MutableStateFlow<String?>(null)
+    val lastAttempt: StateFlow<String?> = _lastAttempt
+
     /** How the phone carried out a reply / mark-as-read / dismiss. */
     private val _results = MutableSharedFlow<ActionResult>(extraBufferCapacity = 8)
     val results: SharedFlow<ActionResult> = _results
@@ -182,6 +190,7 @@ object PhoneLink {
                 _phones.value.filter { !it.forgotten }
             val gateway = if (candidates.isEmpty()) null else hotspotGateway(context)
             if (gateway != null) dial(context, gateway, candidates, pending?.id)
+            else if (candidates.isNotEmpty()) note("no Wi-Fi gateway: not on a phone hotspot")
             refreshIdleState()
             val wait = if (_pending.value != null) RETRY_PAIRING_MS else RETRY_MS
             withTimeoutOrNull(wait) { wake.first { it != last } }
@@ -206,15 +215,30 @@ object PhoneLink {
 
     /** One attempt with one pairing. */
     private fun tryPhone(context: Context, gateway: InetAddress, phone: PairedPhone, isPending: Boolean): Attempt {
+        val what = "${gateway.hostAddress}:$LINK_PORT ${if (isPending) "new code" else "paired"}"
         val link = try {
             connect(gateway, phone)
         } catch (e: UnknownPairingException) {
+            note("$what: phone does not know this code")
             return Attempt.REFUSED
         } catch (e: IOException) {
+            note("$what: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+            return Attempt.UNREACHABLE
+        } catch (e: Exception) {
+            // A crypto provider missing an algorithm on this unit, say: say so rather than retry blind.
+            note("$what: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+            Log.w(TAG, "link attempt failed", e)
             return Attempt.UNREACHABLE
         }
+        note("$what: linked")
         runSession(context, gateway, link, phone, isPending)
         return Attempt.LINKED
+    }
+
+    private fun note(line: String) {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
+        _lastAttempt.value = "$time  ${line.trim().take(140)}"
+        Log.i(TAG, line)
     }
 
     private fun connect(gateway: InetAddress, phone: PairedPhone): LinkSession {

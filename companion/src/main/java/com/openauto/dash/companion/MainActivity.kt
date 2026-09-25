@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -237,6 +238,8 @@ private fun CompanionScreen(resumes: Int, offer: PairingOffer?, onScanned: (Stri
 
 @Composable
 private fun StatusCard(text: String, connected: Boolean, enabled: Boolean, canToggle: Boolean, onToggle: (Boolean) -> Unit) {
+    // The link's last event, for when the car does not connect (not translated: technical).
+    val lastEvent = LinkServer.lastEvent.collectAsState().value
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = if (connected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors()
@@ -245,6 +248,13 @@ private fun StatusCard(text: String, connected: Boolean, enabled: Boolean, canTo
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.share_toggle), fontWeight = FontWeight.SemiBold)
                 Text(text, style = MaterialTheme.typography.bodyMedium)
+                if (!connected && enabled && lastEvent != null) {
+                    Text(
+                        lastEvent,
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Switch(checked = enabled && canToggle, onCheckedChange = onToggle, enabled = canToggle)
         }

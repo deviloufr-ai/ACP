@@ -1,7 +1,6 @@
 package com.openauto.dash.companion
 
 import android.content.Context
-import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -22,7 +21,6 @@ import com.openauto.dash.link.UnknownPairingException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.IOException
-import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -37,14 +35,12 @@ sealed interface LinkState {
 }
 
 /**
- * The phone's end of the link: a TCP server on [LINK_PORT]. A connection that
- * comes in through one of the phone's own networks (a café's Wi-Fi it joined,
- * mobile data, a VPN) is closed at once; only one through the hotspot (or a
- * USB / Bluetooth tether) gets to the handshake. The head unit, on this
- * phone's hotspot, dials the hotspot gateway (this phone), proves it holds a
- * pairing secret, then receives the notifications and sends back replies.
- * One head unit at a time; a new connection replaces the old one. Run by
- * [LinkService], which keeps the process alive.
+ * The phone's end of the link: a TCP server on [LINK_PORT]. The head unit, on
+ * this phone's hotspot, dials the hotspot gateway (this phone), proves it
+ * holds a pairing secret, then receives the notifications and sends back
+ * replies. Nothing gets further without that secret. One head unit at a time;
+ * a new connection replaces the old one. Run by [LinkService], which keeps
+ * the process alive.
  */
 object LinkServer {
     private const val TAG = "LinkServer"
@@ -56,6 +52,19 @@ object LinkServer {
 
     private val _state = MutableStateFlow<LinkState>(LinkState.Off)
     val state: StateFlow<LinkState> = _state
+
+    /**
+     * What last happened on the link, as a short technical line under the
+     * status: read out when the car does not connect, to tell where it stops.
+     */
+    private val _lastEvent = MutableStateFlow<String?>(null)
+    val lastEvent: StateFlow<String?> = _lastEvent
+
+    private fun note(line: String) {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
+        _lastEvent.value = "$time  ${line.trim().take(140)}"
+        Log.i(TAG, line)
+    }
 
     private val main = Handler(Looper.getMainLooper())
     // Everything written to the socket goes through one thread, in order, off the main thread.
@@ -75,10 +84,12 @@ object LinkServer {
             }
         } catch (e: IOException) {
             Log.w(TAG, "cannot listen on $LINK_PORT", e)
+            note("cannot listen on port $LINK_PORT: ${e.message.orEmpty()}")
             return
         }
         server = socket
         _state.value = LinkState.Waiting
+        note("listening on port $LINK_PORT")
         Thread({ acceptLoop(app, socket) }, "link-accept").start()
     }
 
@@ -97,23 +108,6 @@ object LinkServer {
         sender.execute { current.sendOrClose(message) }
     }
 
-    /**
-     * Whether [local], the address a connection came in on, belongs to one of
-     * the phone's own networks: the Wi-Fi it joined, mobile data, a VPN. The
-     * hotspot is not one of them, so nothing has to guess which interface it
-     * is (phones name it wlan1, swlan0, ap0, ap_br_wlan2...).
-     */
-    private fun viaOwnNetwork(context: Context, local: InetAddress?): Boolean {
-        if (local == null || local.isLoopbackAddress) return true
-        // An IPv4 caller on the dual-stack socket can show up as ::ffff:a.b.c.d; this makes it a.b.c.d.
-        val address = runCatching { InetAddress.getByAddress(local.address) }.getOrDefault(local)
-        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
-        @Suppress("DEPRECATION") // allNetworks: every network the phone itself uses, not just the default one.
-        return cm.allNetworks.any { network ->
-            cm.getLinkProperties(network)?.linkAddresses?.any { it.address == address } == true
-        }
-    }
-
     private fun acceptLoop(context: Context, socket: ServerSocket) {
         while (!socket.isClosed) {
             val client = try {
@@ -121,12 +115,14 @@ object LinkServer {
             } catch (e: IOException) {
                 break
             }
-            // Turned away before a byte is read: anyone reaching the phone through
-            // its own Wi-Fi or mobile data rather than its hotspot, and floods.
-            if (viaOwnNetwork(context, client.localAddress) || !handshakes.tryAcquire()) {
+            val from = client.inetAddress?.hostAddress ?: "?"
+            // A flood of connections that never finish their handshake is turned away.
+            if (!handshakes.tryAcquire()) {
+                note("$from: busy, turned away")
                 runCatching { client.close() }
                 continue
             }
+            note("$from: connected, checking the pairing")
             Thread({ serve(context, client) }, "link-session").start()
         }
     }
@@ -141,10 +137,12 @@ object LinkServer {
                 onClose = { runCatching { client.close() } }
             )
         } catch (e: UnknownPairingException) {
+            note("${client.inetAddress?.hostAddress}: car's code not paired here")
             runCatching { client.close() }
             return
         } catch (e: Exception) {
-            Log.i(TAG, "handshake failed: ${e.message}")
+            Log.i(TAG, "handshake failed", e)
+            note("${client.inetAddress?.hostAddress}: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
             runCatching { client.close() }
             return
         } finally {
@@ -162,6 +160,7 @@ object LinkServer {
             replaced = session
             session = link
             _state.value = LinkState.Connected(unitName)
+            note("${client.inetAddress?.hostAddress}: linked")
         }
         replaced?.close()
 
