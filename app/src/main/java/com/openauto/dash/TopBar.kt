@@ -8,7 +8,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +70,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -207,14 +205,12 @@ internal fun StandardTopBar(m: TopBarModel) {
             // speed source it is the plain bar again.
             val speed = if (DashColors.BarStyle == DashBarStyle.CLUSTER) rememberSpeedKmh(m.obdData, m.obdConnection) else null
             val cluster = speed != null
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
                 when {
                     cluster -> ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
                     // The head unit's status bar shows the time while it is up.
                     !m.merged -> BarClock(m.clock)
                 }
-                if (cluster || !m.merged) Spacer(Modifier.width(10.dp))
-                BarPageDots(m)
             }
 
             Row(
@@ -772,56 +768,51 @@ internal fun EditBar(
 }
 
 /**
- * The seven dashboards as the cross they form, in the bar's centre slot: in
- * the clock's place while the head unit's status bar shows the time, beside
- * the clock otherwise. The page on screen is filled with the accent, the rest
- * hollow; a tap on a cell goes to that page (the nearest cell wins).
+ * Floats over the pages for a few seconds after a page change, then fades:
+ * the seven dashboards as the cross they form, the one on screen filled with
+ * the accent, the rest hollow, and its name under it. It takes no room in the
+ * layout and no touches.
  */
 @Composable
-internal fun BarPageDots(m: TopBarModel) {
-    val cell = 7.dp
-    val gap = 2.dp
-    val current = m.page
+internal fun PageIndicator(current: Int, modifier: Modifier = Modifier) {
+    val cell = 12.dp
+    val gap = 3.dp
     val accent = DashColors.Accent
     val ink = DashColors.TextSecondary
-    val tap = rememberTapFeedback()
-    val label = stringResource(DashboardStore.nameRes(current))
-    // 48 dp wide to tap, whatever the glyph's size.
-    Box(
-        modifier = Modifier
-            .size(width = 48.dp, height = 48.dp)
-            .semantics { contentDescription = label }
-            .pointerInput(m.onPage) {
-                detectTapGestures { pos ->
-                    val step = (cell + gap).toPx()
-                    val glyphW = cell.toPx() * 3 + gap.toPx() * 2
-                    val glyphH = cell.toPx() * 5 + gap.toPx() * 4
-                    val x = pos.x - (size.width - glyphW) / 2f
-                    val y = pos.y - (size.height - glyphH) / 2f
-                    val col = (x / step).toInt().coerceIn(0, DashboardStore.ROW.lastIndex)
-                    val row = (y / step).toInt().coerceIn(0, DashboardStore.COLUMN.lastIndex)
-                    val centreCol = DashboardStore.ROW.indexOf(DashboardStore.CENTER)
-                    tap()
-                    m.onPage(if (col == centreCol) DashboardStore.COLUMN[row] else DashboardStore.ROW[col])
-                }
-            },
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = modifier
+            .clip(DashShape.Medium)
+            .background(DashColors.Card.copy(alpha = 0.92f))
+            .border(1.dp, DashColors.Line, DashShape.Medium)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Canvas(modifier = Modifier.size(width = cell * 3 + gap * 2, height = cell * 5 + gap * 4)) {
             val c = cell.toPx()
             val step = (cell + gap).toPx()
-            val r = CornerRadius(2.dp.toPx())
+            val r = CornerRadius(3.dp.toPx())
             fun draw(page: Int, col: Int, row: Int) {
                 val topLeft = Offset(col * step, row * step)
                 if (page == current) drawRoundRect(accent, topLeft, Size(c, c), r)
-                else drawRoundRect(ink, topLeft, Size(c, c), r, style = Stroke(1.2.dp.toPx()))
+                else drawRoundRect(ink, topLeft, Size(c, c), r, style = Stroke(1.5.dp.toPx()))
             }
             val centreCol = DashboardStore.ROW.indexOf(DashboardStore.CENTER)
             DashboardStore.COLUMN.forEachIndexed { row, page -> draw(page, centreCol, row) }
             DashboardStore.ROW.forEachIndexed { col, page -> if (page != DashboardStore.CENTER) draw(page, col, DashboardStore.COLUMN_HOME) }
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(DashboardStore.nameRes(current)),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
     }
 }
+
+/** How long [PageIndicator] stays after a page change. */
+internal const val PAGE_INDICATOR_MS = 2_000L
 
 /**
  * The update strip above the bottom bar. By itself it only appears for an

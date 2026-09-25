@@ -431,11 +431,7 @@ internal fun CockpitTopBar(m: TopBarModel) {
         }
 
         // The head unit's status bar shows the time while it is up.
-        if (m.merged) BarPageDots(m) else Row(verticalAlignment = Alignment.CenterVertically) {
-            ClockPod(m.clock)
-            Spacer(Modifier.width(10.dp))
-            BarPageDots(m)
-        }
+        if (!m.merged) ClockPod(m.clock)
 
         Row(
             modifier = Modifier.align(Alignment.CenterEnd),

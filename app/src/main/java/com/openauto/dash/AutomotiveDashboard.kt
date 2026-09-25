@@ -78,6 +78,10 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
@@ -191,6 +195,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
+    // After a page change the floating cross shows for a moment, then fades.
+    var pageIndicatorShown by remember { mutableStateOf(false) }
+    var pageIndicatorFor by remember { mutableIntStateOf(currentPage) }
+    LaunchedEffect(currentPage) {
+        if (currentPage != pageIndicatorFor) {
+            pageIndicatorFor = currentPage
+            pageIndicatorShown = true
+            delay(PAGE_INDICATOR_MS)
+            pageIndicatorShown = false
+        }
+    }
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
     var showSplitEnable by remember { mutableStateOf(false) }
@@ -828,6 +843,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
+            }
+            AnimatedVisibility(
+                visible = pageIndicatorShown && !editing,
+                enter = fadeIn(tween(150)),
+                exit = fadeOut(tween(400)),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
+            ) {
+                PageIndicator(pageIndicatorFor)
             }
 
             // needs the accessibility service; if it isn't on, tapping prompts to

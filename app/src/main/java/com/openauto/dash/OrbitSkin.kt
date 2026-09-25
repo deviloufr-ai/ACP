@@ -337,9 +337,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // The head unit's status bar shows the time while it is up.
-                if (m.merged) {
-                    BarPageDots(m)
-                } else {
+                if (!m.merged) {
                     Text(
                         text = m.clock,
                         modifier = Modifier.alignByBaseline(),
@@ -360,8 +358,6 @@ internal fun OrbitTopBar(m: TopBarModel) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.width(8.dp))
-                    BarPageDots(m)
                 }
             }
             ObdPill(m.obdConnection, m.onConnectObd)

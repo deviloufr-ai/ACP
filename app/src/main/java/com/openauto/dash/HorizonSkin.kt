@@ -737,14 +737,10 @@ internal fun HorizonTopBar(m: TopBarModel) {
     ) {
         Row(modifier = Modifier.weight(1f)) {
             // The head unit's status bar shows the time while it is up.
-            if (m.merged) {
-                BarPageDots(m)
-            } else {
+            if (!m.merged) {
                 SceneText(m.clock, display(40f), Modifier.alignByBaseline(), overflow = TextOverflow.Clip)
                 Spacer(Modifier.width(14.dp))
                 SceneText(date, ui(15f, soft), Modifier.alignByBaseline())
-                Spacer(Modifier.width(14.dp))
-                Box(Modifier.align(Alignment.CenterVertically)) { BarPageDots(m) }
             }
         }
         VehicleAlerts(m.obdConnection, m.obdData)
