@@ -22,17 +22,12 @@ import com.openauto.dash.link.UnknownPairingException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.IOException
-import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.InterfaceAddress
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.Semaphore
-import java.util.concurrent.TimeUnit
 
 sealed interface LinkState {
     data object Off : LinkState
@@ -42,26 +37,22 @@ sealed interface LinkState {
 }
 
 /**
- * The phone's end of the link: a TCP server on [LINK_PORT], on the hotspot's
- * address only, so nothing on a café's Wi-Fi or the mobile network can reach
- * it. The head unit, on this phone's hotspot, dials the hotspot gateway (this
- * phone), proves it holds a pairing secret, then receives the notifications
- * and sends back replies. One head unit at a time; a new connection replaces
- * the old one. Run by [LinkService], which keeps the process alive.
+ * The phone's end of the link: a TCP server on [LINK_PORT]. A connection that
+ * comes in through one of the phone's own networks (a café's Wi-Fi it joined,
+ * mobile data, a VPN) is closed at once; only one through the hotspot (or a
+ * USB / Bluetooth tether) gets to the handshake. The head unit, on this
+ * phone's hotspot, dials the hotspot gateway (this phone), proves it holds a
+ * pairing secret, then receives the notifications and sends back replies.
+ * One head unit at a time; a new connection replaces the old one. Run by
+ * [LinkService], which keeps the process alive.
  */
 object LinkServer {
     private const val TAG = "LinkServer"
     private const val HANDSHAKE_TIMEOUT_MS = 10_000
     /** The head unit pings every 15 s; three missed pings and the link is dropped. */
     private const val IDLE_TIMEOUT_MS = 45_000
-    /** How often to check the hotspot: switched on or off, or moved to another address. */
-    private const val WATCH_MS = 5_000L
     /** Connections still proving their pairing at once; more are turned away. */
     private const val MAX_HANDSHAKES = 4
-    // How phones name the hotspot's interface: wlan1, swlan0, ap0, softap0, ap_br_wlan2...
-    private val HOTSPOT_NAME = Regex("(wlan|swlan|ap|softap|wifi|wigig).*")
-    // Never the hotspot: mobile data, VPNs, tunnels, Wi-Fi Direct.
-    private val NOT_HOTSPOT = Regex("(rmnet|ccmni|seth|epdg|tun|ppp|dummy|v4-|clat|ip6|sit|ifb|lo|p2p).*")
 
     private val _state = MutableStateFlow<LinkState>(LinkState.Off)
     val state: StateFlow<LinkState> = _state
@@ -70,28 +61,31 @@ object LinkServer {
     // Everything written to the socket goes through one thread, in order, off the main thread.
     private val sender = Executors.newSingleThreadExecutor()
     private val handshakes = Semaphore(MAX_HANDSHAKES)
-    private var running = false
-    private var watcher: ScheduledExecutorService? = null
     private var server: ServerSocket? = null
     @Volatile private var session: LinkSession? = null
 
     @Synchronized
     fun start(context: Context) {
-        if (running) return
-        running = true
+        if (server != null) return
         val app = context.applicationContext
-        _state.value = LinkState.Waiting
-        watcher = Executors.newSingleThreadScheduledExecutor().also {
-            it.scheduleWithFixedDelay({ follow(app) }, 0, WATCH_MS, TimeUnit.MILLISECONDS)
+        val socket = try {
+            ServerSocket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress(LINK_PORT))
+            }
+        } catch (e: IOException) {
+            Log.w(TAG, "cannot listen on $LINK_PORT", e)
+            return
         }
+        server = socket
+        _state.value = LinkState.Waiting
+        Thread({ acceptLoop(app, socket) }, "link-accept").start()
     }
 
     @Synchronized
     fun stop() {
-        running = false
-        watcher?.shutdownNow()
-        watcher = null
-        closeServer()
+        runCatching { server?.close() }
+        server = null
         session?.close()
         session = null
         _state.value = LinkState.Off
@@ -103,76 +97,33 @@ object LinkServer {
         sender.execute { current.sendOrClose(message) }
     }
 
-    /** Listens on the hotspot's current address, and not at all while there is no hotspot. */
-    private fun follow(context: Context) {
-        try {
-            val hotspot = hotspotAddress(context)
-            synchronized(this) {
-                if (!running) return
-                val current = server
-                if (current != null && !current.isClosed && current.inetAddress == hotspot?.address) return
-                closeServer()
-                if (hotspot == null) return
-                val socket = ServerSocket().apply {
-                    reuseAddress = true
-                    bind(InetSocketAddress(hotspot.address, LINK_PORT))
-                }
-                server = socket
-                Thread({ acceptLoop(context, socket, hotspot) }, "link-accept").start()
-            }
-        } catch (e: Exception) {
-            // Thrown out of here, the check would never run again.
-            Log.w(TAG, "cannot listen on the hotspot", e)
-        }
-    }
-
-    private fun closeServer() {
-        runCatching { server?.close() }
-        server = null
-    }
-
     /**
-     * This phone's hotspot address. Its own networks (Wi-Fi it joined, mobile
-     * data, a VPN) are exactly the ones to stay off; the hotspot's interface
-     * isn't one of them. Android 11+ picks a random hotspot subnet, so the
-     * address is read, never assumed to be 192.168.43.1.
+     * Whether [local], the address a connection came in on, belongs to one of
+     * the phone's own networks: the Wi-Fi it joined, mobile data, a VPN. The
+     * hotspot is not one of them, so nothing has to guess which interface it
+     * is (phones name it wlan1, swlan0, ap0, ap_br_wlan2...).
      */
-    private fun hotspotAddress(context: Context): InterfaceAddress? {
-        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
+    private fun viaOwnNetwork(context: Context, local: InetAddress?): Boolean {
+        if (local == null || local.isLoopbackAddress) return true
+        // An IPv4 caller on the dual-stack socket can show up as ::ffff:a.b.c.d; this makes it a.b.c.d.
+        val address = runCatching { InetAddress.getByAddress(local.address) }.getOrDefault(local)
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
         @Suppress("DEPRECATION") // allNetworks: every network the phone itself uses, not just the default one.
-        val own = cm.allNetworks.mapNotNullTo(HashSet()) { cm.getLinkProperties(it)?.interfaceName }
-        val candidates = NetworkInterface.getNetworkInterfaces()?.toList().orEmpty().filter { nif ->
-            nif.name !in own && !NOT_HOTSPOT.matches(nif.name) && runCatching { nif.isUp && !nif.isLoopback }.getOrDefault(false)
-        }
-        return candidates.sortedByDescending { HOTSPOT_NAME.matches(it.name) }.firstNotNullOfOrNull { nif ->
-            nif.interfaceAddresses.firstOrNull { it.address is Inet4Address && it.address.isSiteLocalAddress }
+        return cm.allNetworks.any { network ->
+            cm.getLinkProperties(network)?.linkAddresses?.any { it.address == address } == true
         }
     }
 
-    /** Whether [remote] is on the hotspot's own subnet, as a head unit that joined it is. */
-    private fun onHotspot(remote: InetAddress?, hotspot: InterfaceAddress): Boolean {
-        val a = remote?.address ?: return false
-        val b = hotspot.address.address
-        if (a.size != b.size) return false
-        val bits = hotspot.networkPrefixLength.toInt().takeIf { it in 8..30 } ?: 24
-        for (i in a.indices) {
-            val take = (bits - i * 8).coerceIn(0, 8)
-            if (take == 0) break
-            val mask = (0xFF shl (8 - take)) and 0xFF
-            if (a[i].toInt() and mask != b[i].toInt() and mask) return false
-        }
-        return true
-    }
-
-    private fun acceptLoop(context: Context, socket: ServerSocket, hotspot: InterfaceAddress) {
+    private fun acceptLoop(context: Context, socket: ServerSocket) {
         while (!socket.isClosed) {
             val client = try {
                 socket.accept()
             } catch (e: IOException) {
                 break
             }
-            // Turned away before a byte is read: anyone not on the hotspot, and floods.
-            if (!onHotspot(client.inetAddress, hotspot) || !handshakes.tryAcquire()) {
+            // Turned away before a byte is read: anyone reaching the phone through
+            // its own Wi-Fi or mobile data rather than its hotspot, and floods.
+            if (viaOwnNetwork(context, client.localAddress) || !handshakes.tryAcquire()) {
                 runCatching { client.close() }
                 continue
             }
@@ -204,7 +155,7 @@ object LinkServer {
         // Published under the lock, so a stop() during the handshake is never missed.
         val replaced: LinkSession?
         synchronized(this) {
-            if (!running) {
+            if (server == null) {
                 link.close()
                 return
             }
@@ -228,7 +179,7 @@ object LinkServer {
             synchronized(this) {
                 if (session === link) {
                     session = null
-                    if (running) _state.value = LinkState.Waiting
+                    if (server != null) _state.value = LinkState.Waiting
                 }
             }
         }
