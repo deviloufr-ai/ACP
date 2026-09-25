@@ -385,7 +385,11 @@ internal fun TapeDeckTopBar(m: TopBarModel) {
         }
 
         // The head unit's status bar shows the time while it is up.
-        if (m.merged) BarPageDots(m) else VfdClock(m.clock)
+        if (m.merged) BarPageDots(m) else Row(verticalAlignment = Alignment.CenterVertically) {
+            VfdClock(m.clock)
+            Spacer(Modifier.width(10.dp))
+            BarPageDots(m)
+        }
 
         Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
             ObdLed(m.obdConnection, m.onConnectObd)

@@ -360,6 +360,8 @@ internal fun OrbitTopBar(m: TopBarModel) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(Modifier.width(8.dp))
+                    BarPageDots(m)
                 }
             }
             ObdPill(m.obdConnection, m.onConnectObd)

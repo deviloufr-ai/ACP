@@ -743,6 +743,8 @@ internal fun HorizonTopBar(m: TopBarModel) {
                 SceneText(m.clock, display(40f), Modifier.alignByBaseline(), overflow = TextOverflow.Clip)
                 Spacer(Modifier.width(14.dp))
                 SceneText(date, ui(15f, soft), Modifier.alignByBaseline())
+                Spacer(Modifier.width(14.dp))
+                Box(Modifier.align(Alignment.CenterVertically)) { BarPageDots(m) }
             }
         }
         VehicleAlerts(m.obdConnection, m.obdData)

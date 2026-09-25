@@ -206,10 +206,14 @@ internal fun StandardTopBar(m: TopBarModel) {
             // speed source it is the plain bar again.
             val speed = if (DashColors.BarStyle == DashBarStyle.CLUSTER) rememberSpeedKmh(m.obdData, m.obdConnection) else null
             val cluster = speed != null
-            if (cluster) {
-                ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
-            } else {
-                BarClock(m.clock)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                when {
+                    cluster -> ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
+                    // The head unit's status bar shows the time while it is up.
+                    !m.merged -> BarClock(m.clock)
+                }
+                if (cluster || !m.merged) Spacer(Modifier.width(10.dp))
+                BarPageDots(m)
             }
 
             Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
@@ -756,58 +760,49 @@ internal fun EditBar(
 }
 
 /**
- * Where a skin's bar used to put the page dots while the status bar showed the
- * time. The page now shows in the floating cross ([PageCrossWidget]), so the
- * bar leaves that spot empty rather than double the clock.
+ * The seven dashboards as the cross they form, in the bar's centre slot: in
+ * the clock's place while the head unit's status bar shows the time, beside
+ * the clock otherwise. The page on screen is filled with the accent, the rest
+ * hollow; a tap on a cell goes to that page (the nearest cell wins).
  */
 @Composable
-internal fun BarPageDots(@Suppress("UNUSED_PARAMETER") m: TopBarModel) {
-    Spacer(Modifier.width(1.dp))
-}
-
-/**
- * The seven dashboards as the cross they form, floating over a corner of the
- * pages: the one on screen filled with the accent, the rest hollow. It takes
- * no room in the layout; a tap on a cell goes to that page.
- */
-@Composable
-internal fun PageCrossWidget(current: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val cell = 12.dp
-    val gap = 3.dp
-    val inset = 7.dp
+internal fun BarPageDots(m: TopBarModel) {
+    val cell = 7.dp
+    val gap = 2.dp
+    val current = m.page
     val accent = DashColors.Accent
     val ink = DashColors.TextSecondary
     val tap = rememberTapFeedback()
     val label = stringResource(DashboardStore.nameRes(current))
-    val fill = DashColors.Card.let { if (it.alpha < 1f) it else it.copy(alpha = 0.82f) }
+    // 48 dp wide to tap, whatever the glyph's size.
     Box(
-        modifier = modifier
-            .clip(DashShape.Small)
-            .background(fill)
-            .border(1.dp, DashColors.Line, DashShape.Small)
+        modifier = Modifier
+            .size(width = 48.dp, height = 48.dp)
             .semantics { contentDescription = label }
-            .pointerInput(onSelect) {
+            .pointerInput(m.onPage) {
                 detectTapGestures { pos ->
-                    // The nearest cell wins: a tap beside the column lands on the row.
                     val step = (cell + gap).toPx()
-                    val pad = inset.toPx()
-                    val col = ((pos.x - pad) / step).toInt().coerceIn(0, DashboardStore.ROW.lastIndex)
-                    val row = ((pos.y - pad) / step).toInt().coerceIn(0, DashboardStore.COLUMN.lastIndex)
-                    val page = if (col == DashboardStore.ROW.indexOf(DashboardStore.CENTER)) DashboardStore.COLUMN[row] else DashboardStore.ROW[col]
+                    val glyphW = cell.toPx() * 3 + gap.toPx() * 2
+                    val glyphH = cell.toPx() * 5 + gap.toPx() * 4
+                    val x = pos.x - (size.width - glyphW) / 2f
+                    val y = pos.y - (size.height - glyphH) / 2f
+                    val col = (x / step).toInt().coerceIn(0, DashboardStore.ROW.lastIndex)
+                    val row = (y / step).toInt().coerceIn(0, DashboardStore.COLUMN.lastIndex)
+                    val centreCol = DashboardStore.ROW.indexOf(DashboardStore.CENTER)
                     tap()
-                    onSelect(page)
+                    m.onPage(if (col == centreCol) DashboardStore.COLUMN[row] else DashboardStore.ROW[col])
                 }
-            }
-            .padding(inset)
+            },
+        contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(width = cell * 3 + gap * 2, height = cell * 5 + gap * 4)) {
             val c = cell.toPx()
             val step = (cell + gap).toPx()
-            val r = CornerRadius(3.dp.toPx())
+            val r = CornerRadius(2.dp.toPx())
             fun draw(page: Int, col: Int, row: Int) {
                 val topLeft = Offset(col * step, row * step)
                 if (page == current) drawRoundRect(accent, topLeft, Size(c, c), r)
-                else drawRoundRect(ink, topLeft, Size(c, c), r, style = Stroke(1.5.dp.toPx()))
+                else drawRoundRect(ink, topLeft, Size(c, c), r, style = Stroke(1.2.dp.toPx()))
             }
             val centreCol = DashboardStore.ROW.indexOf(DashboardStore.CENTER)
             DashboardStore.COLUMN.forEachIndexed { row, page -> draw(page, centreCol, row) }
