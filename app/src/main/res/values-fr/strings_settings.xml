@@ -8,4 +8,6 @@
     <string name="settings_section_advanced">Avancé</string>
     <string name="settings_ai_detail">Explique les codes défaut et parle des alertes</string>
     <string name="settings_system_detail">Le vrai Google Maps dans la tuile Maps. Nécessite le root.</string>
+    <string name="settings_drive_lock">Modifications à l'arrêt seulement</string>
+    <string name="settings_drive_lock_detail">Édition, réglages et grille d'apps attendent l'arrêt de la voiture</string>
 </resources>

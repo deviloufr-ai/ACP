@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -141,12 +143,12 @@ internal fun LaunchBarTile(
                         }
                     }
                 }
-                IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(48.dp)) {
                     Icon(
                         Icons.Filled.Edit,
                         contentDescription = stringResource(R.string.apps_launch_bar_edit),
                         tint = DashColors.Muted,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -425,7 +427,9 @@ internal fun AppDrawer(
     apps: List<AppEntry>,
     onLaunch: (AppEntry) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The car is moving: one app per 64 dp row, big icon and name, instead of the grid. */
+    moving: Boolean = false
 ) {
     SolidCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -455,6 +459,15 @@ internal fun AppDrawer(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.apps_no_apps_found), color = DashColors.Muted)
                 }
+            } else if (moving) {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(apps, key = { it.packageName }) { app ->
+                        AppRow(app = app, onClick = { onLaunch(app) })
+                    }
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 92.dp),
@@ -469,6 +482,38 @@ internal fun AppDrawer(
                 }
             }
         }
+    }
+}
+
+/** One app on a 64 dp row: the drawer's layout while the car moves, hit without aiming. */
+@Composable
+private fun AppRow(app: AppEntry, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .itemFill(DashColors.CardHi, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            AppIcon(icon = app.icon, size = 40.dp)
+        }
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = app.label,
+            color = DashColors.TextPrimary,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

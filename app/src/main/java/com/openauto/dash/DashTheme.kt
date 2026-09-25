@@ -39,6 +39,17 @@ enum class DashAppearance(@StringRes val titleRes: Int) {
 }
 
 /**
+ * How much of a theme's decoration is drawn. Every theme keeps its colours;
+ * [NONE] is the high-legibility setting for a dim screen in full sun: opaque
+ * cards, plain numerals, no halos. [scale] multiplies the theme's glow.
+ */
+enum class DashEffects(@StringRes val titleRes: Int, @StringRes val hintRes: Int, val scale: Float) {
+    NONE(R.string.dash_effects_none, R.string.dash_effects_none_hint, 0f),
+    REDUCED(R.string.dash_effects_reduced, R.string.dash_effects_reduced_hint, 0.5f),
+    FULL(R.string.dash_effects_full, R.string.dash_effects_full_hint, 1f)
+}
+
+/**
  * Whole-design variants. A skin swaps more than colours: its own page
  * background, top bar and renderers for the main widgets (see Skins.kt).
  * [STANDARD] is every colour-only theme.
@@ -288,6 +299,7 @@ object DashThemeStore {
     private const val PREFS = "dashboard_theme"
     private const val KEY = "mode"
     private const val KEY_APPEARANCE = "appearance"
+    private const val KEY_EFFECTS = "effects"
 
     fun load(context: Context): DashThemeMode = runCatching {
         DashThemeMode.valueOf(
@@ -311,6 +323,18 @@ object DashThemeStore {
     fun saveAppearance(context: Context, appearance: DashAppearance) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_APPEARANCE, appearance.name).apply()
+    }
+
+    fun loadEffects(context: Context): DashEffects = runCatching {
+        DashEffects.valueOf(
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_EFFECTS, DashEffects.FULL.name) ?: DashEffects.FULL.name
+        )
+    }.getOrDefault(DashEffects.FULL)
+
+    fun saveEffects(context: Context, effects: DashEffects) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_EFFECTS, effects.name).apply()
     }
 }
 
@@ -340,11 +364,13 @@ internal fun DashAppearance.isLight(): Boolean = when (this) {
 
 object DashColors {
     private var current by mutableStateOf(AutoDarkPalette)
+    private var effects by mutableStateOf(DashEffects.FULL)
 
     @Composable
-    fun Sync(mode: DashThemeMode, appearance: DashAppearance) {
+    fun Sync(mode: DashThemeMode, appearance: DashAppearance, effects: DashEffects = DashEffects.FULL) {
         val target = paletteFor(mode, appearance.isLight())
         if (current != target) current = target
+        if (this.effects != effects) this.effects = effects
     }
 
     val Background get() = current.Background
@@ -361,8 +387,11 @@ object DashColors {
     val TextPrimary get() = current.TextPrimary
     val TextSecondary get() = current.TextSecondary
     val Line get() = current.Line
-    val Glass get() = current.Glass
-    val Glow get() = current.Glow
+    /** Translucent panels, unless the effects are off: then every theme gets opaque cards. */
+    val Glass get() = current.Glass && effects != DashEffects.NONE
+    /** The theme's halo strength, scaled by the effects setting (0 with effects off). */
+    val Glow get() = current.Glow * effects.scale
+    val Effects get() = effects
     val Original get() = current.Original
     val Bare get() = current.Bare
     val BackgroundStops get() = current.BackgroundStops

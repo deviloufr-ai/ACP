@@ -226,8 +226,8 @@ internal fun MediaCard(
                     GlassRoundButton(
                         icon = Icons.Filled.SkipPrevious,
                         contentDescription = stringResource(R.string.info_media_previous),
-                        size = 52.dp,
-                        iconSize = 30.dp,
+                        size = 56.dp,
+                        iconSize = 32.dp,
                         onClick = { controller.previous() }
                     )
                     Spacer(Modifier.width(18.dp))
@@ -242,8 +242,8 @@ internal fun MediaCard(
                     GlassRoundButton(
                         icon = Icons.Filled.SkipNext,
                         contentDescription = stringResource(R.string.info_media_next),
-                        size = 52.dp,
-                        iconSize = 30.dp,
+                        size = 56.dp,
+                        iconSize = 32.dp,
                         onClick = { controller.next() }
                     )
                 }

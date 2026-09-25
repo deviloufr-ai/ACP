@@ -362,7 +362,7 @@ internal fun OrbitTopBar(m: TopBarModel) {
                     )
                 }
             }
-            ObdDot(m.obdConnection, m.onConnectObd)
+            ObdPill(m.obdConnection, m.onConnectObd)
             MorePicker(m) { open ->
                 OrbitBarButton(onClick = open) {
                     Icon(Icons.Filled.MoreVert, stringResource(R.string.orbit_more), tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))

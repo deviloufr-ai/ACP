@@ -9,4 +9,6 @@
     <string name="settings_ai_detail">Explains fault codes and speaks alerts</string>
     <string name="settings_system_detail">The real Google Maps in the Maps tile. Needs root.</string>
     <string name="settings_version" translatable="false">Dashwheel v%1$s</string>
+    <string name="settings_drive_lock">Changes only while parked</string>
+    <string name="settings_drive_lock_detail">Editing, settings and the app grid wait until the car has stopped</string>
 </resources>

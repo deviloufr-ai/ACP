@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +21,9 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Tonality
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,8 +44,10 @@ import androidx.compose.ui.unit.dp
 fun DashThemePickerDialog(
     selected: DashThemeMode,
     appearance: DashAppearance,
+    effects: DashEffects,
     onSelect: (DashThemeMode) -> Unit,
     onAppearance: (DashAppearance) -> Unit,
+    onEffects: (DashEffects) -> Unit,
     onDismiss: () -> Unit
 ) {
     // Previews show the version on screen now, so Auto previews follow the car too.
@@ -56,19 +63,52 @@ fun DashThemePickerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AppearanceSwitch(appearance, onAppearance)
-                Text(
+                SegmentedSwitch(
+                    options = DashAppearance.entries,
+                    chosen = appearance,
+                    icon = { option ->
+                        when (option) {
+                            DashAppearance.AUTO -> Icons.Filled.BrightnessAuto
+                            DashAppearance.DARK -> Icons.Filled.DarkMode
+                            DashAppearance.LIGHT -> Icons.Filled.LightMode
+                        }
+                    },
+                    title = { stringResource(it.titleRes) },
+                    onChoose = onAppearance
+                )
+                SwitchHint(
                     stringResource(
                         when (appearance) {
                             DashAppearance.AUTO -> R.string.dash_appearance_auto_hint
                             DashAppearance.DARK -> R.string.dash_appearance_dark_hint
                             DashAppearance.LIGHT -> R.string.dash_appearance_light_hint
                         }
-                    ),
-                    color = DashColors.TextSecondary,
-                    style = MaterialTheme.typography.bodySmall,
+                    )
+                )
+                // Effects: how much halo and glass a theme draws. Off is the
+                // high-legibility setting for a dim screen in full sun.
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.dash_effects_title),
+                    color = DashColors.TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(start = 4.dp)
                 )
+                SegmentedSwitch(
+                    options = DashEffects.entries,
+                    chosen = effects,
+                    icon = { option ->
+                        when (option) {
+                            DashEffects.NONE -> Icons.Filled.VisibilityOff
+                            DashEffects.REDUCED -> Icons.Filled.Tonality
+                            DashEffects.FULL -> Icons.Filled.AutoAwesome
+                        }
+                    },
+                    title = { stringResource(it.titleRes) },
+                    onChoose = onEffects
+                )
+                SwitchHint(stringResource(effects.hintRes))
                 Spacer(Modifier.height(4.dp))
                 DashThemeMode.entries.forEach { mode ->
                     ThemeOption(mode, light, mode == selected) { onSelect(mode) }
@@ -79,9 +119,26 @@ fun DashThemePickerDialog(
     )
 }
 
-/** Auto / Dark / Light segmented switch; the chosen segment wears the accent gradient. */
+/** One line under a switch saying what the chosen segment does. */
 @Composable
-private fun AppearanceSwitch(appearance: DashAppearance, onAppearance: (DashAppearance) -> Unit) {
+private fun SwitchHint(text: String) {
+    Text(
+        text,
+        color = DashColors.TextSecondary,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(start = 4.dp)
+    )
+}
+
+/** Segmented switch over [options]; the chosen segment wears the accent gradient. */
+@Composable
+private fun <T> SegmentedSwitch(
+    options: List<T>,
+    chosen: T,
+    icon: (T) -> ImageVector,
+    title: @Composable (T) -> String,
+    onChoose: (T) -> Unit
+) {
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -91,32 +148,24 @@ private fun AppearanceSwitch(appearance: DashAppearance, onAppearance: (DashAppe
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        DashAppearance.entries.forEach { option ->
-            val chosen = option == appearance
+        options.forEach { option ->
+            val picked = option == chosen
             val segment = RoundedCornerShape(10.dp)
-            val ink = if (chosen) DashColors.OnAccent else DashColors.TextPrimary
+            val ink = if (picked) DashColors.OnAccent else DashColors.TextPrimary
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = 48.dp)
                     .clip(segment)
-                    .then(if (chosen) Modifier.background(DashColors.AccentBrush, segment) else Modifier)
-                    .clickable { onAppearance(option) }
+                    .then(if (picked) Modifier.background(DashColors.AccentBrush, segment) else Modifier)
+                    .clickable { onChoose(option) }
                     .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    when (option) {
-                        DashAppearance.AUTO -> Icons.Filled.BrightnessAuto
-                        DashAppearance.DARK -> Icons.Filled.DarkMode
-                        DashAppearance.LIGHT -> Icons.Filled.LightMode
-                    },
-                    contentDescription = null,
-                    tint = ink,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(icon(option), contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.size(8.dp))
-                Text(stringResource(option.titleRes), color = ink, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+                Text(title(option), color = ink, fontWeight = if (picked) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
             }
         }
     }

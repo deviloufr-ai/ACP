@@ -101,6 +101,19 @@
     <string name="dash_appearance_dark_hint">Every theme uses its dark version</string>
     <string name="dash_appearance_light_hint">Every theme uses its light version</string>
 
+    <!-- Effects switch (theme picker): how much halo and glass a theme draws -->
+    <string name="dash_effects_title">Effects</string>
+    <string name="dash_effects_none">None</string>
+    <string name="dash_effects_reduced">Reduced</string>
+    <string name="dash_effects_full">Full</string>
+    <string name="dash_effects_none_hint">High legibility: opaque cards, plain numerals, no glow</string>
+    <string name="dash_effects_reduced_hint">Softer glow, glass kept</string>
+    <string name="dash_effects_full_hint">Every theme with all its glow and glass</string>
+
+    <!-- Moving: edits wait until the car has stopped -->
+    <string name="dash_drive_lock_notice">Park to make changes</string>
+    <string name="dash_obd_short" translatable="false">OBD</string>
+
     <!-- Theme names and descriptions (the enum names are what gets saved) -->
     <string name="dash_theme_standard">Standard</string>
     <string name="dash_theme_standard_desc">Simple cards with softly glowing gauges</string>

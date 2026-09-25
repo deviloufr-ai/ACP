@@ -59,6 +59,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.movableContentWithReceiverOf
 import androidx.compose.ui.layout.onSizeChanged
@@ -118,6 +119,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var appearance by remember { mutableStateOf(DashThemeStore.loadAppearance(context)) }
+    var effects by remember { mutableStateOf(DashThemeStore.loadEffects(context)) }
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
     var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
@@ -127,7 +129,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var showTemplates by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     var showAiSettings by remember { mutableStateOf(false) }
-    DashColors.Sync(themeMode, appearance)
+    DashColors.Sync(themeMode, appearance, effects)
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
@@ -221,6 +223,41 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // System-app install (root) — unlocks embedding the real Google Maps app.
     var showSystemDialog by remember { mutableStateOf(false) }
+
+    // The drive lock (DriveLock.kt): while the car moves, arranging, settings
+    // and pickers wait. Anything open when it engages closes; a locked tap
+    // shows the notice chip for a moment instead of doing nothing.
+    var lockWhileMoving by remember { mutableStateOf(DriveLockStore.load(context)) }
+    val moving = rememberMoving(lockWhileMoving, obdData, obdConnection, demoOn)
+    var lockNoticeAt by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(lockNoticeAt) {
+        if (lockNoticeAt > 0L) {
+            delay(LOCK_NOTICE_MS)
+            lockNoticeAt = 0L
+        }
+    }
+    /** Runs [action] now, or shows the parked-only notice while moving. */
+    fun whenParked(action: () -> Unit) {
+        if (moving) lockNoticeAt = System.currentTimeMillis() else action()
+    }
+    LaunchedEffect(moving) {
+        if (moving) {
+            editing = false
+            showThemePicker = false
+            showTemplates = false
+            showLanguagePicker = false
+            showAiSettings = false
+            showSystemDialog = false
+            showAddMenu = false
+            showAppPicker = false
+            showAppWindowPicker = false
+            showWidgetMenu = false
+            showPairPrimaryPicker = false
+            showPairSecondaryPicker = false
+            launchBarEditor = null
+            designPicker = null
+        }
+    }
 
     // Docked app windows sit above dialogs and menus on this head unit. Those
     // report where they are (keepClearOfWindows), so only a window they overlap
@@ -572,8 +609,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
 
     val onAdd: (Int) -> Unit = { page ->
-        addTargetPage = page
-        showAddMenu = true
+        whenParked {
+            addTargetPage = page
+            showAddMenu = true
+        }
     }
 
     // Android forces the status bar on whenever a floating (freeform) window is
@@ -686,7 +725,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onPickDevice = onPickDevice,
                     onLaunchApp = onLaunchApp,
                     onLaunchSplitPair = onLaunchSplitPair,
-                    onEditLaunchBar = { index -> launchBarEditor = page to index },
+                    onEditLaunchBar = { index -> whenParked { launchBarEditor = page to index } },
                     onRemove = { index -> removeAt(page, index) },
                     onMoveCell = { index, x, y -> moveCell(page, index, x, y) },
                     onResizeCell = { index, w, h -> resizeCell(page, index, w, h) },
@@ -697,8 +736,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         DashboardStore.moveResolving(pages[page], index, x, y) != null
                     },
                     onAdd = { onAdd(page) },
-                    onTemplates = { showTemplates = true },
-                    onDesign = { index -> designPicker = page to index },
+                    onTemplates = { whenParked { showTemplates = true } },
+                    onDesign = { index -> whenParked { designPicker = page to index } },
                     onZoom = { index, zoom -> zoomTile(page, index, zoom) }
                 )
             }
@@ -749,6 +788,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp)
                 )
             }
+            if (lockNoticeAt > 0L) {
+                DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
+            }
 
             // needs the accessibility service; if it isn't on, tapping prompts to
             // enable it instead of silently doing nothing.
@@ -784,6 +826,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 ) {
                     AppDrawer(
                         apps = apps,
+                        moving = moving,
                         onLaunch = { onLaunchApp(it.packageName) },
                         onClose = { showAllApps = false },
                         modifier = Modifier
@@ -872,18 +915,24 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
                 else showSplitEnable = true
             },
-            onToggleEdit = { editing = !editing },
-            onTemplates = { showTemplates = true },
-            onTheme = { showThemePicker = true },
-            onAi = { showAiSettings = true },
-            onSystem = { showSystemDialog = true },
-            onLanguage = { showLanguagePicker = true },
+            onToggleEdit = { if (editing) editing = false else whenParked { editing = true } },
+            onTemplates = { whenParked { showTemplates = true } },
+            onTheme = { whenParked { showThemePicker = true } },
+            onAi = { whenParked { showAiSettings = true } },
+            onSystem = { whenParked { showSystemDialog = true } },
+            onLanguage = { whenParked { showLanguagePicker = true } },
             onCheckUpdates = checkForUpdates,
             demo = demoOn,
             onDemo = { DemoMode.toggle(context) },
             merged = barForced,
             page = currentPage,
-            onPage = ::showPage
+            onPage = ::showPage,
+            moving = moving,
+            lockWhileMoving = lockWhileMoving,
+            onLockWhileMoving = {
+                lockWhileMoving = it
+                DriveLockStore.save(context, it)
+            }
         )
 
         // With the status bar up the dots sit in the launcher bar instead.
@@ -985,6 +1034,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         DashThemePickerDialog(
             selected = themeMode,
             appearance = appearance,
+            effects = effects,
             onSelect = {
                 themeMode = it
                 DashThemeStore.save(context, it)
@@ -992,6 +1042,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onAppearance = {
                 appearance = it
                 DashThemeStore.saveAppearance(context, it)
+            },
+            onEffects = {
+                effects = it
+                DashThemeStore.saveEffects(context, it)
             },
             onDismiss = { showThemePicker = false }
         )

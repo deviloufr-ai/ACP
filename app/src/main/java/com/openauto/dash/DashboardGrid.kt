@@ -375,49 +375,53 @@ internal fun GridTile(
                     }
             )
 
-            // One-row tiles are too short for remove and resize to stack on the
-            // right edge, so the remove button moves to the top-left corner.
-            val shortTile = heightDp < 84.dp
+            // 48 dp controls (the driving minimum) stack two high only on tiles
+            // at least two rows tall; on a one-row tile they line up along the
+            // middle instead: remove on the left, zoom and design in the centre,
+            // resize on the right.
+            val shortTile = heightDp < 112.dp
             FilledIconButton(
                 onClick = { onRemove(index) },
-                modifier = Modifier.align(if (shortTile) Alignment.TopStart else Alignment.TopEnd).padding(4.dp).size(40.dp),
+                modifier = Modifier.align(if (shortTile) Alignment.CenterStart else Alignment.TopEnd).padding(4.dp).size(48.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = DashColors.Warning, contentColor = Color.Black
                 )
             ) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(22.dp))
             }
 
-            // Top-left (top centre when the remove button took that corner): the
-            // tile's zoom, a small menu stepping its text and icon size.
+            // Top-left (centre-left on a one-row tile): the tile's zoom, a small
+            // menu stepping its text and icon size.
             if (item.canZoom()) {
                 TileZoomButton(
                     zoom = item.zoom,
                     onZoom = { onZoom(index, it) },
-                    modifier = Modifier.align(if (shortTile) Alignment.TopCenter else Alignment.TopStart).padding(4.dp)
+                    modifier = if (shortTile) Modifier.align(Alignment.Center).offset(x = (-30).dp)
+                    else Modifier.align(Alignment.TopStart).padding(4.dp)
                 )
             }
 
-            // Bottom-left: this built-in tile's design (Hero, Gauge, LCD, ...).
+            // Bottom-left (centre-right on a one-row tile): this built-in tile's design (Hero, Gauge, LCD, ...).
             if (item is DashboardItem.BuiltinWidget) {
                 FilledIconButton(
                     onClick = { onDesign(index) },
-                    modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(40.dp),
+                    modifier = if (shortTile) Modifier.align(Alignment.Center).offset(x = 30.dp).size(48.dp)
+                    else Modifier.align(Alignment.BottomStart).padding(4.dp).size(48.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
                     )
                 ) {
-                    Icon(Icons.Filled.Palette, contentDescription = stringResource(R.string.design_change, item.describe()), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Palette, contentDescription = stringResource(R.string.design_change, item.describe()), modifier = Modifier.size(22.dp))
                 }
             }
 
             // Bottom-right resize handle: drag to change the cell span.
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
+                    .align(if (shortTile) Alignment.CenterEnd else Alignment.BottomEnd)
                     .padding(4.dp)
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(DashColors.Accent.copy(alpha = 0.85f))
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         detectDragGestures(
@@ -444,7 +448,7 @@ internal fun GridTile(
                     imageVector = Icons.Filled.OpenInFull,
                     contentDescription = stringResource(R.string.dash_resize_tile, item.describe()),
                     tint = DashColors.Background,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -709,12 +713,12 @@ private fun TileZoomButton(zoom: Float, onZoom: (Float) -> Unit, modifier: Modif
     Box(modifier) {
         FilledIconButton(
             onClick = { open = true },
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(48.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
             )
         ) {
-            Icon(Icons.Filled.ZoomIn, contentDescription = stringResource(R.string.zoom_button), modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.ZoomIn, contentDescription = stringResource(R.string.zoom_button), modifier = Modifier.size(22.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.keepClearOfWindows()) {
             Row(modifier = Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

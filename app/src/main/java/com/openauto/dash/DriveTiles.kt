@@ -206,7 +206,7 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
     val accent2 = DashColors.Accent2
     val muted = DashColors.TextSecondary
     val glow = DashColors.Glow
-    val labelStyle = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = muted)
+    val labelStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = muted)
     val northStyle = labelStyle.copy(color = DashColors.Warning)
     // Dial letters in the UI language (e.g. O for Ouest / Osten); North is always first.
     val dialLabels = listOf(

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,9 +64,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,11 +80,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -123,7 +130,11 @@ internal class TopBarModel(
      */
     val merged: Boolean = false,
     val page: Int = 0,
-    val onPage: (Int) -> Unit = {}
+    val onPage: (Int) -> Unit = {},
+    /** The car is moving and the drive lock is on: arranging and settings wait (DriveLock.kt). */
+    val moving: Boolean = false,
+    val lockWhileMoving: Boolean = true,
+    val onLockWhileMoving: (Boolean) -> Unit = {}
 )
 
 @Composable
@@ -149,12 +160,16 @@ internal fun TopBar(
     onDemo: () -> Unit,
     merged: Boolean = false,
     page: Int = 0,
-    onPage: (Int) -> Unit = {}
+    onPage: (Int) -> Unit = {},
+    moving: Boolean = false,
+    lockWhileMoving: Boolean = true,
+    onLockWhileMoving: (Boolean) -> Unit = {}
 ) {
     val m = TopBarModel(
         clock, versionName, obdConnection, obdData, editing, layout, onLayout,
         onApps, onConnectObd, onSplit, onToggleEdit, onTemplates, onTheme, onAi, onSystem,
-        onLanguage, onCheckUpdates, demo, onDemo, merged, page, onPage
+        onLanguage, onCheckUpdates, demo, onDemo, merged, page, onPage,
+        moving, lockWhileMoving, onLockWhileMoving
     )
     if (DashColors.Skin == DashSkin.STANDARD) StandardTopBar(m) else SkinTopBar(m)
 }
@@ -212,7 +227,7 @@ internal fun StandardTopBar(m: TopBarModel) {
                     Spacer(Modifier.width(6.dp))
                 }
                 VehicleAlerts(m.obdConnection, m.obdData)
-                ObdDot(m.obdConnection, m.onConnectObd)
+                ObdPill(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
                     IconButton(onClick = open) {
                         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.dash_more), tint = DashColors.TextSecondary)
@@ -279,28 +294,70 @@ internal fun obdStatusLabelRes(state: ObdConnectionState): Int = when (state) {
 @Composable
 internal fun obdStatusLabel(state: ObdConnectionState): String = stringResource(obdStatusLabelRes(state))
 
-/** OBD link as a coloured dot; tapping it while disconnected connects. */
+/**
+ * OBD link as a pill that reads without colour: a dot (hollow when off, lit
+ * with a halo when live, pulsing while connecting, with a "!" on error) and
+ * the letters OBD. 48 dp tall to tap; tapping while idle connects.
+ */
 @Composable
-internal fun ObdDot(state: ObdConnectionState, onConnect: () -> Unit, dotSize: Dp = 10.dp) {
+internal fun ObdPill(state: ObdConnectionState, onConnect: () -> Unit, modifier: Modifier = Modifier) {
     val color = obdStatusColor(state)
     val label = obdStatusLabel(state)
     val idle = state.isIdle
-    IconButton(
-        onClick = onConnect,
-        enabled = idle,
-        modifier = Modifier.semantics { contentDescription = label }
+    val off = state == ObdConnectionState.DISCONNECTED
+    val connecting = state == ObdConnectionState.CONNECTING
+    val pulse = if (connecting) rememberLoop(900, reverse = true) else null
+    val halo = DashColors.Glow
+    val ink = if (off) DashColors.Muted else color
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(shape)
+            .clickable(enabled = idle, role = Role.Button, onClick = onConnect)
+            .semantics(mergeDescendants = true) { contentDescription = label }
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            Modifier
-                .size(dotSize)
-                .drawBehind {
-                    if (state == ObdConnectionState.CONNECTED) {
-                        drawCircle(color = color.copy(alpha = 0.45f), radius = size.minDimension)
+        Row(
+            modifier = Modifier
+                .height(36.dp)
+                .clip(shape)
+                .background(if (off) Color.Transparent else color.copy(alpha = 0.14f))
+                .border(1.dp, if (off) DashColors.Line else color.copy(alpha = 0.5f), shape)
+                .padding(start = 12.dp, end = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .drawBehind {
+                        val r = size.minDimension / 2f
+                        val a = pulse?.let { 0.35f + 0.65f * it.value } ?: 1f
+                        if (state == ObdConnectionState.CONNECTED && halo > 0f) {
+                            drawCircle(
+                                Brush.radialGradient(listOf(color.copy(alpha = 0.6f * halo), Color.Transparent), center, r * 2.4f),
+                                radius = r * 2.4f
+                            )
+                        }
+                        if (off) drawCircle(ink, radius = r - 1.dp.toPx(), style = Stroke(1.5.dp.toPx()))
+                        else drawCircle(color.copy(alpha = a), radius = r)
                     }
-                }
-                .clip(CircleShape)
-                .background(color)
-        )
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.dash_obd_short),
+                color = ink,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.1.em,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1
+            )
+            if (state == ObdConnectionState.ERROR) {
+                Spacer(Modifier.width(4.dp))
+                Text("!", color = color, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+            }
+        }
     }
 }
 
@@ -322,17 +379,26 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             action()
         }
     }
+    // The drive lock closes whatever was open here when the car sets off.
+    LaunchedEffect(m.moving) {
+        if (m.moving) {
+            settings = false; bootLogo = false; carSettings = false; upkeep = false; explorer = false
+        }
+    }
     Box {
         anchor { open = true }
         DashMenu(open, onDismiss = { open = false }) {
+            if (m.moving) DriveLockRow()
+            val parked = !m.moving
             DashMenuItem(
                 text = stringResource(if (m.editing) R.string.dash_menu_done_editing else R.string.dash_menu_edit_dashboards),
-                leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit) },
+                leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit, parked) },
+                enabled = parked || m.editing,
                 onClick = pick(m.onToggleEdit)
             )
-            DashMenuItem(stringResource(R.string.templates_button), leading = { MenuIcon(Icons.Filled.Dashboard) }, onClick = pick(m.onTemplates))
+            DashMenuItem(stringResource(R.string.templates_button), leading = { MenuIcon(Icons.Filled.Dashboard, parked) }, enabled = parked, onClick = pick(m.onTemplates))
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
-            DashMenuItem(stringResource(R.string.settings_menu), leading = { MenuIcon(Icons.Filled.Settings) }, onClick = pick { settings = true })
+            DashMenuItem(stringResource(R.string.settings_menu), leading = { MenuIcon(Icons.Filled.Settings, parked) }, enabled = parked, onClick = pick { settings = true })
             HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
             DashMenuItem(
                 text = stringResource(if (m.demo) R.string.demo_menu_stop else R.string.demo_menu_start),
@@ -400,6 +466,10 @@ private fun SettingsDialog(
                 if (BootLogoSupport.available) {
                     SettingsRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.boot_menu), null, onBootLogo)
                 }
+                SettingsToggle(
+                    Icons.Filled.DirectionsCar, stringResource(R.string.settings_drive_lock),
+                    stringResource(R.string.settings_drive_lock_detail), m.lockWhileMoving, m.onLockWhileMoving
+                )
                 SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), pick(m.onSystem))
                 SettingsRow(
                     Icons.Filled.SystemUpdate, stringResource(R.string.dash_menu_check_updates),
@@ -453,6 +523,84 @@ private fun SettingsRow(icon: ImageVector, title: String, detail: String?, onCli
     }
 }
 
+/** One on/off setting: icon, name, what it does, and a switch; the whole row toggles it. */
+@Composable
+private fun SettingsToggle(icon: ImageVector, title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(role = Role.Switch) { onChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+            Text(detail, color = DashColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = DashColors.OnAccent,
+                checkedTrackColor = DashColors.Accent,
+                uncheckedThumbColor = DashColors.TextSecondary,
+                uncheckedTrackColor = DashColors.CardHi,
+                uncheckedBorderColor = DashColors.Line
+            )
+        )
+    }
+}
+
+/** First row of the menu while the car moves: why the entries under it are greyed out. */
+@Composable
+private fun DriveLockRow() {
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.DirectionsCar, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(
+            stringResource(R.string.dash_drive_lock_notice),
+            color = DashColors.Warning,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+    HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(bottom = 4.dp))
+}
+
+/** Floats over the pages for a moment after a tap the drive lock held back. */
+@Composable
+internal fun DriveLockChip(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(DashColors.Card.copy(alpha = 1f))
+            .border(1.dp, DashColors.Warning.copy(alpha = 0.6f), shape)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.DirectionsCar, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stringResource(R.string.dash_drive_lock_notice),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1
+        )
+    }
+}
+
+/** How long [DriveLockChip] stays up. */
+internal const val LOCK_NOTICE_MS = 2_500L
+
 @Composable
 private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
     // Docked windows are drawn above the bar's pop-ups; one the menu overlaps steps aside meanwhile.
@@ -473,13 +621,18 @@ private fun DashMenuItem(
     text: String,
     leading: @Composable () -> Unit,
     selected: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     DropdownMenuItem(
         text = {
             Text(
                 text,
-                color = if (selected) DashColors.Accent else DashColors.TextPrimary,
+                color = when {
+                    !enabled -> DashColors.Muted
+                    selected -> DashColors.Accent
+                    else -> DashColors.TextPrimary
+                },
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
             )
         },
@@ -487,13 +640,14 @@ private fun DashMenuItem(
         trailingIcon = if (selected) {
             { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.dash_selected), tint = DashColors.Accent) }
         } else null,
+        enabled = enabled,
         onClick = onClick
     )
 }
 
 @Composable
-private fun MenuIcon(icon: ImageVector) {
-    Icon(icon, contentDescription = null, tint = DashColors.TextSecondary)
+private fun MenuIcon(icon: ImageVector, enabled: Boolean = true) {
+    Icon(icon, contentDescription = null, tint = if (enabled) DashColors.TextSecondary else DashColors.Muted)
 }
 
 /**

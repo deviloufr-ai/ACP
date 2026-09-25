@@ -145,4 +145,16 @@
     <string name="dash_page_below2">Due sotto la Home</string>
     <string name="dash_empty_title">Qui non c\'è ancora niente</string>
     <string name="dash_empty_body">Aggiungi un riquadro o scegli un modello per tutte le pagine.</string>
+    <!-- Effetti (selettore del tema) -->
+    <string name="dash_effects_title">Effetti</string>
+    <string name="dash_effects_none">Nessuno</string>
+    <string name="dash_effects_reduced">Ridotti</string>
+    <string name="dash_effects_full">Completi</string>
+    <string name="dash_effects_none_hint">Alta leggibilità: schede opache, cifre nette, senza alone</string>
+    <string name="dash_effects_reduced_hint">Aloni attenuati, vetro mantenuto</string>
+    <string name="dash_effects_full_hint">Ogni tema con tutti i suoi aloni e il vetro</string>
+
+    <!-- In movimento: le modifiche attendono che l'auto sia ferma -->
+    <string name="dash_drive_lock_notice">Parcheggia per modificare</string>
+
 </resources>

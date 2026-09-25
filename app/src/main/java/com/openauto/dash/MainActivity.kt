@@ -151,5 +151,6 @@ fun OpenAutoDashTheme(content: @Composable () -> Unit) {
             WindowInsetsControllerCompat(window, view).isAppearanceLightStatusBars = light
         }
     }
-    MaterialTheme(colorScheme = colorScheme, content = content)
+    // The driving type scale (DashType.kt): nothing under 14 sp, labels at 16 sp.
+    MaterialTheme(colorScheme = colorScheme, typography = DashTypography, content = content)
 }

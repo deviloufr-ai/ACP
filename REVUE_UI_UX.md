@@ -210,9 +210,23 @@ Contrastes texte principal / page vérifiés : Mistral nuit 17:1, Mistral jour 1
 
 ---
 
-## 5. Ordre de mise en œuvre suggéré
+## 5. Avancement
 
-1. Semaine 1 : échelle typographique, cibles 48 dp, indicateur OBD, curseur d'effets (P1 1/3/4/5).
+**P1 livré** (branche `claude/automotive-ui-ux-review-4ksf9v`) :
+
+| # | Proposition | Où dans le code |
+|---|---|---|
+| 1 | Échelle typographique conduite : rien sous 14 sp, libellés 16 sp, corps 18 sp, installée dans `MaterialTheme` | `DashType.kt`, `MainActivity.kt` (`OpenAutoDashTheme`) ; libellés de la boussole 11 → 14 sp |
+| 2 | Mode « en mouvement » : au-delà de 8 km/h (OBD ou GPS, jamais en démo) l'édition, les modèles, les réglages, les sélecteurs et l'éditeur de barre de lancement se ferment et refusent de s'ouvrir ; le tiroir d'apps passe en liste 1 colonne 64 dp ; une puce « Garez-vous pour modifier » s'affiche 2,5 s sur un appui retenu ; réglage débrayable dans Réglages → Avancé | `DriveLock.kt`, `AutomotiveDashboard.kt` (`whenParked`), `TopBar.kt` (menu grisé, `SettingsToggle`, `DriveLockChip`), `AppTiles.kt` (`AppRow`) |
+| 3 | Indicateur OBD lisible sans la couleur : pastille 36 dp (zone 48 dp) avec point creux / plein / pulsé, halo, lettres « OBD », « ! » sur erreur ; barre standard et Orbit | `TopBar.kt` (`ObdPill`), `OrbitSkin.kt` |
+| 4 | Effets : Aucun / Réduits / Complets dans le sélecteur de thème ; Aucun = cartes opaques, chiffres nets, aucun halo sur tous les thèmes | `DashTheme.kt` (`DashEffects`, `DashColors.Glow` / `Glass`), `DashThemePickerDialog.kt` (`SegmentedSwitch`) |
+| 5 | Cibles 48 dp : boutons et poignée d'édition 48 dp (alignés sur une ligne pour les tuiles d'une rangée), zoom 48 dp, édition de la barre de lancement 48 dp, bouton « Live » 48 dp, précédent/suivant média 56 dp | `DashboardGrid.kt`, `AppTiles.kt`, `TelemetryTiles.kt`, `MediaTile.kt` |
+
+Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe de syntaxe Kotlin a été faite ; la CI Lint & Test doit valider la branche.
+
+## 6. Ordre de mise en œuvre suggéré
+
+1. Semaine 1 : échelle typographique, cibles 48 dp, indicateur OBD, curseur d'effets (P1 1/3/4/5). **Fait.**
 2. Semaine 2 : tokens forme/couleur, jour/nuit robuste, retour d'action, palettes Mistral et Zénith en thèmes couleur (P3 10/11/12/13 + section 4).
-3. Semaine 3–4 : mode « en mouvement », écran Réglages, sélecteur de thème avec aperçu réel (P1 2, P2 7/8).
+3. Semaine 3–4 : écran Réglages, sélecteur de thème avec aperçu réel (P2 7/8). Le mode « en mouvement » (P1 2) est **fait**.
 4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14), refonte de la croix de pages (P2 6).

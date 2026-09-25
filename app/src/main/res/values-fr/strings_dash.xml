@@ -145,4 +145,16 @@
     <string name="dash_page_below2">Deux sous l\'accueil</string>
     <string name="dash_empty_title">Rien ici pour l\'instant</string>
     <string name="dash_empty_body">Ajoutez une tuile, ou choisissez un modèle pour toutes les pages.</string>
+    <!-- Effets (sélecteur de thème) -->
+    <string name="dash_effects_title">Effets</string>
+    <string name="dash_effects_none">Aucun</string>
+    <string name="dash_effects_reduced">Réduits</string>
+    <string name="dash_effects_full">Complets</string>
+    <string name="dash_effects_none_hint">Haute lisibilité : cartes opaques, chiffres nets, sans halo</string>
+    <string name="dash_effects_reduced_hint">Halos atténués, verre conservé</string>
+    <string name="dash_effects_full_hint">Chaque thème avec tous ses halos et son verre</string>
+
+    <!-- En mouvement : les modifications attendent l'arrêt -->
+    <string name="dash_drive_lock_notice">Garez-vous pour modifier</string>
+
 </resources>
