@@ -17,4 +17,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Dashwheel"
-include(":app")
+include(":app", ":companion", ":link")

@@ -107,7 +107,9 @@ class UpdateManager(private val context: Context) {
         val assets = release.optJSONArray("assets") ?: return null
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
-            if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+            val name = asset.optString("name")
+            // The release also carries the phone companion app: never install that here.
+            if (name.endsWith(".apk", ignoreCase = true) && !name.equals(COMPANION_APK_NAME, ignoreCase = true)) {
                 val url = asset.optString("browser_download_url").ifBlank { null } ?: continue
                 // The URL comes from a JSON document fetched over the network;
                 // only accept GitHub's own release hosts.
@@ -207,6 +209,8 @@ class UpdateManager(private val context: Context) {
             Regex("(\\d+)").findAll(text).lastOrNull()?.value?.toLongOrNull()
 
         private const val APK_NAME = "openauto-dash-update.apk"
+        /** The phone companion app's asset in each release (see build.yml). */
+        const val COMPANION_APK_NAME = "dashwheel-companion.apk"
         private val ALLOWED_DOWNLOAD_HOSTS = setOf("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
     }
 }

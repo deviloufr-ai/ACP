@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -18,8 +19,12 @@ import android.os.Looper
 import android.service.notification.StatusBarNotification
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import com.openauto.dash.link.ConversationLine
+import com.openauto.dash.link.PhoneNotification
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import java.util.Base64
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -243,10 +248,19 @@ data class NotifItem(
     val text: String,
     val postedAt: Long,
     val icon: Bitmap?,
-    val contentIntent: PendingIntent?
+    val contentIntent: PendingIntent?,
+    /** Came from the driver's phone over [PhoneLink] rather than from this head unit. */
+    val fromPhone: Boolean = false,
+    val canReply: Boolean = false,
+    val canMarkRead: Boolean = false,
+    /** The latest lines of a phone conversation, oldest first. */
+    val messages: List<ConversationLine> = emptyList()
 )
 
-/** Recent notifications from other apps, fed by the notification listener. */
+/**
+ * Recent notifications from other apps, fed by the notification listener,
+ * plus the driver's phone's while [PhoneLink] is connected.
+ */
 object NotificationFeed {
     private const val MAX = 20
     private val _items = MutableStateFlow<List<NotifItem>>(emptyList())
@@ -268,12 +282,61 @@ object NotificationFeed {
         if (title.isEmpty() && text.isEmpty()) return
         val (label, icon) = appIdentity(context, sbn.packageName)
         val item = NotifItem(sbn.key, sbn.packageName, label, title, text, sbn.postTime, icon, n.contentIntent)
-        _items.value = (listOf(item) + _items.value.filter { it.key != sbn.key }).take(MAX)
+        _items.update { items -> (listOf(item) + items.filter { it.key != sbn.key }).take(MAX) }
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
         if (DemoMode.isOn) return
-        _items.value = _items.value.filter { it.key != sbn.key }
+        _items.update { items -> items.filter { it.key != sbn.key } }
+    }
+
+    // --- The phone's notifications (keys prefixed so they never clash with this head unit's) ---
+
+    private const val PHONE = "phone:"
+
+    /** The phone's own key for a phone item's [NotifItem.key]. */
+    fun phoneKey(key: String): String = key.removePrefix(PHONE)
+
+    /** Everything the phone shows right now, sent when the link comes up. */
+    fun phoneSync(notifications: List<PhoneNotification>) {
+        if (DemoMode.isOn) return
+        val fromPhone = notifications.map(::fromPhone)
+        _items.update { items -> (fromPhone + items.filter { !it.fromPhone }).sortedByDescending { it.postedAt }.take(MAX) }
+    }
+
+    fun phonePosted(notification: PhoneNotification) {
+        if (DemoMode.isOn) return
+        val item = fromPhone(notification)
+        _items.update { items -> (listOf(item) + items.filter { it.key != item.key }).take(MAX) }
+    }
+
+    fun phoneRemoved(key: String) {
+        _items.update { items -> items.filter { it.key != PHONE + key } }
+    }
+
+    /** The link ended: the phone's notifications are no longer current. */
+    fun phoneClear() {
+        _items.update { items -> items.filter { !it.fromPhone } }
+    }
+
+    private val phoneIcons = HashMap<String, Bitmap?>()
+
+    private fun fromPhone(n: PhoneNotification): NotifItem {
+        val icon = synchronized(phoneIcons) {
+            phoneIcons.getOrPut(n.packageName) {
+                n.iconPng?.let { png ->
+                    runCatching {
+                        val bytes = Base64.getDecoder().decode(png)
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    }.getOrNull()
+                }
+            }
+        }
+        return NotifItem(
+            key = PHONE + n.key, packageName = n.packageName, appLabel = n.appName,
+            title = n.title, text = n.text, postedAt = n.postedAt, icon = icon, contentIntent = null,
+            fromPhone = true, canReply = n.canReply, canMarkRead = n.canMarkRead, messages = n.messages
+        )
     }
 
     // Label + icon rasterisation per package, done once: this runs on the
@@ -292,5 +355,10 @@ object NotificationFeed {
 
     fun dismissAll() {
         _items.value = emptyList()
+    }
+
+    /** Takes one item off the card (a phone message answered or dismissed from the car). */
+    fun remove(key: String) {
+        _items.update { items -> items.filter { it.key != key } }
     }
 }

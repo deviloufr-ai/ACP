@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Begleiter</string>
+    <string name="service_channel">Verbindung zum Auto</string>
+    <string name="status_off">Freigabe ist aus</string>
+    <string name="status_waiting">Warte auf das Auto im Hotspot</string>
+    <string name="status_connected">Verbunden mit %1$s</string>
+    <string name="status_no_car">Noch kein Auto gekoppelt</string>
+    <string name="share_toggle">Mit dem Auto teilen</string>
+    <string name="setup_title">Einrichtung</string>
+    <string name="step_notifications">Zugriff auf Benachrichtigungen</string>
+    <string name="step_notifications_detail">Damit das Auto deine Nachrichten zeigt und beantwortet.</string>
+    <string name="step_notifications_restricted">Ausgegraut? App-Info öffnen, dann ⋮ → Eingeschränkte Einstellungen zulassen, und erneut versuchen.</string>
+    <string name="step_app_info">App-Info</string>
+    <string name="step_post">Statusbenachrichtigung</string>
+    <string name="step_post_detail">Zeigt, dass die Verbindung zum Auto läuft.</string>
+    <string name="step_battery">Akku-Optimierung</string>
+    <string name="step_battery_detail">Hält die Verbindung auf langen Fahrten aufrecht.</string>
+    <string name="step_hotspot">WLAN-Hotspot</string>
+    <string name="step_hotspot_detail">Einschalten und das Autoradio damit verbinden.</string>
+    <string name="step_open_settings">Öffnen</string>
+    <string name="action_allow">Erlauben</string>
+    <string name="done">Erledigt</string>
+    <string name="cars_title">Gekoppelte Autos</string>
+    <string name="pair_car">Auto koppeln</string>
+    <string name="pair_hint">In Dashwheel Einstellungen → Telefon → Telefon koppeln öffnen und den angezeigten Code scannen.</string>
+    <string name="remove">Entfernen</string>
+    <string name="confirm_title">%1$s erlauben?</string>
+    <string name="confirm_body">Dieses Auto zeigt deine Benachrichtigungen und Nachrichten an und kann in deinem Namen antworten. Es verbindet sich nur über deinen Hotspot.</string>
+    <string name="confirm_allow">Erlauben</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="invalid_code">Das ist kein Dashwheel-Kopplungscode.</string>
+    <string name="remove_title">%1$s entfernen?</string>
+    <string name="remove_body">Das Auto erhält nichts mehr von diesem Telefon. Zum erneuten Koppeln braucht es einen neuen Code.</string>
+    <string name="paired_since">Gekoppelt am %1$s</string>
+</resources>

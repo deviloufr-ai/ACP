@@ -69,11 +69,18 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
+      # The phone companion app ships in the same release, under the name the
+      # launcher's pairing screen links to (and its updater skips).
+      - name: Name companion APK
+        run: cp companion/build/outputs/apk/release/companion-release.apk dashwheel-companion.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: openauto-dash-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            dashwheel-companion.apk
           if-no-files-found: error
 
       # Readable changelog: one section per commit since the previous release,
@@ -103,7 +110,9 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Dashwheel v1.0.${{ github.run_number }}
-          files: app/build/outputs/apk/release/app-release.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            dashwheel-companion.apk
           body_path: ${{ runner.temp }}/release-notes.md
 
       - name: Publish branch pre-release
@@ -113,7 +122,9 @@ jobs:
           tag_name: ${{ github.ref_name }}-v1.0.${{ github.run_number }}
           name: Dashwheel v1.0.${{ github.run_number }} (${{ github.ref_name }})
           prerelease: true
-          files: app/build/outputs/apk/release/app-release.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            dashwheel-companion.apk
           body: |
             Test build of branch `${{ github.ref_name }}` at ${{ github.sha }}.
             Signed with the release key, so it installs over the current version; a later

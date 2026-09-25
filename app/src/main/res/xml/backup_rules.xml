@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 11 and below. Layout and theme are worth restoring; the saved
-     parking coordinates and Bluetooth adapter MACs are not, and should not
+     parking coordinates, Bluetooth adapter MACs and phone pairing secrets are not, and should not
      leave the device. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="parking_spot.xml" />
     <exclude domain="sharedpref" path="obd_prefs.xml" />
     <exclude domain="sharedpref" path="car_bluetooth_mac.xml" />
     <exclude domain="sharedpref" path="mcu_prefs.xml" />
+    <exclude domain="sharedpref" path="phone_link.xml" />
     <exclude domain="file" path="adb" />
 </full-backup-content>

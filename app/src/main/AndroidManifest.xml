@@ -27,6 +27,9 @@
     <!-- Internet for Maps and Media Streaming -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Phone link: finds the phone's hotspot gateway and redials when Wi-Fi changes. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Wake Lock to Keep Screen On -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
@@ -55,6 +58,10 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Dictating a reply to a phone message, when the head unit has a recogniser. -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
     </queries>
 

@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
         inMultiWindow.value = isInMultiWindowMode
         enableImmersiveFullscreen()
         FeedbackStore.load(this)
+        // Dials the paired phone whenever its hotspot is around.
+        PhoneLink.start(this)
 
         setContent {
             // An app window (docked or parked aside) forces the status bar on.

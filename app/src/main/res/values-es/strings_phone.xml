@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_phone">Teléfono</string>
+    <string name="phone_from_phone">Desde tu teléfono</string>
+    <string name="phone_status_connected">Conectado a %1$s</string>
+    <string name="phone_status_connected_detail">Sus notificaciones y mensajes aparecen en el widget Notificaciones.</string>
+    <string name="phone_status_searching">Buscando el teléfono en el Wi-Fi</string>
+    <string name="phone_status_searching_detail">Activa el punto de acceso del teléfono y conecta esta radio; Dashwheel Compañero hace el resto.</string>
+    <string name="phone_status_unpaired">Ningún teléfono vinculado</string>
+    <string name="phone_status_unpaired_detail">Vincula tu teléfono para ver aquí sus mensajes y responderlos.</string>
+    <string name="phone_pair">Vincular un teléfono</string>
+    <string name="phone_pair_detail">Muestra el código para escanear con Dashwheel Compañero</string>
+    <string name="phone_paired_on">Vinculado el %1$s</string>
+    <string name="phone_unnamed">Teléfono</string>
+    <string name="phone_forgotten">Quitado en el teléfono: vuelve a vincularlo</string>
+    <string name="phone_forget">Olvidar</string>
+    <string name="phone_pair_title">Vincular un teléfono</string>
+    <string name="phone_pair_step1">1. Instala Dashwheel Compañero en el teléfono: escanea este código con la cámara.</string>
+    <string name="phone_pair_step2">2. Activa el punto de acceso Wi-Fi del teléfono y conecta esta radio.</string>
+    <string name="phone_pair_step3">3. En la app, toca Vincular un coche y escanea este código.</string>
+    <string name="phone_pair_waiting">Esperando al teléfono…</string>
+    <string name="phone_pair_done">Vinculado con %1$s</string>
+    <string name="phone_done">Hecho</string>
+    <string name="phone_read_aloud">Leer en voz alta</string>
+    <string name="phone_quick_replies">Respuestas rápidas</string>
+    <string name="phone_quick_1">Estoy conduciendo, te respondo luego.</string>
+    <string name="phone_quick_2">Voy de camino.</string>
+    <string name="phone_quick_3">¡Vale, gracias!</string>
+    <string name="phone_dictate">Dictar una respuesta</string>
+    <string name="phone_send">Enviar</string>
+    <string name="phone_sending">Enviando a través del teléfono…</string>
+    <string name="phone_sent">Respuesta enviada</string>
+    <string name="phone_failed">El teléfono no pudo hacerlo: puede que el mensaje ya no exista.</string>
+    <string name="phone_no_link">El teléfono no está conectado.</string>
+    <string name="phone_mark_read">Marcar como leído</string>
+    <string name="phone_clear">Borrar en el teléfono</string>
+</resources>

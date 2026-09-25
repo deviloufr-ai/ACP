@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Compagnon</string>
+    <string name="service_channel">Lien avec la voiture</string>
+    <string name="status_off">Partage désactivé</string>
+    <string name="status_waiting">En attente de la voiture sur votre partage de connexion</string>
+    <string name="status_connected">Connecté à %1$s</string>
+    <string name="status_no_car">Aucune voiture associée</string>
+    <string name="share_toggle">Partager avec la voiture</string>
+    <string name="setup_title">Configuration</string>
+    <string name="step_notifications">Accès aux notifications</string>
+    <string name="step_notifications_detail">Permet à la voiture d\'afficher vos messages et d\'y répondre.</string>
+    <string name="step_notifications_restricted">Option grisée ? Ouvrez Infos de l\'appli, puis ⋮ → Autoriser les paramètres restreints, et réessayez.</string>
+    <string name="step_app_info">Infos de l\'appli</string>
+    <string name="step_post">Notification d\'état</string>
+    <string name="step_post_detail">Indique que le lien avec la voiture est actif.</string>
+    <string name="step_battery">Optimisation de la batterie</string>
+    <string name="step_battery_detail">Garde le lien actif pendant les longs trajets.</string>
+    <string name="step_hotspot">Partage de connexion Wi-Fi</string>
+    <string name="step_hotspot_detail">Activez-le et connectez-y l\'autoradio.</string>
+    <string name="step_open_settings">Ouvrir</string>
+    <string name="action_allow">Autoriser</string>
+    <string name="done">Fait</string>
+    <string name="cars_title">Voitures associées</string>
+    <string name="pair_car">Associer une voiture</string>
+    <string name="pair_hint">Dans Dashwheel, ouvrez Réglages → Téléphone → Associer un téléphone, puis scannez le code affiché.</string>
+    <string name="remove">Retirer</string>
+    <string name="confirm_title">Autoriser %1$s ?</string>
+    <string name="confirm_body">Cette voiture affichera vos notifications et vos messages, et pourra répondre en votre nom. Elle ne se connecte que via votre partage de connexion.</string>
+    <string name="confirm_allow">Autoriser</string>
+    <string name="cancel">Annuler</string>
+    <string name="invalid_code">Ce n\'est pas un code d\'association Dashwheel.</string>
+    <string name="remove_title">Retirer %1$s ?</string>
+    <string name="remove_body">La voiture ne recevra plus rien de ce téléphone. Il faudra un nouveau code pour l\'associer à nouveau.</string>
+    <string name="paired_since">Associée le %1$s</string>
+</resources>

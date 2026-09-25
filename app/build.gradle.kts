@@ -162,6 +162,10 @@ dependencies {
     implementation("com.google.android.filament:gltfio-android:1.71.5")
     implementation("com.google.android.filament:filament-utils-android:1.71.5")
 
+    // Phone link: the protocol shared with the companion app, and the pairing QR code.
+    implementation(project(":link"))
+    implementation("com.google.zxing:core:3.5.3")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // JVM unit tests (app/src/test): grid placement, OBD decoding, directions
