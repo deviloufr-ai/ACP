@@ -114,6 +114,11 @@
     <!-- Moving: edits wait until the car has stopped -->
     <string name="dash_drive_lock_notice">Park to make changes</string>
     <string name="dash_obd_short" translatable="false">OBD</string>
+    <string name="dash_theme_group_recommended">Recommended</string>
+    <string name="dash_theme_group_colours">Themes</string>
+    <string name="dash_theme_group_skins">Universes</string>
+    <string name="dash_theme_night">Night</string>
+    <string name="dash_theme_day">Day</string>
 
     <!-- Theme names and descriptions (the enum names are what gets saved) -->
     <string name="dash_theme_standard">Standard</string>

@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,7 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Speed
@@ -51,7 +49,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,7 +58,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,7 +80,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -124,6 +119,11 @@ internal fun ObdNotConnected(connection: ObdConnectionState, onConnect: () -> Un
         adapter?.let { Text(stringResource(R.string.vehicle_obd_adapter, it), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall) }
     }
     Spacer(Modifier.height(10.dp))
+    // Only the page's first vehicle tile carries the button; the others point at the bar.
+    if (!LocalObdPrompt.current) {
+        if (!connecting) Text(stringResource(R.string.vehicle_obd_connect_from_bar), color = DashColors.Muted, style = MaterialTheme.typography.bodySmall)
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Button(
             onClick = onConnect,
@@ -187,7 +187,7 @@ internal fun ObdCard(
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.vehicle_live), color = DashColors.Good, style = MaterialTheme.typography.labelSmall)
                         }
-                    } else {
+                    } else if (LocalObdPrompt.current) {
                         Button(
                             onClick = onConnect,
                             enabled = connection != ObdConnectionState.CONNECTING,
@@ -778,7 +778,7 @@ internal fun RangeCard(
                 TextButton(onClick = { showFinder = true }) {
                     Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
-                if (!obdConnected) {
+                if (!obdConnected && LocalObdPrompt.current) {
                     TextButton(onClick = onConnect) {
                         Text(stringResource(R.string.vehicle_try_obd_fuel_pid), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                     }

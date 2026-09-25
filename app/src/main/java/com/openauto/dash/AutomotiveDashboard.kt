@@ -8,8 +8,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
@@ -21,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -31,16 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Undo
-import androidx.compose.material.icons.filled.LocalGasStation
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.SensorDoor
-import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -119,15 +107,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var appearance by remember { mutableStateOf(DashThemeStore.loadAppearance(context)) }
     var effects by remember { mutableStateOf(DashThemeStore.loadEffects(context)) }
+    val themeState = ThemeState(
+        mode = themeMode, appearance = appearance, effects = effects,
+        onMode = { themeMode = it; DashThemeStore.save(context, it) },
+        onAppearance = { appearance = it; DashThemeStore.saveAppearance(context, it) },
+        onEffects = { effects = it; DashThemeStore.saveEffects(context, it) }
+    )
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
     var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     val variant = variantOf(layout)
-    var showThemePicker by remember { mutableStateOf(false) }
     var showTemplates by remember { mutableStateOf(false) }
-    var showLanguagePicker by remember { mutableStateOf(false) }
-    var showAiSettings by remember { mutableStateOf(false) }
+    // The Settings screen, on the tab it was opened to; null while closed.
+    var settingsTab by remember { mutableStateOf<SettingsTab?>(null) }
     DashColors.Sync(themeMode, appearance, effects)
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -197,6 +190,17 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
+    // After a swipe, the cross with the new page marked floats up for a moment.
+    var pageNoticeAt by remember { mutableLongStateOf(0L) }
+    var pageNoticeFor by remember { mutableIntStateOf(currentPage) }
+    LaunchedEffect(currentPage) {
+        if (currentPage != pageNoticeFor) {
+            pageNoticeFor = currentPage
+            pageNoticeAt = System.currentTimeMillis()
+            delay(PAGE_NOTICE_MS)
+            pageNoticeAt = 0L
+        }
+    }
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
     var showSplitEnable by remember { mutableStateOf(false) }
@@ -242,10 +246,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     LaunchedEffect(moving) {
         if (moving) {
             editing = false
-            showThemePicker = false
+            settingsTab = null
             showTemplates = false
-            showLanguagePicker = false
-            showAiSettings = false
             showSystemDialog = false
             showAddMenu = false
             showAppPicker = false
@@ -264,7 +266,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // aside. A page swipe, sideways or up/down, must take the pages' windows
     // along at once, but the Maps dock beside the pages does not move with them
     // and stays put.
-    LaunchedEffect(showAllApps) { PipAnchor.steppedAside.value = showAllApps }
+    LaunchedEffect(showAllApps, settingsTab) { PipAnchor.steppedAside.value = showAllApps || settingsTab != null }
     val pageSwiping = pagerState.isScrollInProgress || columnState.isScrollInProgress
     LaunchedEffect(pageSwiping) { PipAnchor.pageSwiping.value = pageSwiping }
 
@@ -633,6 +635,43 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // between the bar and the tiles. So the padding is the bar's bottom edge
     // minus where the content actually starts on the screen, never less than 0.
     var contentTopPx by remember { mutableIntStateOf(0) }
+    // Everything the bar shows and can do, built once: the bar, its menu and
+    // the Settings screen all read the same model.
+    val settingsModel = TopBarModel(
+        clock = clock,
+        versionName = updateManager.currentVersionName,
+        obdConnection = obdConnection,
+        obdData = obdData,
+        editing = editing,
+        layout = layout,
+        onLayout = switchLayout,
+        onApps = { showAllApps = true },
+        onConnectObd = onConnectObd,
+        onSplit = {
+            if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
+            else showSplitEnable = true
+        },
+        onToggleEdit = { if (editing) editing = false else whenParked { editing = true } },
+        onTemplates = { whenParked { showTemplates = true } },
+        onTheme = { whenParked { settingsTab = SettingsTab.LOOK } },
+        onAi = { whenParked { settingsTab = SettingsTab.CAR } },
+        onSystem = { whenParked { showSystemDialog = true } },
+        onLanguage = { whenParked { settingsTab = SettingsTab.LOOK } },
+        onCheckUpdates = checkForUpdates,
+        demo = demoOn,
+        onDemo = { DemoMode.toggle(context) },
+        merged = barForced,
+        page = currentPage,
+        onPage = ::showPage,
+        moving = moving,
+        lockWhileMoving = lockWhileMoving,
+        onLockWhileMoving = {
+            lockWhileMoving = it
+            DriveLockStore.save(context, it)
+        },
+        onSettings = { whenParked { settingsTab = SettingsTab.CAR } }
+    )
+
     val barOverlapPx = if (barForced) (statusBarPx - contentTopPx).coerceAtLeast(0) else 0
     Column(
         modifier = Modifier
@@ -789,6 +828,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
+            } else if (pageNoticeAt > 0L && !editing) {
+                PageNoticeChip(pageNoticeFor, modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
             }
 
             // needs the accessibility service; if it isn't on, tapping prompts to
@@ -811,6 +852,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                         contentDescription = stringResource(R.string.dash_swap_split)
                     )
                 }
+            }
+
+            settingsTab?.let { tab ->
+                SettingsScreen(
+                    m = settingsModel,
+                    theme = themeState,
+                    initialTab = tab,
+                    onClose = { settingsTab = null },
+                    modifier = Modifier.fillMaxSize().padding(10.dp)
+                )
             }
 
             if (showAllApps) {
@@ -900,39 +951,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     }
                 }
         ) {
-        TopBar(
-            clock = clock,
-            versionName = updateManager.currentVersionName,
-            obdConnection = obdConnection,
-            obdData = obdData,
-            editing = editing,
-            layout = layout,
-            onLayout = switchLayout,
-            onApps = { showAllApps = true },
-            onConnectObd = onConnectObd,
-            onSplit = {
-                if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
-                else showSplitEnable = true
-            },
-            onToggleEdit = { if (editing) editing = false else whenParked { editing = true } },
-            onTemplates = { whenParked { showTemplates = true } },
-            onTheme = { whenParked { showThemePicker = true } },
-            onAi = { whenParked { showAiSettings = true } },
-            onSystem = { whenParked { showSystemDialog = true } },
-            onLanguage = { whenParked { showLanguagePicker = true } },
-            onCheckUpdates = checkForUpdates,
-            demo = demoOn,
-            onDemo = { DemoMode.toggle(context) },
-            merged = barForced,
-            page = currentPage,
-            onPage = ::showPage,
-            moving = moving,
-            lockWhileMoving = lockWhileMoving,
-            onLockWhileMoving = {
-                lockWhileMoving = it
-                DriveLockStore.save(context, it)
-            }
-        )
+        TopBar(settingsModel)
 
         // With the status bar up the dots sit in the launcher bar instead.
         if (!barForced) {
@@ -1009,14 +1028,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         )
     }
 
-    if (showAiSettings) {
-        AiSettingsDialog(onDismiss = { showAiSettings = false })
-    }
-
-    if (showLanguagePicker) {
-        LanguagePickerDialog(onDismiss = { showLanguagePicker = false })
-    }
-
     if (showTemplates) {
         DashTemplateDialog(
             screen = templateScreen(variant != ""),
@@ -1026,27 +1037,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 showPage(DashboardStore.CENTER)
             },
             onDismiss = { showTemplates = false }
-        )
-    }
-
-    if (showThemePicker) {
-        DashThemePickerDialog(
-            selected = themeMode,
-            appearance = appearance,
-            effects = effects,
-            onSelect = {
-                themeMode = it
-                DashThemeStore.save(context, it)
-            },
-            onAppearance = {
-                appearance = it
-                DashThemeStore.saveAppearance(context, it)
-            },
-            onEffects = {
-                effects = it
-                DashThemeStore.saveEffects(context, it)
-            },
-            onDismiss = { showThemePicker = false }
         )
     }
 

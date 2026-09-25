@@ -30,39 +30,44 @@ import androidx.compose.ui.unit.dp
 /** Picks the launcher's language; each option is named in its own language. */
 @Composable
 fun LanguagePickerDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val selected = remember { AppLanguage.current(context) }
-    val system = remember { AppLanguage.systemLocale() }
     AlertDialog(
         modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.language_title), color = DashColors.TextPrimary) },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                AppLanguage.entries.forEach { language ->
-                    val name = if (language == AppLanguage.SYSTEM) {
-                        stringResource(
-                            R.string.language_system,
-                            system.getDisplayLanguage(system).replaceFirstChar { it.titlecase(system) }
-                        )
-                    } else {
-                        language.nativeName
-                    }
-                    LanguageOption(name, language == selected) {
-                        onDismiss()
-                        context.findActivity()?.let { AppLanguage.select(it, language) }
-                    }
-                }
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                LanguageChoices(onPicked = onDismiss)
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.language_close), color = DashColors.Accent) }
         }
     )
+}
+
+/** The language options, one row each; picking one restarts the activity in that language. */
+@Composable
+internal fun LanguageChoices(onPicked: () -> Unit = {}) {
+    val context = LocalContext.current
+    val selected = remember { AppLanguage.current(context) }
+    val system = remember { AppLanguage.systemLocale() }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppLanguage.entries.forEach { language ->
+            val name = if (language == AppLanguage.SYSTEM) {
+                stringResource(
+                    R.string.language_system,
+                    system.getDisplayLanguage(system).replaceFirstChar { it.titlecase(system) }
+                )
+            } else {
+                language.nativeName
+            }
+            LanguageOption(name, language == selected) {
+                onPicked()
+                context.findActivity()?.let { AppLanguage.select(it, language) }
+            }
+        }
+    }
 }
 
 @Composable

@@ -33,12 +33,12 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Density
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -97,6 +97,12 @@ internal data class GridPreview(
     val isValid: Boolean
 )
 
+/** True on the one tile of a page that carries the OBD connect button (the rest only show the state). */
+internal val LocalObdPrompt = compositionLocalOf { true }
+
+/** The tiles that used to each offer a connect button; the first one on a page keeps it. */
+private val OBD_PROMPT_KINDS = setOf(BuiltinKind.TELEMETRY, BuiltinKind.OBD_ALL, BuiltinKind.OBD_DTC, BuiltinKind.RANGE)
+
 @Composable
 internal fun DashboardPage(
     pageItems: List<DashboardItem>,
@@ -130,8 +136,15 @@ internal fun DashboardPage(
     val context = LocalContext.current
     val density = LocalDensity.current
 
+    // One connect action per page: the bar's OBD pill always connects, and
+    // only the page's first vehicle tile repeats the offer; the others just
+    // say the link is off (LocalObdPrompt).
+    val promptIndex = remember(pageItems) {
+        pageItems.indexOfFirst { it is DashboardItem.BuiltinWidget && it.kind in OBD_PROMPT_KINDS }
+    }
     // Renders one tile's inner content with all the shared dependencies wired in.
     val tileContent: @Composable (Int, DashboardItem, ((Int, Int) -> Unit)?) -> Unit = { index, item, fit ->
+        CompositionLocalProvider(LocalObdPrompt provides (index == promptIndex)) {
         TileZoom(item.zoom) {
             TileContent(
                 item = item,
@@ -151,6 +164,7 @@ internal fun DashboardPage(
                 onModelTouch = onModelTouch,
                 onFitToWindow = fit
             )
+        }
         }
     }
 

@@ -162,4 +162,9 @@
     <string name="dash_theme_zenith">Zénith</string>
     <string name="dash_theme_zenith_desc">L\'habitacle lounge : gris perle, panneaux blancs, un seul accent bleu profond</string>
     <string name="dash_alert_spoken">%1$s. Arrêtez-vous dès que possible.</string>
+    <string name="dash_theme_group_recommended">Recommandés</string>
+    <string name="dash_theme_group_colours">Thèmes</string>
+    <string name="dash_theme_group_skins">Univers</string>
+    <string name="dash_theme_night">Nuit</string>
+    <string name="dash_theme_day">Jour</string>
 </resources>

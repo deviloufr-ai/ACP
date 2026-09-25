@@ -12,4 +12,5 @@
     <string name="settings_drive_lock_detail">Modifiche, impostazioni e griglia delle app attendono che l'auto sia ferma</string>
     <string name="settings_tap_sound">Suono dei tocchi</string>
     <string name="settings_tap_sound_detail">Un breve bip a ogni tocco, per uno schermo che non vibra</string>
+    <string name="settings_section_driving">Guida</string>
 </resources>

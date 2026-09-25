@@ -233,6 +233,15 @@ Contrastes texte principal / page vérifiés : Mistral nuit 17:1, Mistral jour 1
 | 15 | Alertes hiérarchisées : ambre tant que la lecture est hors plage, rouge pour le critique, annoncé une fois par la voix (si activée dans IA) et conservé sur la barre jusqu'à un appui, même après retour à la normale | `VehicleAlerts.kt` (`AlertCenter`), `TopBar.kt` (`VehicleAlerts`) |
 | §4 | Thèmes **Mistral** et **Zénith** ajoutés comme thèmes couleur (nuit + jour chacun) | `DashTheme.kt`, `DashThemePickerDialog.kt`, chaînes EN/FR/IT |
 
+**P2 livré** (même branche) :
+
+| # | Proposition | Où dans le code |
+|---|---|---|
+| 6 | Croix des pages conservée, avec une aide visuelle : après un swipe, une puce flotte 0,9 s avec la croix des sept pages (la page affichée remplie en accent) et son nom ; les points des pages au-dessus / en dessous passent de 5×11 à 7×14 dp | `TopBar.kt` (`PageNoticeChip`, `PageCrossGlyph`), `AutomotiveDashboard.kt` |
+| 7 | Écran Réglages plein écran en deux colonnes : Voiture / Apparence / Conduite / Avancé à gauche, le contenu à droite ; apparence, effets, thèmes, langue et conduite se règlent sur place, les fiches profondes (profil voiture, IA, entretien, lectures, logo de démarrage) s'ouvrent à un niveau au lieu de quatre ; bouton Fermer 56 dp | `SettingsScreen.kt`, `LanguagePickerDialog.kt` (`LanguageChoices`), `TopBar.kt` (menu → `onSettings`) |
+| 8 | Sélecteur de thème à aperçu réel : trois colonnes de mini-dashboards dessinés avec la palette de chaque thème, moitié nuit / moitié jour (barre, tuile vitesse, tuile de trois jauges), en trois groupes Recommandés (Standard, Mistral, Zénith) / Thèmes / Univers | `ThemePane.kt` (remplace `DashThemePickerDialog.kt`) |
+| 9 | Une seule action de connexion OBD : la pastille de la barre connecte toujours ; sur une page, seule la première tuile véhicule garde le bouton Connecter, les autres affichent « OBD non connecté » et renvoient à la barre | `DashboardGrid.kt` (`LocalObdPrompt`), `TelemetryTiles.kt` (`ObdNotConnected`, `ObdCard`, `RangeCard`) |
+
 Reste de P3 : le niveau « thème+ » (14 : police, formes et style de barre par thème, barre « combiné » de Mistral) est un chantier plus long, non commencé. L'historique des alertes dans la tuile Codes défaut (fin du 15) n'est pas fait.
 
 Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe de syntaxe Kotlin a été faite ; la CI Lint & Test doit valider la branche.
@@ -241,5 +250,5 @@ Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe
 
 1. Semaine 1 : échelle typographique, cibles 48 dp, indicateur OBD, curseur d'effets (P1 1/3/4/5). **Fait.**
 2. Semaine 2 : tokens forme/couleur, jour/nuit robuste, retour d'action, palettes Mistral et Zénith en thèmes couleur (P3 10/11/12/13 + section 4). **Fait**, avec les alertes hiérarchisées (15).
-3. Semaine 3–4 : écran Réglages, sélecteur de thème avec aperçu réel (P2 7/8). Le mode « en mouvement » (P1 2) est **fait**.
-4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14), refonte de la croix de pages (P2 6).
+3. Semaine 3–4 : écran Réglages, sélecteur de thème avec aperçu réel (P2 7/8). **Fait**, avec l'aide visuelle de la croix (6) et la connexion OBD unique (9).
+4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14). La croix de pages est conservée par choix.
