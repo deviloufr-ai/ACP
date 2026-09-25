@@ -143,9 +143,20 @@ class SecureChannelTest {
 
     @Test
     fun unknownMessageTypesAreSkipped() {
-        assertNull(LinkCodec.decode("""{"t":"call_state","state":"RINGING"}""".encodeToByteArray()))
+        assertNull(LinkCodec.decode("""{"t":"sms_thread","id":3}""".encodeToByteArray()))
+        // A newer phase this side doesn't know drops the message rather than the link.
+        assertNull(LinkCodec.decode("""{"t":"call","phase":"ON_HOLD"}""".encodeToByteArray()))
         assertNull(LinkCodec.decode("not json".encodeToByteArray()))
         // Unknown fields on a known message are ignored too.
         assertEquals(NotificationRemoved("k"), LinkCodec.decode("""{"t":"notif_removed","key":"k","extra":1}""".encodeToByteArray()))
+    }
+
+    @Test
+    fun callMessagesRoundTrip() {
+        val ringing = CallState(CallState.Phase.RINGING, number = "+33 6 12 34 56 78", name = "Alice", canControl = true)
+        assertEquals(ringing, LinkCodec.decode(LinkCodec.encode(ringing)))
+        assertEquals(CallState(CallState.Phase.IDLE), LinkCodec.decode("""{"t":"call","phase":"IDLE"}""".encodeToByteArray()))
+        val answer = CallCommand(CallCommand.Action.ANSWER)
+        assertEquals(answer, LinkCodec.decode(LinkCodec.encode(answer)))
     }
 }

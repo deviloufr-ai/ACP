@@ -34,4 +34,14 @@
     <string name="phone_no_link">Il telefono non è connesso.</string>
     <string name="phone_mark_read">Segna come letto</string>
     <string name="phone_clear">Cancella sul telefono</string>
+    <string name="phone_pair_qr_download">Scarica l\'app</string>
+    <string name="phone_pair_qr_pair">Codice di associazione: scansionalo nell\'app</string>
+    <string name="phone_call_incoming">Chiamata in arrivo</string>
+    <string name="phone_call_unknown">Numero sconosciuto</string>
+    <string name="phone_call_answer">Rispondi</string>
+    <string name="phone_call_decline">Rifiuta</string>
+    <string name="phone_call_hang_up">Riaggancia</string>
+    <string name="phone_call_no_control">Per rispondere da qui, consenti Chiamate in Dashwheel Companion.</string>
+    <string name="phone_overlay">Mostra le chiamate sopra le altre app</string>
+    <string name="phone_overlay_detail">Così una chiamata compare anche con un\'altra app a tutto schermo.</string>
 </resources>

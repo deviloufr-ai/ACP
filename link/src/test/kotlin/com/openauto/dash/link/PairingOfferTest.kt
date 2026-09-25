@@ -26,4 +26,15 @@ class PairingOfferTest {
         assertNull(PairingOffer.parse(good.replace(Regex("&n=[^&]+"), "")))
         assertNull(PairingOffer.parse("not a uri at all %%"))
     }
+
+    @Test
+    fun survivesAwkwardHeadUnitNames() {
+        listOf("rk3566_r", "Jean's car *2*", "Autoradio (T3L) 10\"", "車載ユニット 🚗", "a+b=c&d?e#f/g", "  spaced  ").forEach { name ->
+            repeat(50) {
+                val offer = PairingOffer.create(name)
+                val back = PairingOffer.parse(offer.toUri())
+                assertEquals(name, offer.unitName.trim(), back?.unitName)
+            }
+        }
+    }
 }

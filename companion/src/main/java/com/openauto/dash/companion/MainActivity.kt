@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -82,6 +83,9 @@ import java.util.Date
  * allowing, and which cars are paired. Pairing is scanning the code the
  * launcher shows (or opening its dashwheel://pair link), then confirming.
  */
+/** The companion's own download, which the launcher's pairing screen also shows as a QR code. */
+private const val COMPANION_APK = "dashwheel-companion.apk"
+
 class MainActivity : ComponentActivity() {
     /** Bumped on every resume so the checklist re-reads what the driver just allowed. */
     private var resumes by mutableIntStateOf(0)
@@ -99,7 +103,7 @@ class MainActivity : ComponentActivity() {
                     offer = offer,
                     onScanned = { text ->
                         val parsed = PairingOffer.parse(text)
-                        if (parsed == null) Toast.makeText(this, R.string.invalid_code, Toast.LENGTH_LONG).show()
+                        if (parsed == null) explainWrongCode(text)
                         offer = parsed
                     },
                     onOfferDone = { offer = null }
@@ -119,11 +123,21 @@ class MainActivity : ComponentActivity() {
         LinkService.sync(this)
     }
 
+    /** The launcher shows two codes; the download one is the easy one to scan by mistake. */
+    private fun explainWrongCode(text: String) {
+        val message = if (text.contains(COMPANION_APK, ignoreCase = true)) {
+            getString(R.string.scanned_download_code)
+        } else {
+            getString(R.string.invalid_code_read, text.trim().take(60))
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun takeOffer(intent: Intent?) {
         val data = intent?.data ?: return
         if (intent.action != Intent.ACTION_VIEW) return
         offer = PairingOffer.parse(data.toString())
-        if (offer == null) Toast.makeText(this, R.string.invalid_code, Toast.LENGTH_LONG).show()
+        if (offer == null) explainWrongCode(data.toString())
         // Handled once: a rotation must not ask again.
         setIntent(Intent(this, MainActivity::class.java))
     }
@@ -333,6 +347,10 @@ private fun SetupSteps(resumes: Int) {
         context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
     }
     val askPost = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { postGranted = it }
+    var callsGranted by remember(resumes) { mutableStateOf(CALL_PERMISSIONS.all { granted(context, it) }) }
+    val askCalls = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        callsGranted = CALL_PERMISSIONS.all { granted(context, it) }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Step(
@@ -357,6 +375,12 @@ private fun SetupSteps(resumes: Int) {
             ) {
                 askPost.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        Step(
+            Icons.Filled.Call, stringResource(R.string.step_calls),
+            stringResource(R.string.step_calls_detail), done = callsGranted
+        ) {
+            askCalls.launch(CALL_PERMISSIONS)
         }
         Step(
             Icons.Filled.BatteryFull, stringResource(R.string.step_battery),
@@ -395,8 +419,18 @@ private fun Step(icon: ImageVector, title: String, detail: String, done: Boolean
 }
 
 private fun canPostNotifications(context: Context): Boolean =
-    Build.VERSION.SDK_INT < 33 ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    Build.VERSION.SDK_INT < 33 || granted(context, Manifest.permission.POST_NOTIFICATIONS)
+
+/** Who is calling (state, number, contact) and answering / hanging up from the car. */
+private val CALL_PERMISSIONS = arrayOf(
+    Manifest.permission.READ_PHONE_STATE,
+    Manifest.permission.READ_CALL_LOG,
+    Manifest.permission.READ_CONTACTS,
+    Manifest.permission.ANSWER_PHONE_CALLS
+)
+
+private fun granted(context: Context, permission: String): Boolean =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 private fun open(context: Context, intent: Intent): Boolean = try {
     context.startActivity(intent)

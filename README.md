@@ -14,7 +14,7 @@ The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can h
 - **System split-screen**: docks the dashboard and launches another app (or a saved pair) beside it via an Accessibility Service, with a swap button/overlay to flip which app is on which side
 - **System AppWidget hosting**: embed real Android widgets (including ones like Google Maps' that Android normally hides from non-launcher pickers) inside dashboard tiles
 - **12 visual themes**: Auto, Original, Aurora Glass, Neon Dark, Clean Light, Dark Glass, Sporty, Floating, plus four whole-design skins (Orbit, Cockpit, Horizon, Tape Deck) with their own backgrounds, top bars and widgets — switchable live from the theme picker
-- **Phone link (Dashwheel Companion)**: with the phone sharing its connection over Wi-Fi, a small companion app on the phone sends its notifications and messages to the Notifications widget; read them aloud and answer with a quick reply or by voice (WhatsApp, Messages, Signal… through each app's own reply action, like Android Auto). Paired once by scanning a QR code, end-to-end encrypted
+- **Phone link (Dashwheel Companion)**: with the phone sharing its connection over Wi-Fi, a small companion app on the phone sends its notifications and messages to the Notifications widget; read them aloud and answer with a quick reply or by voice (WhatsApp, Messages, Signal… through each app's own reply action, like Android Auto); incoming calls with caller name and photo, answer / decline / hang up from the screen. Paired once by scanning a QR code, end-to-end encrypted
 - **Media Integration**: reads the active system media session (title, artist, artwork, playback) and exposes transport controls
 - **In-App Auto-Update**: checks GitHub Releases on launch, tracks the installed version, and downloads/installs newer APKs
 - **Optional priv-app install**: self-installs to `/system/priv-app` (via `su`/Magisk or the head unit's internal root ADB) to pick up `BIND_APPWIDGET` privileges and the split-swap overlay — opt-in only, not required
@@ -61,6 +61,7 @@ D:/android car launcher/
 │       │   ├── SplitLauncher.kt / SplitAccessibilityService.kt # System split-screen + pane swap
 │       │   ├── AdbInstaller.kt / SystemInstaller.kt # Optional priv-app self-install (Magisk / root ADB)
 │       │   ├── PhoneLink.kt / PhoneLinkUi.kt       # Phone link: dials the companion app on the hotspot, reply sheet, pairing QR
+│       │   ├── PhoneCallOverlay.kt                # The phone's calls: caller card with answer / decline / hang up, over any app
 │       │   ├── UpdateManager.kt                   # GitHub Releases auto-update
 │       │   └── AutoDriveReceiver.kt               # Auto-launch on Bluetooth connect (see Troubleshooting)
 │       └── res/
@@ -159,7 +160,7 @@ The driver's phone shares its connection with the head unit over Wi-Fi. **Dashwh
 - A foreground service listens on TCP port 47810. The launcher's `PhoneLink` finds the phone at the Wi-Fi network's default gateway (Android 11+ randomises the hotspot subnet), dials it, and redials whenever the network changes.
 - **Pairing**: Settings → Phone → *Pair a phone* shows a QR code (`dashwheel://pair?…`) carrying a random 32-byte secret. The phone scans it and the driver confirms. Every connection then proves both sides hold that secret (HMAC over the handshake), agrees fresh keys with ephemeral ECDH P-256, and encrypts every frame with AES-256-GCM (`link/`, unit-tested). Either side can revoke the pairing.
 - On the head unit, the phone's notifications join the Notifications widget. Tapping one opens a sheet to read it aloud, answer with a quick reply or dictation, mark it read or clear it on the phone.
-- Call audio and call control are not part of this yet: calls still go through the head unit's own Bluetooth hands-free.
+- **Calls**: the companion follows the phone's call state (`PHONE_STATE`), finds the caller in the contacts, and answers or ends the call through `TelecomManager` when asked (`PhoneCalls.kt`). On the head unit, `PhoneCallOverlay` shows a card with the caller, *Answer* and *Decline*, then a slim bar with the duration and *Hang up*. It is its own overlay window, so it appears over any full-screen app (needs "display over other apps", granted through the head unit's shell when possible, otherwise from Settings → Phone); without it, a popup over the launcher. The call's **sound stays on the head unit's Bluetooth hands-free**: pair the phone with the head unit's Bluetooth as well.
 
 On Android 13+, a sideloaded app's Notification access is a "restricted setting": on the phone, open App info → ⋮ → *Allow restricted settings* first. The companion app shows this step.
 

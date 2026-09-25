@@ -62,8 +62,9 @@ class MainActivity : ComponentActivity() {
         FeedbackStore.load(this)
         // Rebuilt after a language change: the fault codes' advice follows it.
         AiMechanic.followLanguage(this)
-        // Dials the paired phone whenever its hotspot is around.
+        // Dials the paired phone whenever its hotspot is around, and shows its calls.
         PhoneLink.start(this)
+        PhoneCallOverlay.start(this)
         // A new version runs JIT-only until it is compiled ahead of time.
         CompileAfterUpdate.schedule(this)
 

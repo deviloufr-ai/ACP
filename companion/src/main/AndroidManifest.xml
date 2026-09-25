@@ -18,6 +18,14 @@
          long drives with the phone in a pocket. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Calls on the car's screen: who is calling (state, number from the call
+         log permission, name and photo from the contacts), answer and hang up. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
     <!-- The pairing secret lives in this app's preferences: never in a backup,
          nor in a device-to-device transfer (which allowBackup alone doesn't stop on Android 12+). -->
     <application
