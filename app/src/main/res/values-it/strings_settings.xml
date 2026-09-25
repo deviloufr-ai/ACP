@@ -9,7 +9,7 @@
     <string name="settings_ai_detail">Spiega i codici di errore e legge gli avvisi</string>
     <string name="settings_system_detail">Il vero Google Maps nel riquadro Maps. Serve il root.</string>
     <string name="settings_drive_lock">Modifiche solo da fermo</string>
-    <string name="settings_drive_lock_detail">Modifiche, impostazioni e griglia delle app attendono che l'auto sia ferma</string>
+    <string name="settings_drive_lock_detail">Modifiche, impostazioni e griglia delle app attendono che l\'auto sia ferma</string>
     <string name="settings_tap_sound">Suono dei tocchi</string>
     <string name="settings_tap_sound_detail">Un breve bip a ogni tocco, per uno schermo che non vibra</string>
     <string name="settings_section_driving">Guida</string>
