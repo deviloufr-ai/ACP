@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VolumeDown
+import androidx.compose.material.icons.filled.VolumeMute
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -215,6 +218,42 @@ private fun DrivingPane(m: TopBarModel) {
         Icons.Filled.VolumeUp, stringResource(R.string.settings_tap_sound),
         stringResource(R.string.settings_tap_sound_detail), FeedbackStore.sound
     ) { FeedbackStore.save(context, it) }
+    SpeedVolumeSetting()
+}
+
+/** Volume follows speed (see [SpeedVolume]): off or one of three strengths. */
+@Composable
+private fun SpeedVolumeSetting() {
+    val context = LocalContext.current
+    val level by SpeedVolume.level.collectAsState()
+    Spacer(Modifier.height(12.dp))
+    Text(
+        stringResource(R.string.speed_volume_title),
+        color = DashColors.TextPrimary,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.padding(start = 12.dp)
+    )
+    Text(
+        stringResource(R.string.speed_volume_detail),
+        color = DashColors.TextSecondary,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
+    )
+    SegmentedSwitch(
+        options = SpeedVolumeLevel.entries,
+        chosen = level,
+        icon = { option ->
+            when (option) {
+                SpeedVolumeLevel.OFF -> Icons.Filled.VolumeOff
+                SpeedVolumeLevel.LOW -> Icons.Filled.VolumeMute
+                SpeedVolumeLevel.MEDIUM -> Icons.Filled.VolumeDown
+                SpeedVolumeLevel.HIGH -> Icons.Filled.VolumeUp
+            }
+        },
+        title = { stringResource(it.titleRes) },
+        onChoose = { SpeedVolume.save(context, it) }
+    )
+    SwitchHint(stringResource(level.hintRes))
 }
 
 @Composable

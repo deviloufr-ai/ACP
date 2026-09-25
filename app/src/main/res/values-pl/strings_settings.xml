@@ -13,4 +13,15 @@
     <string name="settings_drive_lock_detail">Edycja, ustawienia i siatka aplikacji czekają, aż samochód się zatrzyma</string>
     <string name="settings_tap_sound">Dźwięk dotknięcia</string>
     <string name="settings_tap_sound_detail">Krótki sygnał przy każdym dotknięciu, dla ekranów bez wibracji</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Głośność zależna od prędkości</string>
+    <string name="speed_volume_detail">Zagłusza szum drogi: głośniej przy przyspieszaniu, ciszej przy zwalnianiu. Twoje własne zmiany głośności zostają.</string>
+    <string name="speed_volume_off">Wył.</string>
+    <string name="speed_volume_low">Słabo</string>
+    <string name="speed_volume_medium">Średnio</string>
+    <string name="speed_volume_high">Mocno</string>
+    <string name="speed_volume_off_hint">Głośność zostaje na ustawionym poziomie</string>
+    <string name="speed_volume_low_hint">Trochę głośniej od 40 km/h, najwyżej 2 stopnie więcej na autostradzie</string>
+    <string name="speed_volume_medium_hint">Głośniej od 40 km/h, do 4 stopni więcej na autostradzie</string>
+    <string name="speed_volume_high_hint">Dużo głośniej od 40 km/h, do 6 stopni więcej na autostradzie</string>
 </resources>

@@ -13,4 +13,15 @@
     <string name="settings_drive_lock_detail">La edición, los ajustes y la cuadrícula de apps esperan a que el coche se detenga</string>
     <string name="settings_tap_sound">Sonido al tocar</string>
     <string name="settings_tap_sound_detail">Un pitido corto en cada toque, para pantallas que no vibran</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Volumen según la velocidad</string>
+    <string name="speed_volume_detail">Compensa el ruido de la carretera: más alto al acelerar, más bajo al frenar. Tus propios cambios de volumen se mantienen.</string>
+    <string name="speed_volume_off">No</string>
+    <string name="speed_volume_low">Bajo</string>
+    <string name="speed_volume_medium">Medio</string>
+    <string name="speed_volume_high">Alto</string>
+    <string name="speed_volume_off_hint">El volumen se queda donde lo dejaste</string>
+    <string name="speed_volume_low_hint">Un poco más alto desde 40 km/h, como mucho 2 pasos más en autopista</string>
+    <string name="speed_volume_medium_hint">Más alto desde 40 km/h, hasta 4 pasos más en autopista</string>
+    <string name="speed_volume_high_hint">Mucho más alto desde 40 km/h, hasta 6 pasos más en autopista</string>
 </resources>

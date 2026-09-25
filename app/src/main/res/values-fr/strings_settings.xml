@@ -13,4 +13,15 @@
     <string name="settings_tap_sound">Son des appuis</string>
     <string name="settings_tap_sound_detail">Un bip court à chaque appui, pour un écran qui ne vibre pas</string>
     <string name="settings_section_driving">Conduite</string>
+    <!-- Volume follows speed (SpeedVolume.kt), Settings → Driving -->
+    <string name="speed_volume_title">Volume selon la vitesse</string>
+    <string name="speed_volume_detail">Couvre le bruit de la route : plus fort en accélérant, moins fort en ralentissant. Vos propres réglages du volume sont gardés.</string>
+    <string name="speed_volume_off">Désactivé</string>
+    <string name="speed_volume_low">Faible</string>
+    <string name="speed_volume_medium">Moyen</string>
+    <string name="speed_volume_high">Fort</string>
+    <string name="speed_volume_off_hint">Le volume reste là où vous l\'avez réglé</string>
+    <string name="speed_volume_low_hint">Un peu plus fort dès 40 km/h, 2 crans de plus au maximum sur autoroute</string>
+    <string name="speed_volume_medium_hint">Plus fort dès 40 km/h, jusqu\'à 4 crans de plus sur autoroute</string>
+    <string name="speed_volume_high_hint">Bien plus fort dès 40 km/h, jusqu\'à 6 crans de plus sur autoroute</string>
 </resources>
