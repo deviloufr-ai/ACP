@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -50,18 +51,23 @@ class SplitAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
+        SecondScreenController.serviceFiltersKeys = serviceInfo?.let {
+            it.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS != 0
+        } == true
         Log.d(TAG, "connected")
         updateOverlayForSplit()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         instance = null
+        SecondScreenController.serviceFiltersKeys = false
         hideSwapOverlay()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         instance = null
+        SecondScreenController.serviceFiltersKeys = false
         hideSwapOverlay()
         super.onDestroy()
     }
@@ -81,6 +87,11 @@ class SplitAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    // Keys reach this service before any app: the second screen's page keys
+    // work whatever is in front. Every key it doesn't claim goes on as usual.
+    override fun onKeyEvent(event: KeyEvent): Boolean =
+        runCatching { SecondScreenController.onKey(event) }.getOrDefault(false)
 
     /**
      * The on-screen bounds of the two split panes, ordered left-to-right, or null

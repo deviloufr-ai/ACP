@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="split_a11y_description">Permite ao Dashwheel abrir apps em ecrã dividido ao lado do painel, com a mesma divisão do sistema usada no ecrã de apps recentes. Nenhum conteúdo do ecrã é lido.</string>
+    <string name="split_a11y_description">Permite ao Dashwheel abrir apps em ecrã dividido ao lado do painel, com a mesma divisão do sistema usada no ecrã de apps recentes. Nenhum conteúdo do ecrã é lido. Também vê as teclas premidas, para mudar a página do segundo ecrã com os botões do volante escolhidos; as outras teclas passam sem alteração.</string>
 
     <!-- Language picker; each language is listed under its own name. -->
     <string name="language_menu">Idioma</string>

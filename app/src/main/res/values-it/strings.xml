@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="split_a11y_description">Consente a Dashwheel di aprire le app a schermo diviso accanto al cruscotto, con la stessa divisione di sistema usata dalla schermata delle app recenti. Nessun contenuto dello schermo viene letto.</string>
+    <string name="split_a11y_description">Consente a Dashwheel di aprire le app a schermo diviso accanto al cruscotto, con la stessa divisione di sistema usata dalla schermata delle app recenti. Nessun contenuto dello schermo viene letto. Vede anche i tasti premuti, per cambiare la pagina del secondo schermo con i tasti al volante scelti; gli altri tasti passano senza modifiche.</string>
 
     <!-- Language picker; each language is listed under its own name. -->
     <string name="language_menu">Lingua</string>

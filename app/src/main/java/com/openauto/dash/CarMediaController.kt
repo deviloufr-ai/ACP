@@ -85,6 +85,24 @@ class CarMediaController(private val context: Context) {
         }
     }
 
+    private var users = 0
+
+    /**
+     * One more user of the [shared] controller (the dashboard, the second
+     * screen): observes sessions while any is there.
+     */
+    @Synchronized
+    fun acquire() {
+        users++
+        start()
+    }
+
+    @Synchronized
+    fun release() {
+        if (users > 0) users--
+        if (users == 0) stop()
+    }
+
     /** Stops observing and releases callbacks. */
     fun stop() {
         runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
@@ -251,6 +269,17 @@ class CarMediaController(private val context: Context) {
     }
 
     companion object {
+        @Volatile private var sharedInstance: CarMediaController? = null
+
+        /**
+         * The controller the dashboard and the second screen share, on the
+         * application context: one session listener, one idea of what plays.
+         */
+        fun shared(context: Context): CarMediaController =
+            sharedInstance ?: synchronized(this) {
+                sharedInstance ?: CarMediaController(context.applicationContext).also { sharedInstance = it }
+            }
+
         /** How long a player opened by [playPause] has to publish its session. */
         private const val PENDING_PLAY_MS = 15_000L
         /** [pendingPlayPackage] when the system's default player was opened: the first session plays. */

@@ -230,8 +230,14 @@ object PipAnchor {
     /** Package -> when its loan to a split ends (ms). */
     private val lentUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
-    /** True while [packageName] belongs to a split launch and the tiles must leave its windows alone. */
+    /**
+     * True while [packageName] belongs to a split launch, or is shown on the
+     * second screen (SecondScreenController), and the tiles must leave its
+     * windows alone.
+     */
     fun isLent(packageName: String): Boolean {
+        // On the second screen's display: neither parked, placed, reopened nor closed as a stray.
+        if (packageName in SecondScreenController.heldPackages.value) return true
         val until = lentUntil[packageName] ?: return false
         if (System.currentTimeMillis() < until) return true
         lentUntil.remove(packageName, until)

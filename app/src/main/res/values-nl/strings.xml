@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="split_a11y_description">Laat Dashwheel apps in gesplitst scherm naast het dashboard openen, met dezelfde systeemsplitsing als het scherm met recente apps. Er wordt geen scherminhoud gelezen.</string>
+    <string name="split_a11y_description">Laat Dashwheel apps in gesplitst scherm naast het dashboard openen, met dezelfde systeemsplitsing als het scherm met recente apps. Er wordt geen scherminhoud gelezen. Ook ziet het ingedrukte toetsen, om met de gekozen stuurwieltoetsen de pagina van het tweede scherm om te slaan; andere toetsen gaan ongewijzigd door.</string>
 
     <!-- Language picker; each language is listed under its own name. -->
     <string name="language_menu">Taal</string>
