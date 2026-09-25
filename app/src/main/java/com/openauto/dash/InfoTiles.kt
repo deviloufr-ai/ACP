@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -530,12 +531,17 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
 
 // --- Notifications ----------------------------------------------------------------
 
-/** Recent notifications from other apps; tap one to open it. */
+/**
+ * Recent notifications from other apps; tap one to open it. The driver's
+ * phone's ones (over [PhoneLink]) open a sheet to hear and answer them.
+ */
 @Composable
 internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val items by NotificationFeed.items.collectAsState()
+    val phoneConnected = PhoneLink.state.collectAsState().value is PhoneLinkState.Connected
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    var opened by remember { mutableStateOf<NotifItem?>(null) }
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
@@ -547,7 +553,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                 }
             }
             when {
-                !hasAccess -> NeedsAccess(
+                !hasAccess && !phoneConnected && items.none { it.fromPhone } -> NeedsAccess(
                     Icons.Filled.Notifications, stringResource(R.string.info_notif_needs_access),
                     stringResource(R.string.info_grant_access)
                 ) {
@@ -563,7 +569,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(DashShape.Small)
                                 .itemFill(if (DashColors.Glass) DashColors.haze(0.06f) else DashColors.CardHi, DashShape.Small)
-                                .clickable { runCatching { n.contentIntent?.send() } }
+                                .clickable { if (n.fromPhone) opened = n else runCatching { n.contentIntent?.send() } }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -580,13 +586,29 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
                             Spacer(Modifier.width(8.dp))
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(timeFmt.format(Date(n.postedAt)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-                                Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (n.fromPhone) {
+                                        Icon(
+                                            Icons.Filled.PhoneAndroid, contentDescription = stringResource(R.string.phone_from_phone),
+                                            tint = DashColors.Accent, modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(Modifier.width(3.dp))
+                                    }
+                                    Text(n.appLabel, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    opened?.let { item ->
+        // Follows the live item (new lines of the conversation); closes once it's gone from the phone.
+        val live = items.firstOrNull { it.key == item.key }
+        LaunchedEffect(live == null) { if (live == null) opened = null }
+        if (live != null) PhoneMessageSheet(live, onDismiss = { opened = null })
     }
 }
 

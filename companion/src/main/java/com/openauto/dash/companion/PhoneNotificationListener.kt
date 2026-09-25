@@ -1,0 +1,160 @@
+package com.openauto.dash.companion
+
+import android.app.Notification
+import android.app.RemoteInput
+import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Bundle
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.openauto.dash.link.ConversationLine
+import com.openauto.dash.link.NotificationPosted
+import com.openauto.dash.link.NotificationRemoved
+import com.openauto.dash.link.NotificationSync
+import com.openauto.dash.link.PhoneNotification
+import java.io.ByteArrayOutputStream
+import java.util.Base64
+
+/**
+ * Reads the phone's notifications (the driver grants Notification access) and
+ * forwards them over the link. Replies go back through each app's own reply
+ * action, the same one Android Auto and smartwatches use, so WhatsApp,
+ * Messages, Signal, Telegram... all work without anything app-specific.
+ */
+class PhoneNotificationListener : NotificationListenerService() {
+
+    override fun onListenerConnected() {
+        instance = this
+        LinkServer.send(NotificationSync(snapshot()))
+    }
+
+    override fun onListenerDisconnected() {
+        if (instance === this) instance = null
+    }
+
+    override fun onDestroy() {
+        if (instance === this) instance = null
+        super.onDestroy()
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        val item = toPhoneNotification(sbn) ?: return
+        LinkServer.send(NotificationPosted(item))
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        LinkServer.send(NotificationRemoved(sbn.key))
+    }
+
+    /** Answers the conversation [key] with [text]. False when it can't be answered. */
+    fun reply(key: String, text: String): Boolean {
+        val n = find(key)?.notification ?: return false
+        val action = replyAction(n) ?: return false
+        val inputs = action.remoteInputs ?: return false
+        val results = Bundle().apply {
+            inputs.filter { it.allowFreeFormInput }.forEach { putCharSequence(it.resultKey, text) }
+        }
+        val intent = Intent()
+        RemoteInput.addResultsToIntent(inputs, intent, results)
+        RemoteInput.setResultsSource(intent, RemoteInput.SOURCE_FREE_FORM_INPUT)
+        action.actionIntent.send(this, 0, intent)
+        return true
+    }
+
+    fun markRead(key: String): Boolean {
+        val n = find(key)?.notification ?: return false
+        val action = allActions(n).firstOrNull { it.semanticAction == Notification.Action.SEMANTIC_ACTION_MARK_AS_READ } ?: return false
+        action.actionIntent.send()
+        return true
+    }
+
+    fun dismiss(key: String): Boolean {
+        find(key) ?: return false
+        cancelNotification(key)
+        return true
+    }
+
+    private fun find(key: String): StatusBarNotification? =
+        runCatching { getActiveNotifications(arrayOf(key)) }.getOrNull()?.firstOrNull()
+
+    private fun toPhoneNotification(sbn: StatusBarNotification): PhoneNotification? {
+        if (sbn.packageName == packageName) return null
+        val n = sbn.notification ?: return null
+        if (sbn.isOngoing || n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return null
+        // WhatsApp & co post one summary over the per-chat notifications: the chats are enough.
+        if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return null
+        if (n.category == Notification.CATEGORY_TRANSPORT || n.category == Notification.CATEGORY_PROGRESS) return null
+
+        val extras = n.extras
+        val style = runCatching { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n) }.getOrNull()
+        val me = style?.user?.name?.toString().orEmpty()
+        val lines = style?.messages.orEmpty().takeLast(MAX_LINES).mapNotNull { m ->
+            val text = m.text?.toString()?.trim().orEmpty()
+            if (text.isEmpty()) null
+            else ConversationLine(m.person?.name?.toString() ?: me, text, m.timestamp)
+        }
+        val title = (style?.conversationTitle ?: extras.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
+        val text = lines.lastOrNull()?.text
+            ?: (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString()?.trim().orEmpty()
+        if (title.isEmpty() && text.isEmpty()) return null
+
+        val (appName, icon) = appIdentity(sbn.packageName)
+        return PhoneNotification(
+            key = sbn.key,
+            packageName = sbn.packageName,
+            appName = appName,
+            title = title,
+            text = text.take(MAX_TEXT),
+            postedAt = sbn.postTime,
+            messages = lines.map { it.copy(text = it.text.take(MAX_TEXT)) },
+            canReply = replyAction(n) != null,
+            canMarkRead = allActions(n).any { it.semanticAction == Notification.Action.SEMANTIC_ACTION_MARK_AS_READ },
+            iconPng = icon
+        )
+    }
+
+    private val identityCache = HashMap<String, Pair<String, String?>>()
+
+    /** App name + icon (small PNG, base64), once per package. */
+    @Synchronized
+    private fun appIdentity(pkg: String): Pair<String, String?> = identityCache.getOrPut(pkg) {
+        val pm = packageManager
+        val label = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+        val icon = runCatching {
+            val bytes = ByteArrayOutputStream()
+            pm.getApplicationIcon(pkg).toBitmap(ICON_PX, ICON_PX).compress(Bitmap.CompressFormat.PNG, 100, bytes)
+            Base64.getEncoder().encodeToString(bytes.toByteArray())
+        }.getOrNull()
+        label to icon
+    }
+
+    companion object {
+        private const val MAX_LINES = 6
+        private const val MAX_TEXT = 1_000
+        private const val ICON_PX = 64
+
+        /** The bound listener, null until the driver grants Notification access. */
+        @Volatile
+        var instance: PhoneNotificationListener? = null
+            private set
+
+        /** Every notification worth showing in the car, newest first. */
+        fun snapshot(): List<PhoneNotification> {
+            val listener = instance ?: return emptyList()
+            val active = runCatching { listener.activeNotifications }.getOrNull() ?: return emptyList()
+            return active.sortedByDescending { it.postTime }.mapNotNull { listener.toPhoneNotification(it) }
+        }
+
+        /** The action that takes a typed answer, as Android Auto finds it. */
+        private fun replyAction(n: Notification): Notification.Action? {
+            val actions = allActions(n).filter { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true }
+            return actions.firstOrNull { it.semanticAction == Notification.Action.SEMANTIC_ACTION_REPLY } ?: actions.firstOrNull()
+        }
+
+        /** The notification's own actions, then the ones some apps only give smartwatches. */
+        private fun allActions(n: Notification): List<Notification.Action> =
+            n.actions.orEmpty().toList() + Notification.WearableExtender(n).actions
+    }
+}

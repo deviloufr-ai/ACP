@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Languages the companion is translated into; Android 13+ lists them in its per-app language setting. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="fr" />
+    <locale android:name="de" />
+    <locale android:name="es" />
+    <locale android:name="it" />
+    <locale android:name="pt" />
+    <locale android:name="nl" />
+    <locale android:name="pl" />
+</locale-config>

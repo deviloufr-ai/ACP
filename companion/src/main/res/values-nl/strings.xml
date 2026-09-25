@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Companion</string>
+    <string name="service_channel">Koppeling met de auto</string>
+    <string name="status_off">Delen staat uit</string>
+    <string name="status_waiting">Wachten op de auto via je hotspot</string>
+    <string name="status_connected">Verbonden met %1$s</string>
+    <string name="status_no_car">Nog geen auto gekoppeld</string>
+    <string name="share_toggle">Delen met de auto</string>
+    <string name="setup_title">Instellen</string>
+    <string name="step_notifications">Toegang tot meldingen</string>
+    <string name="step_notifications_detail">Laat de auto je berichten tonen en beantwoorden.</string>
+    <string name="step_notifications_restricted">Grijs? Open App-info, dan ⋮ → Beperkte instellingen toestaan, en probeer opnieuw.</string>
+    <string name="step_app_info">App-info</string>
+    <string name="step_post">Statusmelding</string>
+    <string name="step_post_detail">Toont dat de koppeling met de auto actief is.</string>
+    <string name="step_battery">Batterijoptimalisatie</string>
+    <string name="step_battery_detail">Houdt de koppeling actief tijdens lange ritten.</string>
+    <string name="step_hotspot">Wifi-hotspot</string>
+    <string name="step_hotspot_detail">Zet hem aan en verbind de autoradio ermee.</string>
+    <string name="step_open_settings">Openen</string>
+    <string name="action_allow">Toestaan</string>
+    <string name="done">Klaar</string>
+    <string name="cars_title">Gekoppelde auto\'s</string>
+    <string name="pair_car">Auto koppelen</string>
+    <string name="pair_hint">Open in Dashwheel Instellingen → Telefoon → Telefoon koppelen en scan de getoonde code.</string>
+    <string name="remove">Verwijderen</string>
+    <string name="confirm_title">%1$s toestaan?</string>
+    <string name="confirm_body">Deze auto toont je meldingen en berichten en kan namens jou antwoorden. Hij verbindt alleen via je hotspot.</string>
+    <string name="confirm_allow">Toestaan</string>
+    <string name="cancel">Annuleren</string>
+    <string name="invalid_code">Dit is geen Dashwheel-koppelcode.</string>
+    <string name="remove_title">%1$s verwijderen?</string>
+    <string name="remove_body">De auto ontvangt niets meer van deze telefoon. Opnieuw koppelen vraagt een nieuwe code.</string>
+    <string name="paired_since">Gekoppeld op %1$s</string>
+</resources>

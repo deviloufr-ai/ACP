@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Companheiro</string>
+    <string name="service_channel">Ligação ao carro</string>
+    <string name="status_off">Partilha desativada</string>
+    <string name="status_waiting">À espera do carro no seu hotspot</string>
+    <string name="status_connected">Ligado a %1$s</string>
+    <string name="status_no_car">Nenhum carro associado</string>
+    <string name="share_toggle">Partilhar com o carro</string>
+    <string name="setup_title">Configuração</string>
+    <string name="step_notifications">Acesso às notificações</string>
+    <string name="step_notifications_detail">Permite ao carro mostrar as suas mensagens e responder.</string>
+    <string name="step_notifications_restricted">Opção a cinzento? Abra Informações da app, depois ⋮ → Permitir definições restritas, e tente de novo.</string>
+    <string name="step_app_info">Info da app</string>
+    <string name="step_post">Notificação de estado</string>
+    <string name="step_post_detail">Indica que a ligação ao carro está ativa.</string>
+    <string name="step_battery">Otimização da bateria</string>
+    <string name="step_battery_detail">Mantém a ligação ativa em viagens longas.</string>
+    <string name="step_hotspot">Hotspot Wi-Fi</string>
+    <string name="step_hotspot_detail">Ative-o e ligue o autorrádio.</string>
+    <string name="step_open_settings">Abrir</string>
+    <string name="action_allow">Permitir</string>
+    <string name="done">Feito</string>
+    <string name="cars_title">Carros associados</string>
+    <string name="pair_car">Associar um carro</string>
+    <string name="pair_hint">No Dashwheel, abra Definições → Telefone → Associar um telefone e leia o código apresentado.</string>
+    <string name="remove">Remover</string>
+    <string name="confirm_title">Permitir %1$s?</string>
+    <string name="confirm_body">Este carro vai mostrar as suas notificações e mensagens e pode responder em seu nome. Só se liga através do seu hotspot.</string>
+    <string name="confirm_allow">Permitir</string>
+    <string name="cancel">Cancelar</string>
+    <string name="invalid_code">Não é um código de associação Dashwheel.</string>
+    <string name="remove_title">Remover %1$s?</string>
+    <string name="remove_body">O carro deixa de receber o que quer que seja deste telefone. Para voltar a associar é preciso um novo código.</string>
+    <string name="paired_since">Associado em %1$s</string>
+</resources>

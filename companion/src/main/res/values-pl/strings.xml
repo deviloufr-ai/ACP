@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Companion</string>
+    <string name="service_channel">Połączenie z autem</string>
+    <string name="status_off">Udostępnianie wyłączone</string>
+    <string name="status_waiting">Czekam na auto w hotspocie</string>
+    <string name="status_connected">Połączono z %1$s</string>
+    <string name="status_no_car">Brak sparowanego auta</string>
+    <string name="share_toggle">Udostępniaj autu</string>
+    <string name="setup_title">Konfiguracja</string>
+    <string name="step_notifications">Dostęp do powiadomień</string>
+    <string name="step_notifications_detail">Pozwala autu pokazywać wiadomości i na nie odpowiadać.</string>
+    <string name="step_notifications_restricted">Wyszarzone? Otwórz Informacje o aplikacji, potem ⋮ → Zezwól na ustawienia z ograniczonym dostępem, i spróbuj ponownie.</string>
+    <string name="step_app_info">Informacje</string>
+    <string name="step_post">Powiadomienie o stanie</string>
+    <string name="step_post_detail">Pokazuje, że połączenie z autem działa.</string>
+    <string name="step_battery">Optymalizacja baterii</string>
+    <string name="step_battery_detail">Utrzymuje połączenie podczas długiej jazdy.</string>
+    <string name="step_hotspot">Hotspot Wi-Fi</string>
+    <string name="step_hotspot_detail">Włącz go i połącz z nim radio samochodowe.</string>
+    <string name="step_open_settings">Otwórz</string>
+    <string name="action_allow">Zezwól</string>
+    <string name="done">Gotowe</string>
+    <string name="cars_title">Sparowane auta</string>
+    <string name="pair_car">Sparuj auto</string>
+    <string name="pair_hint">W Dashwheel otwórz Ustawienia → Telefon → Sparuj telefon, a potem zeskanuj wyświetlony kod.</string>
+    <string name="remove">Usuń</string>
+    <string name="confirm_title">Zezwolić na %1$s?</string>
+    <string name="confirm_body">To auto będzie pokazywać powiadomienia i wiadomości oraz może odpowiadać w Twoim imieniu. Łączy się tylko przez Twój hotspot.</string>
+    <string name="confirm_allow">Zezwól</string>
+    <string name="cancel">Anuluj</string>
+    <string name="invalid_code">To nie jest kod parowania Dashwheel.</string>
+    <string name="remove_title">Usunąć %1$s?</string>
+    <string name="remove_body">Auto nie będzie już nic otrzymywać z tego telefonu. Ponowne parowanie wymaga nowego kodu.</string>
+    <string name="paired_since">Sparowano %1$s</string>
+</resources>

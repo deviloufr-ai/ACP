@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Companion</string>
+    <string name="service_channel">Collegamento con l\'auto</string>
+    <string name="status_off">Condivisione disattivata</string>
+    <string name="status_waiting">In attesa dell\'auto sull\'hotspot</string>
+    <string name="status_connected">Connesso a %1$s</string>
+    <string name="status_no_car">Nessuna auto associata</string>
+    <string name="share_toggle">Condividi con l\'auto</string>
+    <string name="setup_title">Configurazione</string>
+    <string name="step_notifications">Accesso alle notifiche</string>
+    <string name="step_notifications_detail">Permette all\'auto di mostrare i messaggi e rispondere.</string>
+    <string name="step_notifications_restricted">Opzione disattivata? Apri Info app, poi ⋮ → Consenti impostazioni con limitazioni, e riprova.</string>
+    <string name="step_app_info">Info app</string>
+    <string name="step_post">Notifica di stato</string>
+    <string name="step_post_detail">Indica che il collegamento con l\'auto è attivo.</string>
+    <string name="step_battery">Ottimizzazione batteria</string>
+    <string name="step_battery_detail">Mantiene attivo il collegamento nei viaggi lunghi.</string>
+    <string name="step_hotspot">Hotspot Wi-Fi</string>
+    <string name="step_hotspot_detail">Attivalo e collega l\'autoradio.</string>
+    <string name="step_open_settings">Apri</string>
+    <string name="action_allow">Consenti</string>
+    <string name="done">Fatto</string>
+    <string name="cars_title">Auto associate</string>
+    <string name="pair_car">Associa un\'auto</string>
+    <string name="pair_hint">In Dashwheel apri Impostazioni → Telefono → Associa un telefono, poi scansiona il codice mostrato.</string>
+    <string name="remove">Rimuovi</string>
+    <string name="confirm_title">Consentire %1$s?</string>
+    <string name="confirm_body">Quest\'auto mostrerà notifiche e messaggi e potrà rispondere a tuo nome. Si collega solo tramite il tuo hotspot.</string>
+    <string name="confirm_allow">Consenti</string>
+    <string name="cancel">Annulla</string>
+    <string name="invalid_code">Non è un codice di associazione Dashwheel.</string>
+    <string name="remove_title">Rimuovere %1$s?</string>
+    <string name="remove_body">L\'auto non riceverà più nulla da questo telefono. Per associarla di nuovo serve un nuovo codice.</string>
+    <string name="paired_since">Associata il %1$s</string>
+</resources>

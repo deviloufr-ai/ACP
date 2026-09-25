@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dashwheel Companion</string>
+    <string name="service_channel">Car link</string>
+    <string name="status_off">Sharing is off</string>
+    <string name="status_waiting">Waiting for the car on your hotspot</string>
+    <string name="status_connected">Connected to %1$s</string>
+    <string name="status_no_car">No car paired yet</string>
+    <string name="share_toggle">Share with the car</string>
+    <string name="setup_title">Setup</string>
+    <string name="step_notifications">Notification access</string>
+    <string name="step_notifications_detail">Lets the car show your messages and reply to them.</string>
+    <string name="step_notifications_restricted">Greyed out? Open App info, then ⋮ → Allow restricted settings, and try again.</string>
+    <string name="step_app_info">App info</string>
+    <string name="step_post">Status notification</string>
+    <string name="step_post_detail">Shows that the link with the car is running.</string>
+    <string name="step_battery">Battery optimisation</string>
+    <string name="step_battery_detail">Keeps the link alive during long drives.</string>
+    <string name="step_hotspot">Wi-Fi hotspot</string>
+    <string name="step_hotspot_detail">Turn it on and connect the head unit to it.</string>
+    <string name="step_open_settings">Open</string>
+    <string name="action_allow">Allow</string>
+    <string name="done">Done</string>
+    <string name="cars_title">Paired cars</string>
+    <string name="pair_car">Pair a car</string>
+    <string name="pair_hint">In Dashwheel, open Settings → Phone → Pair a phone, then scan the code it shows.</string>
+    <string name="remove">Remove</string>
+    <string name="confirm_title">Allow %1$s?</string>
+    <string name="confirm_body">This car will show your notifications and messages, and can reply on your behalf. It only connects over your hotspot.</string>
+    <string name="confirm_allow">Allow</string>
+    <string name="cancel">Cancel</string>
+    <string name="invalid_code">This is not a Dashwheel pairing code.</string>
+    <string name="remove_title">Remove %1$s?</string>
+    <string name="remove_body">The car will no longer receive anything from this phone. Pairing again needs a new code.</string>
+    <string name="paired_since">Paired on %1$s</string>
+</resources>
