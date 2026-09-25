@@ -191,17 +191,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
-    // After a swipe, the cross with the new page marked floats up for a moment.
-    var pageNoticeAt by remember { mutableLongStateOf(0L) }
-    var pageNoticeFor by remember { mutableIntStateOf(currentPage) }
-    LaunchedEffect(currentPage) {
-        if (currentPage != pageNoticeFor) {
-            pageNoticeFor = currentPage
-            pageNoticeAt = System.currentTimeMillis()
-            delay(PAGE_NOTICE_MS)
-            pageNoticeAt = 0L
-        }
-    }
     var showAllApps by remember { mutableStateOf(false) }
     var showSplitPicker by remember { mutableStateOf(false) }
     var showSplitEnable by remember { mutableStateOf(false) }
@@ -839,9 +828,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             }
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
-            } else if (pageNoticeAt > 0L && !editing) {
-                PageNoticeChip(pageNoticeFor, modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
             }
+
+            // The floating cross of pages sits in a bottom corner on the pages'
+            // side, clear of a docked map and of a parked window's cover.
+            val coverUp by ParkedCover.showing.collectAsState()
+            val crossAtEnd = dockSide == Alignment.Start
+            PageCrossWidget(
+                current = currentPage,
+                onSelect = ::showPage,
+                modifier = Modifier
+                    .align(if (crossAtEnd) Alignment.BottomEnd else Alignment.BottomStart)
+                    .padding(
+                        start = 8.dp,
+                        end = if (crossAtEnd && coverUp) (ParkedCover.WIDTH_DP + 8).dp else 8.dp,
+                        bottom = 8.dp
+                    )
+            )
 
             // needs the accessibility service; if it isn't on, tapping prompts to
             // enable it instead of silently doing nothing.
@@ -964,10 +967,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         ) {
         TopBar(settingsModel)
 
-        // With the status bar up the dots sit in the launcher bar instead.
-        if (!barForced) {
-            PageDots(current = currentPage, onSelect = ::showPage)
-        }
         }
     }
 

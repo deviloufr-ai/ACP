@@ -12,7 +12,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,7 +70,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -82,7 +80,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -113,11 +110,7 @@ internal class TopBarModel(
     /** Demo mode is running: the menu offers to stop it. */
     val demo: Boolean,
     val onDemo: () -> Unit,
-    /**
-     * The head unit's status bar is up and already shows the time: the bar puts
-     * the page dots ([BarPageDots]) where its clock was, so no row of dots is
-     * needed under it.
-     */
+    /** The head unit's status bar is up (an app window is docked) and already shows the time. */
     val merged: Boolean = false,
     val page: Int = 0,
     val onPage: (Int) -> Unit = {},
@@ -212,10 +205,8 @@ internal fun StandardTopBar(m: TopBarModel) {
             // own central display, and moves the clock to the right; without a
             // speed source it is the plain bar again.
             val speed = if (DashColors.BarStyle == DashBarStyle.CLUSTER) rememberSpeedKmh(m.obdData, m.obdConnection) else null
-            val cluster = speed != null && !m.merged
-            if (m.merged) {
-                BarPageDots(m)
-            } else if (cluster) {
+            val cluster = speed != null
+            if (cluster) {
                 ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
             } else {
                 BarClock(m.clock)
@@ -764,135 +755,66 @@ internal fun EditBar(
     }
 }
 
+/**
+ * Where a skin's bar used to put the page dots while the status bar showed the
+ * time. The page now shows in the floating cross ([PageCrossWidget]), so the
+ * bar leaves that spot empty rather than double the clock.
+ */
 @Composable
-internal fun PageDots(current: Int, onSelect: (Int) -> Unit) {
-    PageDotRow(current, onSelect, Modifier.fillMaxWidth().padding(vertical = 2.dp))
-}
-
-/** The page dots inside a bar, in the clock's place while the head unit's status bar shows the time. */
-@Composable
-internal fun BarPageDots(m: TopBarModel) {
-    PageDotRow(m.page, m.onPage, Modifier)
+internal fun BarPageDots(@Suppress("UNUSED_PARAMETER") m: TopBarModel) {
+    Spacer(Modifier.width(1.dp))
 }
 
 /**
- * The dashboards drawn as the cross they form: the row of pages swiped
- * sideways, with the middle dot's column of smaller dots for the pages above
- * and below it.
+ * The seven dashboards as the cross they form, floating over a corner of the
+ * pages: the one on screen filled with the accent, the rest hollow. It takes
+ * no room in the layout; a tap on a cell goes to that page.
  */
 @Composable
-private fun PageDotRow(current: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        DashboardStore.ROW.forEach { page ->
-            if (page == DashboardStore.CENTER) {
-                // The column is one tap area, 48 dp wide, and the nearest dot
-                // wins: the small dots are too close together to aim at.
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.pointerInput(onSelect) {
-                        detectTapGestures { tap ->
-                            val row = (tap.y * DashboardStore.COLUMN.size / size.height).toInt()
-                            onSelect(DashboardStore.COLUMN[row.coerceIn(0, DashboardStore.COLUMN.size - 1)])
-                        }
-                    }
-                ) {
-                    DashboardStore.COLUMN.forEach { p ->
-                        if (p == DashboardStore.CENTER) {
-                            PageDot(p == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 2.dp))
-                        } else {
-                            // Tall enough to read as "a page up / down", not a speck.
-                            PageDot(p == current, width = 7.dp, height = 14.dp, PaddingValues(horizontal = 20.5.dp, vertical = 1.dp))
-                        }
-                    }
-                }
-            } else {
-                // 48 x 48 dp to tap, whatever the dot's size.
-                PageDot(page == current, width = 22.dp, height = 8.dp, PaddingValues(horizontal = 13.dp, vertical = 20.dp)) { onSelect(page) }
-            }
-        }
-    }
-}
-
-/**
- * One page dot: [width] x [height] is its stretched "you are here" shape, the
- * smaller side its round one. [touch] widens the tap area around the dot;
- * without [onClick] the dot is drawn only, and something around it takes the tap.
- */
-@Composable
-private fun PageDot(selected: Boolean, width: Dp, height: Dp, touch: PaddingValues, onClick: (() -> Unit)? = null) {
-    val round = minOf(width, height)
-    Box(
-        modifier = Modifier
-            .then(
-                if (onClick != null) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-                else Modifier
-            )
-            .padding(touch)
-            .size(width = if (selected) width else round, height = if (selected) height else round)
-            .clip(CircleShape)
-            .background(if (selected) DashColors.AccentBrush else SolidColor(DashColors.CardHi))
-    )
-}
-
-/**
- * Floats over the pages for a moment after a swipe: the cross of dashboards
- * with the one now on screen filled in, and its name. The cross itself is the
- * map; the chip only says where on it the swipe landed.
- */
-@Composable
-internal fun PageNoticeChip(page: Int, modifier: Modifier = Modifier) {
-    val shape = DashShape.Pill
-    Row(
-        modifier = modifier
-            .clip(shape)
-            .background(DashColors.Card.copy(alpha = 1f))
-            .border(1.dp, DashColors.Line, shape)
-            .padding(start = 14.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PageCrossGlyph(page)
-        Spacer(Modifier.width(12.dp))
-        Text(
-            stringResource(DashboardStore.nameRes(page)),
-            color = DashColors.TextPrimary,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1
-        )
-    }
-}
-
-/** The seven dashboards as the cross they form, [current] filled with the accent, the rest hollow. */
-@Composable
-private fun PageCrossGlyph(current: Int) {
+internal fun PageCrossWidget(current: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val cell = 12.dp
+    val gap = 3.dp
+    val inset = 7.dp
     val accent = DashColors.Accent
     val ink = DashColors.TextSecondary
-    // 3 columns and 5 rows of 8 dp cells with 3 dp gaps.
-    Canvas(modifier = Modifier.size(width = 30.dp, height = 52.dp)) {
-        val cell = 8.dp.toPx()
-        val gap = 3.dp.toPx()
-        val step = cell + gap
-        val r = CornerRadius(2.dp.toPx())
-        // Column x, row y of each page in the cross: the row is y = 2, the column x = 1.
-        fun draw(page: Int, col: Int, row: Int) {
-            val topLeft = Offset(col * step, row * step)
-            if (page == current) {
-                drawRoundRect(accent, topLeft, Size(cell, cell), r)
-            } else {
-                drawRoundRect(ink, topLeft, Size(cell, cell), r, style = Stroke(1.5.dp.toPx()))
+    val tap = rememberTapFeedback()
+    val label = stringResource(DashboardStore.nameRes(current))
+    val fill = DashColors.Card.let { if (it.alpha < 1f) it else it.copy(alpha = 0.82f) }
+    Box(
+        modifier = modifier
+            .clip(DashShape.Small)
+            .background(fill)
+            .border(1.dp, DashColors.Line, DashShape.Small)
+            .semantics { contentDescription = label }
+            .pointerInput(onSelect) {
+                detectTapGestures { pos ->
+                    // The nearest cell wins: a tap beside the column lands on the row.
+                    val step = (cell + gap).toPx()
+                    val pad = inset.toPx()
+                    val col = ((pos.x - pad) / step).toInt().coerceIn(0, DashboardStore.ROW.lastIndex)
+                    val row = ((pos.y - pad) / step).toInt().coerceIn(0, DashboardStore.COLUMN.lastIndex)
+                    val page = if (col == DashboardStore.ROW.indexOf(DashboardStore.CENTER)) DashboardStore.COLUMN[row] else DashboardStore.ROW[col]
+                    tap()
+                    onSelect(page)
+                }
             }
+            .padding(inset)
+    ) {
+        Canvas(modifier = Modifier.size(width = cell * 3 + gap * 2, height = cell * 5 + gap * 4)) {
+            val c = cell.toPx()
+            val step = (cell + gap).toPx()
+            val r = CornerRadius(3.dp.toPx())
+            fun draw(page: Int, col: Int, row: Int) {
+                val topLeft = Offset(col * step, row * step)
+                if (page == current) drawRoundRect(accent, topLeft, Size(c, c), r)
+                else drawRoundRect(ink, topLeft, Size(c, c), r, style = Stroke(1.5.dp.toPx()))
+            }
+            val centreCol = DashboardStore.ROW.indexOf(DashboardStore.CENTER)
+            DashboardStore.COLUMN.forEachIndexed { row, page -> draw(page, centreCol, row) }
+            DashboardStore.ROW.forEachIndexed { col, page -> if (page != DashboardStore.CENTER) draw(page, col, DashboardStore.COLUMN_HOME) }
         }
-        DashboardStore.COLUMN.forEachIndexed { row, page -> draw(page, 1, row) }
-        DashboardStore.ROW.forEachIndexed { col, page -> if (page != DashboardStore.CENTER) draw(page, col, DashboardStore.COLUMN_HOME) }
     }
 }
-
-/** How long [PageNoticeChip] stays up after a swipe. */
-internal const val PAGE_NOTICE_MS = 900L
 
 /**
  * The update strip above the bottom bar. By itself it only appears for an
