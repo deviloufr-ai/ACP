@@ -465,6 +465,7 @@ object PipAnchor {
                         lastReopenAt[packageName] = now
                         val bounds = android.graphics.Rect(rect.left, rect.top, rect.right, rect.bottom)
                         Log.i(TAG, "opening $packageName at $rect (attempt ${step.attempt})")
+                        openedByTile(packageName)
                         SplitLauncher.launchFreeform(context, packageName, bounds)
                     }
                     else -> Unit
@@ -506,6 +507,7 @@ object PipAnchor {
                     continue
                 }
                 val keep = step as DockPolicy.Step.Keep
+                if (keep.docked) fullscreenReturns.remove(packageName)
                 if (win.mode == "freeform") {
                     noteFreeform(packageName, true)
                     setDashboardFocusable(context, false)
@@ -535,6 +537,8 @@ object PipAnchor {
                     // raise it, after placing it so the window raised is one on
                     // the tile, not a sliver at the edge of the screen.
                     lastRaiseAt[packageName] = now
+                    // Raising can turn the window fullscreen on this head unit.
+                    openedByTile(packageName)
                     Log.i(TAG, "raising $packageName above the dashboard")
                     if (bringToFront(context, win.taskId)) DockShell.forgetListing()
                     else lastResult = listOfNotNull(lastResult.takeIf { place != null }, "failed: could not raise ${win.packageName} (task ${win.taskId})").joinToString(" \u00b7 ")
@@ -567,6 +571,7 @@ object PipAnchor {
         val out = runGuarded { DockShell.shell(context, "am force-stop $packageName") }
             .getOrElse { "failed: ${it.message}" }
         Log.i(TAG, "stopped $packageName before docking it: ${out.trim().ifEmpty { "ok" }}")
+        openedByTile(packageName)
         unpark(context, packageName)
         noteFreeform(packageName, false)
         lastReopenAt.remove(packageName) // open ours straight away
@@ -750,10 +755,63 @@ object PipAnchor {
             if (!isLent(packageName)) {
                 val win = runCatching { findFloatingWindow(context, packageName) }.getOrNull()
                 if (win?.mode == "freeform") park(context, win, "another app is in front")
+                // The other app may be this one, fullscreen instead of in its window.
+                sendBackIfFullscreen(context, packageName)
             }
             DockShell.release()
         }
     }
+
+    /** When the tile last opened, raised or stopped each app itself (ms). */
+    private val ownLaunchAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Times each app was sent back from fullscreen since it last docked. */
+    private val fullscreenReturns = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /** When the dashboard itself was last touched (ms). */
+    @Volatile private var lastTouchAt = 0L
+
+    /** The dashboard was touched: an app opening right after may be the user's doing. */
+    fun noteUserTouch() {
+        lastTouchAt = System.currentTimeMillis()
+    }
+
+    /** The tile is opening (or raising) [packageName] itself, to show it in its window. */
+    fun openedByTile(packageName: String) {
+        ownLaunchAt[packageName] = System.currentTimeMillis()
+    }
+
+    /**
+     * The tile's own launch can come up fullscreen instead of in its window,
+     * after a reboot above all, and the dashboard then stays covered by Maps
+     * until Back is pressed. So when the dashboard is covered right after the
+     * tile opened the app, and the app is what covers it, Back is pressed for
+     * the user: the app leaves the screen, the dashboard comes back, and the
+     * tile opens it in its window again. See [DockPolicy.sendBackFromFullscreen]
+     * for when it is left alone.
+     */
+    private suspend fun sendBackIfFullscreen(context: Context, packageName: String) {
+        repeat(FULLSCREEN_CHECKS) { check ->
+            if (check > 0) delay(FULLSCREEN_CHECK_MS)
+            val now = System.currentTimeMillis()
+            val returns = fullscreenReturns[packageName] ?: 0
+            if (!DockPolicy.sendBackFromFullscreen(autoOpen(context, packageName), ownLaunchAt[packageName] ?: 0L, lastTouchAt, returns, now)) return
+            val listing = runGuarded { DockShell.listStacks(context) }.getOrNull() ?: return
+            val full = WindowListing.fullscreenInFront(listing, packageName, context.packageName) ?: return@repeat
+            fullscreenReturns[packageName] = returns + 1
+            val out = runGuarded { DockShell.shell(context, "input keyevent $KEYCODE_BACK") }
+                .fold({ it.trim().ifEmpty { "ok" } }, { "failed: ${it.message}" })
+            Log.i(TAG, "$packageName came up fullscreen (task ${full.taskId}) instead of in its window; pressed Back: $out")
+            return
+        }
+    }
+
+    /** The listing may not show the app in front yet when the dashboard stops: looked at a few times. */
+    private const val FULLSCREEN_CHECKS = 3
+    private const val FULLSCREEN_CHECK_MS = 700L
+
+    /** `KeyEvent.KEYCODE_BACK`, for `input keyevent`. */
+    private const val KEYCODE_BACK = 4
 
     /**
      * Clears the dashboard of every managed window whose app is not in [onPage].

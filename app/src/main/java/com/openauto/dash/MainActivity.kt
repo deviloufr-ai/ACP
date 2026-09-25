@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -83,6 +84,13 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
             homePressed.value = System.currentTimeMillis()
         }
+    }
+
+    // A tap on the dashboard may open an app fullscreen on purpose: the Maps
+    // tile must not take that for its own launch gone wrong (PipAnchor).
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) PipAnchor.noteUserTouch()
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {

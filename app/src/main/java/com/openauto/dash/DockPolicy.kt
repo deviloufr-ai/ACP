@@ -32,6 +32,29 @@ object DockPolicy {
     /** Tries to bring a window back from the hidden display before that display is given up on. */
     const val MAX_UNHIDE_ATTEMPTS = 3
 
+    /** How long after the tile itself opened (or raised) an app its coming up fullscreen is taken for that launch going wrong. */
+    const val FULLSCREEN_GRACE_MS = 20_000L
+
+    /** Times the tile sends a fullscreen app back into its window before leaving it be (reset once it docks). */
+    const val MAX_FULLSCREEN_RETURNS = 2
+
+    /** A tap on the dashboard this shortly before an app covered it is taken for the user opening that app. */
+    const val TAP_OPENS_APP_MS = 3_000L
+
+    /**
+     * The app the tile keeps open covers the whole screen. It is sent back into
+     * its window only when the tile's own launch or raise put it there: that
+     * happened within [FULLSCREEN_GRACE_MS] ([ownLaunchAt], 0 if never), the
+     * dashboard was not tapped since, just before ([lastTouchAt]: that may well
+     * be the user opening the app fullscreen), and it has not been sent back
+     * [MAX_FULLSCREEN_RETURNS] times already.
+     */
+    fun sendBackFromFullscreen(autoOpen: Boolean, ownLaunchAt: Long, lastTouchAt: Long, returns: Int, now: Long): Boolean {
+        val userTapped = lastTouchAt >= ownLaunchAt && now - lastTouchAt <= TAP_OPENS_APP_MS
+        return autoOpen && ownLaunchAt > 0L && now - ownLaunchAt <= FULLSCREEN_GRACE_MS &&
+            !userTapped && returns < MAX_FULLSCREEN_RETURNS
+    }
+
     /** What the loop remembers between polls for one app. */
     data class Memory(
         val hadWindow: Boolean = false,
