@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
@@ -108,6 +109,9 @@ class MainActivity : ComponentActivity() {
 
     // Steering-wheel keys chosen to turn the second screen's page (when the
     // accessibility service isn't already seeing every key first).
+    // Activity.dispatchKeyEvent is public API; lint only trips over the
+    // @RestrictTo that androidx-core's ComponentActivity puts on its override.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (!SecondScreenController.serviceFiltersKeys && SecondScreenController.onKey(event)) return true
         return super.dispatchKeyEvent(event)
