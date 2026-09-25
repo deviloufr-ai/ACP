@@ -117,6 +117,15 @@ class AiMechanicTest {
     }
 
     @Test
+    fun overheatingFollowsTheEnginesOwnTemperature() {
+        val w = LiveWatch()
+        var t = 0L
+        fun sample(c: Int) = w.check(ObdData(rpm = 900, coolantTempC = c, voltage = 14.0), t, hotC = 105).also { t += 500 }
+        assertNull(sample(112)) // normal for an engine that runs at 105 °C
+        assertEquals(LiveWatch.Alert.OVERHEAT, sample(125))
+    }
+
+    @Test
     fun notChargingNeedsTwoMinutesOfLowVoltageWhileRunning() {
         val w = LiveWatch()
         var t = 0L
@@ -215,6 +224,20 @@ class AiMechanicTest {
         } finally {
             Locale.setDefault(saved)
         }
+    }
+
+    @Test
+    fun promptFollowsTheDriversCarAndCurrencyAndChecksAgainstTheTable() {
+        val prompt = MechanicPrompt.build(
+            listOf("P0300", "P1352"), "Renault Clio IV 1.5 dCi 90 (diesel, 90 hp)", AiLanguage.ENGLISH, null,
+            references = mapOf("P0300" to "Random/multiple cylinder misfire"), currency = "CHF"
+        )
+        assertTrue(prompt.contains("Renault Clio IV 1.5 dCi 90"))
+        assertFalse(prompt.contains("Citroën"))
+        assertTrue(prompt.contains("P0300 = Random/multiple cylinder misfire"))
+        assertFalse(prompt.contains("P1352 ="))
+        assertTrue(prompt.contains("currency (CHF)"))
+        assertTrue(prompt.contains("say so plainly"))
     }
 
     @Test

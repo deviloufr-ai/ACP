@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Mécanicien IA</string>
-    <string name="ai_explanation">Quand l\'adaptateur se connecte, Dashwheel recherche les codes défaut. Un nouveau code est expliqué par Gemini et lu à voix haute. Seuls les codes, les mesures moteur et le modèle sont envoyés.</string>
+    <string name="ai_explanation">Quand l\'adaptateur se connecte, Dashwheel recherche les codes défaut. Un nouveau code est expliqué par Gemini et lu à voix haute. Envoyés à Google : les codes, les mesures moteur et le modèle, et votre voix quand vous posez une question à l\'oral.</string>
     <string name="ai_activation_code">Code d\'activation</string>
     <string name="ai_activation_hint">Déverrouille la clé intégrée</string>
     <string name="ai_activate">Activer</string>
@@ -37,9 +37,14 @@
     <string name="ai_say_weak_battery">La batterie est faible : %1$s volts moteur coupé. Faites-la tester bientôt.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">Vous pouvez rouler</string>
+    <string name="ai_verdict_ok">Aucun signe d\'urgence</string>
     <string name="ai_verdict_soon">À faire vérifier bientôt</string>
     <string name="ai_verdict_stop">Arrêtez-vous</string>
+    <string name="ai_rules_stop">Ce défaut peut abîmer le moteur : arrêtez-vous dès que possible et faites-le contrôler avant de repartir.</string>
+    <string name="ai_rules_soon">Ce défaut demande un garage d\'ici quelques jours : roulez en douceur d\'ici là.</string>
+    <string name="ai_rules_raised">Jugé plus grave par les règles de sécurité intégrées que par l\'IA.</string>
+    <string name="ai_disclaimer">Conseil IA (%1$s) : il peut se tromper. Faites confirmer par un garage avant toute réparation.</string>
+    <string name="ai_details_parked">Les détails se lisent à l\'arrêt. Vous pouvez toujours poser votre question à voix haute.</string>
     <string name="ai_check_first">À vérifier d\'abord : %1$s</string>
     <string name="ai_details">Détails</string>
     <string name="ai_close">Fermer</string>

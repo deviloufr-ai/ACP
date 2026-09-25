@@ -94,30 +94,6 @@ object AiSettings {
     }
 }
 
-enum class Severity { OK, SOON, STOP }
-
-/**
- * One fault code as the AI mechanic explains it: [meaning] is a short title,
- * [checkFirst] the one thing to look at; the rest fills the detail sheet and is
- * empty when the answer didn't include it.
- */
-data class CodeAdvice(
-    val code: String,
-    val meaning: String,
-    val causes: List<String>,
-    val checkFirst: String,
-    val explanation: String = "",
-    val symptoms: List<String> = emptyList(),
-    val checks: List<String> = emptyList(),
-    val repair: String = "",
-    val cost: String = "",
-    val diy: String = "",
-    val driving: String = ""
-)
-
-/** The mechanic's verdict on a set of fault codes: [summary] is spoken, [overview] ties the codes together. */
-data class Diagnosis(val severity: Severity, val summary: String, val codes: List<CodeAdvice>, val overview: String = "")
-
 /** Builds the question for Gemini and reads its answer back. Pure, so it's unit-tested. */
 object MechanicPrompt {
 
@@ -151,11 +127,26 @@ object MechanicPrompt {
         ).put("required", JSONArray(listOf("severity", "summary", "overview", "codes")))
     }
 
-    /** [car] names the car, engine and gearbox ([CarProfile.promptDescription]). */
-    fun build(codes: List<String>, car: String, language: AiLanguage, data: ObdData?): String = buildString {
-        appendLine("You are an experienced mechanic who knows Citroën / PSA cars well.")
-        appendLine("Car: $car.")
+    /**
+     * [car] names the car, engine and gearbox ([CarProfile.promptDescription]).
+     * [references] are the generic meanings the built-in table gives for some
+     * of the codes ([ObdCodes.tableTitle]): something to check against, so a
+     * code isn't read as another; [currency] is the driver's own.
+     */
+    fun build(
+        codes: List<String>,
+        car: String,
+        language: AiLanguage,
+        data: ObdData?,
+        references: Map<String, String> = emptyMap(),
+        currency: String = "€"
+    ): String = buildString {
+        appendLine(MechanicPersona.of(car))
         appendLine("Its OBD scan reports these stored fault codes: ${codes.joinToString(", ")}.")
+        if (references.isNotEmpty()) {
+            appendLine("Generic meanings from the car's built-in code table (the maker's own meaning wins where it differs): " +
+                references.entries.joinToString("; ") { (code, meaning) -> "$code = $meaning" } + ".")
+        }
         readings(data)?.let { appendLine("Live readings at the time of the scan: $it.") }
         appendLine()
         appendLine("Answer in ${language.promptName}, with correct spelling and all accents. The driver reads the details parked, on the car's screen: be concrete, practical and specific to this engine.")
@@ -170,10 +161,11 @@ object MechanicPrompt {
         appendLine("  - check_first: the single cheapest, simplest thing to check first.")
         appendLine("  - checks: 3 to 5 diagnostic steps in order, cheapest and simplest first.")
         appendLine("  - repair: the usual fix and the part involved.")
-        appendLine("  - cost: a rough range in euros at an independent garage, parts and labour, and what the part costs alone.")
+        appendLine("  - cost: a rough range in the driver's currency ($currency) at an independent garage, parts and labour, and what the part costs alone.")
         appendLine("  - diy: whether a home mechanic can do it: how hard it is (easy, medium or hard, said in that language) and the tools needed.")
         appendLine("  - driving: whether the car can still be driven, and what happens if the fault is ignored.")
-        append("Consider the codes together and with the readings: several codes often share one cause. Discuss only these codes, exactly as written: do not assume or add any other fault.")
+        appendLine("Consider the codes together and with the readings: several codes often share one cause. Discuss only these codes, exactly as written: do not assume or add any other fault.")
+        append("Where you are not sure what a code means on this car, say so plainly and rate it \"soon\" rather than guess; never call a fault harmless without good grounds.")
     }
 
     /** Live values worth sending; zeros mean "not reported" and are left out. */
@@ -246,7 +238,8 @@ internal class LiveWatch {
     private var weakSince: Long? = null
     private var lastSample: Long? = null
 
-    fun check(d: ObdData, now: Long): Alert? {
+    /** [hotC]: the coolant temperature this engine runs at once warm ([CarProfile.hotC]). */
+    fun check(d: ObdData, now: Long, hotC: Int = DEFAULT_HOT_C): Alert? {
         // Timers only count uninterrupted readings; a gap (adapter dropped) restarts them.
         if (lastSample.let { it == null || now - it > GAP_MS }) {
             lowChargeSince = null
@@ -254,9 +247,9 @@ internal class LiveWatch {
         }
         lastSample = now
 
-        // The 1.6 HDi runs about 90 °C and its fan cuts in near 100 °C.
-        if (d.coolantTempC in 1 until OVERHEAT_CLEAR_C) overheatArmed = true
-        if (overheatArmed && d.coolantTempC >= OVERHEAT_C) {
+        // Judged against this engine's own temperature: a 1.6 HDi runs about 90 °C, its fan cuts in near 100 °C.
+        if (d.coolantTempC in 1 until Overheat.clearC(hotC)) overheatArmed = true
+        if (overheatArmed && d.coolantTempC >= Overheat.alarmC(hotC)) {
             overheatArmed = false
             return Alert.OVERHEAT
         }
@@ -295,8 +288,8 @@ internal class LiveWatch {
     }
 
     companion object {
-        const val OVERHEAT_C = 110
-        const val OVERHEAT_CLEAR_C = 100
+        /** What an engine runs at when its profile doesn't say. */
+        const val DEFAULT_HOT_C = 90
         const val RUNNING_RPM = 500
         const val NOT_CHARGING_V = 12.5
         const val CHARGE_CLEAR_V = 13.2
@@ -366,6 +359,10 @@ internal object MechanicLines {
         return SpokenLine(R.plurals.ai_say_new_codes, listOf(codes.size, spoken), quantity = codes.size)
     }
 
+    /** The rules' own sentence when they rate a fault more serious than the AI did ([SeverityFloor]). */
+    fun ruleVerdict(severity: Severity): SpokenLine =
+        SpokenLine(if (severity == Severity.STOP) R.string.ai_rules_stop else R.string.ai_rules_soon, emptyList())
+
     fun alert(alert: LiveWatch.Alert, d: ObdData, language: AiLanguage): SpokenLine {
         // Written the way the voice's language writes it: "12,1" in French.
         val volts = String.format(language.locale, "%.1f", d.voltage)
@@ -411,6 +408,8 @@ object AiMechanic {
 
     private const val PREFS = "ai_mechanic"
     private const val KEY_KNOWN = "known_codes"
+    // Beside a cached answer: which model gave it.
+    private const val MODEL_SUFFIX = "|model"
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -485,7 +484,7 @@ object AiMechanic {
     fun watch(data: ObdData) {
         if (DemoMode.isOn) return
         if (rescan.due(data.rpm, System.currentTimeMillis())) scope.launch { autoScan() }
-        val alert = liveWatch.check(data, System.currentTimeMillis()) ?: return
+        val alert = liveWatch.check(data, System.currentTimeMillis(), CarProfileStore.current.hotC) ?: return
         val context = appContext ?: return
         val config = AiSettings.load(context)
         if (!config.speak) return
@@ -497,14 +496,21 @@ object AiMechanic {
     private suspend fun explain(context: Context, codes: List<String>, fresh: List<String>) {
         val config = AiSettings.load(context)
         val say: (String) -> Unit = { if (fresh.isNotEmpty() && config.speak) CarVoice.speak(it, config.language.locale) }
-        val offline = MechanicLines.newCodes(fresh).text(config.language.resources(context))
+        val resources = config.language.resources(context)
+        val offline = MechanicLines.newCodes(fresh).text(resources)
+        val car = CarProfileStore.current
+        val readings = ObdBluetoothManager.data.value
+        // The car's own rules have the last word on how serious it is (MechanicVerdict.kt).
+        val floor = SeverityFloor.of(codes, readings.coolantTempC, car.hotC)
+        val bounded: (Diagnosis) -> Diagnosis = { d -> SeverityFloor.apply(d, floor) { MechanicLines.ruleVerdict(it).text(resources) } }
         // "v2": answers with the detail sheet; older, shorter ones are asked again.
-        val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + CarProfileStore.current.promptDescription().hashCode() + "|" + config.language.name
+        val cacheKey = "diag_v2_" + codes.sorted().joinToString(",") + "|" + car.promptDescription().hashCode() + "|" + config.language.name
         val cache = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         cache.getString(cacheKey, null)?.let(MechanicPrompt::parse)?.let { cached ->
-            _state.value = State(codes = codes, diagnosis = cached)
-            say(cached.summary)
+            val d = bounded(cached.copy(model = cache.getString(cacheKey + MODEL_SUFFIX, null).orEmpty()))
+            _state.value = State(codes = codes, diagnosis = d)
+            say(d.summary)
             return
         }
         if (config.apiKey.isBlank()) {
@@ -514,13 +520,15 @@ object AiMechanic {
         }
 
         _state.value = State(codes = codes, thinking = true)
-        val prompt = MechanicPrompt.build(codes, CarProfileStore.current.promptDescription(), config.language, ObdBluetoothManager.data.value)
+        val references = codes.mapNotNull { code -> ObdCodes.tableTitle(code)?.let { code to it } }.toMap()
+        val prompt = MechanicPrompt.build(codes, car.promptDescription(), config.language, readings, references, car.currency)
         GeminiClient.generate(config.apiKey, prompt, MechanicPrompt.schema(codes))
-            .mapCatching { reply -> reply.text to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
-            .onSuccess { (raw, diagnosis) ->
-                cache.edit().putString(cacheKey, raw).apply()
-                _state.value = State(codes = codes, diagnosis = diagnosis)
-                say(diagnosis.summary)
+            .mapCatching { reply -> reply to (MechanicPrompt.parse(reply.text) ?: throw UnreadableAnswerException()) }
+            .onSuccess { (reply, diagnosis) ->
+                cache.edit().putString(cacheKey, reply.text).putString(cacheKey + MODEL_SUFFIX, reply.model).apply()
+                val d = bounded(diagnosis.copy(model = reply.model))
+                _state.value = State(codes = codes, diagnosis = d)
+                say(d.summary)
             }
             .onFailure {
                 _state.value = State(codes = codes, note = Note.Unavailable(it), canRetry = true)

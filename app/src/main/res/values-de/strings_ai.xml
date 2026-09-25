@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">KI-Mechaniker</string>
-    <string name="ai_explanation">Sobald der Adapter verbunden ist, sucht Dashwheel nach Fehlercodes. Ein neuer wird von Gemini erklärt und vorgelesen. Gesendet werden nur Codes, Motorwerte und Automodell.</string>
+    <string name="ai_explanation">Sobald der Adapter verbunden ist, sucht Dashwheel nach Fehlercodes. Ein neuer wird von Gemini erklärt und vorgelesen. An Google gesendet werden Codes, Motorwerte und Automodell sowie Ihre Stimme, wenn Sie eine Frage laut stellen.</string>
     <string name="ai_activation_code">Aktivierungscode</string>
     <string name="ai_activation_hint">Schaltet den integrierten Schlüssel frei</string>
     <string name="ai_activate">Aktivieren</string>
@@ -36,9 +36,14 @@
     <string name="ai_say_weak_battery">Die Batterie ist schwach: %1$s Volt bei abgestelltem Motor. Bald prüfen lassen.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">Weiterfahrt möglich</string>
+    <string name="ai_verdict_ok">Keine Dringlichkeit erkennbar</string>
     <string name="ai_verdict_soon">Bald prüfen lassen</string>
     <string name="ai_verdict_stop">Anhalten</string>
+    <string name="ai_rules_stop">Dieser Fehler kann den Motor beschädigen: Halten Sie an, sobald es sicher ist, und lassen Sie ihn prüfen, bevor Sie weiterfahren.</string>
+    <string name="ai_rules_soon">Dieser Fehler gehört in den nächsten Tagen in die Werkstatt: Fahren Sie bis dahin schonend.</string>
+    <string name="ai_rules_raised">Von den eingebauten Sicherheitsregeln als ernster eingestuft als von der KI.</string>
+    <string name="ai_disclaimer">KI-Rat (%1$s): Er kann falsch sein. Lassen Sie ihn vor jeder Reparatur von einer Werkstatt bestätigen.</string>
+    <string name="ai_details_parked">Die Details gibt es im Stand. Ihre Frage können Sie weiterhin laut stellen.</string>
     <string name="ai_check_first">Zuerst prüfen: %1$s</string>
     <string name="ai_details">Details</string>
     <string name="ai_close">Schließen</string>

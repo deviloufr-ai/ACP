@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI-monteur</string>
-    <string name="ai_explanation">Zodra de adapter verbindt, zoekt Dashwheel naar foutcodes. Een nieuwe wordt door Gemini uitgelegd en voorgelezen. Alleen codes, motorwaarden en automodel worden verstuurd.</string>
+    <string name="ai_explanation">Zodra de adapter verbindt, zoekt Dashwheel naar foutcodes. Een nieuwe wordt door Gemini uitgelegd en voorgelezen. Naar Google gaan de codes, motorwaarden en het automodel, en je stem als je hardop een vraag stelt.</string>
     <string name="ai_activation_code">Activeringscode</string>
     <string name="ai_activation_hint">Ontgrendelt de ingebouwde sleutel</string>
     <string name="ai_activate">Activeren</string>
@@ -36,9 +36,14 @@
     <string name="ai_say_weak_battery">De accu is zwak: %1$s volt met de motor uit. Laat hem binnenkort testen.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">Je kunt doorrijden</string>
+    <string name="ai_verdict_ok">Geen tekenen van spoed</string>
     <string name="ai_verdict_soon">Laat het snel nakijken</string>
     <string name="ai_verdict_stop">Stop met rijden</string>
+    <string name="ai_rules_stop">Deze fout kan de motor beschadigen: stop zodra het veilig is en laat hem nakijken voor je verder rijdt.</string>
+    <string name="ai_rules_soon">Deze fout moet binnen enkele dagen naar de garage: rij tot dan rustig.</string>
+    <string name="ai_rules_raised">Door de ingebouwde veiligheidsregels ernstiger beoordeeld dan door de AI.</string>
+    <string name="ai_disclaimer">AI-advies (%1$s): het kan fout zijn. Laat het bevestigen door een garage voor je iets repareert.</string>
+    <string name="ai_details_parked">De details lees je als je stilstaat. Je kunt je vraag nog steeds hardop stellen.</string>
     <string name="ai_check_first">Eerst controleren: %1$s</string>
     <string name="ai_details">Details</string>
     <string name="ai_close">Sluiten</string>

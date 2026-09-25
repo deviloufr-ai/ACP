@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">Meccanico IA</string>
-    <string name="ai_explanation">Quando l\'adattatore si collega, Dashwheel cerca i codici di errore. Uno nuovo viene spiegato da Gemini e letto a voce. Vengono inviati solo codici, valori del motore e modello.</string>
+    <string name="ai_explanation">Quando l\'adattatore si collega, Dashwheel cerca i codici di errore. Uno nuovo viene spiegato da Gemini e letto a voce. Vengono inviati a Google i codici, i valori del motore e il modello, e la tua voce quando fai una domanda a voce.</string>
     <string name="ai_activation_code">Codice di attivazione</string>
     <string name="ai_activation_hint">Sblocca la chiave integrata</string>
     <string name="ai_activate">Attiva</string>
@@ -37,9 +37,14 @@
     <string name="ai_say_weak_battery">La batteria è debole: %1$s volt a motore spento. Falla controllare presto.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">Puoi guidare</string>
+    <string name="ai_verdict_ok">Nessun segno di urgenza</string>
     <string name="ai_verdict_soon">Fai controllare presto</string>
     <string name="ai_verdict_stop">Fermati</string>
+    <string name="ai_rules_stop">Questo guasto può danneggiare il motore: fermati appena è sicuro e fallo controllare prima di ripartire.</string>
+    <string name="ai_rules_soon">Questo guasto richiede un\'officina entro pochi giorni: guida con dolcezza fino ad allora.</string>
+    <string name="ai_rules_raised">Le regole di sicurezza integrate lo giudicano più grave dell\'IA.</string>
+    <string name="ai_disclaimer">Consiglio dell\'IA (%1$s): può sbagliare. Fallo confermare da un\'officina prima di ogni riparazione.</string>
+    <string name="ai_details_parked">I dettagli si leggono da fermo. Puoi sempre fare la tua domanda a voce.</string>
     <string name="ai_check_first">Controlla prima: %1$s</string>
     <string name="ai_details">Dettagli</string>
     <string name="ai_close">Chiudi</string>

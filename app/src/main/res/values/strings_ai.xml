@@ -2,7 +2,7 @@
 <resources>
     <!-- Settings dialog (also the menu item) -->
     <string name="ai_title">AI mechanic</string>
-    <string name="ai_explanation">When the adapter connects, Dashwheel scans for fault codes. A new one is explained by Gemini and spoken. Only the codes, engine readings and car model are sent.</string>
+    <string name="ai_explanation">When the adapter connects, Dashwheel scans for fault codes. A new one is explained by Gemini and spoken. Sent to Google: the codes, engine readings and car model, and your voice when you ask a question out loud.</string>
     <string name="ai_activation_code">Activation code</string>
     <string name="ai_activation_hint">Unlocks the built-in key</string>
     <string name="ai_activate">Activate</string>
@@ -36,9 +36,16 @@
     <string name="ai_say_weak_battery">The battery is weak: %1$s volts with the engine off. Get it tested soon.</string>
 
     <!-- Fault codes tile: labels around the AI advice (in the mechanic's language, like the advice) -->
-    <string name="ai_verdict_ok">OK to drive</string>
+    <string name="ai_verdict_ok">No sign of urgency</string>
     <string name="ai_verdict_soon">Get it checked soon</string>
     <string name="ai_verdict_stop">Stop driving</string>
+    <!-- When the built-in rules rate a fault more serious than the AI did (spoken, and shown in the verdict) -->
+    <string name="ai_rules_stop">This fault can damage the engine: stop when it\'s safe and have it checked before driving on.</string>
+    <string name="ai_rules_soon">This fault needs a garage within days: drive gently until then.</string>
+    <string name="ai_rules_raised">Rated more serious by the built-in safety rules than by the AI.</string>
+    <string name="ai_disclaimer">AI advice (%1$s): it can be wrong. Confirm with a garage before any repair.</string>
+    <string name="ai_disclaimer_gemini" translatable="false">Gemini</string>
+    <string name="ai_details_parked">The details are for when you\'re parked. You can still ask your question out loud.</string>
     <string name="ai_check_first">Check first: %1$s</string>
     <string name="ai_details">Details</string>
     <string name="ai_close">Close</string>

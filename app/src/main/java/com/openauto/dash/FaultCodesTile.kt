@@ -110,6 +110,9 @@ internal fun ObdDtcCard(
     var message by remember { mutableStateOf<DtcMessage?>(null) }
     // The code whose detail sheet is open.
     var opened by remember { mutableStateOf<String?>(null) }
+    // The drive lock (DriveLock.kt) holds back the sheet's reading while the car moves; the voice stays.
+    val lockWhileMoving = remember(context) { DriveLockStore.load(context) }
+    val moving = rememberMoving(lockWhileMoving, obdData, connection, DemoMode.isOn)
     val scanFailed = stringResource(R.string.ai_scan_failed)
     val clearFailed = stringResource(R.string.ai_clear_failed)
     val clearedText = stringResource(R.string.ai_cleared)
@@ -241,7 +244,7 @@ internal fun ObdDtcCard(
         val index = codes?.indexOf(code) ?: -1
         val advice = if (codes != null && index >= 0) adviceFor(diagnosis, codes, code, index) else null
         // A new scan can take the code away while the sheet is open: then it just closes.
-        if (advice != null) FaultDetailSheet(code, advice, diagnosis, codes.orEmpty(), aiText) { opened = null }
+        if (advice != null) FaultDetailSheet(code, advice, diagnosis, codes.orEmpty(), aiText, moving) { opened = null }
     }
 }
 
@@ -339,9 +342,22 @@ private fun VerdictBand(d: Diagnosis, aiText: Resources) {
                 Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(2.dp))
                 Text(d.summary, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                if (d.raisedByRules) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(aiText.getString(R.string.ai_rules_raised), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(4.dp))
+                AiDisclaimer(d, aiText)
             }
         }
     }
+}
+
+/** Says the advice is the AI's, which model gave it, and that a garage has the last word. */
+@Composable
+private fun AiDisclaimer(d: Diagnosis, aiText: Resources) {
+    val source = d.model.ifBlank { aiText.getString(R.string.ai_disclaimer_gemini) }
+    Text(aiText.getString(R.string.ai_disclaimer, source), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
 }
 
 /** A code on a coloured badge, the way a garage printout sets it apart. */
@@ -423,6 +439,7 @@ private fun FaultDetailSheet(
     diagnosis: Diagnosis?,
     codes: List<String>,
     aiText: Resources,
+    moving: Boolean,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -502,18 +519,26 @@ private fun FaultDetailSheet(
                         DetailSection(Icons.Filled.DirectionsCar, aiText.getString(R.string.ai_detail_driving)) { DetailText(advice.driving) }
                     }
                 }
-                BoxWithConstraints(Modifier.weight(1f)) {
-                    val twoColumns = maxWidth > 760.dp
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
-                        if (twoColumns) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) { understand() }
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) { act() }
-                            }
-                        } else {
-                            Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                                understand()
-                                act()
+                if (moving) {
+                    // Too much to read at the wheel: the spoken summary and the Ask button stay, the rest waits for a stop.
+                    Column(Modifier.weight(1f).fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        diagnosis?.let { Text(it.summary, color = DashColors.TextPrimary, style = MaterialTheme.typography.titleMedium) }
+                        Text(aiText.getString(R.string.ai_details_parked), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    BoxWithConstraints(Modifier.weight(1f)) {
+                        val twoColumns = maxWidth > 760.dp
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+                            if (twoColumns) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) { understand() }
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) { act() }
+                                }
+                            } else {
+                                Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                                    understand()
+                                    act()
+                                }
                             }
                         }
                     }
