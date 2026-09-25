@@ -145,4 +145,22 @@
     <string name="dash_page_below2">Dwa pod głównym</string>
     <string name="dash_empty_title">Tu jeszcze nic nie ma</string>
     <string name="dash_empty_body">Dodaj kafelek albo wybierz szablon dla wszystkich stron.</string>
+    <string name="dash_effects_title">Efekty</string>
+    <string name="dash_effects_none">Brak</string>
+    <string name="dash_effects_reduced">Ograniczone</string>
+    <string name="dash_effects_full">Pełne</string>
+    <string name="dash_effects_none_hint">Najlepsza czytelność: nieprzezroczyste karty, wyraźne cyfry, bez poświaty</string>
+    <string name="dash_effects_reduced_hint">Łagodniejsza poświata, szkło zostaje</string>
+    <string name="dash_effects_full_hint">Każdy motyw z pełną poświatą i szkłem</string>
+    <string name="dash_drive_lock_notice">Zatrzymaj się, aby wprowadzić zmiany</string>
+    <string name="dash_alert_spoken">%1$s. Zatrzymaj się, gdy tylko możesz.</string>
+    <string name="dash_theme_group_recommended">Polecane</string>
+    <string name="dash_theme_group_colours">Motywy</string>
+    <string name="dash_theme_group_skins">Światy</string>
+    <string name="dash_theme_night">Noc</string>
+    <string name="dash_theme_day">Dzień</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">Centralny zestaw wskaźników C4 Picasso: zimnobiałe cyfry na dymnym graficie, bursztynowe ostrzeżenia</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">Kabina lounge: perłowa szarość, białe panele, jeden głęboki niebieski akcent</string>
 </resources>

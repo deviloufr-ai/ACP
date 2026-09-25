@@ -199,4 +199,6 @@
     <string name="vehicle_err_refused">%1$s odrzucił połączenie: zajęty przez telefon lub inną aplikację, bez zasilania albo poza zasięgiem</string>
     <string name="vehicle_err_silent">%1$s połączył się, ale nigdy nie odpowiedział</string>
     <string name="vehicle_err_permission">Brak uprawnienia Bluetooth</string>
+    <string name="vehicle_obd_connect_from_bar">Połącz przyciskiem OBD na pasku</string>
+    <string name="vehicle_recent_alerts">Ostatnie ostrzeżenia</string>
 </resources>

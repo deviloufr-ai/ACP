@@ -199,4 +199,6 @@
     <string name="vehicle_err_refused">%1$s hat die Verbindung abgelehnt: von einem Handy oder einer anderen App belegt, ohne Strom oder außer Reichweite</string>
     <string name="vehicle_err_silent">%1$s hat sich verbunden, aber nie geantwortet</string>
     <string name="vehicle_err_permission">Bluetooth-Berechtigung nicht erteilt</string>
+    <string name="vehicle_obd_connect_from_bar">Über die OBD-Taste in der Leiste verbinden</string>
+    <string name="vehicle_recent_alerts">Letzte Warnungen</string>
 </resources>

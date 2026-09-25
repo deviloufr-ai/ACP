@@ -8,4 +8,9 @@
     <string name="settings_section_advanced">Avanzado</string>
     <string name="settings_ai_detail">Explica los códigos de avería y habla las alertas</string>
     <string name="settings_system_detail">El Google Maps real en la tarjeta Maps. Necesita root.</string>
+    <string name="settings_section_driving">Conducción</string>
+    <string name="settings_drive_lock">Cambios solo con el coche parado</string>
+    <string name="settings_drive_lock_detail">La edición, los ajustes y la cuadrícula de apps esperan a que el coche se detenga</string>
+    <string name="settings_tap_sound">Sonido al tocar</string>
+    <string name="settings_tap_sound_detail">Un pitido corto en cada toque, para pantallas que no vibran</string>
 </resources>

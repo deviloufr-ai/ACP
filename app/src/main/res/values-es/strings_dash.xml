@@ -145,4 +145,22 @@
     <string name="dash_page_below2">Dos debajo de Inicio</string>
     <string name="dash_empty_title">Aún no hay nada aquí</string>
     <string name="dash_empty_body">Añade una tarjeta o elige una plantilla para todas las páginas.</string>
+    <string name="dash_effects_title">Efectos</string>
+    <string name="dash_effects_none">Ninguno</string>
+    <string name="dash_effects_reduced">Reducidos</string>
+    <string name="dash_effects_full">Completos</string>
+    <string name="dash_effects_none_hint">Máxima legibilidad: tarjetas opacas, cifras nítidas, sin halo</string>
+    <string name="dash_effects_reduced_hint">Halos suavizados, cristal conservado</string>
+    <string name="dash_effects_full_hint">Cada tema con todos sus halos y su cristal</string>
+    <string name="dash_drive_lock_notice">Aparca para hacer cambios</string>
+    <string name="dash_alert_spoken">%1$s. Detente en cuanto puedas.</string>
+    <string name="dash_theme_group_recommended">Recomendados</string>
+    <string name="dash_theme_group_colours">Temas</string>
+    <string name="dash_theme_group_skins">Universos</string>
+    <string name="dash_theme_night">Noche</string>
+    <string name="dash_theme_day">Día</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">El cuadro central del C4 Picasso: cifras blanco frío sobre grafito ahumado, avisos ámbar</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">El habitáculo lounge: gris perla, paneles blancos, un solo acento azul profundo</string>
 </resources>

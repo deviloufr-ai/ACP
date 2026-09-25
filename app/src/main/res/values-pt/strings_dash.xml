@@ -145,4 +145,22 @@
     <string name="dash_page_below2">Dois abaixo do Início</string>
     <string name="dash_empty_title">Ainda não há nada aqui</string>
     <string name="dash_empty_body">Adicione um bloco ou escolha um modelo para todas as páginas.</string>
+    <string name="dash_effects_title">Efeitos</string>
+    <string name="dash_effects_none">Nenhum</string>
+    <string name="dash_effects_reduced">Reduzidos</string>
+    <string name="dash_effects_full">Completos</string>
+    <string name="dash_effects_none_hint">Máxima legibilidade: cartões opacos, dígitos nítidos, sem brilho</string>
+    <string name="dash_effects_reduced_hint">Brilho suavizado, vidro mantido</string>
+    <string name="dash_effects_full_hint">Cada tema com todo o seu brilho e vidro</string>
+    <string name="dash_drive_lock_notice">Estacione para fazer alterações</string>
+    <string name="dash_alert_spoken">%1$s. Pare assim que puder.</string>
+    <string name="dash_theme_group_recommended">Recomendados</string>
+    <string name="dash_theme_group_colours">Temas</string>
+    <string name="dash_theme_group_skins">Universos</string>
+    <string name="dash_theme_night">Noite</string>
+    <string name="dash_theme_day">Dia</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">O painel central do C4 Picasso: dígitos branco frio sobre grafite fumado, avisos âmbar</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">O habitáculo lounge: cinzento pérola, painéis brancos, um único acento azul profundo</string>
 </resources>

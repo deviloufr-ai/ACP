@@ -8,4 +8,9 @@
     <string name="settings_section_advanced">Geavanceerd</string>
     <string name="settings_ai_detail">Legt foutcodes uit en spreekt waarschuwingen uit</string>
     <string name="settings_system_detail">De echte Google Maps in de Maps-tegel. Vereist root.</string>
+    <string name="settings_section_driving">Rijden</string>
+    <string name="settings_drive_lock">Wijzigen alleen bij stilstand</string>
+    <string name="settings_drive_lock_detail">Bewerken, instellingen en het app-raster wachten tot de auto stilstaat</string>
+    <string name="settings_tap_sound">Tikgeluid</string>
+    <string name="settings_tap_sound_detail">Een korte piep bij elke tik, voor schermen die niet trillen</string>
 </resources>

@@ -8,4 +8,9 @@
     <string name="settings_section_advanced">Erweitert</string>
     <string name="settings_ai_detail">Erklärt Fehlercodes und spricht Warnungen</string>
     <string name="settings_system_detail">Das echte Google Maps in der Maps-Kachel. Braucht Root.</string>
+    <string name="settings_section_driving">Fahren</string>
+    <string name="settings_drive_lock">Änderungen nur im Stand</string>
+    <string name="settings_drive_lock_detail">Bearbeiten, Einstellungen und das App-Raster warten, bis das Auto steht</string>
+    <string name="settings_tap_sound">Tippton</string>
+    <string name="settings_tap_sound_detail">Ein kurzer Piepton bei jedem Tippen, für Bildschirme ohne Vibration</string>
 </resources>

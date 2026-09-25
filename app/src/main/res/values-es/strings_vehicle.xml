@@ -199,4 +199,6 @@
     <string name="vehicle_err_refused">%1$s rechazó la conexión: ocupado por un teléfono u otra app, sin alimentación o fuera de alcance</string>
     <string name="vehicle_err_silent">%1$s se conectó pero nunca respondió</string>
     <string name="vehicle_err_permission">Permiso de Bluetooth no concedido</string>
+    <string name="vehicle_obd_connect_from_bar">Conecta con el botón OBD de la barra</string>
+    <string name="vehicle_recent_alerts">Últimos avisos</string>
 </resources>

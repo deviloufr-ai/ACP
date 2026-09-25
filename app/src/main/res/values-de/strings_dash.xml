@@ -145,4 +145,22 @@
     <string name="dash_page_below2">Zwei unter Start</string>
     <string name="dash_empty_title">Hier ist noch nichts</string>
     <string name="dash_empty_body">Kachel hinzufügen oder eine Vorlage für alle Seiten wählen.</string>
+    <string name="dash_effects_title">Effekte</string>
+    <string name="dash_effects_none">Keine</string>
+    <string name="dash_effects_reduced">Reduziert</string>
+    <string name="dash_effects_full">Voll</string>
+    <string name="dash_effects_none_hint">Beste Lesbarkeit: deckende Karten, klare Ziffern, kein Leuchten</string>
+    <string name="dash_effects_reduced_hint">Sanfteres Leuchten, Glas bleibt</string>
+    <string name="dash_effects_full_hint">Jedes Design mit seinem vollen Leuchten und Glas</string>
+    <string name="dash_drive_lock_notice">Zum Ändern anhalten</string>
+    <string name="dash_alert_spoken">%1$s. Halten Sie an, sobald es geht.</string>
+    <string name="dash_theme_group_recommended">Empfohlen</string>
+    <string name="dash_theme_group_colours">Designs</string>
+    <string name="dash_theme_group_skins">Welten</string>
+    <string name="dash_theme_night">Nacht</string>
+    <string name="dash_theme_day">Tag</string>
+    <string name="dash_theme_mistral">Mistral</string>
+    <string name="dash_theme_mistral_desc">Das Zentraldisplay des C4 Picasso: kaltweiße Ziffern auf Rauchgraphit, bernsteinfarbene Warnungen</string>
+    <string name="dash_theme_zenith">Zénith</string>
+    <string name="dash_theme_zenith_desc">Die Lounge-Kabine: Perlgrau, weiße Flächen, ein einziger tiefblauer Akzent</string>
 </resources>
