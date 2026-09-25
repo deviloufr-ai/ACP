@@ -64,11 +64,11 @@ Run the same commands again to update. Settings and the pairing are kept.
 ## 5. Pair (once)
 
 1. After the reboot, the monitor shows a **QR code**.
-2. Open the Dashwheel **phone app**, choose **Pair a Dashwheel display**, and scan the code. The phone passes the code to the head unit over the phone link, so the head unit must be linked to the phone at that moment.
+2. In the Dashwheel **phone app**, tap **Pair a car** and scan the code on the monitor (the phone's camera app works too). Confirm **Send to the car**. The phone passes the code to the head unit over the phone link, so the head unit must be linked to the phone at that moment.
 3. The head unit connects to the Pi within a few seconds. The QR code disappears from the idle screen once a head unit has used it.
 4. Only now, if you want a read-only card: `sudo ./pi/install.sh ./dashwheel-display --overlay` (plus the flags you used before).
 
-**Pairing without the phone app:** the code is also in `dashwheel/pairing.txt` on the SD card's boot partition. Copy it to a USB stick and use **Import pairing from USB** in the head unit's second-screen settings.
+**Pairing without the phone app:** the code is also in `dashwheel/pairing.txt` on the SD card's boot partition. Copy it to a USB stick and use **Import a pairing file** in the head unit's second-screen settings.
 
 **New pairing:** delete `dashwheel/pairing.txt` (and `dashwheel/paired`), reboot, and pair again.
 
@@ -78,6 +78,10 @@ On the head unit: **Settings → Second screen**:
 - the mode: off, cluster, or an app
 - the cluster's pages
 - which steering-wheel keys change the page
+- the picture height (480p, 720p or 1080p; lower is lighter on the Wi-Fi)
+- *Rear-seat screen*: video apps may play while driving only on a screen the driver can't see
+
+For keys to work while another app is in front, Dashwheel's accessibility service must be on. If it was already on before this update, turn it off and on again: Android only grants key filtering when the service is switched on.
 
 ## Settings file
 
