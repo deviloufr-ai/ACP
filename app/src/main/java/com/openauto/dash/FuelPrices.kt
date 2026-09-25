@@ -237,7 +237,7 @@ object FuelPriceRepo {
 
     /** [stations] with their names, asking OpenStreetMap only about the ones not looked up before. */
     private fun withNames(stations: List<FuelStation>): List<FuelStation> {
-        val unknown = stations.filter { it.id !in names }
+        val unknown = stations.filter { !names.containsKey(it.id) }
         if (unknown.isNotEmpty()) {
             runCatching {
                 val body = FormBody.Builder().add("data", FuelStationNames.query(unknown)).build()
