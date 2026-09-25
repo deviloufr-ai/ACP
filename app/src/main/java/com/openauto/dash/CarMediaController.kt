@@ -10,6 +10,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.KeyEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +50,12 @@ class CarMediaController(private val context: Context) {
     private var activeController: MediaController? = null
     private var boundControllers: List<MediaController> = emptyList()
     private var started = false
+
+    // A play asked for while no player was running: the app we opened for it
+    // ([ANY_PLAYER] when it was the system's default), and until when its new
+    // session still gets told to play.
+    private var pendingPlayPackage: String? = null
+    private var pendingPlayUntil = 0L
 
     private val controllerCallback = object : MediaController.Callback() {
         // The callback is registered on every session, so re-pick the active one
@@ -100,7 +107,27 @@ class CarMediaController(private val context: Context) {
         activeController = boundControllers.firstOrNull {
             it.playbackState?.state == PlaybackState.STATE_PLAYING
         } ?: boundControllers.firstOrNull()
+        playIfPending()
         publish(activeController)
+    }
+
+    /**
+     * The player opened by [playPause] has published its session: tell it to
+     * play, once. Most players open paused on their last track; some already
+     * started from the media button, and are left alone.
+     */
+    private fun playIfPending() {
+        val wanted = pendingPlayPackage ?: return
+        if (SystemClock.elapsedRealtime() > pendingPlayUntil) {
+            pendingPlayPackage = null
+            return
+        }
+        val session = boundControllers.firstOrNull { wanted == ANY_PLAYER || it.packageName == wanted } ?: return
+        pendingPlayPackage = null
+        if (session.playbackState?.state != PlaybackState.STATE_PLAYING) {
+            runCatching { session.transportControls.play() }
+        }
+        activeController = session
     }
 
     private fun publish(controller: MediaController?) {
@@ -145,10 +172,39 @@ class CarMediaController(private val context: Context) {
         }
     }
 
+    /**
+     * Play / pause on the current session. With no session at all (nothing
+     * has played since the unit started, or the player was closed), opens the
+     * last media app seen playing, the system's default player when none was,
+     * and starts it: a PLAY media button right away for players that resume
+     * from it, then play() on the session it publishes ([playIfPending]).
+     */
     fun playPause() {
         if (DemoMode.isOn) return DemoMode.playPause()
-        val controls = activeController?.transportControls ?: return
+        val controls = activeController?.transportControls ?: return startLastPlayer()
         if (_mediaState.value.isPlaying) controls.pause() else controls.play()
+    }
+
+    private fun startLastPlayer() {
+        val last = getLastMediaPackage(context)?.takeIf { context.packageManager.getLaunchIntentForPackage(it) != null }
+        val launch = last?.let { context.packageManager.getLaunchIntentForPackage(it) }
+            ?: Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
+        if (!context.launchSafely(launch)) return
+        pendingPlayPackage = last ?: ANY_PLAYER
+        pendingPlayUntil = SystemClock.elapsedRealtime() + PENDING_PLAY_MS
+        if (last != null) sendPlayButton(last)
+        // Its session may already be listed (a player kept in the background).
+        playIfPending()
+    }
+
+    /** A PLAY key press sent to [packageName]'s media button receiver. */
+    private fun sendPlayButton(packageName: String) {
+        listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP).forEach { action ->
+            val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
+                .setPackage(packageName)
+                .putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(action, KeyEvent.KEYCODE_MEDIA_PLAY))
+            runCatching { context.sendBroadcast(intent) }
+        }
     }
 
     fun next() {
@@ -162,6 +218,10 @@ class CarMediaController(private val context: Context) {
     }
 
     companion object {
+        /** How long a player opened by [playPause] has to publish its session. */
+        private const val PENDING_PLAY_MS = 15_000L
+        /** [pendingPlayPackage] when the system's default player was opened: the first session plays. */
+        private const val ANY_PLAYER = "*"
         private const val PREFS = "media_prefs"
         private const val KEY_LAST_MEDIA_PACKAGE = "last_media_package"
 
