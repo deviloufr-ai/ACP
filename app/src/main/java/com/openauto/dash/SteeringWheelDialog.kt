@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.view.KeyEvent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -129,7 +130,7 @@ internal fun SteeringWheelDialog(onDismiss: () -> Unit) {
                     WheelStep.LISTENING -> WheelListening(onCancel = ::backToList)
                     WheelStep.PICK_ACTION, WheelStep.PICK_APP -> editingKey?.let { key ->
                         WheelActionPicker(
-                            keyLabel = key.label,
+                            keyLabel = wheelKeyLabel(key),
                             hasExisting = mappings.any { it.key.id == key.id },
                             onPick = { action ->
                                 SteeringWheelStore.assign(key, WheelAssignment.Preset(action))
@@ -220,7 +221,7 @@ private fun WheelMappingRow(mapping: WheelMapping, onClick: () -> Unit, onRemove
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(mapping.key.label, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(wheelKeyLabel(mapping.key), color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(assignmentSummary(mapping.assignment), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = { tap(); onRemove() }) {
@@ -228,6 +229,11 @@ private fun WheelMappingRow(mapping: WheelMapping, onClick: () -> Unit, onRemove
         }
     }
 }
+
+/** [WheelKey.label], with the name of a raw, unnamed button in the chosen language. */
+@Composable
+private fun wheelKeyLabel(key: WheelKey): String =
+    if (key.keyCode == KeyEvent.KEYCODE_UNKNOWN) stringResource(R.string.wheel_raw_button, key.scanCode) else key.label
 
 @Composable
 private fun assignmentSummary(assignment: WheelAssignment): String = when (assignment) {

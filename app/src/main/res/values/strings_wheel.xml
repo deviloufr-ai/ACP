@@ -17,6 +17,7 @@
     <string name="wheel_assign_prompt">What should %1$s do?</string>
     <string name="wheel_choose_app">Launch an app…</string>
     <string name="wheel_remove_binding">Forget this button</string>
+    <string name="wheel_raw_button">Button #%1$d</string>
     <string name="wheel_group_media">Media</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">System</string>
