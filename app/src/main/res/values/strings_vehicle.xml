@@ -200,4 +200,5 @@
     <string name="vehicle_err_silent">%1$s connected but never answered</string>
     <string name="vehicle_err_permission">Bluetooth permission not granted</string>
     <string name="vehicle_obd_connect_from_bar">Connect with the OBD button in the bar</string>
+    <string name="vehicle_recent_alerts">Recent alerts</string>
 </resources>

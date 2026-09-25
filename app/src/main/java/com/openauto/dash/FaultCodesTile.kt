@@ -75,6 +75,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
@@ -178,6 +179,12 @@ internal fun ObdDtcCard(
                 }
             }
 
+            // The alerts the bar showed lately, so one that came and went can still be read.
+            if (AlertCenter.history.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                RecentAlerts()
+            }
+
             // Results stay readable after the adapter drops (engine off, parked).
             if (codes != null) {
                 Spacer(Modifier.height(12.dp))
@@ -251,6 +258,30 @@ internal fun adviceFor(diagnosis: Diagnosis?, codes: List<String>, code: String,
 
 /** A Scan / Clear outcome; [failed] picks the colour, so it never depends on the wording. */
 private class DtcMessage(val text: String, val failed: Boolean)
+
+/** The last three alerts, newest first: time, a dot in the alert's colour, what it said. */
+@Composable
+private fun RecentAlerts() {
+    val timeFmt = remember { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            stringResource(R.string.vehicle_recent_alerts),
+            color = DashColors.TextSecondary,
+            letterSpacing = 0.08.em,
+            style = MaterialTheme.typography.labelSmall
+        )
+        AlertCenter.history.take(3).forEach { event ->
+            val colour = if (event.level == AlertLevel.CRITICAL) DashColors.Critical else DashColors.Warning
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(timeFmt.format(java.util.Date(event.at)), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(colour))
+                Spacer(Modifier.width(8.dp))
+                Text(event.text, color = DashColors.TextPrimary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
 
 private fun severityColor(severity: Severity?): Color = when (severity) {
     Severity.OK -> DashColors.Good

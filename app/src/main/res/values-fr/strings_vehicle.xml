@@ -200,4 +200,5 @@
     <string name="vehicle_err_silent">%1$s s\'est connecté mais n\'a jamais répondu</string>
     <string name="vehicle_err_permission">Permission Bluetooth non accordée</string>
     <string name="vehicle_obd_connect_from_bar">Connexion par le bouton OBD de la barre</string>
+    <string name="vehicle_recent_alerts">Dernières alertes</string>
 </resources>

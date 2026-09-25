@@ -14,6 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 
 /**
@@ -100,8 +102,19 @@ data class DashPalette(
     val Skin: DashSkin = DashSkin.STANDARD,
     val Light: Boolean = false,
     val Tacho: Color = if (Light) AmberDay else AmberNight,
-    val Warning: Color = Tacho
+    val Warning: Color = Tacho,
+    /** The face of the hero numerals (speed, clock) and how heavy they are. */
+    val Font: DashFont = DashFont.SANS,
+    val HeroWeight: FontWeight = FontWeight.ExtraBold,
+    /** What the middle of the standard bar shows. */
+    val BarStyle: DashBarStyle = DashBarStyle.STANDARD
 )
+
+/** A theme's hero face: the system sans, or its condensed cut (a cluster's numerals). */
+enum class DashFont { SANS, CONDENSED }
+
+/** The standard bar's centre: the clock, or a car-style cluster (speed, revs, fuel and temperature). */
+enum class DashBarStyle { STANDARD, CLUSTER }
 
 /** The one amber: deep enough to read on a pale page by day, bright by night. */
 internal val AmberNight = Color(0xFFF2A33A)
@@ -282,14 +295,16 @@ private val MistralPalette = DashPalette(
     Accent = Color(0xFFDCE9F7), Secondary = Color(0xFF8FC3F0), Critical = Color(0xFFE1252B),
     Good = Color(0xFF6FD39A), Muted = Color(0xFF7C8794), TextPrimary = Color(0xFFF2F6FA), TextSecondary = Color(0xFFAEB8C4),
     Accent2 = Color(0xFF8FC3F0), Line = Color.White.copy(alpha = 0.10f), Glow = 0.45f,
-    BackgroundStops = listOf(Color(0xFF12161B), Color(0xFF0A0D11))
+    BackgroundStops = listOf(Color(0xFF12161B), Color(0xFF0A0D11)),
+    Font = DashFont.CONDENSED, HeroWeight = FontWeight.SemiBold, BarStyle = DashBarStyle.CLUSTER
 )
 private val MistralLightPalette = DashPalette(
     Background = Color(0xFFE9EDF1), Bar = Color(0xFFF6F8FA), Card = Color.White, CardHi = Color(0xFFDDE3E9),
     Accent = Color(0xFF1F5F8F), Secondary = Color(0xFF4F9AD1), Critical = Color(0xFFB8161C),
     Good = Color(0xFF1E8A55), Muted = Color(0xFF6B7682), TextPrimary = Color(0xFF14181D), TextSecondary = Color(0xFF48525C),
     Accent2 = Color(0xFF4F9AD1), Line = Color.Black.copy(alpha = 0.08f),
-    BackgroundStops = listOf(Color(0xFFF3F5F8), Color(0xFFE4E8EC)), Light = true
+    BackgroundStops = listOf(Color(0xFFF3F5F8), Color(0xFFE4E8EC)), Light = true,
+    Font = DashFont.CONDENSED, HeroWeight = FontWeight.SemiBold, BarStyle = DashBarStyle.CLUSTER
 )
 // Zénith: the lounge cabin under the panoramic windscreen. Pearl grey page lit
 // from above, white panels with an aluminium hairline, the cluster's deep blue
@@ -299,14 +314,16 @@ private val ZenithLightPalette = DashPalette(
     Accent = Color(0xFF2A6FB0), Secondary = Color(0xFF4FB3E8), Critical = Color(0xFFC8102E),
     Good = Color(0xFF2E8B57), Muted = Color(0xFF6B7480), TextPrimary = Color(0xFF1B1F24), TextSecondary = Color(0xFF4A525C),
     Accent2 = Color(0xFF4FB3E8), Line = Color(0x1A1B1F24),
-    BackgroundStops = listOf(Color(0xFFF8FAFC), Color(0xFFEEF1F4), Color(0xFFE4E9EE)), Light = true
+    BackgroundStops = listOf(Color(0xFFF8FAFC), Color(0xFFEEF1F4), Color(0xFFE4E9EE)), Light = true,
+    HeroWeight = FontWeight.Medium
 )
 private val ZenithDarkPalette = DashPalette(
     Background = Color(0xFF15181C), Bar = Color(0xFF1B1F24), Card = Color(0xFF20252B), CardHi = Color(0xFF2A3037),
     Accent = Color(0xFF6FB2E8), Secondary = Color(0xFFA9D6F5), Critical = Color(0xFFFF4D55),
     Good = Color(0xFF7ED6A3), Muted = Color(0xFF8A939E), TextPrimary = Color(0xFFF3F5F7), TextSecondary = Color(0xFFB4BCC5),
     Accent2 = Color(0xFFA9D6F5), Line = Color.White.copy(alpha = 0.08f), Glow = 0.25f,
-    BackgroundStops = listOf(Color(0xFF1A1E23), Color(0xFF121517))
+    BackgroundStops = listOf(Color(0xFF1A1E23), Color(0xFF121517)),
+    HeroWeight = FontWeight.Medium
 )
 
 /** How the screen is divided: pages only, or a permanent Google Maps dock beside them. */
@@ -518,6 +535,12 @@ object DashColors {
     val BackgroundStops get() = current.BackgroundStops
     val Skin get() = current.Skin
     val Light get() = current.Light
+    val Font get() = current.Font
+    val HeroWeight get() = current.HeroWeight
+    val BarStyle get() = current.BarStyle
+
+    /** The hero face as a font family (the condensed cut comes from the system). */
+    fun heroFamily(): FontFamily = if (current.Font == DashFont.CONDENSED) CondensedFamily else FontFamily.Default
 
     /** Diagonal accent → accent2 gradient for primary controls. */
     val AccentBrush: Brush get() = Brush.linearGradient(listOf(current.Accent, current.Accent2))

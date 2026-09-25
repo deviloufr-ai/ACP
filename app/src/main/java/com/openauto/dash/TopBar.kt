@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
@@ -78,11 +79,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 
 /*
  * Top bar, edit toolbar, page dots and the update banner.
@@ -205,19 +208,24 @@ internal fun StandardTopBar(m: TopBarModel) {
                 }
             }
 
+            // A cluster bar (Mistral) puts the speed in the middle, like the car's
+            // own central display, and moves the clock to the right; without a
+            // speed source it is the plain bar again.
+            val speed = if (DashColors.BarStyle == DashBarStyle.CLUSTER) rememberSpeedKmh(m.obdData, m.obdConnection) else null
+            val cluster = speed != null && !m.merged
             if (m.merged) {
                 BarPageDots(m)
+            } else if (cluster) {
+                ClusterReadout(speed ?: 0, m.obdData, m.obdConnection == ObdConnectionState.CONNECTED)
             } else {
-                Text(
-                    text = m.clock,
-                    color = DashColors.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.02).em,
-                    style = MaterialTheme.typography.titleLarge
-                )
+                BarClock(m.clock)
             }
 
             Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                if (cluster) {
+                    BarClock(m.clock, MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(10.dp))
+                }
                 if (m.demo) {
                     DemoBadge(onStop = m.onDemo)
                     Spacer(Modifier.width(6.dp))
@@ -231,6 +239,97 @@ internal fun StandardTopBar(m: TopBarModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BarClock(clock: String, style: TextStyle = MaterialTheme.typography.titleLarge) {
+    Text(
+        text = clock,
+        color = DashColors.TextPrimary,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.02).em,
+        style = style
+    )
+}
+
+/**
+ * The centre of a cluster bar: the rev counter as a row of segments (the
+ * last ones amber, then red), the speed in the hero face under it, and fuel
+ * and coolant as short segment bars on either side. Segments only, no
+ * needles: the reading is the count of lit cells.
+ */
+@Composable
+private fun ClusterReadout(speedKmh: Int, obd: ObdData, connected: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        SegmentBar(
+            label = stringResource(R.string.vehicle_fuel),
+            fraction = if (connected && obd.fuelLevelPct > 0) obd.fuelLevelPct / 100f else 0f,
+            hot = false,
+            lowIsHot = true
+        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                val lit = if (connected) (obd.rpm / 7000f * TACHO_SEGMENTS).toInt().coerceIn(0, TACHO_SEGMENTS) else 0
+                repeat(TACHO_SEGMENTS) { i ->
+                    val colour = when {
+                        i >= lit -> DashColors.CardHi
+                        i >= TACHO_SEGMENTS - 2 -> DashColors.Critical
+                        i >= TACHO_SEGMENTS - 4 -> DashColors.Tacho
+                        else -> DashColors.Accent
+                    }
+                    Box(Modifier.size(width = 12.dp, height = 5.dp).clip(RoundedCornerShape(2.dp)).background(colour))
+                }
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    speedKmh.toString(),
+                    color = DashColors.Accent,
+                    fontFamily = DashColors.heroFamily(),
+                    fontWeight = DashColors.HeroWeight,
+                    fontSize = 40.sp,
+                    lineHeight = 40.sp,
+                    letterSpacing = (-0.02).em,
+                    maxLines = 1
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "KM/H",
+                    color = DashColors.TextSecondary,
+                    letterSpacing = 0.1.em,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
+        }
+        SegmentBar(
+            label = stringResource(R.string.vehicle_coolant),
+            fraction = if (connected) obd.coolantTempC / 120f else 0f,
+            hot = obd.coolantTempC >= COOLANT_WARNING_C,
+            lowIsHot = false
+        )
+    }
+}
+
+private const val TACHO_SEGMENTS = 14
+
+/** Six segments and a caption; the top segment reads amber when [hot], the bottom one when [lowIsHot] and the level is low. */
+@Composable
+private fun SegmentBar(label: String, fraction: Float, hot: Boolean, lowIsHot: Boolean) {
+    val lit = (fraction * 6f).toInt().coerceIn(0, 6)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            repeat(6) { i ->
+                val colour = when {
+                    i >= lit -> DashColors.CardHi
+                    lowIsHot && lit <= 1 -> DashColors.Tacho
+                    hot && i == 5 -> DashColors.Critical
+                    else -> DashColors.Accent
+                }
+                Box(Modifier.size(width = 8.dp, height = 14.dp).clip(RoundedCornerShape(1.dp)).background(colour))
+            }
+        }
+        Text(label.uppercase(), color = DashColors.TextSecondary, letterSpacing = 0.12.em, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 
@@ -502,6 +601,7 @@ internal fun VehicleAlerts(obdConnection: ObdConnectionState, obdData: ObdData) 
     // A critical reading goes to the centre, which says it once and keeps it.
     LaunchedEffect(live) {
         live.filter { it.level == AlertLevel.CRITICAL }.forEach { AlertCenter.raise(context, it, R.string.dash_alert_spoken) }
+        AlertCenter.noteWarnings(live.filter { it.level == AlertLevel.WARNING })
     }
     val held = AlertCenter.critical
     held.values.sortedBy { it.key }.forEach { alert ->

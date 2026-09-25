@@ -242,7 +242,12 @@ Contrastes texte principal / page vérifiés : Mistral nuit 17:1, Mistral jour 1
 | 8 | Sélecteur de thème à aperçu réel : trois colonnes de mini-dashboards dessinés avec la palette de chaque thème, moitié nuit / moitié jour (barre, tuile vitesse, tuile de trois jauges), en trois groupes Recommandés (Standard, Mistral, Zénith) / Thèmes / Univers | `ThemePane.kt` (remplace `DashThemePickerDialog.kt`) |
 | 9 | Une seule action de connexion OBD : la pastille de la barre connecte toujours ; sur une page, seule la première tuile véhicule garde le bouton Connecter, les autres affichent « OBD non connecté » et renvoient à la barre | `DashboardGrid.kt` (`LocalObdPrompt`), `TelemetryTiles.kt` (`ObdNotConnected`, `ObdCard`, `RangeCard`) |
 
-Reste de P3 : le niveau « thème+ » (14 : police, formes et style de barre par thème, barre « combiné » de Mistral) est un chantier plus long, non commencé. L'historique des alertes dans la tuile Codes défaut (fin du 15) n'est pas fait.
+**Reste de P3, livré en version resserrée** :
+
+| # | Proposition | Où dans le code |
+|---|---|---|
+| 14 | Niveau « thème+ » : chaque palette porte sa police héros (`Font` : sans ou condensée), son graisse (`HeroWeight`) et le style de sa barre (`BarStyle`). Mistral utilise la condensée et la barre « combiné » : vitesse au centre, compte-tours en 14 segments (ambre puis rouge), carburant et liquide en barres de 6 segments, horloge à droite ; sans source de vitesse la barre redevient l'horloge. Zénith adopte une graisse Medium. Les formes par thème et un style de jauge par thème restent à faire. | `DashTheme.kt` (`DashFont`, `DashBarStyle`), `TopBar.kt` (`ClusterReadout`, `SegmentBar`), `DriveTiles.kt` (`HeroNumber`) |
+| 15 | Historique des alertes : les vingt dernières alertes (ambre et rouges) sont journalisées, la tuile Codes défaut montre les trois dernières avec l'heure | `VehicleAlerts.kt` (`AlertCenter.history`), `FaultCodesTile.kt` (`RecentAlerts`) |
 
 Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe de syntaxe Kotlin a été faite ; la CI Lint & Test doit valider la branche.
 
@@ -251,4 +256,4 @@ Non compilé dans cet environnement (SDK Android inaccessible) : seule une passe
 1. Semaine 1 : échelle typographique, cibles 48 dp, indicateur OBD, curseur d'effets (P1 1/3/4/5). **Fait.**
 2. Semaine 2 : tokens forme/couleur, jour/nuit robuste, retour d'action, palettes Mistral et Zénith en thèmes couleur (P3 10/11/12/13 + section 4). **Fait**, avec les alertes hiérarchisées (15).
 3. Semaine 3–4 : écran Réglages, sélecteur de thème avec aperçu réel (P2 7/8). **Fait**, avec l'aide visuelle de la croix (6) et la connexion OBD unique (9).
-4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14). La croix de pages est conservée par choix.
+4. Ensuite : niveau « thème+ » et barre « combiné central » pour Mistral (P3 14). **Fait en version resserrée** (police, graisse, barre) ; formes et style de jauge par thème restent ouverts. La croix de pages est conservée par choix.

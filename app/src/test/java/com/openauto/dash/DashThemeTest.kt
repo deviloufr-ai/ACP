@@ -28,6 +28,8 @@ class DashThemeTest {
             assertEquals("$mode glass", dark.Glass, light.Glass)
             assertEquals("$mode bare", dark.Bare, light.Bare)
             assertEquals("$mode original", dark.Original, light.Original)
+            assertEquals("$mode font", dark.Font, light.Font)
+            assertEquals("$mode bar", dark.BarStyle, light.BarStyle)
         }
     }
 

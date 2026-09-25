@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -42,15 +43,35 @@ internal fun vehicleAlerts(context: Context, obdData: ObdData): List<VehicleAler
 internal const val KEY_BATTERY = "battery"
 internal const val KEY_COOLANT = "coolant"
 
+/** One alert as it happened, for the log the fault-code tile shows. */
+internal data class AlertEvent(val at: Long, val level: AlertLevel, val text: String)
+
 /** Critical alerts raised and not yet acknowledged; the bar draws these whatever the reading does next. */
 internal object AlertCenter {
     /** By key: the alert as it was when raised (the text keeps the reading that triggered it). */
     val critical = mutableStateMapOf<String, VehicleAlert>()
+    /** The last alerts of either level, newest first, so a chip that came and went can still be read. */
+    val history = mutableStateListOf<AlertEvent>()
+    private const val HISTORY_MAX = 20
+    private val activeWarnings = HashSet<String>()
+
+    /** Logs the warnings in [warnings] that were not up a moment ago; forgets the ones that went. */
+    fun noteWarnings(warnings: List<VehicleAlert>) {
+        val keys = warnings.map { it.key }.toSet()
+        warnings.forEach { if (activeWarnings.add(it.key)) log(it) }
+        activeWarnings.retainAll(keys)
+    }
+
+    private fun log(alert: VehicleAlert) {
+        history.add(0, AlertEvent(System.currentTimeMillis(), alert.level, alert.text))
+        while (history.size > HISTORY_MAX) history.removeAt(history.lastIndex)
+    }
 
     /** Puts [alert] up if it is not up already, saying it once through the car's voice when it is new. */
     fun raise(context: Context, alert: VehicleAlert, @StringRes spokenRes: Int) {
         if (critical.containsKey(alert.key)) return
         critical[alert.key] = alert
+        log(alert)
         val config = AiSettings.load(context)
         if (config.speak) {
             CarVoice.setContext(context)
