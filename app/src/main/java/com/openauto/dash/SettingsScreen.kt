@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,7 +65,7 @@ import androidx.compose.ui.unit.em
  * The Settings screen: everything set once, full screen in two columns like
  * a car's own settings. Categories on the left, the chosen one's settings on
  * the right, most of them right there (theme, appearance, language, driving,
- * the paired phone) and the deep ones (car profile, AI, upkeep, readings, boot logo) one tap
+ * the paired phone, the second screen) and the deep ones (car profile, AI, upkeep, readings, boot logo) one tap
  * away in their own sheet. Replaces the dialogs that used to stack four deep.
  */
 
@@ -73,6 +74,7 @@ internal enum class SettingsTab(@StringRes val titleRes: Int, val icon: ImageVec
     LOOK(R.string.settings_section_look, Icons.Filled.Palette),
     DRIVING(R.string.settings_section_driving, Icons.Filled.Speed),
     PHONE(R.string.settings_section_phone, Icons.Filled.PhoneAndroid),
+    SECOND_SCREEN(R.string.settings_section_second_screen, Icons.Filled.Tv),
     ADVANCED(R.string.settings_section_advanced, Icons.Filled.Tune)
 }
 
@@ -171,6 +173,7 @@ internal fun SettingsScreen(
                     SettingsTab.LOOK -> LookPane(theme)
                     SettingsTab.DRIVING -> DrivingPane(m)
                     SettingsTab.PHONE -> PhonePane()
+                    SettingsTab.SECOND_SCREEN -> SecondScreenPane()
                     SettingsTab.ADVANCED -> AdvancedPane(m, onBootLogo = { bootLogo = true })
                 }
             }

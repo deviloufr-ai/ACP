@@ -42,8 +42,15 @@ internal object VehicleMonitor {
         scope.launch { reconnectWhileInFront() }
     }
 
+    /** The second screen shows the car's readings: they are wanted even with an app in front. */
+    private val secondScreen = MutableStateFlow(false)
+
     fun setForeground(inFront: Boolean) {
         foreground.value = inFront
+    }
+
+    fun setSecondScreenShowing(showing: Boolean) {
+        secondScreen.value = showing
     }
 
     /**
@@ -86,13 +93,14 @@ internal object VehicleMonitor {
     }
 
     /**
-     * While the launcher is in front, redials a missing adapter: after 5 s,
+     * While the launcher is in front (or the second screen shows the car's
+     * readings), redials a missing adapter: after 5 s,
      * then less and less often up to once a minute, so an adapter that is
      * unplugged or asleep does not keep the Bluetooth radio paging. Coming
      * back to the front, or a link that was up and dropped, starts over at 5 s.
      */
     private suspend fun reconnectWhileInFront() {
-        foreground.collectLatest { inFront ->
+        combine(foreground, secondScreen) { inFront, cluster -> inFront || cluster }.distinctUntilChanged().collectLatest { inFront ->
             if (!inFront) return@collectLatest
             var wait = FIRST_RETRY_MS
             while (true) {

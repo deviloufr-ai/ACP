@@ -130,7 +130,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
-    val mediaController = remember { CarMediaController(context) }
+    // Shared with the second screen's cluster (SecondScreenController).
+    val mediaController = remember { CarMediaController.shared(context) }
     val updateManager = remember { UpdateManager(context) }
     // The live readings stay States: reading them here would recompose the whole
     // dashboard on every OBD sample. Tiles read them where they draw them.
@@ -530,7 +531,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         AiMechanic.setContext(context)
         StartupBriefing.start(context)
         VehicleMonitor.start(context)
-        mediaController.start()
+        mediaController.acquire()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
@@ -547,7 +548,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             VehicleMonitor.setForeground(false)
-            mediaController.stop()
+            mediaController.release()
         }
     }
 

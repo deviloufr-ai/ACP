@@ -14,6 +14,7 @@ import com.openauto.dash.link.ActionResult
 import com.openauto.dash.link.CallCommand
 import com.openauto.dash.link.CallState
 import com.openauto.dash.link.Dismiss
+import com.openauto.dash.link.DisplayPair
 import com.openauto.dash.link.Hello
 import com.openauto.dash.link.LINK_PORT
 import com.openauto.dash.link.LinkMessage
@@ -370,6 +371,8 @@ object PhoneLink {
             is NotificationRemoved -> NotificationFeed.phoneRemoved(message.key)
             is ActionResult -> _results.tryEmit(message)
             is CallState -> _call.value = toPhoneCall(message)
+            // The phone scanned a second-screen display's code for this car.
+            is DisplayPair -> DisplayLink.pair(context, message.uri)
             else -> Unit
         }
     }
@@ -432,7 +435,8 @@ object PhoneLink {
         }
     }
 
-    private fun unitName(context: Context): String =
+    /** This head unit's name, as the phone and a display show it. */
+    internal fun unitName(context: Context): String =
         Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)?.takeIf { it.isNotBlank() }
             ?: Build.MODEL?.takeIf { it.isNotBlank() }
             ?: "Dashwheel"

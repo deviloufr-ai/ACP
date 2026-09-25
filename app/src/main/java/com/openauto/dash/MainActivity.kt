@@ -1,9 +1,11 @@
 package com.openauto.dash
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -35,6 +37,15 @@ class MainActivity : ComponentActivity() {
          * answers by closing what is open and going back to the middle page.
          */
         val homePressed = MutableStateFlow(0L)
+
+        /**
+         * The dashboard is on screen (started). While it isn't, the second
+         * screen's cluster keeps the palette following the time of day itself.
+         */
+        val started = MutableStateFlow(false)
+
+        /** Brought to the front by the second screen, to take the focus back from an app it moved over: not a Home press. */
+        const val EXTRA_REFOCUS = "com.openauto.dash.REFOCUS"
     }
 
     // Whether the launcher is sharing the screen (split-screen / freeform). The
@@ -65,6 +76,10 @@ class MainActivity : ComponentActivity() {
         // Dials the paired phone whenever its hotspot is around, and shows its calls.
         PhoneLink.start(this)
         PhoneCallOverlay.start(this)
+        // The second screen (a Raspberry Pi on the same hotspot), when one is paired.
+        SecondScreenStore.load(this)
+        DisplayLink.start(this)
+        SecondScreenController.start(this)
         // A new version runs JIT-only until it is compiled ahead of time.
         CompileAfterUpdate.schedule(this)
 
@@ -86,9 +101,20 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_REFOCUS, false)) return
         if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
             homePressed.value = System.currentTimeMillis()
         }
+    }
+
+    // Steering-wheel keys chosen to turn the second screen's page (when the
+    // accessibility service isn't already seeing every key first).
+    // Activity.dispatchKeyEvent is public API; lint only trips over the
+    // @RestrictTo that androidx-core's ComponentActivity puts on its override.
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!SecondScreenController.serviceFiltersKeys && SecondScreenController.onKey(event)) return true
+        return super.dispatchKeyEvent(event)
     }
 
     // A tap on the dashboard may open an app fullscreen on purpose: the Maps
@@ -105,6 +131,16 @@ class MainActivity : ComponentActivity() {
 
     // Some head-unit ROMs don't reliably deliver onMultiWindowModeChanged, so
     // also re-check on resume and on the config change that entering split fires.
+    override fun onStart() {
+        super.onStart()
+        started.value = true
+    }
+
+    override fun onStop() {
+        started.value = false
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         inMultiWindow.value = isInMultiWindowMode

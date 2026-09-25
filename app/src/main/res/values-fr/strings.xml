@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="split_a11y_description">Permet à Dashwheel d\'ouvrir des applis en écran partagé à côté du tableau de bord, avec le même partage d\'écran que l\'écran des applis récentes. Aucun contenu de l\'écran n\'est lu.</string>
+    <string name="split_a11y_description">Permet à Dashwheel d\'ouvrir des applis en écran partagé à côté du tableau de bord, avec le même partage d\'écran que l\'écran des applis récentes. Aucun contenu de l\'écran n\'est lu. Il voit aussi les touches pressées, pour tourner la page du second écran avec les boutons du volant choisis ; les autres touches passent sans changement.</string>
 
     <!-- Language picker; each language is listed under its own name. -->
     <string name="language_menu">Langue</string>

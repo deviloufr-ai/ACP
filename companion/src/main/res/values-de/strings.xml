@@ -42,4 +42,11 @@
     <string name="car_spot_none">Sobald das Auto verbunden ist, steht hier, wo es angehalten hat.</string>
     <string name="car_spot_map">Karte</string>
     <string name="car_spot_walk">Zu Fuß hin</string>
+
+    <!-- A second-screen display's code, scanned here and passed to the car (DisplayPair). -->
+    <string name="display_confirm_title">Bildschirm %1$s zum Auto hinzufügen?</string>
+    <string name="display_confirm_body">Dein Handy gibt den Code dieses zweiten Bildschirms an das verbundene Auto weiter. Das Auto zeigt dort dann sein Kombiinstrument oder eine App.</string>
+    <string name="display_confirm_send">An das Auto senden</string>
+    <string name="display_sent">An %1$s gesendet: Der Bildschirm verbindet sich in wenigen Sekunden.</string>
+    <string name="display_needs_car">Verbinde dich zuerst mit dem Auto: Hotspot einschalten und warten, bis die App „verbunden“ anzeigt, dann den Code des Bildschirms erneut scannen.</string>
 </resources>

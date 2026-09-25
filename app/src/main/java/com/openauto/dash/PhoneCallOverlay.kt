@@ -50,13 +50,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.openauto.dash.link.CallCommand
 import com.openauto.dash.link.CallState
@@ -151,27 +145,6 @@ private class CallWindow(private val context: Context) {
         runCatching { wm.removeViewImmediate(v) }.onFailure { Log.w(TAG, "remove failed", it) }
         owner?.destroy()
         owner = null
-    }
-}
-
-/**
- * Keeps the overlay's composition running on its own: tied to the launcher's
- * activity it would pause whenever another app is in front, exactly when a
- * call card is needed most.
- */
-private class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
-    private val registry = LifecycleRegistry(this)
-    private val saved = SavedStateRegistryController.create(this)
-    override val lifecycle: Lifecycle get() = registry
-    override val savedStateRegistry: SavedStateRegistry get() = saved.savedStateRegistry
-
-    init {
-        saved.performRestore(null)
-        registry.currentState = Lifecycle.State.RESUMED
-    }
-
-    fun destroy() {
-        registry.currentState = Lifecycle.State.DESTROYED
     }
 }
 
