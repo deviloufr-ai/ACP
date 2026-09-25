@@ -164,7 +164,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // (page, tile index) whose design picker is open.
     var designPicker by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     // Pages 0-2 swipe sideways; the middle one also swipes up/down (see DashboardStore.COLUMN).
-    val pagerState = rememberPagerState(pageCount = { DashboardStore.ROW.size })
+    // Home is the centre of the cross, so that is where the launcher starts.
+    val pagerState = rememberPagerState(initialPage = DashboardStore.CENTER, pageCount = { DashboardStore.ROW.size })
     val columnState = rememberPagerState(
         initialPage = DashboardStore.COLUMN_HOME,
         pageCount = { DashboardStore.COLUMN.size }
@@ -206,6 +207,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var showSplitEnable by remember { mutableStateOf(false) }
     var blockPagerSwipe by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    // The Home key: close whatever is open and come back to the middle of the cross.
+    val homePressed by MainActivity.homePressed.collectAsState()
+    LaunchedEffect(homePressed) {
+        if (homePressed > 0L) {
+            showAllApps = false
+            settingsTab = null
+            editing = false
+            showPage(DashboardStore.CENTER)
+        }
+    }
     var hasMediaAccess by remember { mutableStateOf(CarMediaController.hasNotificationAccess(context)) }
     // The demo's music and directions need no access grant.
     val mediaAccess = hasMediaAccess || demoOn

@@ -2,11 +2,13 @@ package com.openauto.dash
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -24,6 +26,15 @@ import androidx.core.view.WindowInsetsControllerCompat
  * in immersive fullscreen (status/navigation bars hidden), showing the dashboard.
  */
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        /**
+         * When the Home key was last pressed while this launcher was the home
+         * app (a new HOME intent to the running activity). The dashboard
+         * answers by closing what is open and going back to the middle page.
+         */
+        val homePressed = MutableStateFlow(0L)
+    }
 
     // Whether the launcher is sharing the screen (split-screen / freeform). The
     // dashboard collapses to a single widget in this state. configChanges keeps
@@ -59,6 +70,16 @@ class MainActivity : ComponentActivity() {
             OpenAutoDashTheme {
                 AutomotiveDashboard(inSplitMode = inMultiWindow.value)
             }
+        }
+    }
+
+    // singleTop: the Home key re-delivers the HOME intent here instead of
+    // starting a second copy, both from the launcher itself and from any app.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
+            homePressed.value = System.currentTimeMillis()
         }
     }
 
