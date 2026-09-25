@@ -29,8 +29,9 @@
     <string name="confirm_body">To auto będzie pokazywać powiadomienia i wiadomości oraz może odpowiadać w Twoim imieniu. Łączy się tylko przez Twój hotspot.</string>
     <string name="confirm_allow">Zezwól</string>
     <string name="cancel">Anuluj</string>
-    <string name="invalid_code">To nie jest kod parowania Dashwheel.</string>
     <string name="remove_title">Usunąć %1$s?</string>
     <string name="remove_body">Auto nie będzie już nic otrzymywać z tego telefonu. Ponowne parowanie wymaga nowego kodu.</string>
     <string name="paired_since">Sparowano %1$s</string>
+    <string name="scanned_download_code">Ten kod pobiera aplikację. Zeskanuj teraz drugi, kod parowania po prawej stronie ekranu radia.</string>
+    <string name="invalid_code_read">To nie jest kod parowania Dashwheel (odczytano: %1$s).</string>
 </resources>

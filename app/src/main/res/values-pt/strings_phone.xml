@@ -34,4 +34,6 @@
     <string name="phone_no_link">O telefone não está ligado.</string>
     <string name="phone_mark_read">Marcar como lido</string>
     <string name="phone_clear">Limpar no telefone</string>
+    <string name="phone_pair_qr_download">Transferir a app</string>
+    <string name="phone_pair_qr_pair">Código de associação: leia-o na app</string>
 </resources>

@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -319,14 +320,18 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // The download code is only for a first install: smaller, and labelled so it
+                    // isn't taken for the pairing code (the companion app says so if it is).
+                    Column(Modifier.weight(0.8f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.phone_pair_step1), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         QrCode(download, Modifier.fillMaxWidth())
+                        QrCaption(stringResource(R.string.phone_pair_qr_download), primary = false)
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1.2f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.phone_pair_step2), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Text(stringResource(R.string.phone_pair_step3), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         QrCode(offer.toUri(), Modifier.fillMaxWidth())
+                        QrCaption(stringResource(R.string.phone_pair_qr_pair), primary = true)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(color = DashColors.Accent, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(10.dp))
@@ -341,6 +346,18 @@ private fun PhonePairingDialog(onDismiss: () -> Unit) {
                 Text(stringResource(if (paired != null) R.string.phone_done else R.string.dash_cancel), color = DashColors.Accent)
             }
         }
+    )
+}
+
+@Composable
+private fun QrCaption(text: String, primary: Boolean) {
+    Text(
+        text,
+        color = if (primary) DashColors.Accent else DashColors.Muted,
+        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center
     )
 }
 

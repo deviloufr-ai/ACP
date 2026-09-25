@@ -29,8 +29,9 @@
     <string name="confirm_body">Este carro vai mostrar as suas notificações e mensagens e pode responder em seu nome. Só se liga através do seu hotspot.</string>
     <string name="confirm_allow">Permitir</string>
     <string name="cancel">Cancelar</string>
-    <string name="invalid_code">Não é um código de associação Dashwheel.</string>
     <string name="remove_title">Remover %1$s?</string>
     <string name="remove_body">O carro deixa de receber o que quer que seja deste telefone. Para voltar a associar é preciso um novo código.</string>
     <string name="paired_since">Associado em %1$s</string>
+    <string name="scanned_download_code">Esse código transfere a app. Leia agora o outro, o código de associação à direita no ecrã do autorrádio.</string>
+    <string name="invalid_code_read">Não é um código de associação Dashwheel (lido: %1$s).</string>
 </resources>

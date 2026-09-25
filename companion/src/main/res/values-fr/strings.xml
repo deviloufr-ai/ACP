@@ -29,8 +29,9 @@
     <string name="confirm_body">Cette voiture affichera vos notifications et vos messages, et pourra répondre en votre nom. Elle ne se connecte que via votre partage de connexion.</string>
     <string name="confirm_allow">Autoriser</string>
     <string name="cancel">Annuler</string>
-    <string name="invalid_code">Ce n\'est pas un code d\'association Dashwheel.</string>
     <string name="remove_title">Retirer %1$s ?</string>
     <string name="remove_body">La voiture ne recevra plus rien de ce téléphone. Il faudra un nouveau code pour l\'associer à nouveau.</string>
     <string name="paired_since">Associée le %1$s</string>
+    <string name="scanned_download_code">Ce code sert à télécharger l\'appli. Scannez maintenant l\'autre, le code d\'association à droite sur l\'écran de l\'autoradio.</string>
+    <string name="invalid_code_read">Ce n\'est pas un code d\'association Dashwheel (lu : %1$s).</string>
 </resources>

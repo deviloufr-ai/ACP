@@ -35,4 +35,6 @@
     <string name="phone_no_link">The phone is not connected.</string>
     <string name="phone_mark_read">Mark as read</string>
     <string name="phone_clear">Clear on phone</string>
+    <string name="phone_pair_qr_download">Download the app</string>
+    <string name="phone_pair_qr_pair">Pairing code: scan it in the app</string>
 </resources>

@@ -34,4 +34,6 @@
     <string name="phone_no_link">Le téléphone n\'est pas connecté.</string>
     <string name="phone_mark_read">Marquer comme lu</string>
     <string name="phone_clear">Effacer sur le téléphone</string>
+    <string name="phone_pair_qr_download">Télécharger l\'appli</string>
+    <string name="phone_pair_qr_pair">Code d\'association : à scanner dans l\'appli</string>
 </resources>

@@ -29,8 +29,9 @@
     <string name="confirm_body">Deze auto toont je meldingen en berichten en kan namens jou antwoorden. Hij verbindt alleen via je hotspot.</string>
     <string name="confirm_allow">Toestaan</string>
     <string name="cancel">Annuleren</string>
-    <string name="invalid_code">Dit is geen Dashwheel-koppelcode.</string>
     <string name="remove_title">%1$s verwijderen?</string>
     <string name="remove_body">De auto ontvangt niets meer van deze telefoon. Opnieuw koppelen vraagt een nieuwe code.</string>
     <string name="paired_since">Gekoppeld op %1$s</string>
+    <string name="scanned_download_code">Die code downloadt de app. Scan nu de andere, de koppelcode rechts op het scherm van de autoradio.</string>
+    <string name="invalid_code_read">Dit is geen Dashwheel-koppelcode (gelezen: %1$s).</string>
 </resources>

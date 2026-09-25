@@ -34,4 +34,6 @@
     <string name="phone_no_link">De telefoon is niet verbonden.</string>
     <string name="phone_mark_read">Markeren als gelezen</string>
     <string name="phone_clear">Wissen op telefoon</string>
+    <string name="phone_pair_qr_download">App downloaden</string>
+    <string name="phone_pair_qr_pair">Koppelcode: scan hem in de app</string>
 </resources>

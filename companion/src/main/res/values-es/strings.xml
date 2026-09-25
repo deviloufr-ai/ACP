@@ -29,8 +29,9 @@
     <string name="confirm_body">Este coche mostrará tus notificaciones y mensajes, y podrá responder en tu nombre. Solo se conecta a través de tu punto de acceso.</string>
     <string name="confirm_allow">Permitir</string>
     <string name="cancel">Cancelar</string>
-    <string name="invalid_code">No es un código de vinculación de Dashwheel.</string>
     <string name="remove_title">¿Quitar %1$s?</string>
     <string name="remove_body">El coche ya no recibirá nada de este teléfono. Para volver a vincularlo hará falta un código nuevo.</string>
     <string name="paired_since">Vinculado el %1$s</string>
+    <string name="scanned_download_code">Ese código descarga la app. Escanea ahora el otro, el código de vinculación a la derecha de la pantalla de la radio.</string>
+    <string name="invalid_code_read">No es un código de vinculación de Dashwheel (leído: %1$s).</string>
 </resources>

@@ -29,8 +29,9 @@
     <string name="confirm_body">Dieses Auto zeigt deine Benachrichtigungen und Nachrichten an und kann in deinem Namen antworten. Es verbindet sich nur über deinen Hotspot.</string>
     <string name="confirm_allow">Erlauben</string>
     <string name="cancel">Abbrechen</string>
-    <string name="invalid_code">Das ist kein Dashwheel-Kopplungscode.</string>
     <string name="remove_title">%1$s entfernen?</string>
     <string name="remove_body">Das Auto erhält nichts mehr von diesem Telefon. Zum erneuten Koppeln braucht es einen neuen Code.</string>
     <string name="paired_since">Gekoppelt am %1$s</string>
+    <string name="scanned_download_code">Dieser Code lädt die App herunter. Scanne jetzt den anderen, den Kopplungscode rechts auf dem Bildschirm des Autoradios.</string>
+    <string name="invalid_code_read">Das ist kein Dashwheel-Kopplungscode (gelesen: %1$s).</string>
 </resources>
