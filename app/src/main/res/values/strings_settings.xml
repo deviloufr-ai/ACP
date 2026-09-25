@@ -25,4 +25,12 @@
     <string name="speed_volume_low_hint">A touch louder from 40 km/h, at most 2 notches on the motorway</string>
     <string name="speed_volume_medium_hint">Louder from 40 km/h, up to 4 notches more on the motorway</string>
     <string name="speed_volume_high_hint">Much louder from 40 km/h, up to 6 notches more on the motorway</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Volume control</string>
+    <string name="volume_way_auto">Automatic</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Volume keys</string>
+    <string name="volume_way_auto_hint">Android\'s volume, or the volume keys where the head unit ignores it (always the keys on ROCO K706 units)</string>
+    <string name="volume_way_android_hint">Android\'s media volume, as on a phone</string>
+    <string name="volume_way_keys_hint">Presses the volume keys like the wheel buttons and the knob. Needs root or the head unit\'s ADB</string>
 </resources>

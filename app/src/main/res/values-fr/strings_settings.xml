@@ -24,4 +24,12 @@
     <string name="speed_volume_low_hint">Un peu plus fort dès 40 km/h, 2 crans de plus au maximum sur autoroute</string>
     <string name="speed_volume_medium_hint">Plus fort dès 40 km/h, jusqu\'à 4 crans de plus sur autoroute</string>
     <string name="speed_volume_high_hint">Bien plus fort dès 40 km/h, jusqu\'à 6 crans de plus sur autoroute</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Réglage du volume</string>
+    <string name="volume_way_auto">Automatique</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Touches volume</string>
+    <string name="volume_way_auto_hint">Le volume d\'Android, ou les touches volume là où l\'autoradio l\'ignore (toujours les touches sur les autoradios ROCO K706)</string>
+    <string name="volume_way_android_hint">Le volume multimédia d\'Android, comme sur un téléphone</string>
+    <string name="volume_way_keys_hint">Appuie sur les touches volume comme les commandes au volant et le bouton rotatif. Demande le root ou l\'ADB de l\'autoradio</string>
 </resources>

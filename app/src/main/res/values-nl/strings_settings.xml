@@ -24,4 +24,12 @@
     <string name="speed_volume_low_hint">Iets harder vanaf 40 km/h, hooguit 2 stappen meer op de snelweg</string>
     <string name="speed_volume_medium_hint">Harder vanaf 40 km/h, tot 4 stappen meer op de snelweg</string>
     <string name="speed_volume_high_hint">Veel harder vanaf 40 km/h, tot 6 stappen meer op de snelweg</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Volumeregeling</string>
+    <string name="volume_way_auto">Automatisch</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Volumetoetsen</string>
+    <string name="volume_way_auto_hint">Het Android-volume, of de volumetoetsen waar de radio het negeert (altijd de toetsen op ROCO K706-radio\'s)</string>
+    <string name="volume_way_android_hint">Het mediavolume van Android, zoals op een telefoon</string>
+    <string name="volume_way_keys_hint">Drukt de volumetoetsen in zoals de stuurknoppen en de draaiknop. Vereist root of de ADB van de radio</string>
 </resources>

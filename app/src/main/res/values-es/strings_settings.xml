@@ -24,4 +24,12 @@
     <string name="speed_volume_low_hint">Un poco más alto desde 40 km/h, como mucho 2 pasos más en autopista</string>
     <string name="speed_volume_medium_hint">Más alto desde 40 km/h, hasta 4 pasos más en autopista</string>
     <string name="speed_volume_high_hint">Mucho más alto desde 40 km/h, hasta 6 pasos más en autopista</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Control del volumen</string>
+    <string name="volume_way_auto">Automático</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Teclas de volumen</string>
+    <string name="volume_way_auto_hint">El volumen de Android, o las teclas de volumen donde la radio lo ignora (siempre las teclas en las radios ROCO K706)</string>
+    <string name="volume_way_android_hint">El volumen multimedia de Android, como en un teléfono</string>
+    <string name="volume_way_keys_hint">Pulsa las teclas de volumen como los mandos del volante y la rueda. Requiere root o el ADB de la radio</string>
 </resources>

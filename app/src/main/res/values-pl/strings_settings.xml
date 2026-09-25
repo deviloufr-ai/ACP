@@ -24,4 +24,12 @@
     <string name="speed_volume_low_hint">Trochę głośniej od 40 km/h, najwyżej 2 stopnie więcej na autostradzie</string>
     <string name="speed_volume_medium_hint">Głośniej od 40 km/h, do 4 stopni więcej na autostradzie</string>
     <string name="speed_volume_high_hint">Dużo głośniej od 40 km/h, do 6 stopni więcej na autostradzie</string>
+    <!-- How the volume is changed (MediaVolume.kt), Settings → Driving -->
+    <string name="volume_way_title">Sterowanie głośnością</string>
+    <string name="volume_way_auto">Automatycznie</string>
+    <string name="volume_way_android">Android</string>
+    <string name="volume_way_keys">Klawisze głośności</string>
+    <string name="volume_way_auto_hint">Głośność Androida albo klawisze głośności tam, gdzie radio ją ignoruje (w radiach ROCO K706 zawsze klawisze)</string>
+    <string name="volume_way_android_hint">Głośność multimediów Androida, jak w telefonie</string>
+    <string name="volume_way_keys_hint">Naciska klawisze głośności jak przyciski na kierownicy i pokrętło. Wymaga roota lub ADB radia</string>
 </resources>
