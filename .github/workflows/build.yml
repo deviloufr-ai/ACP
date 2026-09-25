@@ -129,3 +129,25 @@ jobs:
             Test build of branch `${{ github.ref_name }}` at ${{ github.sha }}.
             Signed with the release key, so it installs over the current version; a later
             release from main will update over it again. The in-app updater ignores pre-releases.
+
+      # Every push publishes a release, so they pile up quickly. Keep only the
+      # three newest releases from main (the updater reads the latest one) and
+      # the pre-release this run just published; delete every other release
+      # along with its tag.
+      - name: Prune old releases
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP_RELEASES: 3
+          THIS_TAG: ${{ github.ref == 'refs/heads/main' && format('v1.0.{0}', github.run_number) || format('{0}-v1.0.{1}', github.ref_name, github.run_number) }}
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 \
+            --json tagName,isPrerelease,createdAt \
+            --jq "sort_by(.createdAt) | reverse
+                  | (map(select(.isPrerelease | not)) | .[$KEEP_RELEASES:][].tagName),
+                    (map(select(.isPrerelease))[].tagName)" \
+          | while read -r tag; do
+              [ -z "$tag" ] || [ "$tag" = "$THIS_TAG" ] && continue
+              echo "Deleting release $tag"
+              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+            done
