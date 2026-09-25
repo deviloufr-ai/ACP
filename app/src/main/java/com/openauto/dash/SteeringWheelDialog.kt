@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.nativeKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -251,8 +256,19 @@ private fun WheelListening(onCancel: () -> Unit) {
         animationSpec = infiniteRepeatable(tween(700, easing = LinearEasing), RepeatMode.Reverse),
         label = "wheel-pulse-scale"
     )
+    // A dialog is its own window: while it's up, keys go to it, not to
+    // MainActivity.dispatchKeyEvent. So this screen takes focus and hands
+    // them to the store itself.
+    val context = LocalContext.current
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focus)
+            .onPreviewKeyEvent { SteeringWheelStore.onKeyEvent(context, it.nativeKeyEvent) }
+            .focusable()
+            .padding(vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

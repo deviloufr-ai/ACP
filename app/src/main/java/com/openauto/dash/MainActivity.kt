@@ -1,5 +1,6 @@
 package com.openauto.dash
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
@@ -106,6 +107,9 @@ class MainActivity : ComponentActivity() {
     // whatever a steering wheel or remote sends. SteeringWheelStore either
     // captures it for the learning screen, runs the action it's learned to,
     // or (unmapped) leaves it to Android's own handling.
+    // RestrictedApi: a lint false positive, it flags ComponentActivity's own
+    // override of this public Activity method.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (SteeringWheelStore.onKeyEvent(this, event)) return true
         return super.dispatchKeyEvent(event)
