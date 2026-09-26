@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +62,13 @@ internal fun PipAnchorCard(
     isDock: Boolean = false,
     packageName: String = PipAnchor.MAPS_PACKAGE,
     appLabel: String = "Maps",
+    /**
+     * The dashboard is being arranged: the window steps aside and the tile
+     * shows the edit placeholder instead, like the page tiles do. The tile
+     * stays composed and keeps measuring itself, so the window comes straight
+     * back onto it when arranging ends.
+     */
+    arranging: Boolean = false,
     /** Called with the window's pixel size when the system makes it larger than the tile. */
     onWindowBiggerThanTile: ((Int, Int) -> Unit)? = null
 ) {
@@ -145,7 +154,7 @@ internal fun PipAnchorCard(
     val steppedAside by PipAnchor.steppedAside.collectAsState()
     val pageSwiping by PipAnchor.pageSwiping.collectAsState()
     val covered by PipAnchor.coveredAreas.collectAsState()
-    val blocked = steppedAside || (pageSwiping && !isDock) || target?.let { t ->
+    val blocked = arranging || steppedAside || (pageSwiping && !isDock) || target?.let { t ->
         covered.values.any { WindowListing.overlaps(it, t, margin = POPUP_MARGIN_PX) }
     } == true
     // Parked once per pop-up or swipe, not once per frame: a page swipe moves
@@ -191,6 +200,13 @@ internal fun PipAnchorCard(
             if (r != target) target = r
         }
     ) {
+        if (arranging) {
+            EditPlaceholderBody(
+                icon = Icons.Filled.Map,
+                label = if (isMaps) BuiltinKind.PIP_ANCHOR.label else stringResource(R.string.dash_app_window, appLabel)
+            )
+            return@Card
+        }
         val pkg = status.pipPackage
         val err = status.error
         val name = pkg?.substringAfterLast('.')

@@ -728,15 +728,28 @@ internal fun EditPlaceholder(
     hint: String = stringResource(R.string.dash_shown_while_arranging)
 ) {
     Card(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(40.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(label, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-            Text(hint, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
-        }
+        EditPlaceholderBody(icon, label, hint)
+    }
+}
+
+/**
+ * The inside of an [EditPlaceholder], for a tile that keeps its own card while
+ * arranging (the Maps dock, which must go on measuring where its window goes).
+ */
+@Composable
+internal fun EditPlaceholderBody(
+    icon: ImageVector,
+    label: String,
+    hint: String = stringResource(R.string.dash_shown_while_arranging)
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(40.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(label, color = DashColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+        Text(hint, color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
     }
 }

@@ -894,7 +894,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                             top = 8.dp, bottom = 8.dp
                         )
                 ) {
-                    PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true)
+                    // While arranging, the dock shows the "Maps window" placeholder
+                    // like the page tiles, and the Maps window steps aside so the
+                    // edit bar and the placeholder are not hidden under it.
+                    PipAnchorCard(modifier = Modifier.fillMaxSize(), isDock = true, arranging = editing)
                 }
                 }
             }
