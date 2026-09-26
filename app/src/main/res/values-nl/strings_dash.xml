@@ -151,6 +151,14 @@
     <string name="dash_effects_none_hint">Beste leesbaarheid: dekkende kaarten, scherpe cijfers, geen gloed</string>
     <string name="dash_effects_reduced_hint">Zachtere gloed, glas blijft</string>
     <string name="dash_effects_full_hint">Elk thema met al zijn gloed en glas</string>
+    <string name="dash_bar_title">Onderste balk</string>
+    <string name="dash_bar_auto_hide">Balk automatisch verbergen</string>
+    <string name="dash_bar_auto_hide_detail">Schuift weg als hij niet wordt gebruikt, voor meer ruimte op de pagina\'s</string>
+    <string name="dash_bar_hide_after">Verbergen na %1$d s</string>
+    <string name="dash_bar_hide_now">Meteen verbergen</string>
+    <string name="dash_bar_swipe_up_detail">Verborgen: veeg omhoog vanaf de onderrand om hem terug te halen</string>
+    <string name="dash_bar_swipe_up_hint">Veeg omhoog voor de balk</string>
+    <string name="dash_bar_show">Balk tonen</string>
     <string name="dash_drive_lock_notice">Parkeer om wijzigingen te maken</string>
     <string name="dash_theme_group_recommended">Aanbevolen</string>
     <string name="dash_theme_group_colours">Thema\'s</string>

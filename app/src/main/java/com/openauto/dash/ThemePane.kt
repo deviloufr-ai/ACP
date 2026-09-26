@@ -41,6 +41,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlin.math.roundToInt
 
 /*
  * The Look settings: the appearance switch, the effects switch, and the
@@ -101,6 +111,8 @@ internal fun ThemePane(theme: ThemeState) {
         onChoose = theme.onEffects
     )
     SwitchHint(stringResource(theme.effects.hintRes))
+    Spacer(Modifier.height(12.dp))
+    BarAutoHideSetting(theme)
     Spacer(Modifier.height(20.dp))
 
     val skins = DashThemeMode.entries.filter { paletteFor(it, false).Skin != DashSkin.STANDARD }
@@ -108,6 +120,66 @@ internal fun ThemePane(theme: ThemeState) {
     ThemeGroup(stringResource(R.string.dash_theme_group_recommended), Recommended, theme)
     ThemeGroup(stringResource(R.string.dash_theme_group_colours), colours, theme)
     ThemeGroup(stringResource(R.string.dash_theme_group_skins), skins, theme)
+}
+
+/**
+ * The bottom bar: always there, or hiding itself once unused for the chosen
+ * 0 to 20 seconds and coming back with a swipe up (BarAutoHide.kt).
+ */
+@Composable
+private fun BarAutoHideSetting(theme: ThemeState) {
+    Text(
+        stringResource(R.string.dash_bar_title),
+        color = DashColors.TextPrimary,
+        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+    )
+    SettingsToggle(
+        icon = Icons.Filled.VerticalAlignBottom,
+        title = stringResource(R.string.dash_bar_auto_hide),
+        detail = stringResource(R.string.dash_bar_auto_hide_detail),
+        checked = theme.barAutoHide,
+        onChange = theme.onBarAutoHide
+    )
+    if (!theme.barAutoHide) return
+    // Follows the thumb while dragging; saved once it is let go.
+    var seconds by remember(theme.barHideSeconds) { mutableFloatStateOf(theme.barHideSeconds.toFloat()) }
+    val whole = seconds.roundToInt()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.Timer, contentDescription = null, tint = DashColors.TextSecondary, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(
+            if (whole == 0) stringResource(R.string.dash_bar_hide_now) else stringResource(R.string.dash_bar_hide_after, whole),
+            color = DashColors.TextPrimary,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            modifier = Modifier.widthIn(min = 170.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Slider(
+            value = seconds,
+            onValueChange = { seconds = it },
+            onValueChangeFinished = { theme.onBarHideSeconds(seconds.roundToInt()) },
+            valueRange = 0f..MAX_BAR_HIDE_SECONDS.toFloat(),
+            steps = MAX_BAR_HIDE_SECONDS - 1,
+            colors = SliderDefaults.colors(
+                thumbColor = if (DashColors.Light) DashColors.Accent else Color.White,
+                activeTrackColor = DashColors.Accent,
+                inactiveTrackColor = DashColors.CardHi,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent
+            ),
+            modifier = Modifier.weight(1f)
+        )
+    }
+    SwitchHint(stringResource(R.string.dash_bar_swipe_up_detail))
 }
 
 /** A titled group of themes, three to a row. */

@@ -152,6 +152,14 @@
     <string name="dash_effects_none_hint">Haute lisibilité : cartes opaques, chiffres nets, sans halo</string>
     <string name="dash_effects_reduced_hint">Halos atténués, verre conservé</string>
     <string name="dash_effects_full_hint">Chaque thème avec tous ses halos et son verre</string>
+    <string name="dash_bar_title">Barre du bas</string>
+    <string name="dash_bar_auto_hide">Masquer la barre automatiquement</string>
+    <string name="dash_bar_auto_hide_detail">Se retire quand elle ne sert pas, pour laisser plus de place aux pages</string>
+    <string name="dash_bar_hide_after">Masquer après %1$d s</string>
+    <string name="dash_bar_hide_now">Masquer tout de suite</string>
+    <string name="dash_bar_swipe_up_detail">Une fois masquée, glissez vers le haut depuis le bord inférieur pour la faire réapparaître</string>
+    <string name="dash_bar_swipe_up_hint">Glissez vers le haut pour la barre</string>
+    <string name="dash_bar_show">Afficher la barre</string>
 
     <!-- En mouvement : les modifications attendent l'arrêt -->
     <string name="dash_drive_lock_notice">Garez-vous pour modifier</string>

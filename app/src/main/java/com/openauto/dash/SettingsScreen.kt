@@ -90,7 +90,12 @@ internal data class ThemeState(
     val effects: DashEffects,
     val onMode: (DashThemeMode) -> Unit,
     val onAppearance: (DashAppearance) -> Unit,
-    val onEffects: (DashEffects) -> Unit
+    val onEffects: (DashEffects) -> Unit,
+    /** The bottom bar hides itself when unused, after [barHideSeconds] (BarAutoHide.kt). */
+    val barAutoHide: Boolean,
+    val barHideSeconds: Int,
+    val onBarAutoHide: (Boolean) -> Unit,
+    val onBarHideSeconds: (Int) -> Unit
 )
 
 @Composable

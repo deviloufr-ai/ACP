@@ -108,6 +108,14 @@
     <string name="dash_effects_none_hint">High legibility: opaque cards, plain numerals, no glow</string>
     <string name="dash_effects_reduced_hint">Softer glow, glass kept</string>
     <string name="dash_effects_full_hint">Every theme with all its glow and glass</string>
+    <string name="dash_bar_title">Bottom bar</string>
+    <string name="dash_bar_auto_hide">Auto-hide the bar</string>
+    <string name="dash_bar_auto_hide_detail">Slides away when unused, for more room on the pages</string>
+    <string name="dash_bar_hide_after">Hide after %1$d s</string>
+    <string name="dash_bar_hide_now">Hide right away</string>
+    <string name="dash_bar_swipe_up_detail">When it is hidden, swipe up from the bottom edge to bring it back</string>
+    <string name="dash_bar_swipe_up_hint">Swipe up for the bar</string>
+    <string name="dash_bar_show">Show the bar</string>
 
     <!-- Moving: edits wait until the car has stopped -->
     <string name="dash_drive_lock_notice">Park to make changes</string>

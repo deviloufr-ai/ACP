@@ -151,6 +151,14 @@
     <string name="dash_effects_none_hint">Máxima legibilidad: tarjetas opacas, cifras nítidas, sin halo</string>
     <string name="dash_effects_reduced_hint">Halos suavizados, cristal conservado</string>
     <string name="dash_effects_full_hint">Cada tema con todos sus halos y su cristal</string>
+    <string name="dash_bar_title">Barra inferior</string>
+    <string name="dash_bar_auto_hide">Ocultar la barra automáticamente</string>
+    <string name="dash_bar_auto_hide_detail">Se retira cuando no se usa, para dejar más espacio a las páginas</string>
+    <string name="dash_bar_hide_after">Ocultar tras %1$d s</string>
+    <string name="dash_bar_hide_now">Ocultar enseguida</string>
+    <string name="dash_bar_swipe_up_detail">Cuando esté oculta, desliza hacia arriba desde el borde inferior para que vuelva</string>
+    <string name="dash_bar_swipe_up_hint">Desliza hacia arriba para la barra</string>
+    <string name="dash_bar_show">Mostrar la barra</string>
     <string name="dash_drive_lock_notice">Aparca para hacer cambios</string>
     <string name="dash_theme_group_recommended">Recomendados</string>
     <string name="dash_theme_group_colours">Temas</string>

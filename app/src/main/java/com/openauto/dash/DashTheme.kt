@@ -373,6 +373,11 @@ object DashThemeStore {
     private const val KEY = "mode"
     private const val KEY_APPEARANCE = "appearance"
     private const val KEY_EFFECTS = "effects"
+    private const val KEY_BAR_AUTO_HIDE = "bar_auto_hide"
+    private const val KEY_BAR_HIDE_SECONDS = "bar_hide_seconds"
+
+    /** Seconds the bottom bar waits before hiding, until the driver picks another delay. */
+    const val DEFAULT_BAR_HIDE_SECONDS = 5
 
     fun load(context: Context): DashThemeMode = runCatching {
         DashThemeMode.valueOf(
@@ -408,6 +413,25 @@ object DashThemeStore {
     fun saveEffects(context: Context, effects: DashEffects) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_EFFECTS, effects.name).apply()
+    }
+
+    /** Whether the bottom bar hides itself when unused (BarAutoHide.kt); off by default. */
+    fun loadBarAutoHide(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_BAR_AUTO_HIDE, false)
+
+    fun saveBarAutoHide(context: Context, autoHide: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_BAR_AUTO_HIDE, autoHide).apply()
+    }
+
+    /** Seconds, 0 to [MAX_BAR_HIDE_SECONDS], the bar waits unused before it hides. */
+    fun loadBarHideSeconds(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_BAR_HIDE_SECONDS, DEFAULT_BAR_HIDE_SECONDS).coerceIn(0, MAX_BAR_HIDE_SECONDS)
+
+    fun saveBarHideSeconds(context: Context, seconds: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_BAR_HIDE_SECONDS, seconds.coerceIn(0, MAX_BAR_HIDE_SECONDS)).apply()
     }
 }
 

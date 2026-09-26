@@ -151,6 +151,14 @@
     <string name="dash_effects_none_hint">Beste Lesbarkeit: deckende Karten, klare Ziffern, kein Leuchten</string>
     <string name="dash_effects_reduced_hint">Sanfteres Leuchten, Glas bleibt</string>
     <string name="dash_effects_full_hint">Jedes Design mit seinem vollen Leuchten und Glas</string>
+    <string name="dash_bar_title">Untere Leiste</string>
+    <string name="dash_bar_auto_hide">Leiste automatisch ausblenden</string>
+    <string name="dash_bar_auto_hide_detail">Verschwindet, wenn sie nicht gebraucht wird, für mehr Platz auf den Seiten</string>
+    <string name="dash_bar_hide_after">Nach %1$d s ausblenden</string>
+    <string name="dash_bar_hide_now">Sofort ausblenden</string>
+    <string name="dash_bar_swipe_up_detail">Ausgeblendet: vom unteren Rand nach oben wischen, um sie zurückzuholen</string>
+    <string name="dash_bar_swipe_up_hint">Nach oben wischen für die Leiste</string>
+    <string name="dash_bar_show">Leiste einblenden</string>
     <string name="dash_drive_lock_notice">Zum Ändern anhalten</string>
     <string name="dash_theme_group_recommended">Empfohlen</string>
     <string name="dash_theme_group_colours">Designs</string>

@@ -115,11 +115,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var appearance by remember { mutableStateOf(DashThemeStore.loadAppearance(context)) }
     var effects by remember { mutableStateOf(DashThemeStore.loadEffects(context)) }
+    var barAutoHide by remember { mutableStateOf(DashThemeStore.loadBarAutoHide(context)) }
+    var barHideSeconds by remember { mutableIntStateOf(DashThemeStore.loadBarHideSeconds(context)) }
     val themeState = ThemeState(
         mode = themeMode, appearance = appearance, effects = effects,
         onMode = { themeMode = it; DashThemeStore.save(context, it) },
         onAppearance = { appearance = it; DashThemeStore.saveAppearance(context, it) },
-        onEffects = { effects = it; DashThemeStore.saveEffects(context, it) }
+        onEffects = { effects = it; DashThemeStore.saveEffects(context, it) },
+        barAutoHide = barAutoHide, barHideSeconds = barHideSeconds,
+        onBarAutoHide = { barAutoHide = it; DashThemeStore.saveBarAutoHide(context, it) },
+        onBarHideSeconds = { barHideSeconds = it; DashThemeStore.saveBarHideSeconds(context, it) }
     )
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
     // Kept as a State and read only by the two panes it sizes: dragging the
@@ -991,8 +996,15 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     }
                 }
         ) {
-        TopBar(settingsModel)
-
+            // Auto-hide (Settings › Look): waits while the pages are being
+            // arranged or something opened from the bar covers them.
+            AutoHidingBar(
+                enabled = barAutoHide,
+                hideSeconds = barHideSeconds,
+                held = editing || settingsTab != null || showAllApps
+            ) {
+                TopBar(settingsModel)
+            }
         }
     }
     }

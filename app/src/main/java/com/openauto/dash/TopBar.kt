@@ -57,6 +57,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -516,6 +517,13 @@ internal const val LOCK_NOTICE_MS = 2_500L
 
 @Composable
 private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    // An auto-hiding bar stays up while its menu is open (BarAutoHide.kt).
+    if (open) {
+        DisposableEffect(Unit) {
+            BarAutoHide.openMenus++
+            onDispose { BarAutoHide.openMenus-- }
+        }
+    }
     // Docked windows are drawn above the bar's pop-ups; one the menu overlaps steps aside meanwhile.
     DropdownMenu(
         expanded = open,
