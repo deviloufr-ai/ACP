@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,20 +47,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /*
  * Adding to a page: one full-width sheet with three tabs (widgets, apps,
  * windows) in place of the "what kind of thing?" dialog that led to four
- * different pickers. Widgets are cards three to a row with the whole
- * blurb, filtered by category chip or search; apps are their icons; windows
- * are an app kept open in its own window, or two side by side.
+ * different pickers. Widgets are shown as they will look on the page: each
+ * card holds the live tile at its starting proportions, in the current theme
+ * and skin, with its name and blurb underneath, filtered by category chip or
+ * search; apps are their icons; windows are an app kept open in its own
+ * window, or two side by side.
  */
 
 private enum class AddTab(@StringRes val titleRes: Int, val icon: ImageVector) {
@@ -72,6 +78,8 @@ private enum class AddTab(@StringRes val titleRes: Int, val icon: ImageVector) {
 internal fun AddSheet(
     page: Int,
     apps: List<AppEntry>,
+    /** Draws [DashboardItem] as the dashboard would (arranging mode, so live views show their placeholder). */
+    previewTile: @Composable (DashboardItem) -> Unit,
     onPickBuiltin: (BuiltinKind) -> Unit,
     onPickLaunchBar: () -> Unit,
     onPickSystemWidget: () -> Unit,
@@ -122,7 +130,7 @@ internal fun AddSheet(
             Spacer(Modifier.height(10.dp))
             val q = query.trim()
             when (tab) {
-                AddTab.WIDGETS -> WidgetsTab(q, onPickBuiltin, onPickLaunchBar, onPickSystemWidget)
+                AddTab.WIDGETS -> WidgetsTab(q, apps, previewTile, onPickBuiltin, onPickLaunchBar, onPickSystemWidget)
                 AddTab.APPS -> AppGrid(apps.matching(q), onPick = onPickApp)
                 AddTab.WINDOWS -> WindowsTab(apps.matching(q), onPickWindow, onPickPair)
             }
@@ -154,10 +162,16 @@ private fun SearchField(value: String, onChange: (String) -> Unit, modifier: Mod
     )
 }
 
-/** Category chips, then the catalogue three to a row; the launch bar and system widgets close the list. */
+/**
+ * Category chips, then the catalogue as live previews, as many to a row as
+ * fit: in sections by category under "All", flat under one chip. The launch
+ * bar and system widgets close the Apps section.
+ */
 @Composable
 private fun WidgetsTab(
     query: String,
+    apps: List<AppEntry>,
+    previewTile: @Composable (DashboardItem) -> Unit,
     onPickBuiltin: (BuiltinKind) -> Unit,
     onPickLaunchBar: () -> Unit,
     onPickSystemWidget: () -> Unit
@@ -184,26 +198,74 @@ private fun WidgetsTab(
             (query.isEmpty() || context.getString(kind.labelRes).contains(query, true) || context.getString(kind.blurbRes).contains(query, true))
     }
     val extras = (category == null || category == WidgetCategory.APPS) && query.isEmpty()
+    // The launch bar's preview holds a few of the installed apps, so it reads as a bar and not an empty strip.
+    val sampleBar = remember(apps) { DashboardItem.LaunchBar(packages = apps.take(5).map { it.packageName }) }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(minSize = PREVIEW_CARD_MIN_WIDTH),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(kinds, key = { it.name }) { kind ->
-            WidgetCard(kindIcon(kind), kind.label, kind.blurb) { onPickBuiltin(kind) }
+        val kindCards: (List<BuiltinKind>) -> Unit = { list ->
+            items(list, key = { it.name }) { kind ->
+                WidgetCard(kind.label, kind.blurb, tileAspect(kind.defaultW, kind.defaultH), onClick = { onPickBuiltin(kind) }) {
+                    previewTile(DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
+                }
+            }
         }
-        if (extras) {
+        val extraCards: () -> Unit = {
             item(key = "bar") {
-                WidgetCard(Icons.Filled.Apps, stringResource(R.string.apps_pick_launch_bar), stringResource(R.string.apps_pick_launch_bar_blurb), onPickLaunchBar)
+                WidgetCard(
+                    stringResource(R.string.apps_pick_launch_bar), stringResource(R.string.apps_pick_launch_bar_blurb),
+                    tileAspect(sampleBar.w, sampleBar.h), onClick = onPickLaunchBar
+                ) { previewTile(sampleBar) }
             }
             item(key = "system") {
-                WidgetCard(Icons.Filled.Widgets, stringResource(R.string.apps_pick_system_widget), stringResource(R.string.apps_pick_system_widget_blurb), onPickSystemWidget)
+                // A system widget has no face of its own until one is picked from the list.
+                WidgetCard(
+                    stringResource(R.string.apps_pick_system_widget), stringResource(R.string.apps_pick_system_widget_blurb),
+                    tileAspect(5, 3), onClick = onPickSystemWidget
+                ) { IconPreview(Icons.Filled.Widgets) }
             }
+        }
+        if (category == null) {
+            // "All": the catalogue in sections, one per category, each under its title;
+            // a search keeps the sections it still has something in.
+            WidgetCategory.entries.forEach { c ->
+                val inSection = kinds.filter { it.category == c }
+                val withExtras = extras && c == WidgetCategory.APPS
+                if (inSection.isEmpty() && !withExtras) return@forEach
+                item(key = "section:${c.name}", span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(c.titleRes)) }
+                kindCards(inSection)
+                if (withExtras) extraCards()
+            }
+        } else {
+            kindCards(kinds)
+            if (extras) extraCards()
         }
     }
 }
+
+/** A category's name over its widgets in the "All" list. */
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        title.uppercase(),
+        color = DashColors.Muted,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+        style = MaterialTheme.typography.labelMedium,
+        maxLines = 1,
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 6.dp)
+    )
+}
+
+/** Below this width a row gives up a column: a preview has to stay legible. */
+private val PREVIEW_CARD_MIN_WIDTH = 300.dp
+
+/** A tile's proportions on the page: grid cells on the head unit are a little wider than tall. */
+private fun tileAspect(w: Int, h: Int): Float = (w * 1.1f / h).coerceIn(0.8f, 3f)
 
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
@@ -224,32 +286,54 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     )
 }
 
-/** One widget: icon, name and the whole two-line blurb, nothing cut short. */
+/**
+ * One widget as it will look on the page: the live tile over the page
+ * background at [aspect], then its name and the whole two-line blurb. The
+ * card is a single button; taps never reach the preview's own controls.
+ */
 @Composable
-private fun WidgetCard(icon: ImageVector, label: String, blurb: String, onClick: () -> Unit) {
+private fun WidgetCard(label: String, blurb: String, aspect: Float, onClick: () -> Unit, preview: @Composable () -> Unit) {
     val tap = rememberTapFeedback()
     val shape = DashShape.Medium
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 88.dp)
             .clip(shape)
             .background(DashColors.CardHi.copy(alpha = DashColors.CardHi.alpha * 0.6f))
             .border(1.dp, DashColors.Line, shape)
-            .clickable(role = Role.Button) { tap(); onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(role = Role.Button, onClickLabel = label) { tap(); onClick() }
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(DashColors.Accent.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspect)
+                .clip(DashShape.Small)
+                .background(Brush.linearGradient(DashColors.BackgroundStops))
+                .padding(4.dp)
         ) {
-            Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(24.dp))
+            preview()
+            // Sits over the preview and takes every touch, without consuming it,
+            // so the card's own click gets the tap and the tile's buttons never do.
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } })
         }
-        Spacer(Modifier.width(12.dp))
-        Column {
+        Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
             Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(blurb, color = DashColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** The stand-in for a widget with nothing to show yet: its icon on a disc, centred. */
+@Composable
+private fun IconPreview(icon: ImageVector) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.size(56.dp).clip(CircleShape).background(DashColors.Accent.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(30.dp))
         }
     }
 }
