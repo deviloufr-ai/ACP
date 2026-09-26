@@ -38,6 +38,7 @@
     <string name="vehicle_via_canbox">via CANbox</string>
     <string name="vehicle_via_obd">via OBD</string>
     <string name="vehicle_fuel_no_obd">De OBD van deze auto geeft geen brandstof door. Leer het in plaats daarvan van de CANbox: root vereist.</string>
+    <string name="vehicle_fuel_none">Nog geen brandstofniveau. Sluit de OBD-adapter aan: niet elke auto geeft het door.</string>
     <string name="vehicle_find_fuel_signal">Brandstofsignaal zoeken</string>
     <string name="vehicle_try_obd_fuel_pid">OBD-brandstof-PID proberen</string>
     <string name="vehicle_km_to_empty">KM TOT LEEG</string>

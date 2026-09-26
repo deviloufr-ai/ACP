@@ -19,6 +19,7 @@ The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can h
 - **Volume control + volume follows speed**: Settings → Driving → Volume control picks Automatic / Android / Volume keys (units whose MCU ignores Android's volume, like the ROCO K706, use the keys the wheel buttons send, via root or the internal ADB); Settings → Driving → Off / Low / Medium / High turns the music up from 40 km/h (OBD speed, GPS otherwise) and back down as the car slows, adding and removing only its own notches so the driver's volume changes are kept (`SpeedVolume.kt`)
 - **In-App Auto-Update**: checks GitHub Releases on launch, tracks the installed version, and downloads/installs newer APKs
 - **Optional priv-app install**: self-installs to `/system/priv-app` (via `su`/Magisk or the head unit's internal root ADB) to pick up `BIND_APPWIDGET` privileges and the split-swap overlay — opt-in only, not required
+- **Root-only features stay out of the way**: everything that runs through `su` or the unit's internal ADB (system-app install, boot logo, app windows and the Maps window, volume keys, CANbox tiles and finders) is only offered once a privileged shell is found (`PrivilegedShell.kt`); on a phone or an unrooted unit those settings, catalogue entries and template tiles are hidden
 - **Safety First**: dark themes by default, large touch targets, screen kept on while driving
 
 ### Project Structure

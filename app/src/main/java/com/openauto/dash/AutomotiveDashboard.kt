@@ -181,6 +181,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // Layout snapshots for Undo while arranging (newest last, capped).
     var history by remember { mutableStateOf<List<List<List<DashboardItem>>>>(emptyList()) }
 
+    val shellAccess = shellAccess()
+    // The default layout is built before the shell is known. Once it is, and
+    // nothing was saved yet, build it again: with the CANbox tiles under root,
+    // without them elsewhere (see DashboardStore.defaultPages).
+    LaunchedEffect(shellAccess) {
+        if (shellAccess != PrivilegedShell.Access.UNKNOWN && !DashboardStore.exists(context, variant())) {
+            pages = DashboardStore.load(context, variant())
+        }
+    }
+
     /** Switches layout, loading that layout's own arrangement (seeded from the current one the first time). */
     val switchLayout: (DashLayout) -> Unit = { next ->
         if (next != layout) {
@@ -554,7 +564,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         obdPaired = ObdBluetoothManager.savedDeviceAddress() != null || obdConnection == ObdConnectionState.CONNECTED,
         driverOnRight = CarProfileStore.current.driverOnRight,
         mapsDocked = half,
-        dockApps = TemplatePlacer.dockApps(pages, appsByPackage.keys)
+        dockApps = TemplatePlacer.dockApps(pages, appsByPackage.keys),
+        canbox = shellAccess.root
     )
 
     /**
@@ -604,6 +615,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
+        PrivilegedShell.probe()
         CarProfileStore.setContext(context)
         SpeedCorrection.setContext(context)
         MediaVolume.setContext(context)
@@ -621,6 +633,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     hasMediaAccess = CarMediaController.hasNotificationAccess(context)
+                    // Root granted or ADB turned on meanwhile: the features come back with it.
+                    PrivilegedShell.refresh()
                     accessGeneration++
                     if (hasMediaAccess) mediaController.start()
                     VehicleMonitor.connectSaved()

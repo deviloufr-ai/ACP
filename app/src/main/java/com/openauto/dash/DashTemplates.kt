@@ -91,7 +91,9 @@ data class TemplateScreen(
     val obdPaired: Boolean = true,
     val driverOnRight: Boolean = false,
     val mapsDocked: Boolean = false,
-    val dockApps: List<String> = emptyList()
+    val dockApps: List<String> = emptyList(),
+    /** The CANbox stream can be read (root, see [PrivilegedShell]): the door and CAN tiles have something to show. */
+    val canbox: Boolean = true
 ) {
     companion object {
         /** Widgets never get narrower than their resize minimum. */
@@ -111,7 +113,8 @@ data class TemplateScreen(
             obdPaired: Boolean,
             driverOnRight: Boolean,
             mapsDocked: Boolean,
-            dockApps: List<String>
+            dockApps: List<String>,
+            canbox: Boolean = true
         ): TemplateScreen {
             val cellW = (pageWidthDp / GRID_COLS).coerceAtLeast(1f)
             val cellH = (pageHeightDp / GRID_ROWS).coerceAtLeast(1f)
@@ -121,7 +124,8 @@ data class TemplateScreen(
                 obdPaired = obdPaired,
                 driverOnRight = driverOnRight,
                 mapsDocked = mapsDocked,
-                dockApps = dockApps
+                dockApps = dockApps,
+                canbox = canbox
             )
         }
     }
@@ -157,6 +161,9 @@ object TemplatePlacer {
     private val NEEDS_OBD = setOf(TELEMETRY, RANGE, OBD_DTC, DOORS, OBD_ALL, CAN_MON)
     private val WITHOUT_OBD = mapOf(TELEMETRY to TRIP)
 
+    /** Tiles fed by the CANbox stream alone, which only root can read: nothing stands in for them. */
+    private val NEEDS_CANBOX = setOf(DOORS, CAN_MON)
+
     /** Every page of [template] laid out for [screen]; pages the template leaves out stay empty. */
     fun pages(template: DashTemplate, screen: TemplateScreen): List<List<DashboardItem>> =
         List(DashboardStore.PAGE_COUNT) { p -> template.pages[p]?.let { page(it, screen) } ?: emptyList() }
@@ -167,6 +174,7 @@ object TemplatePlacer {
         for (kind in page.kinds) {
             val use = when {
                 screen.mapsDocked && kind == NAVMAP -> null
+                !screen.canbox && kind in NEEDS_CANBOX -> null
                 !screen.obdPaired && kind in NEEDS_OBD -> WITHOUT_OBD[kind]?.takeIf { it !in page.kinds }
                 else -> kind
             }

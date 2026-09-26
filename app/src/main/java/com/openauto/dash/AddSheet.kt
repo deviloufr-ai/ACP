@@ -175,8 +175,12 @@ private fun WidgetsTab(
     }
     Spacer(Modifier.height(10.dp))
     val context = LocalContext.current
+    // The tiles that live on the privileged shell (the Maps window, the CANbox
+    // ones) are left out where there is none: they could only sit waiting.
+    val access = shellAccess()
     val kinds = BuiltinKind.entries.filter { kind ->
-        (category == null || kind.category == category) &&
+        access.allows(kind) &&
+            (category == null || kind.category == category) &&
             (query.isEmpty() || context.getString(kind.labelRes).contains(query, true) || context.getString(kind.blurbRes).contains(query, true))
     }
     val extras = (category == null || category == WidgetCategory.APPS) && query.isEmpty()
@@ -272,22 +276,31 @@ private fun AppGrid(apps: List<AppEntry>, onPick: (AppEntry) -> Unit, header: (@
     }
 }
 
-/** An app in its own window on the page, or two apps opened side by side. */
+/**
+ * An app in its own window on the page, or two apps opened side by side. A
+ * window of its own is placed through the privileged shell ([DockShell]), so
+ * without one ([PrivilegedShell]) only the pair, which the accessibility
+ * service opens, is offered.
+ */
 @Composable
 private fun WindowsTab(apps: List<AppEntry>, onPickWindow: (AppEntry) -> Unit, onPickPair: (String, String) -> Unit) {
-    var pair by rememberSaveable { mutableStateOf(false) }
+    val shell = shellAccess().shell
+    var pairChosen by rememberSaveable { mutableStateOf(false) }
+    val pair = pairChosen || !shell
     var first by rememberSaveable { mutableStateOf<String?>(null) }
     val firstApp = first?.let { pkg -> apps.firstOrNull { it.packageName == pkg } }
-    Box(Modifier.width(420.dp)) {
-        SegmentedSwitch(
-            options = listOf(false, true),
-            chosen = pair,
-            icon = { if (it) Icons.Filled.Splitscreen else Icons.Filled.OpenInNew },
-            title = { stringResource(if (it) R.string.apps_window_mode_pair else R.string.apps_window_mode_single) },
-            onChoose = { pair = it; first = null }
-        )
+    if (shell) {
+        Box(Modifier.width(420.dp)) {
+            SegmentedSwitch(
+                options = listOf(false, true),
+                chosen = pair,
+                icon = { if (it) Icons.Filled.Splitscreen else Icons.Filled.OpenInNew },
+                title = { stringResource(if (it) R.string.apps_window_mode_pair else R.string.apps_window_mode_single) },
+                onChoose = { pairChosen = it; first = null }
+            )
+        }
+        Spacer(Modifier.height(8.dp))
     }
-    Spacer(Modifier.height(8.dp))
     AppGrid(
         apps = apps,
         onPick = { app ->

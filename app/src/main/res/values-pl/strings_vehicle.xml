@@ -38,6 +38,7 @@
     <string name="vehicle_via_canbox">z CANbox</string>
     <string name="vehicle_via_obd">z OBD</string>
     <string name="vehicle_fuel_no_obd">OBD tego auta nie podaje poziomu paliwa. Można go odczytać z CANbox: wymaga roota.</string>
+    <string name="vehicle_fuel_none">Brak jeszcze poziomu paliwa. Podłącz adapter OBD: nie każde auto go podaje.</string>
     <string name="vehicle_find_fuel_signal">Znajdź sygnał paliwa</string>
     <string name="vehicle_try_obd_fuel_pid">Spróbuj PID paliwa OBD</string>
     <string name="vehicle_km_to_empty">POZOSTAŁE KM</string>

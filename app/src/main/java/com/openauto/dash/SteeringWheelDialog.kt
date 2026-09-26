@@ -324,7 +324,9 @@ private fun WheelListening(onCancel: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        CanStatus()
+        // The CAN stream is read through root: where there is none, there is
+        // nothing to report about it (see PrivilegedShell).
+        if (shellAccess().root) CanStatus()
         MonitorPanel()
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.dash_cancel)) }
     }

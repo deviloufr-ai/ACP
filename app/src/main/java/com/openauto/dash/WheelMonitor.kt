@@ -49,6 +49,10 @@ internal object WheelMonitor {
     fun start() {
         stopLocked()
         _lines.value = emptyList()
+        // Keys and CAN lines are added by SteeringWheelStore whatever the
+        // device; the raw input and the log are read through su, which is not
+        // asked for where root was not found (PrivilegedShell).
+        if (!PrivilegedShell.access.value.root) return
         jobs += sniff("exec getevent -lq", Source.INPUT) { line ->
             line.takeIf { "EV_KEY" in it }?.let { tidyGetevent(it) }
         }
