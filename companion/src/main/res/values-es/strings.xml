@@ -42,4 +42,24 @@
     <string name="car_spot_none">Con el coche conectado, aquí aparece dónde se detiene.</string>
     <string name="car_spot_map">Mapa</string>
     <string name="car_spot_walk">Ir a pie</string>
+    <string name="drives_title">Trayectos</string>
+    <string name="drives_none">Una vez conectado el coche, cada trayecto aparece aquí con su distancia, duración y nota de conducción eficiente.</string>
+    <string name="drive_under_way">Trayecto en curso</string>
+    <string name="drive_last">Último trayecto</string>
+    <string name="drive_km">km</string>
+    <string name="drive_time">Duración</string>
+    <string name="drive_average">Media km/h</string>
+    <string name="drive_top">Máx. km/h</string>
+    <string name="drive_row">%1$s km · %2$s · %3$d km/h de media</string>
+    <string name="drive_eco_score">Conducción eficiente %1$d / 100</string>
+    <string name="drive_eco_none">Conducción eficiente: sin nota (menos de 1 km o sin datos del motor)</string>
+    <string name="drive_eco_smooth">Conducción suave</string>
+    <string name="drive_eco_fair">Regular: algo brusca</string>
+    <string name="drive_eco_harsh">Brusca: más suave</string>
+    <string name="drive_hard">Aceler. / frenadas bruscas: %1$d / %2$d</string>
+    <string name="drive_band">Revoluciones en la zona tranquila: %1$d %%</string>
+    <string name="drive_clutch">Sujeto con acelerador: %1$d</string>
+    <string name="drive_fuel">Combustible ≈ %1$s L · %2$s %3$s</string>
+    <string name="drive_duration_hm">%1$d h %2$02d</string>
+    <string name="drive_duration_m">%1$d min</string>
 </resources>

@@ -299,6 +299,8 @@ object PhoneLink {
         val prober = if (isPending) null else scope.launch { probePending(gateway, link) }
         // Where the car stops, for the phone's "where's my car".
         val whereabouts = scope.launch { CarWhereabouts.report(context) { send(it) } }
+        // The drives it logged, and the one under way, for the phone's drive journal.
+        val drives = scope.launch { DriveLog.report { send(it) } }
         try {
             while (true) {
                 val message = link.receive() ?: continue
@@ -310,6 +312,7 @@ object PhoneLink {
             pinger.cancel()
             prober?.cancel()
             whereabouts.cancel()
+            drives.cancel()
             link.close()
             if (session === link) session = null
             NotificationFeed.phoneClear()

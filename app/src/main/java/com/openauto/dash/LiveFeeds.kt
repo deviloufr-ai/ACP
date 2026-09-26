@@ -40,12 +40,18 @@ internal fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-/** Running totals since the last reset, fed by GPS fixes. */
+/**
+ * Running totals since the last reset, fed by GPS fixes. Saved by [DriveLog],
+ * which also ends a trip by itself once the car has stood still a while, so
+ * each drive is logged and sent to the linked phone.
+ */
 data class TripState(
     val startedAt: Long = System.currentTimeMillis(),
     val distanceM: Double = 0.0,
     val movingMs: Long = 0L,
-    val maxSpeedKmh: Float = 0f
+    val maxSpeedKmh: Float = 0f,
+    /** When distance was last added: the car last moved. */
+    val updatedAt: Long = startedAt
 ) {
     val elapsedMs: Long get() = System.currentTimeMillis() - startedAt
     val avgSpeedKmh: Double get() = if (movingMs > 0L) (distanceM / 1000.0) / (movingMs / 3_600_000.0) else 0.0
@@ -126,6 +132,11 @@ object LocationFeed {
         _trip.value = TripState()
     }
 
+    /** The trip saved when the unit was last switched off, carried on (see [DriveLog]). */
+    internal fun restoreTrip(trip: TripState) {
+        _trip.value = trip
+    }
+
     /** [DemoMode]'s position and trip (and, when it ends, the real ones back). */
     internal fun demoWrite(location: Location?, trip: TripState, heading: Float?) {
         _location.value = location
@@ -190,7 +201,8 @@ object LocationFeed {
                     t.copy(
                         distanceM = t.distanceM + d,
                         movingMs = t.movingMs + if (speedKmh > 3f) dt else 0L,
-                        maxSpeedKmh = max(t.maxSpeedKmh, speedKmh)
+                        maxSpeedKmh = max(t.maxSpeedKmh, speedKmh),
+                        updatedAt = System.currentTimeMillis()
                     )
                 }
             }

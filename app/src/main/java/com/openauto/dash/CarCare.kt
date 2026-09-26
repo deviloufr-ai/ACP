@@ -267,6 +267,7 @@ object CarCare {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _state.value = CareState(
             drive = p.getString("drive", null)?.let { runCatching { driveFrom(JSONObject(it)) }.getOrNull() },
+            lastDrive = p.getString("last_drive", null)?.let { runCatching { driveFrom(JSONObject(it)) }.getOrNull() },
             filter = FilterLog(p.getInt("short_streak", 0), p.getLong("last_long_at", 0), p.getInt("warned_streak", 0)),
             rest = RestTimer(p.getLong("rest_ms", 0), p.getLong("rest_at", 0), spokenMin = p.getInt("rest_spoken", 0))
         )
@@ -283,7 +284,7 @@ object CarCare {
         val before = _state.value
         val (next, events) = CareRules.step(before, data, now, CarProfileStore.current)
         _state.value = next
-        if (next.filter != before.filter || now - savedAt >= SAVE_EVERY_MS) save(next, now)
+        if (next.filter != before.filter || next.lastDrive !== before.lastDrive || now - savedAt >= SAVE_EVERY_MS) save(next, now)
         // The servicing planner's mileage advances with the kilometres of this drive.
         val drive = next.drive
         val previous = before.drive
@@ -339,6 +340,7 @@ object CarCare {
         savedAt = now
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()
             ?.putString("drive", s.drive?.let { driveJson(it).toString() })
+            ?.putString("last_drive", s.lastDrive?.let { driveJson(it).toString() })
             ?.putInt("short_streak", s.filter.shortStreak)
             ?.putLong("last_long_at", s.filter.lastLongAt)
             ?.putInt("warned_streak", s.filter.warnedStreak)

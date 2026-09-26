@@ -42,4 +42,24 @@
     <string name="car_spot_none">Gdy samochód jest połączony, tutaj pojawi się miejsce, w którym się zatrzymał.</string>
     <string name="car_spot_map">Mapa</string>
     <string name="car_spot_walk">Idź pieszo</string>
+    <string name="drives_title">Jazdy</string>
+    <string name="drives_none">Gdy samochód będzie połączony, każda jazda pojawi się tutaj z dystansem, czasem i oceną eko-jazdy.</string>
+    <string name="drive_under_way">Jazda w toku</string>
+    <string name="drive_last">Ostatnia jazda</string>
+    <string name="drive_km">km</string>
+    <string name="drive_time">Czas</string>
+    <string name="drive_average">Średnia km/h</string>
+    <string name="drive_top">Maks. km/h</string>
+    <string name="drive_row">%1$s km · %2$s · średnio %3$d km/h</string>
+    <string name="drive_eco_score">Eko-jazda %1$d / 100</string>
+    <string name="drive_eco_none">Eko-jazda: brak oceny (poniżej 1 km lub brak danych silnika)</string>
+    <string name="drive_eco_smooth">Płynna jazda</string>
+    <string name="drive_eco_fair">Średnio: trochę gwałtownie</string>
+    <string name="drive_eco_harsh">Gwałtownie: zwolnij</string>
+    <string name="drive_hard">Ostre przysp. / hamowania: %1$d / %2$d</string>
+    <string name="drive_band">Obroty w spokojnym zakresie: %1$d %%</string>
+    <string name="drive_clutch">Trzymanie na gazie: %1$d</string>
+    <string name="drive_fuel">Paliwo ≈ %1$s L · %2$s %3$s</string>
+    <string name="drive_duration_hm">%1$d h %2$02d</string>
+    <string name="drive_duration_m">%1$d min</string>
 </resources>
