@@ -107,7 +107,10 @@ private fun inline(text: String, codeBackground: Color): AnnotatedString = build
     append(text.substring(at))
 }
 
-/** What's in [info]'s release, from the update strip; its Update button starts the install. */
+/**
+ * What's in [info]'s release, from "Update to vX" in the ⋮ menu or Settings;
+ * its Update button starts the install. Parked only, like the install itself.
+ */
 @Composable
 internal fun ReleaseNotesDialog(info: UpdateInfo, onUpdate: () -> Unit, onDismiss: () -> Unit) {
     val blocks = remember(info.notes) { ReleaseNotes.body(info.notes) }

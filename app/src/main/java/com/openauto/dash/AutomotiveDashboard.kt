@@ -643,16 +643,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // Installing restarts the launcher, and the permission screen is another
     // app's: neither while the car moves.
-    val onUpdate: () -> Unit = {
+    val installUpdate: () -> Unit = {
         val status = updateStatus
         val info = status.updateInfo
-        if (info != null) whenParked {
+        if (info != null && status !is UpdateStatus.Downloading && status !is UpdateStatus.Installing) whenParked {
             when {
                 !updateManager.canInstallPackages() -> updateManager.openInstallPermissionSettings()
                 status is UpdateStatus.Ready -> updateManager.install(status.file)
                 else -> scope.launch { updateManager.downloadAndInstall(info) }
             }
         }
+    }
+    // "Update to vX" (the ⋮ menu, Settings) first shows what the build brings:
+    // the release's notes, with the Update button that installs it.
+    var releaseNotes by remember { mutableStateOf<UpdateInfo?>(null) }
+    val onUpdate: () -> Unit = {
+        val info = updateStatus.updateInfo
+        if (info != null) whenParked { releaseNotes = info }
     }
     // A newer build downloads by itself on a connection that costs nothing
     // (never over a phone's hotspot), then asks once, parked: now or later.
@@ -670,6 +677,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
         if (status is UpdateStatus.Ready && !moving && promptedBuild != status.info.buildNumber) {
             promptedBuild = status.info.buildNumber
+            // One dialog at a time: the notes give way to "Update ready".
+            releaseNotes = null
             updatePrompt = status
         }
     }
@@ -1252,6 +1261,15 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 showPage(DashboardStore.CENTER)
             },
             onDismiss = { confirmTemplate = null }
+        )
+    }
+
+    releaseNotes?.let { info ->
+        ParkedOnly { releaseNotes = null }
+        ReleaseNotesDialog(
+            info = info,
+            onUpdate = { releaseNotes = null; installUpdate() },
+            onDismiss = { releaseNotes = null }
         )
     }
 
