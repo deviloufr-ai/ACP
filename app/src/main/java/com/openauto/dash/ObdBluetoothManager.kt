@@ -1,6 +1,7 @@
 package com.openauto.dash
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -10,6 +11,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -126,9 +128,12 @@ object ObdBluetoothManager {
     private val _lastError = MutableStateFlow<String?>(null)
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
-    /** The head unit is pairing with the adapter and waits for its PIN in Android's dialog. */
-    private val _pairing = MutableStateFlow(false)
-    val pairing: StateFlow<Boolean> = _pairing.asStateFlow()
+    /**
+     * What a long connection attempt is busy with, for the tile to say: the
+     * PIN to type while pairing, or the Bluetooth restart. Null otherwise.
+     */
+    private val _connectStep = MutableStateFlow<Int?>(null)
+    val connectStep: StateFlow<Int?> = _connectStep.asStateFlow()
 
     private fun fail(@StringRes reason: Int, vararg args: Any): Boolean {
         _lastError.value = appContext?.let { if (args.isEmpty()) it.getString(reason) else it.getString(reason, *args) }
@@ -206,7 +211,7 @@ object ObdBluetoothManager {
     private val connectLock = Mutex()
 
     @SuppressLint("MissingPermission")
-    private fun open(deviceAddress: String, pairIfNeeded: Boolean): Boolean {
+    private suspend fun open(deviceAddress: String, pairIfNeeded: Boolean): Boolean {
         val context = appContext ?: return false
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = manager?.adapter ?: return fail(R.string.vehicle_err_bt_off)
@@ -222,13 +227,34 @@ object ObdBluetoothManager {
         silentPolls = 0
         lastAliveAt = SystemClock.elapsedRealtime()
         misses.fill(0)
-        val device = adapter.getRemoteDevice(deviceAddress)
+        var device = adapter.getRemoteDevice(deviceAddress)
         val label = runCatching { device.name }.getOrNull() ?: deviceAddress
         // Only a paired adapter can be reached; an unpaired one fails slowly and says nothing.
-        if (adapter.bondedDevices.none { it.address.equals(deviceAddress, ignoreCase = true) }) {
+        if (!isBonded(adapter, deviceAddress)) {
             Log.w(TAG, "$deviceAddress is not paired")
             if (!pairIfNeeded) return fail(R.string.vehicle_err_not_paired, label)
-            if (!pair(device)) return fail(R.string.vehicle_err_pairing_failed, label)
+            val paired = try {
+                pair(device)
+            } catch (e: SecurityException) {
+                throw e
+            } catch (e: RuntimeException) {
+                // Seen on a head unit: "BondStateMachine.obtainMessage(int) on a null
+                // object reference". Android's Bluetooth service there was half shut
+                // down while still saying it was on, and so listed no paired device
+                // either. A restart brings it back, with its pairings.
+                Log.w(TAG, "the Bluetooth service failed, restarting it", e)
+                if (!restartBluetooth(adapter)) return fail(R.string.vehicle_err_bt_stuck)
+                device = adapter.getRemoteDevice(deviceAddress)
+                try {
+                    isBonded(adapter, deviceAddress) || pair(device)
+                } catch (e: SecurityException) {
+                    throw e
+                } catch (e: RuntimeException) {
+                    Log.w(TAG, "the Bluetooth service still fails after a restart", e)
+                    return fail(R.string.vehicle_err_bt_stuck)
+                }
+            }
+            if (!paired) return fail(R.string.vehicle_err_pairing_failed, label)
         }
         runCatching { adapter.cancelDiscovery() }
         val newSocket = openSocket(device) ?: run {
@@ -246,6 +272,60 @@ object ObdBluetoothManager {
         return true
     }
 
+    @SuppressLint("MissingPermission")
+    private fun isBonded(adapter: BluetoothAdapter, address: String): Boolean =
+        adapter.bondedDevices.any { it.address.equals(address, ignoreCase = true) }
+
+    /**
+     * Switches the head unit's Bluetooth off and on again; true once it is
+     * back on. Through the Android API (still allowed on the Android 10 these
+     * head units run), else through the privileged shell when there is one.
+     * Whatever happens on the way, it is always asked to come back on.
+     */
+    @Suppress("DEPRECATION")
+    @SuppressLint("MissingPermission")
+    private suspend fun restartBluetooth(adapter: BluetoothAdapter): Boolean {
+        val context = appContext ?: return false
+        _connectStep.value = R.string.vehicle_obd_restarting_bt
+        try {
+            val off = runCatching { adapter.disable() }.getOrDefault(false) || bluetoothShell(context, "disable")
+            if (!off) return false
+            waitUntil(BT_OFF_TIMEOUT_MS) { adapter.state == BluetoothAdapter.STATE_OFF }
+            var on = waitUntil(BT_ON_TIMEOUT_MS) {
+                // Refused while it is still turning off: asked again until it takes.
+                if (adapter.state == BluetoothAdapter.STATE_OFF) adapter.enable()
+                adapter.isEnabled
+            }
+            if (!on && bluetoothShell(context, "enable")) on = waitUntil(BT_ON_TIMEOUT_MS) { adapter.isEnabled }
+            if (!on) {
+                Log.w(TAG, "Bluetooth did not come back on")
+                return false
+            }
+            // The paired devices and the profiles load just after it says it's on.
+            delay(BT_SETTLE_MS)
+            return true
+        } finally {
+            _connectStep.value = null
+        }
+    }
+
+    private suspend fun bluetoothShell(context: Context, command: String): Boolean =
+        PrivilegedShell.access.value.shell &&
+            runCatching { DockShell.shell(context, "svc bluetooth $command") }.isSuccess
+
+    private suspend fun waitUntil(timeoutMs: Long, done: () -> Boolean): Boolean {
+        val start = SystemClock.elapsedRealtime()
+        while (SystemClock.elapsedRealtime() - start < timeoutMs) {
+            if (runCatching(done).getOrDefault(false)) return true
+            delay(250)
+        }
+        return runCatching(done).getOrDefault(false)
+    }
+
+    private const val BT_OFF_TIMEOUT_MS = 10_000L
+    private const val BT_ON_TIMEOUT_MS = 15_000L
+    private const val BT_SETTLE_MS = 2_000L
+
     /**
      * Pairs the head unit with [device]: Android shows its own dialog for the
      * adapter's PIN (1234 or 0000 on most ELM327). Waits until the pairing is
@@ -258,7 +338,7 @@ object ObdBluetoothManager {
             Log.w(TAG, "${device.address}: pairing could not start")
             return false
         }
-        _pairing.value = true
+        _connectStep.value = R.string.vehicle_obd_pairing_pin
         try {
             val start = SystemClock.elapsedRealtime()
             var sawBonding = false
@@ -275,7 +355,7 @@ object ObdBluetoothManager {
             Log.w(TAG, "${device.address}: pairing timed out")
             return false
         } finally {
-            _pairing.value = false
+            _connectStep.value = null
         }
     }
 

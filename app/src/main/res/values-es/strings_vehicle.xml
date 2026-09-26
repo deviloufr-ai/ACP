@@ -194,11 +194,13 @@
     <!-- Why the adapter is not connected -->
     <string name="vehicle_obd_connecting_to">Conectando con %1$s…</string>
     <string name="vehicle_obd_pairing_pin">Emparejando: introduce el PIN del adaptador en el diálogo (a menudo 1234 o 0000)</string>
+    <string name="vehicle_obd_restarting_bt">Reiniciando el Bluetooth de la radio…</string>
     <string name="vehicle_obd_adapter">Adaptador: %1$s</string>
     <string name="vehicle_choose_adapter">Elegir adaptador</string>
     <string name="vehicle_err_bt_off">El Bluetooth de la radio está apagado</string>
     <string name="vehicle_err_not_paired">%1$s no está emparejado con la radio: toca OBD para emparejarlo de nuevo</string>
     <string name="vehicle_err_pairing_failed">El emparejamiento con %1$s no terminó: toca OBD e introduce su PIN (a menudo 1234 o 0000)</string>
+    <string name="vehicle_err_bt_stuck">El Bluetooth de la radio está bloqueado: apágalo y vuelve a encenderlo, o reinicia la radio</string>
     <string name="vehicle_err_refused">%1$s rechazó la conexión: ocupado por un teléfono u otra app, sin alimentación o fuera de alcance</string>
     <string name="vehicle_err_silent">%1$s se conectó pero nunca respondió</string>
     <string name="vehicle_err_permission">Permiso de Bluetooth no concedido</string>

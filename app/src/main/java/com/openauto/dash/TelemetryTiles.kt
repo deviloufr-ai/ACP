@@ -112,13 +112,13 @@ internal val BATTERY_WARNING_V = 11.5..15.5
 internal fun ObdNotConnected(connection: ObdConnectionState, onConnect: () -> Unit, onPickDevice: (() -> Unit)? = null) {
     val connecting = connection == ObdConnectionState.CONNECTING
     val lastError by ObdBluetoothManager.lastError.collectAsState()
-    val pairing by ObdBluetoothManager.pairing.collectAsState()
+    val connectStep by ObdBluetoothManager.connectStep.collectAsState()
     // Looked up again on every state change: the name appears once the adapter is paired.
     val adapter = remember(connection) { ObdBluetoothManager.savedDeviceLabel() }
     if (connecting) {
         Text(stringResource(R.string.vehicle_obd_connecting_to, adapter ?: "OBD"), color = DashColors.Accent)
-        // Android's PIN dialog is up: say what to type in it.
-        if (pairing) Text(stringResource(R.string.vehicle_obd_pairing_pin), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
+        // A long step (Android's PIN dialog, a Bluetooth restart): say what is going on.
+        connectStep?.let { Text(stringResource(it), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall) }
     } else {
         Text(stringResource(R.string.vehicle_obd_not_connected), color = DashColors.Muted)
         // What the last attempt ran into, so a silent adapter is not a mystery.
