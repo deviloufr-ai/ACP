@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.runtime.State
-import android.location.Location
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
