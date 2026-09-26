@@ -321,6 +321,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // along at once, but the Maps dock beside the pages does not move with them
     // and stays put.
     LaunchedEffect(showAllApps, settingsTab) { PipAnchor.steppedAside.value = showAllApps || settingsTab != null }
+    // The floating bar would cover the bottom of the edit bar, Settings and the
+    // app drawer: it steps down while they are open (a swipe up still brings
+    // it), and comes back as they close, since it is what opened them.
+    val barCovers = editing || settingsTab != null || showAllApps
+    LaunchedEffect(barCovers) {
+        if (barCovers) barState.visible.targetState = false else barState.reveal()
+    }
     val pageSwiping = pagerState.isScrollInProgress || columnState.isScrollInProgress
     LaunchedEffect(pageSwiping) { PipAnchor.pageSwiping.value = pageSwiping }
 
@@ -706,8 +713,65 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onSettings = { whenParked { settingsTab = SettingsTab.CAR } }
     )
 
+    val updateBanner: @Composable () -> Unit = {
+        UpdateBanner(
+            status = updateStatus,
+            currentVersion = updateManager.currentVersionName,
+            showCheck = manualUpdateCheck,
+            onUpdate = onUpdate,
+            onDismiss = {
+                manualUpdateCheck = false
+                updateManager.dismiss()
+            }
+        )
+    }
+    // The bar lives at the bottom: the OS status bar owns the top edge on
+    // this head unit whenever a floating window is on screen, and it used to
+    // cover the launcher bar there. A horizontal swipe across the bar (or
+    // the page dots) changes page, for when a docked window covers the pages.
+    // A parked window's cover sits in the bottom-right corner; the bar stops
+    // short of it so its ⋮ button stays reachable.
+    val coverShowing by ParkedCover.showing.collectAsState()
+    val launcherBar: @Composable (@Composable () -> Unit) -> Unit = { bar ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = if (coverShowing) (ParkedCover.WIDTH_DP + 4).dp else 0.dp)
+                .pointerInput(Unit) {
+                    var dragged = 0f
+                    val threshold = 48.dp.toPx()
+                    detectHorizontalDragGestures(
+                        onDragStart = { dragged = 0f },
+                        onDragEnd = {
+                            val step = when {
+                                dragged <= -threshold -> 1
+                                dragged >= threshold -> -1
+                                else -> 0
+                            }
+                            // Sideways along the middle row; from a page above or
+                            // below the centre that means back to the row first.
+                            if (step != 0) {
+                                if (columnState.currentPage != DashboardStore.COLUMN_HOME) {
+                                    showPage(DashboardStore.CENTER)
+                                } else {
+                                    val next = (pagerState.currentPage + step).coerceIn(0, DashboardStore.ROW.size - 1)
+                                    scope.launch { pagerState.animateScrollToPage(next) }
+                                }
+                            }
+                        }
+                    ) { change, dx ->
+                        change.consume()
+                        dragged += dx
+                    }
+                }
+        ) {
+            bar()
+        }
+    }
+
     val barOverlapPx = if (barForced) (statusBarPx - contentTopPx).coerceAtLeast(0) else 0
     CompositionLocalProvider(LocalDriveLock provides driveLock) {
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -722,10 +786,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                // With the bar hidden the pages reach the bottom of the screen;
+                // With auto-hide the bar floats over the pages; once it has gone,
                 // a swipe up from their bottom edge brings it back.
-                .swipeUpRevealsBar(barState, barRevealTap)
-                // Docked app windows must stay inside this area, above the bar.
+                .then(if (barAutoHide) Modifier.swipeUpRevealsBar(barState, barRevealTap) else Modifier)
+                // Docked app windows must stay inside this area (above the bar,
+                // unless it floats over the pages and they step aside for it).
                 .onGloballyPositioned { coords ->
                     val b = coords.boundsInRoot()
                     val origin = IntArray(2).also { rootView.getLocationOnScreen(it) }
@@ -885,7 +950,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 page = pageIndicatorFor,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
             )
-            BarHandle(barState, Modifier.align(Alignment.BottomCenter))
+            if (barAutoHide) BarHandle(barState, Modifier.align(Alignment.BottomCenter))
 
             // needs the accessibility service; if it isn't on, tapping prompts to
             // enable it instead of silently doing nothing.
@@ -956,67 +1021,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             )
         }
 
-        UpdateBanner(
-            status = updateStatus,
-            currentVersion = updateManager.currentVersionName,
-            showCheck = manualUpdateCheck,
-            onUpdate = onUpdate,
-            onDismiss = {
-                manualUpdateCheck = false
-                updateManager.dismiss()
-            }
-        )
-
-        // The bar lives at the bottom: the OS status bar owns the top edge on
-        // this head unit whenever a floating window is on screen, and it used to
-        // cover the launcher bar there. A horizontal swipe across the bar (or
-        // the page dots) changes page, for when a docked window covers the pages.
-        // A parked window's cover sits in the bottom-right corner; the bar stops
-        // short of it so its ⋮ button stays reachable.
-        val coverShowing by ParkedCover.showing.collectAsState()
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = if (coverShowing) (ParkedCover.WIDTH_DP + 4).dp else 0.dp)
-                .pointerInput(Unit) {
-                    var dragged = 0f
-                    val threshold = 48.dp.toPx()
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragged = 0f },
-                        onDragEnd = {
-                            val step = when {
-                                dragged <= -threshold -> 1
-                                dragged >= threshold -> -1
-                                else -> 0
-                            }
-                            // Sideways along the middle row; from a page above or
-                            // below the centre that means back to the row first.
-                            if (step != 0) {
-                                if (columnState.currentPage != DashboardStore.COLUMN_HOME) {
-                                    showPage(DashboardStore.CENTER)
-                                } else {
-                                    val next = (pagerState.currentPage + step).coerceIn(0, DashboardStore.ROW.size - 1)
-                                    scope.launch { pagerState.animateScrollToPage(next) }
-                                }
-                            }
-                        }
-                    ) { change, dx ->
-                        change.consume()
-                        dragged += dx
-                    }
+        if (!barAutoHide) {
+            updateBanner()
+            launcherBar { TopBar(settingsModel) }
+        }
+    }
+    // Auto-hide (Settings › Look): the bar floats over the pages, which keep
+    // the whole height, so showing or hiding it never resizes the dashboard.
+    if (barAutoHide) {
+        Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            updateBanner()
+            launcherBar {
+                AutoHidingBar(state = barState, hideSeconds = barHideSeconds) {
+                    TopBar(settingsModel)
                 }
-        ) {
-            // Auto-hide (Settings › Look): waits while the pages are being
-            // arranged or something opened from the bar covers them.
-            AutoHidingBar(
-                state = barState,
-                enabled = barAutoHide,
-                hideSeconds = barHideSeconds,
-                held = editing || settingsTab != null || showAllApps
-            ) {
-                TopBar(settingsModel)
             }
         }
+    }
     }
     }
 

@@ -41,9 +41,9 @@ import kotlin.math.abs
 
 /*
  * The bottom bar's auto-hide (Settings › Look): once the bar has sat unused
- * for the chosen number of seconds it slides away, the pages take the whole
- * height, and a slim pill over their bottom edge shows where it went; a
- * swipe up from that edge brings it back.
+ * for the chosen number of seconds it slides away. It floats over the pages,
+ * which keep the whole height either way; a slim pill over their bottom edge
+ * shows where it went, and a swipe up from that edge brings it back.
  */
 
 /** Longest delay the Look settings offer before the bar hides, in seconds. */
@@ -87,7 +87,7 @@ internal class BarAutoHideState {
     /** The bar is up because of a swipe and has not been touched since. */
     var afterReveal by mutableStateOf(false)
 
-    /** The bar has finished sliding away: the pages reach the bottom of the screen. */
+    /** The bar has finished sliding away. */
     val hidden: Boolean get() = visible.isIdle && !visible.currentState
 
     fun reveal() {
@@ -100,32 +100,29 @@ internal class BarAutoHideState {
 internal fun rememberBarAutoHideState(): BarAutoHideState = remember { BarAutoHideState() }
 
 /**
- * The bottom bar ([bar]), hiding itself after [hideSeconds] unused seconds
- * while [enabled]. A finger on the bar, a menu open from it, or [held] (the
- * dashboard being arranged, Settings or the app drawer open) keeps it up; the
- * wait starts again once they let go.
+ * The bottom bar ([bar]) floating over the pages, hiding itself after
+ * [hideSeconds] unused seconds. A finger on the bar or a menu open from it
+ * keeps it up; the wait starts again once they let go.
  *
- * The bar slides out without shrinking, then gives its height back in one
- * step: the pages above re-measure once per change, not on every frame of
- * it, and a docked app window is not dragged along by an animation.
+ * The pages under it keep the whole height, so it slides in and out without
+ * resizing anything. Docked app windows are drawn above everything on this
+ * head unit: while the bar is up, one it overlaps steps aside, as for a menu,
+ * and comes back once the bar has gone.
  */
 @Composable
 internal fun AutoHidingBar(
     state: BarAutoHideState,
-    enabled: Boolean,
     hideSeconds: Int,
-    held: Boolean,
     modifier: Modifier = Modifier,
     bar: @Composable () -> Unit
 ) {
     var pressing by remember { mutableStateOf(false) }
     // Bumped when a finger leaves the bar: the wait starts over.
     var touches by remember { mutableIntStateOf(0) }
-    val hold = held || pressing || BarAutoHide.openMenus > 0
+    val hold = pressing || BarAutoHide.openMenus > 0
 
-    LaunchedEffect(enabled) { if (!enabled) state.visible.targetState = true }
-    LaunchedEffect(enabled, hold, touches, hideSeconds, state.visible.targetState) {
-        if (enabled && !hold && state.visible.targetState) {
+    LaunchedEffect(hold, touches, hideSeconds, state.visible.targetState) {
+        if (!hold && state.visible.targetState) {
             delay(barHideDelayMs(hideSeconds, state.afterReveal))
             state.visible.targetState = false
         }
@@ -140,6 +137,7 @@ internal fun AutoHidingBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .keepClearOfWindows()
                 // Watches, never consumes: the bar's buttons and its page swipe work as before.
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
