@@ -21,6 +21,9 @@
     <string name="wheel_can_button">Botón del volante (%1$s)</string>
     <string name="wheel_listening_can_live">También escucha los datos CAN del coche</string>
     <string name="wheel_listening_can_off">No se pueden leer los datos CAN del coche (requiere root): solo se aprenden teclas de Android</string>
+    <string name="wheel_monitor_title">Lo que ve la unidad</string>
+    <string name="wheel_monitor_hint">Toca la línea que apareció al pulsar el botón para usarla.</string>
+    <string name="wheel_monitor_empty">Nada todavía. Pulsa un botón del volante.</string>
     <string name="wheel_group_media">Multimedia</string>
     <string name="wheel_group_volume">Volumen</string>
     <string name="wheel_group_system">Sistema</string>

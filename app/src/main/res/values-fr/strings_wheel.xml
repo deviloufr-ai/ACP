@@ -21,6 +21,9 @@
     <string name="wheel_can_button">Bouton du volant (%1$s)</string>
     <string name="wheel_listening_can_live">Écoute aussi les données CAN de la voiture</string>
     <string name="wheel_listening_can_off">Données CAN de la voiture illisibles (root requis) : seules les touches Android peuvent être apprises</string>
+    <string name="wheel_monitor_title">Ce que l\'autoradio reçoit</string>
+    <string name="wheel_monitor_hint">Touchez la ligne apparue quand vous avez appuyé sur le bouton pour l\'utiliser.</string>
+    <string name="wheel_monitor_empty">Rien pour l\'instant. Appuyez sur un bouton du volant.</string>
     <string name="wheel_group_media">Média</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">Système</string>
