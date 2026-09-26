@@ -237,7 +237,8 @@ object PhoneCalls {
                     name = app.caller,
                     photoPng = app.photoPng,
                     canControl = app.canControl,
-                    app = app.appName
+                    app = app.appName,
+                    packageName = app.packageName
                 )
                 id = app.key
             }
