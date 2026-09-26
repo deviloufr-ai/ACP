@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,7 +64,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -77,7 +79,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.material.icons.filled.Widgets
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.ui.text.font.FontWeight
@@ -351,15 +352,17 @@ internal fun GridTile(
     fun snapW() = ((basePxW + resizeExtra.x) / cellWpx).roundToInt().coerceIn(item.minW(), GRID_COLS - item.x)
     fun snapH() = ((basePxH + resizeExtra.y) / cellHpx).roundToInt().coerceIn(item.minH(), GRID_ROWS - item.y)
 
-    val offsetX = with(density) { (basePxX + dragOffset.x).toDp() }
-    val offsetY = with(density) { (basePxY + dragOffset.y).toDp() }
-    val widthDp = with(density) { (basePxW + resizeExtra.x).coerceAtLeast(cellWpx).toDp() }
-    val heightDp = with(density) { (basePxH + resizeExtra.y).coerceAtLeast(cellHpx).toDp() }
-
+    // The drag and resize offsets are read in the layout phase only, so a
+    // finger moving a tile re-lays it out each frame without recomposing it.
     Box(
         modifier = Modifier
-            .offset(offsetX, offsetY)
-            .size(widthDp, heightDp)
+            .offset { IntOffset((basePxX + dragOffset.x).roundToInt(), (basePxY + dragOffset.y).roundToInt()) }
+            .layout { measurable, _ ->
+                val w = (basePxW + resizeExtra.x).coerceAtLeast(cellWpx).roundToInt()
+                val h = (basePxH + resizeExtra.y).coerceAtLeast(cellHpx).roundToInt()
+                val placeable = measurable.measure(Constraints.fixed(w, h))
+                layout(w, h) { placeable.place(0, 0) }
+            }
             .zIndex(if (active) 1f else 0f)
             .padding(3.dp)
             .graphicsLayer {
@@ -384,15 +387,26 @@ internal fun GridTile(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
+                        // The ghost, and the collision check behind it, only
+                        // when the finger crosses into another cell, not every frame.
+                        var shownX = -1
+                        var shownY = -1
+                        fun previewMove() {
+                            val sx = snapX(); val sy = snapY()
+                            if (sx == shownX && sy == shownY) return
+                            shownX = sx; shownY = sy
+                            onPreview(sx, sy, item.w, item.h, canMove(index, sx, sy))
+                        }
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 active = true; onModelTouch(true)
-                                onPreview(snapX(), snapY(), item.w, item.h, canMove(index, snapX(), snapY()))
+                                shownX = -1; shownY = -1
+                                previewMove()
                             },
                             onDrag = { change, delta ->
                                 change.consume(); dragOffset += delta
-                                onPreview(snapX(), snapY(), item.w, item.h, canMove(index, snapX(), snapY()))
+                                previewMove()
                             },
                             onDragEnd = {
                                 onMoveCell(index, snapX(), snapY())
@@ -409,7 +423,7 @@ internal fun GridTile(
             // at least two rows tall; on a one-row tile they line up along the
             // middle instead: remove on the left, zoom and design in the centre,
             // resize on the right.
-            val shortTile = heightDp < 112.dp
+            val shortTile = cellH * item.h < 112.dp
             FilledIconButton(
                 onClick = { onRemove(index) },
                 modifier = Modifier.align(if (shortTile) Alignment.CenterStart else Alignment.TopEnd).padding(4.dp).size(48.dp),
@@ -454,15 +468,24 @@ internal fun GridTile(
                     .clip(DashShape.Large)
                     .background(DashColors.Accent.copy(alpha = 0.85f))
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
+                        var shownW = -1
+                        var shownH = -1
+                        fun previewResize() {
+                            val sw = snapW(); val sh = snapH()
+                            if (sw == shownW && sh == shownH) return
+                            shownW = sw; shownH = sh
+                            onPreview(item.x, item.y, sw, sh, canPlace(index, item.x, item.y, sw, sh))
+                        }
                         detectDragGestures(
                             onDragStart = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 active = true; onModelTouch(true)
-                                onPreview(item.x, item.y, snapW(), snapH(), canPlace(index, item.x, item.y, snapW(), snapH()))
+                                shownW = -1; shownH = -1
+                                previewResize()
                             },
                             onDrag = { change, delta ->
                                 change.consume(); resizeExtra += delta
-                                onPreview(item.x, item.y, snapW(), snapH(), canPlace(index, item.x, item.y, snapW(), snapH()))
+                                previewResize()
                             },
                             onDragEnd = {
                                 onResizeCell(index, snapW(), snapH())
@@ -618,28 +641,6 @@ internal fun TileContent(
             BuiltinKind.FUEL_TO_DEST -> FuelToDestCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.SERVICE -> ServiceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.FUEL_PRICES -> FuelPricesCard(modifier = Modifier.fillMaxSize())
-            BuiltinKind.CAR3D -> if (editing) {
-                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = BuiltinKind.CAR3D.label)
-            } else if (isEmulator) {
-                // Filament fails the same way as the map on the emulator.
-                EditPlaceholder(icon = Icons.Filled.DirectionsCar, label = stringResource(R.string.dash_car3d_needs_gpu), hint = stringResource(R.string.dash_not_on_emulator))
-            } else Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DashColors.Card)
-                    // While a finger is on the model, block dashboard swiping so
-                    // touches only rotate/zoom the 3D car.
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val ev = awaitPointerEvent(PointerEventPass.Initial)
-                                onModelTouch(ev.changes.any { it.pressed })
-                            }
-                        }
-                    }
-            ) {
-                Car3DPanel(modifier = Modifier.fillMaxSize())
-            }
         }
 
         is DashboardItem.SystemWidget -> if (editing) {

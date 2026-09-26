@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import com.openauto.dash.BuiltinKind.AUDIO
 import com.openauto.dash.BuiltinKind.CALENDAR
 import com.openauto.dash.BuiltinKind.CAN_MON
-import com.openauto.dash.BuiltinKind.CAR3D
 import com.openauto.dash.BuiltinKind.CLOCK
 import com.openauto.dash.BuiltinKind.COMPASS
 import com.openauto.dash.BuiltinKind.DOORS
@@ -48,7 +47,7 @@ enum class DashTemplate(@StringRes val titleRes: Int, @StringRes val blurbRes: I
             2 to TemplatePage(listOf(TELEMETRY, RANGE, OBD_DTC, DOORS)),
             4 to TemplatePage(listOf(WEATHER, CALENDAR, CLOCK)),
             5 to TemplatePage(listOf(TRIP, PARKING, COMPASS)),
-            3 to TemplatePage(listOf(CAR3D, GFORCE)),
+            3 to TemplatePage(listOf(GFORCE)),
             6 to TemplatePage(listOf(OBD_ALL))
         )
     ),
@@ -59,7 +58,7 @@ enum class DashTemplate(@StringRes val titleRes: Int, @StringRes val blurbRes: I
             2 to TemplatePage(listOf(WEATHER, PARKING, TRIP, COMPASS)),
             4 to TemplatePage(listOf(NOTIFICATIONS, CALENDAR, CLOCK)),
             5 to TemplatePage(listOf(TELEMETRY, OBD_DTC, DOORS)),
-            3 to TemplatePage(listOf(GFORCE, CAR3D)),
+            3 to TemplatePage(listOf(GFORCE)),
             6 to TemplatePage(listOf(OBD_ALL))
         )
     ),
@@ -67,7 +66,7 @@ enum class DashTemplate(@StringRes val titleRes: Int, @StringRes val blurbRes: I
         R.string.templates_car_health, R.string.templates_car_health_blurb, mapOf(
             1 to TemplatePage(listOf(TELEMETRY, SPEED_HUD, OBD_DTC, RANGE), dock = true),
             0 to TemplatePage(listOf(NAVMAP, NAVIGATION, MEDIA)),
-            2 to TemplatePage(listOf(CAR3D, DOORS, GFORCE)),
+            2 to TemplatePage(listOf(DOORS, GFORCE)),
             4 to TemplatePage(listOf(OBD_ALL)),
             3 to TemplatePage(listOf(CAN_MON)),
             5 to TemplatePage(listOf(TRIP, COMPASS, PARKING)),
@@ -148,7 +147,7 @@ object TemplatePlacer {
         NOTIFICATIONS to Shape(4, 1.4), TELEMETRY to Shape(6, 1.6), RANGE to Shape(3, 1.3),
         OBD_DTC to Shape(3, 1.6), DOORS to Shape(3, 1.5), WEATHER to Shape(3, 1.8),
         CALENDAR to Shape(4, 1.4), CLOCK to Shape(2, 1.6), TRIP to Shape(3, 1.8),
-        PARKING to Shape(3, 1.8), COMPASS to Shape(2, 1.0), CAR3D to Shape(5, 1.4),
+        PARKING to Shape(3, 1.8), COMPASS to Shape(2, 1.0),
         GFORCE to Shape(3, 1.8), OBD_ALL to Shape(6, 1.4), CAN_MON to Shape(6, 1.4)
     )
     private val DEFAULT_SHAPE = Shape(3, 1.6)

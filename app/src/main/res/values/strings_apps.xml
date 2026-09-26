@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Every live OBD value</string>
     <string name="apps_kind_range">Fuel &amp; range</string>
     <string name="apps_kind_range_blurb">Tank level and km to empty</string>
-    <string name="apps_kind_car3d">3D car</string>
-    <string name="apps_kind_car3d_blurb">Spin the car model</string>
     <string name="apps_kind_doors">Doors</string>
     <string name="apps_kind_doors_blurb">Door and boot status from the MCU</string>
     <string name="apps_kind_can_mon">CAN monitor</string>

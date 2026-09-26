@@ -38,7 +38,6 @@ enum class BuiltinKind(
     OBD_DTC(R.string.apps_kind_obd_dtc, WidgetCategory.VEHICLE, R.string.apps_kind_obd_dtc_blurb, 3, 2),
     OBD_ALL(R.string.apps_kind_obd_all, WidgetCategory.VEHICLE, R.string.apps_kind_obd_all_blurb),
     RANGE(R.string.apps_kind_range, WidgetCategory.VEHICLE, R.string.apps_kind_range_blurb, 3, 3),
-    CAR3D(R.string.apps_kind_car3d, WidgetCategory.VEHICLE, R.string.apps_kind_car3d_blurb, 4, 3),
     DOORS(R.string.apps_kind_doors, WidgetCategory.VEHICLE, R.string.apps_kind_doors_blurb, 3, 2),
     CAN_MON(R.string.apps_kind_can_mon, WidgetCategory.VEHICLE, R.string.apps_kind_can_mon_blurb, 4, 3),
     SPEED_HUD(R.string.apps_kind_speed_hud, WidgetCategory.DRIVING, R.string.apps_kind_speed_hud_blurb, 3, 2),
@@ -267,6 +266,13 @@ object DashboardStore {
     private fun retained(variant: String) = retainedByVariant.getOrPut(variant) { HashMap() }
 
     /**
+     * The last layout text known to parse, per variant: what [load] read or
+     * [save] wrote. [save] keeps it as the backup without parsing it again,
+     * which it used to do on the main thread on every drop, undo and zoom.
+     */
+    private val lastGoodDoc = HashMap<String, String>()
+
+    /**
      * Default layout when nothing is saved yet: the Daily template, laid out
      * for the head unit's 1280x720 screen ([half]: beside a Maps dock). Car
      * tiles are included so a new user sees where to connect the adapter.
@@ -302,14 +308,15 @@ object DashboardStore {
         // A corrupt primary value falls back to the last good layout rather
         // than to the defaults; only when both are unreadable does the user
         // lose their arrangement, and then it is logged.
-        val parsed = parsePages(raw, variant)
+        val parsed = parsePages(raw, variant)?.also { lastGoodDoc[variant] = raw }
             ?: prefs.getString(backupKey(variant), null)?.let { backup ->
                 Log.w(TAG, "Saved layout unreadable, restoring the previous one")
-                parsePages(backup, variant)
+                parsePages(backup, variant)?.also { lastGoodDoc[variant] = backup }
             }
             ?: run {
                 Log.e(TAG, "Saved layout and its backup are both unreadable; using defaults")
                 retained(variant).clear()
+                lastGoodDoc.remove(variant)
                 return defaultPages(variant.isNotEmpty())
             }
 
@@ -344,6 +351,7 @@ object DashboardStore {
             val page = pages.optJSONArray(p) ?: JSONArray()
             (0 until page.length()).mapNotNull { i ->
                 val o = page.optJSONObject(i) ?: return@mapNotNull null
+                if (o.isDroppedBuiltin()) return@mapNotNull null
                 o.toItem() ?: run {
                     retained.getOrPut(p) { mutableListOf() }.add(o)
                     null
@@ -368,13 +376,15 @@ object DashboardStore {
     fun save(context: Context, pages: List<List<DashboardItem>>, variant: String = "") {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val doc = serializePages(pages, variant)
-        val previous = prefs.getString(pagesKey(variant), null)
+        // Keep what was there as the fallback for the next load, unless it is
+        // the same text (nothing to gain) or unreadable (nothing to keep). What
+        // this process read or wrote is known to parse; only a text nobody has
+        // looked at yet (no load before the first save) is checked.
+        val previous = lastGoodDoc[variant]
+            ?: prefs.getString(pagesKey(variant), null)?.takeIf { parsePagesQuietly(it, variant) }
+        lastGoodDoc[variant] = doc
         prefs.edit().apply {
-            // Keep what was there as the fallback for the next load, unless it
-            // is the same text (nothing to gain) or unreadable (nothing to keep).
-            if (previous != null && previous != doc && parsePagesQuietly(previous, variant)) {
-                putString(backupKey(variant), previous)
-            }
+            if (previous != null && previous != doc) putString(backupKey(variant), previous)
             putString(pagesKey(variant), doc)
         }.apply()
     }
@@ -582,6 +592,16 @@ object DashboardStore {
         is DashboardItem.SystemWidget -> copy(x = -1)
         is DashboardItem.AppWindow -> copy(x = -1)
     }
+
+    /**
+     * Built-in kinds this launcher used to have and dropped for good. Unlike a
+     * kind from a newer build (kept for it, see [retained]), a tile of one of
+     * these has nowhere to go and is left out of the layout on the next save.
+     */
+    private val DROPPED_KINDS = setOf("CAR3D")
+
+    private fun JSONObject.isDroppedBuiltin(): Boolean =
+        optString("t") == "builtin" && optString("k") in DROPPED_KINDS
 
     private fun JSONObject.toItem(): DashboardItem? {
         val gx = optInt("gx", -1)

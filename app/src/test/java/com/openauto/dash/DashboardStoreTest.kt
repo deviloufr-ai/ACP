@@ -159,6 +159,23 @@ class DashboardStoreTest {
     }
 
     @Test
+    fun droppedKindsLeaveTheLayoutInsteadOfBeingRetained() {
+        // The 3D car widget was removed; a layout saved with one loses that tile
+        // for good, while tiles from a newer build are still carried through.
+        val saved = """{"v":1,"pages":[[
+            {"t":"builtin","k":"CAR3D","gx":0,"gy":0,"gw":4,"gh":3},
+            {"t":"builtin","k":"WARP_DRIVE","gx":4,"gy":0,"gw":3,"gh":2},
+            {"t":"builtin","k":"CLOCK","gx":7,"gy":0,"gw":3,"gh":2}
+        ]]}"""
+        val pages = DashboardStore.parsePages(saved)!!
+        assertEquals(listOf(BuiltinKind.CLOCK), pages[0].map { (it as DashboardItem.BuiltinWidget).kind })
+
+        val again = DashboardStore.serializePages(List(DashboardStore.PAGE_COUNT) { pages.getOrElse(it) { emptyList() } })
+        assertFalse(again.contains("CAR3D"))
+        assertTrue(again.contains("WARP_DRIVE"))
+    }
+
+    @Test
     fun unknownTilesStayWithTheirOwnLayout() {
         val full = """{"v":9,"pages":[[{"t":"hologram","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
         val half = """{"v":9,"pages":[[{"t":"jetpack","gx":0,"gy":0,"gw":3,"gh":2}]]}"""
@@ -265,7 +282,7 @@ class DashboardStoreTest {
 
     @Test
     fun widgetSpecificDesignsOnlyReachTheirWidgets() {
-        val framed = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR3D, BuiltinKind.MY_CAR)
+        val framed = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.MY_CAR)
         // Every redrawn widget gets at least two designs made for it; live views get none.
         BuiltinKind.entries.filter { it !in framed }.forEach { kind ->
             assertTrue("$kind", WidgetDesign.entries.count { it.isSignature && it.appliesTo(kind) } >= 2)

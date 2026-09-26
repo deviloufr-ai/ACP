@@ -84,7 +84,6 @@ internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.OBD_DTC -> Icons.Filled.Warning
     BuiltinKind.OBD_ALL -> Icons.Filled.Sensors
     BuiltinKind.RANGE -> Icons.Filled.LocalGasStation
-    BuiltinKind.CAR3D -> Icons.Filled.DirectionsCar
     BuiltinKind.DOORS -> Icons.Filled.SensorDoor
     BuiltinKind.CAN_MON -> Icons.Filled.Sensors
     BuiltinKind.SPEED_HUD -> Icons.Filled.Speed

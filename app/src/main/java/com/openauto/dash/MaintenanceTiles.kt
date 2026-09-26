@@ -94,9 +94,10 @@ internal fun ServiceCard(modifier: Modifier = Modifier) {
     val now = System.currentTimeMillis()
     val dues = remember(state) { state.statuses(now) }
     val first = dues.firstOrNull { it.stage != UpkeepStage.UNKNOWN }
+    val lock = LocalDriveLock.current
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(DashSpace.Lg),
+            modifier = Modifier.fillMaxSize().clickable { lock.whenParked { editing = true } }.padding(DashSpace.Lg),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             TileHeader(stringResource(R.string.upkeep_title))
@@ -132,6 +133,7 @@ internal fun ServiceCard(modifier: Modifier = Modifier) {
 /** Mileage, the plan's intervals (AI or typed) and the last time each item was done. */
 @Composable
 internal fun UpkeepDialog(onDismiss: () -> Unit) {
+    ParkedOnly(onDismiss)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val state by Maintenance.state.collectAsState()

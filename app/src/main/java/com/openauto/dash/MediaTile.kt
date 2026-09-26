@@ -3,7 +3,8 @@
 package com.openauto.dash
 
 import android.content.Context
-import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -274,38 +275,47 @@ internal fun MediaProgress(fraction: Float, modifier: Modifier = Modifier) {
     val accent2 = DashColors.Accent2
     val glow = DashColors.Glow
     val track = if (DashColors.Glass) DashColors.well(0.35f) else DashColors.CardHi
-    Canvas(
+    // The position ticks twice a second; the fill gradient is built once per
+    // width and the fraction read in the draw, so a tick only redraws the bar.
+    val shown = rememberUpdatedState(fraction)
+    Spacer(
         modifier = modifier
             .fillMaxWidth()
             .height(16.dp)
-    ) {
-        val h = 5.dp.toPx()
-        val y = size.height / 2f
-        val r = h / 2f
-        drawRoundRect(
-            color = track,
-            topLeft = Offset(0f, y - r),
-            size = Size(size.width, h),
-            cornerRadius = CornerRadius(r)
-        )
-        val w = size.width * fraction.coerceIn(0f, 1f)
-        if (w > 0f) {
-            if (glow > 0f) {
-                drawRoundRect(
-                    color = accent.copy(alpha = 0.30f * glow),
-                    topLeft = Offset(0f, y - h),
-                    size = Size(w, h * 2f),
-                    cornerRadius = CornerRadius(h)
-                )
+            .drawWithCache {
+                val fill = Brush.horizontalGradient(listOf(accent, accent2), endX = size.width)
+                val h = 5.dp.toPx()
+                val y = size.height / 2f
+                val r = h / 2f
+                val knobHalo = 8.dp.toPx()
+                val knob = 5.dp.toPx()
+                onDrawBehind {
+                    drawRoundRect(
+                        color = track,
+                        topLeft = Offset(0f, y - r),
+                        size = Size(size.width, h),
+                        cornerRadius = CornerRadius(r)
+                    )
+                    val w = size.width * shown.value.coerceIn(0f, 1f)
+                    if (w > 0f) {
+                        if (glow > 0f) {
+                            drawRoundRect(
+                                color = accent.copy(alpha = 0.30f * glow),
+                                topLeft = Offset(0f, y - h),
+                                size = Size(w, h * 2f),
+                                cornerRadius = CornerRadius(h)
+                            )
+                        }
+                        drawRoundRect(
+                            brush = fill,
+                            topLeft = Offset(0f, y - r),
+                            size = Size(w, h),
+                            cornerRadius = CornerRadius(r)
+                        )
+                    }
+                    drawCircle(color = accent.copy(alpha = 0.35f), radius = knobHalo, center = Offset(w, y))
+                    drawCircle(color = Color.White, radius = knob, center = Offset(w, y))
+                }
             }
-            drawRoundRect(
-                brush = Brush.horizontalGradient(listOf(accent, accent2), endX = size.width),
-                topLeft = Offset(0f, y - r),
-                size = Size(w, h),
-                cornerRadius = CornerRadius(r)
-            )
-        }
-        drawCircle(color = accent.copy(alpha = 0.35f), radius = 8.dp.toPx(), center = Offset(w, y))
-        drawCircle(color = Color.White, radius = 5.dp.toPx(), center = Offset(w, y))
-    }
+    )
 }

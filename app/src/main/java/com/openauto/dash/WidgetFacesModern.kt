@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -192,13 +193,18 @@ internal fun LiquidLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
     val level by animateFloatAsState((f.fraction ?: 0.35f).coerceIn(0.04f, 0.96f), tween(900), label = "liquid")
     val c1 = if (f.alert) look.warn else look.accent
     val c2 = if (f.alert) look.warn else look.accent2
+    // The two wave outlines are rebuilt every step (20 a second) into the same
+    // two paths, instead of a new hundred-point path each.
+    val backWave = remember { Path() }
+    val frontWave = remember { Path() }
     Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(look.radius))) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val top = h * (1f - level)
             val amp = size.minDimension * 0.035f
-            fun wave(k: Float, phase: Float, lift: Float): Path = Path().apply {
+            fun wave(into: Path, k: Float, phase: Float, lift: Float): Path = into.apply {
+                rewind()
                 moveTo(0f, h)
                 var x = 0f
                 val step = 4.dp.toPx()
@@ -209,8 +215,8 @@ internal fun LiquidLayout(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
                 lineTo(w, h)
                 close()
             }
-            drawPath(wave(1.1f, t, -amp * 0.6f), Brush.verticalGradient(listOf(c2.copy(alpha = 0.30f), c2.copy(alpha = 0.12f)), top, h))
-            drawPath(wave(1.6f, -t + 0.25f, 0f), Brush.verticalGradient(listOf(c1.copy(alpha = 0.55f), c1.copy(alpha = 0.22f)), top, h))
+            drawPath(wave(backWave, 1.1f, t, -amp * 0.6f), Brush.verticalGradient(listOf(c2.copy(alpha = 0.30f), c2.copy(alpha = 0.12f)), top, h))
+            drawPath(wave(frontWave, 1.6f, -t + 0.25f, 0f), Brush.verticalGradient(listOf(c1.copy(alpha = 0.55f), c1.copy(alpha = 0.22f)), top, h))
         }
         Column(modifier = Modifier.fillMaxSize().padding(m.pad.dp), verticalArrangement = Arrangement.spacedBy(m.dp(1.8f))) {
             FaceHeader(f, look, m)

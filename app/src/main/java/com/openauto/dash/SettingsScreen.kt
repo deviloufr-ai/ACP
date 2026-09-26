@@ -84,7 +84,7 @@ internal enum class SettingsTab(@StringRes val titleRes: Int, val icon: ImageVec
 }
 
 /** The theme choice and its setters, owned by the dashboard root. */
-internal class ThemeState(
+internal data class ThemeState(
     val mode: DashThemeMode,
     val appearance: DashAppearance,
     val effects: DashEffects,

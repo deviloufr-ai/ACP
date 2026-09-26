@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Alle OBD-Live-Werte</string>
     <string name="apps_kind_range">Kraftstoff &amp; Reichweite</string>
     <string name="apps_kind_range_blurb">Tankfüllung und Rest-km</string>
-    <string name="apps_kind_car3d">3D-Auto</string>
-    <string name="apps_kind_car3d_blurb">Automodell drehen</string>
     <string name="apps_kind_doors">Türen</string>
     <string name="apps_kind_doors_blurb">Tür- und Kofferraumstatus von der MCU</string>
     <string name="apps_kind_can_mon">CAN-Monitor</string>

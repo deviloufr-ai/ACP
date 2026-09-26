@@ -3,7 +3,9 @@ package com.openauto.dash
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
@@ -37,6 +39,42 @@ internal const val STOPPED_KMH = 3
 internal const val STOPPED_HOLD_MS = 2_000L
 
 private val NotMoving: State<Boolean> = mutableStateOf(false)
+
+/**
+ * The lock as tiles and dialogs see it: [moving] while the car moves with the
+ * lock on, and [whenParked] for anything that needs more than a glance (a
+ * finder, a settings sheet, a text field), which runs now or shows the
+ * parked-only notice instead. The dashboard provides it ([LocalDriveLock]);
+ * the default never locks (previews, tests).
+ */
+@Stable
+internal class DriveLockState(val moving: Boolean, private val onLocked: () -> Unit) {
+    /** Runs [action] now, or shows the parked-only notice while moving. */
+    fun whenParked(action: () -> Unit) {
+        if (moving) onLocked() else action()
+    }
+
+    /** Shows the notice: something the lock held back. */
+    fun noticeLocked() = onLocked()
+}
+
+internal val LocalDriveLock = compositionLocalOf { DriveLockState(moving = false) {} }
+
+/**
+ * For a dialog that needs more than a glance: closes it, with the notice, as
+ * soon as the car moves, and refuses to open while it does. Put it first in
+ * the dialog's composable so every way of opening it is covered.
+ */
+@Composable
+internal fun ParkedOnly(onDismiss: () -> Unit) {
+    val lock = LocalDriveLock.current
+    LaunchedEffect(lock.moving) {
+        if (lock.moving) {
+            lock.noticeLocked()
+            onDismiss()
+        }
+    }
+}
 
 /**
  * True while the car is moving, when the lock is [enabled]. Never in demo

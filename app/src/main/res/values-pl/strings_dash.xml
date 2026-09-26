@@ -51,7 +51,6 @@
     <string name="dash_app_widget">Widżet aplikacji</string>
     <string name="dash_shown_while_arranging">Widoczne podczas układania</string>
     <string name="dash_map_needs_gpu">Mapa wymaga prawdziwego GPU</string>
-    <string name="dash_car3d_needs_gpu">Auto 3D wymaga prawdziwego GPU</string>
     <string name="dash_not_on_emulator">Niedostępne w emulatorze</string>
 
     <!-- Layout notices -->

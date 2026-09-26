@@ -1,0 +1,14 @@
+# Baseline profile: what the runtime compiles ahead of time at install, so a
+# cold start and the first swipes run compiled code instead of the interpreter.
+# The launcher is the HOME app on a head unit that boots into it, so its own
+# code is all startup code; Compose and the other libraries ship profiles of
+# their own, merged in by the build. Written by hand (no macrobenchmark on a
+# head unit); a recorded profile can replace it.
+#
+# H = hot, S = startup, P = post-startup; the class line preloads the class.
+HSPLcom/openauto/dash/**->**(**)**
+Lcom/openauto/dash/**
+HSPLcom/openauto/dash/link/**->**(**)**
+Lcom/openauto/dash/link/**
+HSPLkotlinx/coroutines/**->**(**)**
+Lkotlinx/coroutines/**

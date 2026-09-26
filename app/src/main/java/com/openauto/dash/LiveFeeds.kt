@@ -136,14 +136,39 @@ object LocationFeed {
 
     /** Publishes [l]'s speed if the fix is recent, and schedules it to expire. */
     private fun publishSpeed(l: Location?) {
-        main.removeCallbacks(expire)
         val age = if (l == null) Long.MAX_VALUE else System.currentTimeMillis() - l.time
-        if (l == null || age >= FRESH_MS) {
-            _freshSpeedKmh.value = null
-            return
+        when (val reading = speedReading(l != null, l?.hasSpeed() == true, l?.speed ?: 0f, age)) {
+            SpeedReading.Keep -> Unit
+            SpeedReading.None -> {
+                main.removeCallbacks(expire)
+                _freshSpeedKmh.value = null
+            }
+            is SpeedReading.Kmh -> {
+                main.removeCallbacks(expire)
+                _freshSpeedKmh.value = reading.value
+                main.postAtTime(expire, SystemClock.uptimeMillis() + (FRESH_MS - age.coerceAtLeast(0L)))
+            }
         }
-        _freshSpeedKmh.value = Math.round(l.speed * 3.6f)
-        main.postAtTime(expire, SystemClock.uptimeMillis() + (FRESH_MS - age.coerceAtLeast(0L)))
+    }
+
+    /** What a fix does to [freshSpeedKmh]: a new value, nothing at all, or none. */
+    internal sealed interface SpeedReading {
+        /** The fix has no speed (a Wi-Fi / cell fix between two GPS ones): the shown speed stays. */
+        data object Keep : SpeedReading
+        /** No fix, or a stale one. */
+        data object None : SpeedReading
+        data class Kmh(val value: Int) : SpeedReading
+    }
+
+    /**
+     * Pure decision behind [publishSpeed]. A network fix carries no speed and
+     * used to be published as 0 km/h, so the readout blinked "0" every few
+     * seconds on GPS-only driving; such a fix now leaves the speed alone.
+     */
+    internal fun speedReading(hasFix: Boolean, hasSpeed: Boolean, speedMps: Float, ageMs: Long): SpeedReading = when {
+        !hasFix || ageMs >= FRESH_MS -> SpeedReading.None
+        !hasSpeed -> SpeedReading.Keep
+        else -> SpeedReading.Kmh(Math.round(speedMps * 3.6f))
     }
 
     private fun onFix(l: Location) {

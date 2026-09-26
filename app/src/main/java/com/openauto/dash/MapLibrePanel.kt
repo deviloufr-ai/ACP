@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,6 +116,8 @@ private val OverlayBg = Color(0xE6141518)
  */
 @Composable
 fun MapLibrePanel(modifier: Modifier = Modifier) {
+    // Typing a destination waits until the car has stopped (the drive lock).
+    val moving = LocalDriveLock.current.moving
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -262,13 +265,20 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
     // style swaps on a change; the route line and click listener are set up
     // on the first load, and the location puck carries over by itself.
     val lightMap = DashColors.Light
+    // The listener below is registered once; it reads the lock's latest state.
+    val movingNow = rememberUpdatedState(moving)
     LaunchedEffect(mapRef, lightMap) {
         val map = mapRef ?: return@LaunchedEffect
         map.setStyle(Style.Builder().fromUri(if (lightMap) MAP_STYLE_LIGHT else MAP_STYLE_DARK)) { style ->
             add3dBuildings(style, lightMap)
             if (navRoute == null) {
                 navRoute = NavigationMapRoute(mapView, map)
-                map.addOnMapClickListener { latLng ->
+                // A destination is set by a long press, not a tap: a tap while
+                // panning, or a knock on the screen in a bumpy lane, used to
+                // drop the route being followed and start a new one. Never
+                // while the car moves (the drive lock).
+                map.addOnMapLongClickListener { latLng ->
+                    if (movingNow.value) return@addOnMapLongClickListener true
                     clearRoute()
                     mapRef?.addMarker(MarkerOptions().position(latLng))
                     routeTo(Point.fromLngLat(latLng.longitude, latLng.latitude))
@@ -308,7 +318,8 @@ fun MapLibrePanel(modifier: Modifier = Modifier) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.info_map_where_to), color = Color(0xFF9AA0A6)) },
+                    placeholder = { Text(stringResource(if (moving) R.string.dash_drive_lock_notice else R.string.info_map_where_to), color = Color(0xFF9AA0A6)) },
+                    enabled = !moving,
                     singleLine = true,
                     modifier = Modifier
                         .weight(1f)

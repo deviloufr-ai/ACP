@@ -41,6 +41,7 @@ import java.util.Locale
  */
 @Composable
 internal fun CarSettingsDialog(onDismiss: () -> Unit) {
+    ParkedOnly(onDismiss)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf(CarProfileStore.current) }

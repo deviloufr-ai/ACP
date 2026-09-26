@@ -51,7 +51,6 @@
     <string name="dash_app_widget">App-widget</string>
     <string name="dash_shown_while_arranging">Getoond tijdens indelen</string>
     <string name="dash_map_needs_gpu">Kaart heeft een echte GPU nodig</string>
-    <string name="dash_car3d_needs_gpu">3D-auto heeft een echte GPU nodig</string>
     <string name="dash_not_on_emulator">Niet beschikbaar op de emulator</string>
 
     <!-- Layout notices -->
