@@ -2,6 +2,8 @@ package com.openauto.dash.companion
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,8 +12,10 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.provider.ContactsContract
+import android.service.notification.StatusBarNotification
 import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import android.util.Log
@@ -22,21 +26,37 @@ import java.io.ByteArrayOutputStream
 import java.util.Base64
 
 /**
- * The phone call, for the car: follows the phone's call state (the system's
- * PHONE_STATE broadcast), finds the caller in the contacts, and answers or
- * ends the call when the head unit asks, through [TelecomManager] as a
- * smartwatch app does. The call's sound stays on the car's Bluetooth
- * hands-free; this only carries who is calling and the buttons.
+ * The call, for the car. Two kinds, told the same way to the head unit:
+ *
+ * - The phone's own calls: the system's PHONE_STATE broadcast, the caller
+ *   found in the contacts, answered or ended through [TelecomManager] as a
+ *   smartwatch app does.
+ * - Calls in an app (WhatsApp, Signal, Telegram…): never in the phone's call
+ *   state, so read from the app's own call notification ([CallNotification],
+ *   through [PhoneNotificationListener]), answered or ended with the very
+ *   buttons the notification carries.
+ *
+ * A phone call shows first; else the app call announced last. The call's
+ * sound stays on the car's Bluetooth hands-free; this only carries who is
+ * calling and the buttons.
  */
 object PhoneCalls {
     private const val TAG = "PhoneCalls"
     private const val PHOTO_PX = 96
+    private const val PHONE = "phone"
 
     /** What the head unit is told now; re-sent whole when the link comes up. */
     @Volatile
     var current: CallState = CallState(CallState.Phase.IDLE)
         private set
 
+    /** The phone's own call. */
+    private var phone: CallState = CallState(CallState.Phase.IDLE)
+    /** The apps' calls, by notification key. */
+    private val appCalls = LinkedHashMap<String, CallNotification>()
+    /** Which call [current] is: [PHONE] or a notification key. */
+    private var currentId: String? = null
+    @Volatile
     private var answeredAt = 0L
     private var receiver: BroadcastReceiver? = null
 
@@ -64,8 +84,22 @@ object PhoneCalls {
     }
 
     /** Carries out the head unit's [action]. False when not allowed or nothing to act on. */
-    @SuppressLint("MissingPermission") // checked by canControl()
+    @Synchronized
     fun command(context: Context, action: CallCommand.Action): Boolean {
+        val id = currentId ?: return false
+        if (id == PHONE) return phoneCommand(context, action)
+        val call = appCalls[id] ?: return false
+        val intent = when (action) {
+            CallCommand.Action.ANSWER -> call.answer
+            // A call that rings is declined; one just taken is hung up: whichever the app offers.
+            CallCommand.Action.DECLINE -> call.decline ?: call.hangUp
+            CallCommand.Action.HANG_UP -> call.hangUp ?: call.decline
+        } ?: return false
+        return send(context, intent)
+    }
+
+    @SuppressLint("MissingPermission") // checked by canControl()
+    private fun phoneCommand(context: Context, action: CallCommand.Action): Boolean {
         if (!canControl(context)) return false
         val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
         return try {
@@ -84,37 +118,139 @@ object PhoneCalls {
         }
     }
 
+    /** Presses a call notification's button, as the shade would. */
+    private fun send(context: Context, intent: PendingIntent): Boolean = try {
+        // The app may answer by opening its call screen: let it, from Android 14 on.
+        val options = if (Build.VERSION.SDK_INT >= 34) {
+            ActivityOptions.makeBasic()
+                .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                .toBundle()
+        } else null
+        intent.send(context, 0, null, null, null, null, options)
+        true
+    } catch (e: PendingIntent.CanceledException) {
+        Log.w(TAG, "call button gone", e)
+        false
+    }
+
     fun canControl(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED
+
+    // ---- The apps' calls, from their notifications ----
+
+    /** [sbn] is a call notification: taken as the call, not as a notification. */
+    @Synchronized
+    fun onNotificationPosted(context: Context, sbn: StatusBarNotification): Boolean {
+        val n = sbn.notification ?: return false
+        if (!CallNotification.isCall(n)) return false
+        // The phone's own calls are followed through the call state, not the dialer's notification.
+        if (isDialer(context, sbn.packageName)) return true
+        val call = CallNotification.parse(context, sbn) ?: return true
+        appCalls[sbn.key] = call
+        publish()
+        return true
+    }
+
+    @Synchronized
+    fun onNotificationRemoved(key: String) {
+        if (appCalls.remove(key) != null) publish()
+    }
+
+    /** Notification access granted (or the listener back): reads the calls announced now. */
+    @Synchronized
+    fun onListenerConnected(listener: PhoneNotificationListener) {
+        appCalls.clear()
+        val active = runCatching { listener.activeNotifications }.getOrNull().orEmpty()
+        for (sbn in active) {
+            val n = sbn.notification ?: continue
+            if (!CallNotification.isCall(n) || isDialer(listener, sbn.packageName)) continue
+            CallNotification.parse(listener, sbn)?.let { appCalls[sbn.key] = it }
+        }
+        publish()
+    }
+
+    /** Notification access gone: the apps' calls can't be followed any more. */
+    @Synchronized
+    fun onListenerDisconnected() {
+        if (appCalls.isEmpty()) return
+        appCalls.clear()
+        publish()
+    }
+
+    /** The phone app: the default dialer, or the in-call screen it comes with (its own package on some phones). */
+    private fun isDialer(context: Context, pkg: String): Boolean =
+        pkg == "com.android.phone" || pkg == "com.android.server.telecom" || "incallui" in pkg ||
+            pkg == runCatching { context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage }.getOrNull()
+
+    // ---- The phone's own calls ----
 
     private fun onPhoneState(context: Context, intent: Intent) {
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
         // Only there with READ_CALL_LOG; the broadcast then comes twice, with and without it.
         @Suppress("DEPRECATION")
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)?.takeIf { it.isNotBlank() }
-        val before = current
         val phase = when (state) {
             TelephonyManager.EXTRA_STATE_RINGING -> CallState.Phase.RINGING
             TelephonyManager.EXTRA_STATE_OFFHOOK -> CallState.Phase.ACTIVE
             else -> CallState.Phase.IDLE
         }
-        if (phase == CallState.Phase.IDLE) {
-            current = CallState(CallState.Phase.IDLE)
-        } else {
-            if (phase == CallState.Phase.ACTIVE && before.phase != CallState.Phase.ACTIVE) answeredAt = SystemClock.elapsedRealtime()
-            // The same call keeps its caller when a later broadcast lacks the number.
-            val sameCall = before.phase != CallState.Phase.IDLE
-            val known = number ?: before.number.takeIf { sameCall }
-            val contact = if (known != null && known != before.number) lookUp(context, known) else null
-            current = CallState(
-                phase = phase,
-                number = known,
-                name = contact?.first ?: before.name.takeIf { sameCall && known == before.number },
-                photoPng = contact?.second ?: before.photoPng.takeIf { sameCall && known == before.number },
-                canControl = canControl(context)
-            )
+        synchronized(this) {
+            val before = phone
+            phone = if (phase == CallState.Phase.IDLE) {
+                CallState(CallState.Phase.IDLE)
+            } else {
+                // The same call keeps its caller when a later broadcast lacks the number.
+                val sameCall = before.phase != CallState.Phase.IDLE
+                val known = number ?: before.number.takeIf { sameCall }
+                val contact = if (known != null && known != before.number) lookUp(context, known) else null
+                CallState(
+                    phase = phase,
+                    number = known,
+                    name = contact?.first ?: before.name.takeIf { sameCall && known == before.number },
+                    photoPng = contact?.second ?: before.photoPng.takeIf { sameCall && known == before.number },
+                    canControl = canControl(context)
+                )
+            }
+            publish()
         }
-        if (current != before) LinkServer.send(snapshot())
+    }
+
+    /** Picks the call to show, and tells the head unit when it changed. */
+    private fun publish() {
+        val before = current
+        val beforeId = currentId
+        val app = appCalls.values.maxByOrNull { it.postedAt }
+        val next: CallState
+        val id: String?
+        when {
+            phone.phase != CallState.Phase.IDLE -> {
+                next = phone
+                id = PHONE
+            }
+            app != null -> {
+                next = CallState(
+                    phase = if (app.incoming) CallState.Phase.RINGING else CallState.Phase.ACTIVE,
+                    name = app.caller,
+                    photoPng = app.photoPng,
+                    canControl = app.canControl,
+                    app = app.appName
+                )
+                id = app.key
+            }
+            else -> {
+                next = CallState(CallState.Phase.IDLE)
+                id = null
+            }
+        }
+        if (next.phase == CallState.Phase.ACTIVE && (before.phase != CallState.Phase.ACTIVE || id != beforeId)) {
+            // Taken now; an app's notification may say when, on the wall clock.
+            val startedAt = app?.startedAt?.takeIf { id != PHONE }
+            answeredAt = if (startedAt != null) SystemClock.elapsedRealtime() - (System.currentTimeMillis() - startedAt).coerceAtLeast(0)
+            else SystemClock.elapsedRealtime()
+        }
+        current = next
+        currentId = id
+        if (next != before) LinkServer.send(snapshot())
     }
 
     /** (name, photo) from the phone's contacts, when allowed and found. */

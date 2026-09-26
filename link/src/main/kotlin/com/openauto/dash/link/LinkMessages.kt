@@ -109,21 +109,27 @@ data class ActionResult(val key: String, val action: Action, val ok: Boolean) : 
     enum class Action { REPLY, MARK_READ, DISMISS }
 }
 
-/** Phone → head unit: the phone call, each time it changes (and once when the link comes up). */
+/**
+ * Phone → head unit: the phone call, each time it changes (and once when the
+ * link comes up). A phone call, or a call in an app (WhatsApp, Signal,
+ * Telegram…, [app]) seen through its call notification.
+ */
 @Serializable
 @SerialName("call")
 data class CallState(
     val phase: Phase,
     /** The other party's number, when the phone can read it. */
     val number: String? = null,
-    /** Their name from the phone's contacts. */
+    /** Their name from the phone's contacts (or as the calling app names them). */
     val name: String? = null,
     /** Their contact photo as a small PNG, base64. */
     val photoPng: String? = null,
     /** How long the call has been answered, when sent (clocks may differ between the two). */
     val activeForMs: Long = 0,
     /** False when the companion isn't allowed to answer / hang up: the head unit only shows the call. */
-    val canControl: Boolean = true
+    val canControl: Boolean = true,
+    /** The app the call is in ("WhatsApp"…); null for a phone call. */
+    val app: String? = null
 ) : LinkMessage {
     @Serializable
     enum class Phase { IDLE, RINGING, ACTIVE }

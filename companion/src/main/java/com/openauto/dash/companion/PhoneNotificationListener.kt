@@ -22,16 +22,20 @@ import java.util.Base64
  * forwards them over the link. Replies go back through each app's own reply
  * action, the same one Android Auto and smartwatches use, so WhatsApp,
  * Messages, Signal, Telegram... all work without anything app-specific.
+ * An app's call notification (a WhatsApp call…) goes to [PhoneCalls] instead,
+ * to show as a call.
  */
 class PhoneNotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         instance = this
+        PhoneCalls.onListenerConnected(this)
         LinkServer.send(syncMessage())
     }
 
     override fun onListenerDisconnected() {
         if (instance === this) instance = null
+        PhoneCalls.onListenerDisconnected()
     }
 
     override fun onDestroy() {
@@ -40,11 +44,13 @@ class PhoneNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (PhoneCalls.onNotificationPosted(this, sbn)) return
         val item = toPhoneNotification(sbn) ?: return
         LinkServer.send(NotificationPosted(item))
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        PhoneCalls.onNotificationRemoved(sbn.key)
         LinkServer.send(NotificationRemoved(sbn.key))
     }
 
@@ -86,6 +92,8 @@ class PhoneNotificationListener : NotificationListenerService() {
         // WhatsApp & co post one summary over the per-chat notifications: the chats are enough.
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return null
         if (n.category == Notification.CATEGORY_TRANSPORT || n.category == Notification.CATEGORY_PROGRESS) return null
+        // A call shows as a call (PhoneCalls), not in the notifications.
+        if (CallNotification.isCall(n)) return null
 
         val extras = n.extras
         val style = runCatching { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n) }.getOrNull()
