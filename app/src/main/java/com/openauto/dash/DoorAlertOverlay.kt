@@ -84,9 +84,10 @@ object DoorAlertOverlay {
 
     /** The doors to show, or null when there's no alert: the style picker's made-up ones while it is tried. */
     val alert: StateFlow<McuReader.DoorState?> =
-        combine(RomPopups.replaced, McuReader.doorState, dismissed, AlertPreview.doors) { replaced, doors, hidden, preview ->
+        combine(RomPopups.replaced, McuReader.doorState, dismissed, AlertPreview.doors, CarBox.reversing) { replaced, doors, hidden, preview, reversing ->
             val open = doors?.openNames().orEmpty()
-            preview ?: doors.takeIf { RomPopups.Kind.DOORS in replaced && open.isNotEmpty() && !hidden.containsAll(open) }
+            // Held while reversing (the camera comes first), shown after if still open.
+            preview ?: doors.takeIf { RomPopups.Kind.DOORS in replaced && !reversing && open.isNotEmpty() && !hidden.containsAll(open) }
         }.stateIn(scope, SharingStarted.Eagerly, null)
 
     /** The design the alert shows in now: null when there's none. */

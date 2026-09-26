@@ -622,6 +622,7 @@ internal fun TileContent(
             BuiltinKind.FUEL_TO_DEST -> FuelToDestCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.SERVICE -> ServiceCard(modifier = Modifier.fillMaxSize())
             BuiltinKind.FUEL_PRICES -> FuelPricesCard(modifier = Modifier.fillMaxSize())
+            BuiltinKind.CAR_STATUS -> CarStatusCard(modifier = Modifier.fillMaxSize())
         }
 
         is DashboardItem.SystemWidget -> if (editing) {

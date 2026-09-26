@@ -287,6 +287,18 @@ object Maintenance {
         save()
     }
 
+    /**
+     * The car's own odometer, from its CAN box ([CarBox]): the mileage keeps
+     * itself up to date, nothing to type. Written when it moved a whole
+     * kilometre from what the planner has (typed or counted).
+     */
+    fun carOdometer(km: Int) {
+        if (DemoMode.isOn || km !in 1..MAX_ODOMETER_KM) return
+        val known = _state.value.odometer?.nowKm
+        if (known != null && kotlin.math.abs(known - km) < 1) return
+        setOdometer(km)
+    }
+
     /** The driver's own interval for [kind]. */
     fun setInterval(interval: UpkeepInterval) {
         _state.value = _state.value.copy(plan = _state.value.plan.map { if (it.kind == interval.kind) interval else it })
@@ -366,3 +378,6 @@ object Maintenance {
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putString("state", o.toString())?.apply()
     }
 }
+
+/** Above this an odometer reading is garbage, not a car. */
+private const val MAX_ODOMETER_KM = 2_000_000

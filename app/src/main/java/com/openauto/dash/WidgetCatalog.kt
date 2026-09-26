@@ -23,14 +23,14 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CarRepair
 import androidx.compose.material.icons.filled.Coffee
-import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.EvStation
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsCarFilled
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.MusicNote
@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
@@ -100,6 +101,7 @@ internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.WARMUP -> Icons.Filled.Thermostat
     BuiltinKind.BATTERY -> Icons.Filled.BatteryChargingFull
     BuiltinKind.MY_CAR -> Icons.Filled.CarRepair
+    BuiltinKind.CAR_STATUS -> Icons.Filled.DirectionsCarFilled
     BuiltinKind.ECO_DRIVE -> Icons.Filled.Eco
     BuiltinKind.BREAK_TIMER -> Icons.Filled.Coffee
     BuiltinKind.FUEL_TO_DEST -> Icons.Filled.EvStation

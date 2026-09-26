@@ -198,12 +198,15 @@ internal class AlertWindow(
     /** Where the card design sits: the call card top centre, the door card in the corner. */
     private val cardGravity: Int,
     /**
-     * Drawn by the accessibility service when it's on: the only window
-     * Dashwheel can put above the ROM's reversing camera (an app overlay sits
-     * under it). Such a window needs no "display over other apps" either.
+     * Whether to draw it through the accessibility service when that's on:
+     * the only window Dashwheel can put above the ROM's reversing camera (an
+     * app overlay sits under it). Asked at each [show]: the radar always, a
+     * call while reversing. Such a window needs no "display over other apps".
      */
-    private val aboveCamera: Boolean = false
+    private val aboveCamera: () -> Boolean = { false }
 ) {
+    /** The shown window is the accessibility service's. */
+    private var above = false
     private var wm: WindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var view: ComposeView? = null
     private var owner: OverlayOwner? = null
@@ -212,12 +215,12 @@ internal class AlertWindow(
 
     /** Shows [content] in [style]'s window (a new one when the design changed); false when it can't be added. */
     fun show(style: AlertStyle, content: @Composable () -> Unit): Boolean {
-        if (view != null && this.style == style) {
+        val host = if (aboveCamera()) SplitAccessibilityService.overlayHost() else null
+        if (view != null && this.style == style && above == (host != null)) {
             visible?.targetState = true
             return true
         }
         removeNow()
-        val host = if (aboveCamera) SplitAccessibilityService.overlayHost() else null
         val hostContext = host ?: context
         wm = hostContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val type = if (host != null) WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY else WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -233,7 +236,7 @@ internal class AlertWindow(
             }
         }
         return runCatching { wm.addView(v, params(style, type)) }
-            .onSuccess { view = v; owner = o; this.style = style; visible = state }
+            .onSuccess { view = v; owner = o; this.style = style; visible = state; above = host != null }
             .onFailure { Log.w(TAG, "could not add the $name window", it); o.destroy() }
             .isSuccess
     }
@@ -256,7 +259,7 @@ internal class AlertWindow(
 
     /** Whether [show] can put a window up at all: over other apps, or through the accessibility service. */
     fun canShow(): Boolean =
-        aboveCamera && SplitAccessibilityService.overlayHost() != null || android.provider.Settings.canDrawOverlays(context)
+        aboveCamera() && SplitAccessibilityService.overlayHost() != null || android.provider.Settings.canDrawOverlays(context)
 
     private fun params(style: AlertStyle, type: Int): WindowManager.LayoutParams {
         val dm = context.resources.displayMetrics

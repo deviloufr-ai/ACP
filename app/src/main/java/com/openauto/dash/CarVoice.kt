@@ -49,6 +49,27 @@ object CarVoice {
         appContext = context.applicationContext
     }
 
+    // Sentences asked for while the car reverses, said once it's done
+    // ([hold]). Main thread only.
+    private var holding = false
+    private val held = mutableListOf<HeldLine>()
+
+    /**
+     * While [on], nothing is said: the driver is reversing and listening for
+     * the parking sensors. What was asked meanwhile is said when it ends,
+     * except what went stale waiting ([linesToRelease]).
+     */
+    fun hold(on: Boolean) {
+        main.post {
+            if (holding == on) return@post
+            holding = on
+            if (on) return@post
+            val lines = linesToRelease(held.toList(), SystemClock.elapsedRealtime())
+            held.clear()
+            lines.forEach { speakNow(it.text, it.locale) }
+        }
+    }
+
     /** Says [text] in [locale]; silently skipped when the unit has no voice for that language. */
     fun speak(text: String, locale: Locale) {
         // Noted when asked, not when spoken, so a check right after already sees it.
@@ -59,13 +80,22 @@ object CarVoice {
         }
         main.post {
             if (text.isBlank()) return@post
-            val engine = engine() ?: return@post
-            if (!ready) {
-                queued.add(text to locale)
+            if (holding) {
+                held.add(HeldLine(text, locale, SystemClock.elapsedRealtime()))
                 return@post
             }
-            say(engine, text, locale)
+            speakNow(text, locale)
         }
+    }
+
+    /** Main thread. */
+    private fun speakNow(text: String, locale: Locale) {
+        val engine = engine() ?: return
+        if (!ready) {
+            queued.add(text to locale)
+            return
+        }
+        say(engine, text, locale)
     }
 
     /** What was asked to be said since [time] (the last ten minutes at most). */
@@ -191,3 +221,13 @@ object CarVoice {
         focus = null
     }
 }
+
+/** A sentence asked for while [CarVoice] was held, and when (elapsed realtime). */
+internal data class HeldLine(val text: String, val locale: Locale, val at: Long)
+
+/** A held sentence older than this is dropped: by then it would be about something else. */
+internal const val HELD_MAX_MS = 2 * 60_000L
+
+/** What to say when a hold ends: in order, the stale ones dropped, each sentence once. */
+internal fun linesToRelease(held: List<HeldLine>, now: Long): List<HeldLine> =
+    held.filter { now - it.at <= HELD_MAX_MS }.distinctBy { it.text }

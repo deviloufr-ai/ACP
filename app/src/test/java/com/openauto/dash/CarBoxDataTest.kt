@@ -109,4 +109,15 @@ class CarBoxDataTest {
         assertFalse(r.active)
         assertNull(r.closest)
     }
+
+    private fun body(vararg set: Pair<Int, Int>) = parseCarBody(bytes(79, 0 to 0x2E, 1 to SHARE_BODY, *set))!!
+
+    @Test
+    fun lightsAsTheDriverWouldSayThem() {
+        assertEquals(emptyList<CarLight>(), lightsOn(body()))
+        // Dipped beam includes the sidelights: only the strongest is named.
+        assertEquals(listOf(CarLight.DIPPED), lightsOn(body(2 to 0b0100_0000, 3 to 0b1000_0000)))
+        assertEquals(listOf(CarLight.MAIN_BEAM, CarLight.REAR_FOG), lightsOn(body(2 to 0b1101_0000)))
+        assertEquals(listOf(CarLight.HAZARD, CarLight.SIDELIGHTS), lightsOn(body(2 to 0b0000_0010, 3 to 0b1000_0000)))
+    }
 }

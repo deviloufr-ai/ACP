@@ -22,8 +22,11 @@ class PrivilegedShellTest {
         for (kind in listOf(BuiltinKind.DOORS, BuiltinKind.CAN_MON)) {
             assertEquals(kind.name, listOf(Access.ROOT), Access.entries.filter { it.allows(kind) })
         }
-        assertEquals(setOf(Access.ROOT, Access.ADB), Access.entries.filter { it.allows(BuiltinKind.PIP_ANCHOR) }.toSet())
-        val plain = BuiltinKind.entries - setOf(BuiltinKind.DOORS, BuiltinKind.CAN_MON, BuiltinKind.PIP_ANCHOR)
+        // The Maps window, and the car box's data (shared once registered through the shell).
+        for (kind in listOf(BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR_STATUS)) {
+            assertEquals(kind.name, setOf(Access.ROOT, Access.ADB), Access.entries.filter { it.allows(kind) }.toSet())
+        }
+        val plain = BuiltinKind.entries - setOf(BuiltinKind.DOORS, BuiltinKind.CAN_MON, BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR_STATUS)
         for (kind in plain) for (access in Access.entries) assertTrue("$kind under $access", access.allows(kind))
     }
 

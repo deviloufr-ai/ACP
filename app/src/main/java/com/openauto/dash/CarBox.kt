@@ -56,6 +56,9 @@ object CarBox {
     /** Reverse gear engaged: the ROM's reversing camera is on screen. */
     val reversing: StateFlow<Boolean> = _reversing
 
+    /** Whether this unit's car app shares the car's data (the QF firmware). */
+    val available: Boolean get() = started
+
     fun start(context: Context) {
         if (started) return
         val app = context.applicationContext
@@ -102,6 +105,7 @@ object CarBox {
                 _body.value = it
                 bodyAt = SystemClock.elapsedRealtime()
                 McuReader.carBoxWrite(fuelPercentOf(it), it.range?.takeIf { r -> r in 1f..MAX_RANGE_KM }?.roundToInt())
+                it.odometer?.let { km -> Maintenance.carOdometer(km.toInt()) }
             }
             SHARE_AC -> parseClimate(data!!)?.let { _climate.value = it }
             SHARE_RADAR -> parseRadar(data!!)?.let { _radar.value = it }
