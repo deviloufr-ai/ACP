@@ -8,6 +8,8 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
@@ -75,6 +77,9 @@ class CarMediaController(private val context: Context) {
      */
     fun start() {
         if (started) return
+        // The head unit's own players (Bluetooth music, radio) tell what they play by broadcast.
+        HeadUnitMedia.start(context)
+        HeadUnitMedia.addListener(stockChanged)
         try {
             sessionManager.addOnActiveSessionsChangedListener(sessionsChangedListener, listenerComponent)
             bind(sessionManager.getActiveSessions(listenerComponent))
@@ -87,6 +92,8 @@ class CarMediaController(private val context: Context) {
 
     /** Stops observing and releases callbacks. */
     fun stop() {
+        HeadUnitMedia.removeListener(stockChanged)
+        main.removeCallbacks(stockTick)
         runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
         boundControllers.forEach { runCatching { it.unregisterCallback(controllerCallback) } }
         boundControllers = emptyList()
@@ -136,6 +143,7 @@ class CarMediaController(private val context: Context) {
      * changes when a field does, so the tiles don't redraw for nothing.
      */
     private fun publish(controller: MediaController?) {
+        if (publishStock(controller)) return
         if (controller == null) {
             _mediaState.value = MediaState()
             return
@@ -161,6 +169,44 @@ class CarMediaController(private val context: Context) {
             durationMs = (metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).coerceAtLeast(0L),
             artwork = artworkFor(track, metadata?.artwork())
         )
+    }
+
+    // --- The head unit's own players --------------------------------------
+    //
+    // Bluetooth music and the radio publish an empty session: what they play
+    // comes from [HeadUnitMedia]. Shown when their session is the active one
+    // (empty), or when there's no session at all and the head unit says it's
+    // their audio. Their play state lives in system properties nothing
+    // announces, so it's read again every second while one is shown.
+
+    private val main = Handler(Looper.getMainLooper())
+    /** The head unit player shown in the tile, or null: its buttons go to it. */
+    private var stockShown: String? = null
+    private val stockChanged: () -> Unit = { main.post { selectActive() } }
+    private val stockTick = object : Runnable {
+        override fun run() {
+            selectActive()
+            if (stockShown != null) main.postDelayed(this, STOCK_TICK_MS)
+        }
+    }
+
+    private fun publishStock(controller: MediaController?): Boolean {
+        val pkg = when {
+            controller != null -> controller.packageName?.takeIf {
+                HeadUnitMedia.isStock(it) && controller.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).isNullOrBlank()
+            }
+            else -> HeadUnitMedia.source()?.takeIf(HeadUnitMedia::isStock)
+        }
+        val state = pkg?.let(HeadUnitMedia::state)
+        val was = stockShown
+        stockShown = if (state != null) pkg else null
+        if (stockShown != null && was == null) main.postDelayed(stockTick, STOCK_TICK_MS)
+        if (stockShown == null) {
+            if (was != null) main.removeCallbacks(stockTick)
+            return false
+        }
+        _mediaState.value = state!!
+        return true
     }
 
     /** The package whose name is saved as the last media app, so it's written only when it changes. */
@@ -218,6 +264,7 @@ class CarMediaController(private val context: Context) {
      */
     fun positionMs(): Long {
         if (DemoMode.isOn) return DemoMode.positionMs()
+        stockShown?.let { return HeadUnitMedia.positionMs(it) ?: 0L }
         val state = activeController?.playbackState ?: return 0L
         val base = state.position
         return if (state.state == PlaybackState.STATE_PLAYING) {
@@ -237,6 +284,7 @@ class CarMediaController(private val context: Context) {
      */
     fun playPause() {
         if (DemoMode.isOn) return DemoMode.playPause()
+        stockShown?.let { return HeadUnitMedia.playPause(context, it) }
         val controls = activeController?.transportControls ?: return startLastPlayer()
         if (_mediaState.value.isPlaying) controls.pause() else controls.play()
     }
@@ -265,15 +313,19 @@ class CarMediaController(private val context: Context) {
 
     fun next() {
         if (DemoMode.isOn) return DemoMode.next()
+        stockShown?.let { return HeadUnitMedia.next(context, it) }
         activeController?.transportControls?.skipToNext()
     }
 
     fun previous() {
         if (DemoMode.isOn) return DemoMode.previous()
+        stockShown?.let { return HeadUnitMedia.previous(context, it) }
         activeController?.transportControls?.skipToPrevious()
     }
 
     companion object {
+        /** How often the head unit player's play state and position are read again while it's shown. */
+        private const val STOCK_TICK_MS = 1_000L
         /** How long a player opened by [playPause] has to publish its session. */
         private const val PENDING_PLAY_MS = 15_000L
         /** Covers larger than this on a side are shrunk: no tile shows more, and a 1024² cover is 4 MB to upload. */

@@ -38,6 +38,7 @@
     <string name="phone_pair_qr_download">Download the app</string>
     <string name="phone_pair_qr_pair">Pairing code: scan it in the app</string>
     <string name="phone_call_incoming">Incoming call</string>
+    <string name="phone_call_outgoing">Calling</string>
     <string name="phone_call_unknown">Unknown number</string>
     <string name="phone_call_answer">Answer</string>
     <string name="phone_call_decline">Decline</string>

@@ -22,3 +22,7 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# The QF car app's Parcelables, received in its broadcasts and read back by
+# class name (CarBox): keep the name, the CREATOR and the fields.
+-keep class com.qf.vehicle.entity.** { *; }

@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">Transferir a app</string>
     <string name="phone_pair_qr_pair">Código de associação: leia-o na app</string>
     <string name="phone_call_incoming">Chamada recebida</string>
+    <string name="phone_call_outgoing">A chamar</string>
     <string name="phone_call_unknown">Número desconhecido</string>
     <string name="phone_call_answer">Atender</string>
     <string name="phone_call_decline">Recusar</string>

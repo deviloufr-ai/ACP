@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">App herunterladen</string>
     <string name="phone_pair_qr_pair">Kopplungscode: in der App scannen</string>
     <string name="phone_call_incoming">Eingehender Anruf</string>
+    <string name="phone_call_outgoing">Wird angerufen</string>
     <string name="phone_call_unknown">Unbekannte Nummer</string>
     <string name="phone_call_answer">Annehmen</string>
     <string name="phone_call_decline">Ablehnen</string>

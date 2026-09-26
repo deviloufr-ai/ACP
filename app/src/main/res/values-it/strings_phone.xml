@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">Scarica l\'app</string>
     <string name="phone_pair_qr_pair">Codice di associazione: scansionalo nell\'app</string>
     <string name="phone_call_incoming">Chiamata in arrivo</string>
+    <string name="phone_call_outgoing">Chiamata in corso</string>
     <string name="phone_call_unknown">Numero sconosciuto</string>
     <string name="phone_call_answer">Rispondi</string>
     <string name="phone_call_decline">Rifiuta</string>

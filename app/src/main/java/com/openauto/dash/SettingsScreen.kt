@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -34,6 +36,8 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SensorDoor
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -185,7 +189,10 @@ internal fun SettingsScreen(
                     )
                     SettingsTab.LOOK -> LookPane(theme)
                     SettingsTab.DRIVING -> DrivingPane(m, onWheelButtons = { wheelButtons = true })
-                    SettingsTab.PHONE -> PhonePane()
+                    SettingsTab.PHONE -> {
+                        PhonePane()
+                        RomPopupToggle(RomPopups.Kind.CALL)
+                    }
                     SettingsTab.ADVANCED -> AdvancedPane(m, onBootLogo = { bootLogo = true }, onClose = onClose)
                 }
             }
@@ -209,11 +216,44 @@ private fun CarPane(m: TopBarModel, onCar: () -> Unit, onAi: () -> Unit, onUpkee
     SettingsRow(Icons.Filled.AutoAwesome, stringResource(R.string.ai_title), stringResource(R.string.settings_ai_detail), onAi)
     SettingsRow(Icons.Filled.Handyman, stringResource(R.string.upkeep_dialog_title), stringResource(R.string.upkeep_settings_detail), onUpkeep)
     SettingsRow(Icons.Filled.Science, stringResource(R.string.explore_title), stringResource(R.string.explore_settings_detail), onExplorer)
+    RomPopupToggle(RomPopups.Kind.DOORS)
+    RomPopupToggle(RomPopups.Kind.RADAR)
+    RomPopupToggle(RomPopups.Kind.AC)
+}
+
+/**
+ * One of the head unit's own pop-ups replaced by Dashwheel's ([RomPopups]),
+ * shown only on firmware that has it.
+ */
+@Composable
+private fun RomPopupToggle(kind: RomPopups.Kind) {
+    val context = LocalContext.current
+    if (!remember(kind) { RomPopups.available(context, kind) }) return
+    val replaced by RomPopups.replaced.collectAsState()
+    val failed by RomPopups.failed.collectAsState()
+    val on = kind in replaced
+    val (icon, title, detail) = when (kind) {
+        RomPopups.Kind.CALL -> Triple(Icons.Filled.Call, stringResource(R.string.settings_rom_call), stringResource(R.string.settings_rom_call_detail))
+        RomPopups.Kind.DOORS -> Triple(Icons.Filled.SensorDoor, stringResource(R.string.settings_rom_doors), stringResource(R.string.settings_rom_doors_detail))
+        RomPopups.Kind.RADAR -> Triple(Icons.Filled.Sensors, stringResource(R.string.settings_rom_radar), stringResource(R.string.settings_rom_radar_detail))
+        RomPopups.Kind.AC -> Triple(Icons.Filled.AcUnit, stringResource(R.string.settings_rom_ac), stringResource(R.string.settings_rom_ac_detail))
+    }
+    val a11y by SplitAccessibilityService.connected.collectAsState()
+    val shown = when {
+        on && kind in failed -> stringResource(R.string.settings_rom_needs_root)
+        on && kind == RomPopups.Kind.RADAR && !a11y -> stringResource(R.string.settings_rom_radar_needs_access)
+        else -> detail
+    }
+    SettingsToggle(icon, title, shown, on) {
+        RomPopups.setReplaced(context, kind, it)
+    }
 }
 
 @Composable
 private fun LookPane(theme: ThemeState) {
     ThemePane(theme)
+    Spacer(Modifier.height(20.dp))
+    AlertStyleRows()
     Spacer(Modifier.height(20.dp))
     SettingsSection(stringResource(R.string.language_title))
     LanguageChoices()

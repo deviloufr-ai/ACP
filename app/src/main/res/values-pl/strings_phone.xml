@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">Pobierz aplikację</string>
     <string name="phone_pair_qr_pair">Kod parowania: zeskanuj w aplikacji</string>
     <string name="phone_call_incoming">Połączenie przychodzące</string>
+    <string name="phone_call_outgoing">Dzwonienie</string>
     <string name="phone_call_unknown">Nieznany numer</string>
     <string name="phone_call_answer">Odbierz</string>
     <string name="phone_call_decline">Odrzuć</string>

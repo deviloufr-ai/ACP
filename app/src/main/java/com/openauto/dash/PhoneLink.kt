@@ -86,7 +86,13 @@ data class PhoneCall(
     /** [SystemClock.elapsedRealtime] when it was answered, on this head unit's clock. */
     val answeredAt: Long,
     /** False: the companion may not answer / hang up, so the call is only shown. */
-    val canControl: Boolean
+    val canControl: Boolean,
+    /** Answered / hung up through the head unit's own Bluetooth ([HeadUnitPhone]), not the companion. */
+    val viaHeadUnit: Boolean = false,
+    /** Our own call, not answered yet: "Calling" instead of a duration. */
+    val dialing: Boolean = false,
+    /** Made up by the alert style picker's "Try it": its buttons only close it. */
+    val preview: Boolean = false
 )
 
 sealed interface PhoneLinkState {

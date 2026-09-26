@@ -51,18 +51,21 @@ class SplitAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
+        connectedState.value = true
         Log.d(TAG, "connected")
         updateOverlayForSplit()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         instance = null
+        connectedState.value = false
         hideSwapOverlay()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         instance = null
+        connectedState.value = false
         hideSwapOverlay()
         super.onDestroy()
     }
@@ -363,6 +366,10 @@ class SplitAccessibilityService : AccessibilityService() {
         /** True once the user has enabled the service and the system bound it. */
         val isConnected: Boolean get() = instance != null
 
+        private val connectedState = kotlinx.coroutines.flow.MutableStateFlow(false)
+        /** [isConnected], followed: the radar leans on it to draw above the reversing camera ([RomPopups]). */
+        val connected: kotlinx.coroutines.flow.StateFlow<Boolean> = connectedState
+
         /**
          * Ask SystemUI to toggle split-screen. Returns false when the service
          * is not enabled/bound, so callers can fall back to another strategy.
@@ -381,6 +388,13 @@ class SplitAccessibilityService : AccessibilityService() {
          * service is not enabled/bound.
          */
         fun swapSplit(): Boolean = instance?.swapPanes() ?: false
+
+        /**
+         * The service as a window context, for an accessibility overlay: the
+         * one window type that sits above the ROM's reversing camera
+         * ([AlertWindow]). Null when the service is not bound.
+         */
+        fun overlayHost(): Context? = instance
 
         /** Any `GLOBAL_ACTION_*` (back, recents, notifications...); false when the service is not bound. */
         fun globalAction(action: Int): Boolean =

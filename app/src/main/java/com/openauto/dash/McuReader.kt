@@ -225,6 +225,15 @@ object McuReader {
         if (!DemoMode.isOn) _rangeKm.value = v
     }
 
+    /**
+     * Fuel and range from the car app's shared data ([CarBox]), for whichever
+     * of the two was never learned from the MCU stream: a learned byte wins.
+     */
+    internal fun carBoxWrite(fuelPercent: Int?, rangeKm: Int?) {
+        if (fuelMapping == null && fuelPercent != null) setFuel(fuelPercent)
+        if (rangeMapping == null && rangeKm != null) setRange(rangeKm)
+    }
+
     /** [DemoMode]'s doors, fuel and range. */
     internal fun demoWrite(doors: DoorState?, fuelPercent: Int?, rangeKm: Int?) {
         _doorState.value = doors

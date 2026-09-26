@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">Télécharger l\'appli</string>
     <string name="phone_pair_qr_pair">Code d\'association : à scanner dans l\'appli</string>
     <string name="phone_call_incoming">Appel entrant</string>
+    <string name="phone_call_outgoing">Appel en cours</string>
     <string name="phone_call_unknown">Numéro inconnu</string>
     <string name="phone_call_answer">Décrocher</string>
     <string name="phone_call_decline">Refuser</string>

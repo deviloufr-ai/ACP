@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity() {
         inMultiWindow.value = isInMultiWindowMode
         enableImmersiveFullscreen()
         FeedbackStore.load(this)
+        AlertStyleStore.load(this)
         // Rebuilt after a language change: the fault codes' advice follows it.
         AiMechanic.followLanguage(this)
         // Nothing the first frame needs waits behind these: they read their
@@ -87,6 +88,16 @@ class MainActivity : ComponentActivity() {
                 // Dials the paired phone whenever its hotspot is around, and shows its calls.
                 PhoneLink.start(this)
                 PhoneCallOverlay.start(this)
+                // Calls on the head unit's own Bluetooth, the ROM pop-ups the driver
+                // chose to replace, and the door alert that replaces one of them.
+                HeadUnitPhone.start(this)
+                RomPopups.start(this)
+                DoorAlertOverlay.start(this)
+                AlertVoice.start(this)
+                // The car's own data from the CAN box, and the radar / climate alerts built on it.
+                CarBox.start(this)
+                RadarOverlay.start(this)
+                ClimateOverlay.start(this)
                 // A new version runs JIT-only until it is compiled ahead of time.
                 CompileAfterUpdate.schedule(this)
             }

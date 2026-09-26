@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">Descargar la app</string>
     <string name="phone_pair_qr_pair">Código de vinculación: escanéalo en la app</string>
     <string name="phone_call_incoming">Llamada entrante</string>
+    <string name="phone_call_outgoing">Llamando</string>
     <string name="phone_call_unknown">Número desconocido</string>
     <string name="phone_call_answer">Contestar</string>
     <string name="phone_call_decline">Rechazar</string>

@@ -93,9 +93,11 @@ internal fun rememberMoving(enabled: Boolean, demo: Boolean): State<Boolean> {
         combine(
             ObdBluetoothManager.connectionState,
             ObdBluetoothManager.data,
+            CarBox.body,
             LocationFeed.freshSpeedKmh
-        ) { connection, obd, gps ->
-            val speed = (if (connection == ObdConnectionState.CONNECTED) obd.speedKmh else gps) ?: 0
+        ) { connection, obd, _, gps ->
+            // The OBD's speed, else the car box's, else the GPS's.
+            val speed = (if (connection == ObdConnectionState.CONNECTED) obd.speedKmh else CarBox.freshBody()?.speedKmh ?: gps) ?: 0
             when {
                 speed >= MOVING_KMH -> true
                 speed <= STOPPED_KMH -> false

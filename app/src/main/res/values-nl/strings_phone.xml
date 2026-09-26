@@ -37,6 +37,7 @@
     <string name="phone_pair_qr_download">App downloaden</string>
     <string name="phone_pair_qr_pair">Koppelcode: scan hem in de app</string>
     <string name="phone_call_incoming">Inkomende oproep</string>
+    <string name="phone_call_outgoing">Bellen</string>
     <string name="phone_call_unknown">Onbekend nummer</string>
     <string name="phone_call_answer">Opnemen</string>
     <string name="phone_call_decline">Weigeren</string>
