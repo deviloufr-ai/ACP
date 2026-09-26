@@ -411,6 +411,28 @@ internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, con
  * is hidden, as for the launcher's own window.
  */
 @Suppress("DEPRECATION")
+/**
+ * A dialog is its own window: while one is up, keys go to it and never reach
+ * [MainActivity.dispatchKeyEvent], so a learned steering wheel button would
+ * fall through to Android's default (a media key plays or pauses the music).
+ * This puts [SteeringWheelStore] in front of the dialog's own key handling.
+ */
+private class WheelKeyWindowCallback(
+    private val context: android.content.Context,
+    private val inner: android.view.Window.Callback
+) : android.view.Window.Callback by inner {
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        SteeringWheelStore.onKeyEvent(context, event) || inner.dispatchKeyEvent(event)
+
+    companion object {
+        fun install(window: android.view.Window) {
+            val current = window.callback ?: return
+            if (current is WheelKeyWindowCallback) return
+            window.callback = WheelKeyWindowCallback(window.context.applicationContext, current)
+        }
+    }
+}
+
 internal fun Modifier.immersiveWindow(): Modifier = composed {
     val view = LocalView.current
     SideEffect {
@@ -427,6 +449,7 @@ internal fun Modifier.immersiveWindow(): Modifier = composed {
             .mapNotNull { (it as? androidx.compose.ui.window.DialogWindowProvider)?.window }
             .firstOrNull()
         if (dialogWindow != null) {
+            WheelKeyWindowCallback.install(dialogWindow)
             if (dialogWindow.decorView.systemUiVisibility != flags) {
                 // A full-width dialog's decor otherwise paints the theme's
                 // navigation bar colour over the bar's strip, hidden or not.

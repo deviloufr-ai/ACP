@@ -229,6 +229,9 @@ private fun CarPane(m: TopBarModel, onCar: () -> Unit, onAi: () -> Unit, onUpkee
 private fun RomPopupToggle(kind: RomPopups.Kind) {
     val context = LocalContext.current
     if (!remember(kind) { RomPopups.available(context, kind) }) return
+    // Offered only where it can work (PrivilegedShell): the door alert reads
+    // the CANbox through root, the radar switch is written through a shell.
+    if (!RomPopups.canWork(kind, shellAccess())) return
     val replaced by RomPopups.replaced.collectAsState()
     val failed by RomPopups.failed.collectAsState()
     val on = kind in replaced
@@ -282,11 +285,18 @@ private fun DrivingPane(m: TopBarModel, onWheelButtons: () -> Unit) {
     SpeedVolumeSetting()
 }
 
-/** How the volume is changed (see [MediaVolume]): for units whose sound ignores Android's volume. */
+/**
+ * How the volume is changed (see [MediaVolume]): for units whose sound
+ * ignores Android's volume. The keys are pressed through the privileged
+ * shell, so that way is only offered where there is one ([PrivilegedShell]).
+ */
 @Composable
 private fun VolumeWaySetting() {
     val context = LocalContext.current
-    val way by MediaVolume.way.collectAsState()
+    val saved by MediaVolume.way.collectAsState()
+    val shell = shellAccess().shell
+    val options = if (shell) VolumeWay.entries else VolumeWay.entries.filter { it != VolumeWay.KEYS }
+    val way = if (saved in options) saved else VolumeWay.AUTO
     Spacer(Modifier.height(12.dp))
     Text(
         stringResource(R.string.volume_way_title),
@@ -295,7 +305,7 @@ private fun VolumeWaySetting() {
         modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
     )
     SegmentedSwitch(
-        options = VolumeWay.entries,
+        options = options,
         chosen = way,
         icon = { option ->
             when (option) {
@@ -356,11 +366,17 @@ private fun AdvancedPane(m: TopBarModel, onBootLogo: () -> Unit, onClose: () -> 
         // Straight to the dashboard it fills; the badge there stops it.
         if (on) onClose()
     }
+    // The boot logo and the system-app install write to /system: only with a
+    // privileged shell (root or the unit's ADB, see PrivilegedShell) can they
+    // do anything, so without one they are not offered.
+    val shell = shellAccess().shell
     // Only on the QF001 / K706 firmware the feature was built for.
-    if (BootLogoSupport.available) {
+    if (shell && BootLogoSupport.available) {
         SettingsRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.boot_menu), null, onBootLogo)
     }
-    SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), m.onSystem)
+    if (shell) {
+        SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), m.onSystem)
+    }
     SettingsRow(Icons.Filled.Checklist, stringResource(R.string.setup_again), stringResource(R.string.setup_again_detail)) { m.onSetup(true) }
     UpdateRow(m)
 }

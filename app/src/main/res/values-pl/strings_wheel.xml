@@ -16,6 +16,8 @@
     <string name="wheel_back">Wstecz</string>
     <string name="wheel_listening_title">Naciśnij przycisk na kierownicy…</string>
     <string name="wheel_listening_detail">Dashwheel czeka na następne naciśnięcie.</string>
+    <string name="wheel_confirm_title">Naciśnij ten sam przycisk jeszcze raz…</string>
+    <string name="wheel_confirm_detail">Wykryto %1$s. Naciśnij go ponownie, aby Dashwheel wiedział, że to Ty: wartość z samochodu, która zmienia się sama, nie powtórzy się na zawołanie.</string>
     <string name="wheel_assign_prompt">Co ma robić %1$s?</string>
     <string name="wheel_choose_app">Uruchom aplikację…</string>
     <string name="wheel_remove_binding">Zapomnij ten przycisk</string>
@@ -33,6 +35,8 @@
     <string name="wheel_needs_accessibility">Wymaga włączonych Ułatwień dostępu</string>
     <string name="wheel_accessibility_hint">Wstecz, ostatnie aplikacje, powiadomienia i podzielony ekran wymagają włączenia Dashwheel w Ustawienia, Ułatwienia dostępu.</string>
     <string name="wheel_accessibility_enable">Włącz</string>
+    <string name="wheel_accessibility_anywhere">Nauczone przyciski działają tylko, gdy Dashwheel jest na wierzchu, chyba że Dashwheel jest włączony w Ustawieniach, Ułatwienia dostępu.</string>
+    <string name="wheel_no_voice_assistant">Brak asystenta głosowego w tym radiu</string>
     <string name="wheel_action_back">Wstecz</string>
     <string name="wheel_action_recents">Ostatnie aplikacje</string>
     <string name="wheel_action_notifications">Powiadomienia</string>

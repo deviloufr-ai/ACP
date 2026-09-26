@@ -79,4 +79,20 @@ class DashTemplatesTest {
         assertEquals(listOf(GRID_ROWS - 1, GRID_COLS, 1), listOf(dock.y, dock.w, dock.h))
         assertTiled(home, full.minCols)
     }
+
+    @Test
+    fun withoutRoot_theCanboxTilesAreLeftOut_andNothingStandsInForThem() {
+        val noRoot = full.copy(canbox = false)
+        for (template in DashTemplate.entries) {
+            val kinds = TemplatePlacer.pages(template, noRoot).flatten().let(::widgets).map { it.kind }
+            assertFalse("$template offers the doors without root", BuiltinKind.DOORS in kinds)
+            assertFalse("$template offers the CAN monitor without root", BuiltinKind.CAN_MON in kinds)
+        }
+        // With root the same page keeps them, so the rule is what removes them.
+        val page = TemplatePage(listOf(BuiltinKind.TELEMETRY, BuiltinKind.DOORS, BuiltinKind.CAN_MON))
+        assertEquals(page.kinds, TemplatePlacer.kindsFor(page, full))
+        assertEquals(listOf(BuiltinKind.TELEMETRY), TemplatePlacer.kindsFor(page, noRoot))
+        // The pages still tile the screen without them.
+        for (template in DashTemplate.entries) TemplatePlacer.pages(template, noRoot).forEach { assertTiled(it, noRoot.minCols) }
+    }
 }

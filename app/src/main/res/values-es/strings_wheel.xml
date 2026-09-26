@@ -14,6 +14,8 @@
     <string name="wheel_back">Atrás</string>
     <string name="wheel_listening_title">Pulsa un botón del volante…</string>
     <string name="wheel_listening_detail">Dashwheel espera la siguiente pulsación.</string>
+    <string name="wheel_confirm_title">Pulsa el mismo botón otra vez…</string>
+    <string name="wheel_confirm_detail">Se ha detectado %1$s. Púlsalo una vez más para que Dashwheel sepa que has sido tú: un dato del coche que cambia solo no vuelve a aparecer a la orden.</string>
     <string name="wheel_assign_prompt">¿Qué debe hacer %1$s?</string>
     <string name="wheel_choose_app">Abrir una app…</string>
     <string name="wheel_remove_binding">Olvidar este botón</string>
@@ -31,6 +33,8 @@
     <string name="wheel_needs_accessibility">Necesita Accesibilidad activada</string>
     <string name="wheel_accessibility_hint">Atrás, apps recientes, notificaciones y pantalla dividida necesitan Dashwheel activado en Ajustes, Accesibilidad.</string>
     <string name="wheel_accessibility_enable">Activar</string>
+    <string name="wheel_accessibility_anywhere">Los botones aprendidos solo actúan mientras Dashwheel está delante, salvo que Dashwheel esté activado en Ajustes, Accesibilidad.</string>
+    <string name="wheel_no_voice_assistant">No hay asistente de voz en esta unidad</string>
     <string name="wheel_action_back">Atrás</string>
     <string name="wheel_action_recents">Apps recientes</string>
     <string name="wheel_action_notifications">Notificaciones</string>

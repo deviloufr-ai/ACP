@@ -38,6 +38,7 @@
     <string name="vehicle_via_canbox">via CANbox</string>
     <string name="vehicle_via_obd">via OBD</string>
     <string name="vehicle_fuel_no_obd">This car\'s OBD doesn\'t report fuel. Learn it from the CANbox instead: needs root.</string>
+    <string name="vehicle_fuel_none">No fuel level yet. Connect the OBD adapter: not every car reports it.</string>
     <string name="vehicle_find_fuel_signal">Find fuel signal</string>
     <string name="vehicle_try_obd_fuel_pid">Try OBD fuel PID</string>
     <string name="vehicle_km_to_empty">KM TO EMPTY</string>

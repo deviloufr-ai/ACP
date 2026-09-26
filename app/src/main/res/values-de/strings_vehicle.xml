@@ -38,6 +38,7 @@
     <string name="vehicle_via_canbox">über CANbox</string>
     <string name="vehicle_via_obd">über OBD</string>
     <string name="vehicle_fuel_no_obd">Das OBD dieses Autos meldet keinen Kraftstoffstand. Stattdessen von der CANbox lernen: Root erforderlich.</string>
+    <string name="vehicle_fuel_none">Noch kein Kraftstoffstand. OBD-Adapter verbinden: nicht jedes Auto meldet ihn.</string>
     <string name="vehicle_find_fuel_signal">Kraftstoffsignal suchen</string>
     <string name="vehicle_try_obd_fuel_pid">OBD-Kraftstoff-PID testen</string>
     <string name="vehicle_km_to_empty">KM BIS LEER</string>

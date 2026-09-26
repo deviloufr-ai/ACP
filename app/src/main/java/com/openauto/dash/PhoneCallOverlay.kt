@@ -237,29 +237,43 @@ private fun LabeledCallButton(icon: ImageVector, color: Color, label: String, si
     }
 }
 
-/** "Incoming call · number", "Calling", or the duration once it's on. */
+/**
+ * "Incoming call · +33…" for a phone call, "WhatsApp · Incoming call" for an
+ * app's; "Calling" for one the driver placed; then the duration once it's on
+ * ("WhatsApp · 2:14").
+ */
 @Composable
 private fun CallStatusLine(call: PhoneCall, withNumber: Boolean = true, align: TextAlign? = null) {
     when {
         call.dialing -> Text(
-            stringResource(R.string.phone_call_outgoing), color = DashColors.TextSecondary, textAlign = align,
+            listOfNotNull(call.app, stringResource(R.string.phone_call_outgoing)).joinToString(" · "),
+            color = DashColors.TextSecondary, textAlign = align, style = MaterialTheme.typography.bodyMedium
+        )
+        call.ringing -> Text(
+            listOfNotNull(
+                call.app,
+                stringResource(R.string.phone_call_incoming),
+                call.number.takeIf { withNumber && call.name != null }
+            ).joinToString(" · "),
+            color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align,
             style = MaterialTheme.typography.bodyMedium
         )
-        call.ringing -> {
-            val subtitle = stringResource(R.string.phone_call_incoming)
-            Text(
-                if (withNumber && call.name != null && call.number != null) "$subtitle · ${call.number}" else subtitle,
-                color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align,
-                style = MaterialTheme.typography.bodyMedium
-            )
+        else -> Row(verticalAlignment = Alignment.CenterVertically) {
+            if (call.app != null) {
+                Text(
+                    "${call.app} · ", color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            CallDuration(call.answeredAt)
         }
-        else -> CallDuration(call.answeredAt)
     }
 }
 
 @Composable
 private fun NoControlLine(call: PhoneCall, align: TextAlign? = null) {
-    if (!call.canControl) {
+    // The Calls permission is for the phone's own calls; an app's call without buttons is just shown.
+    if (!call.canControl && call.app == null) {
         Text(stringResource(R.string.phone_call_no_control), color = DashColors.Warning, textAlign = align, style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -345,7 +359,8 @@ private fun CallPanel(call: PhoneCall) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    stringResource(R.string.phone_call_incoming).uppercase(), color = DashColors.Accent, letterSpacing = 1.5.sp,
+                    listOfNotNull(call.app, stringResource(R.string.phone_call_incoming)).joinToString(" · ").uppercase(),
+                    color = DashColors.Accent, letterSpacing = 1.5.sp,
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge
                 )
                 Spacer(Modifier.weight(1f))

@@ -38,6 +38,7 @@
     <string name="vehicle_via_canbox">vía CANbox</string>
     <string name="vehicle_via_obd">vía OBD</string>
     <string name="vehicle_fuel_no_obd">El OBD de este coche no informa del combustible. Apréndelo desde la CANbox: requiere root.</string>
+    <string name="vehicle_fuel_none">Aún no hay nivel de combustible. Conecta el adaptador OBD: no todos los coches lo informan.</string>
     <string name="vehicle_find_fuel_signal">Buscar señal de combustible</string>
     <string name="vehicle_try_obd_fuel_pid">Probar PID de combustible OBD</string>
     <string name="vehicle_km_to_empty">KM RESTANTES</string>

@@ -79,6 +79,52 @@ class CanButtonDetectorTest {
     }
 
     @Test
+    fun aValueHeldAsLongAsItWasStillIsNotAButton() {
+        // A channel alternating between two messages: 2 s of one, 2 s of the other.
+        val d = CanButtonDetector()
+        d.onChange("65.04", null, "41 FD 04 4F 10 62", 0)
+        var previous = "41 FD 04 4F 10 62"
+        for (i in 1..10) {
+            val hex = if (i % 2 == 1) "41 FD 04 4F 10 63" else "41 FD 04 4F 10 62"
+            assertNull(d.onChange("65.04", previous, hex, i * 2_000L))
+            previous = hex
+        }
+    }
+
+    @Test
+    fun aFrameThatKeepsFlippingIsNotAButton() {
+        // Still 4 s, other value 1 s, back: looks like a press, until it has happened too often.
+        val d = CanButtonDetector()
+        d.onChange("65.04", null, "00", 0)
+        var t = 0L
+        repeat(4) {
+            t += 4_000
+            assertNull(d.onChange("65.04", "00", "01", t))
+            t += 1_000
+            assertEquals("01", d.onChange("65.04", "01", "00", t))
+        }
+        t += 4_000
+        d.onChange("65.04", "00", "01", t)
+        t += 1_000
+        assertNull(d.onChange("65.04", "01", "00", t))
+        // A quiet minute later it is trusted again.
+        t += 61_000
+        d.onChange("65.04", "00", "01", t)
+        t += 300
+        assertEquals("01", d.onChange("65.04", "01", "00", t))
+    }
+
+    @Test
+    fun aSecondPressAfterReadingThePromptIsSeen() {
+        val d = CanButtonDetector()
+        d.onChange("32", null, "00 00", 0)
+        d.onChange("32", "00 00", "02 01", 10_000)
+        assertEquals("02 01", d.onChange("32", "02 01", "00 00", 10_300))
+        d.onChange("32", "00 00", "02 01", 13_000)
+        assertEquals("02 01", d.onChange("32", "02 01", "00 00", 13_250))
+    }
+
+    @Test
     fun onlyChangesAfterStillnessAreFlaggedQuiet() {
         val d = CanButtonDetector()
         d.onChange("32", null, "00 00", 0)

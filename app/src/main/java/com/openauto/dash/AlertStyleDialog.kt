@@ -64,7 +64,15 @@ internal fun AlertStyleRows() {
     val carApp = remember { RomPopups.available(context, RomPopups.Kind.DOORS) }
 
     SettingsSection(stringResource(R.string.alert_section))
-    AlertKind.entries.filter { it == AlertKind.CALL || carApp }.forEach { kind ->
+    val access = shellAccess()
+    AlertKind.entries.filter { kind ->
+        when (kind) {
+            AlertKind.CALL -> true
+            AlertKind.DOORS -> carApp && RomPopups.canWork(RomPopups.Kind.DOORS, access)
+            AlertKind.RADAR -> carApp && RomPopups.canWork(RomPopups.Kind.RADAR, access)
+            AlertKind.AC -> carApp
+        }
+    }.forEach { kind ->
         val style = stringResource(styles.of(kind).title)
         val detail = if (kind.speakable && kind in spoken) stringResource(R.string.alert_with_voice, style) else style
         SettingsRow(kind.icon, stringResource(kind.label), detail) { picking = kind }

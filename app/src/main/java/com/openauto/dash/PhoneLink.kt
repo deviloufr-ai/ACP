@@ -87,6 +87,8 @@ data class PhoneCall(
     val answeredAt: Long,
     /** False: the companion may not answer / hang up, so the call is only shown. */
     val canControl: Boolean,
+    /** The app the call is in ("WhatsApp"…); null for a phone call. */
+    val app: String? = null,
     /** Answered / hung up through the head unit's own Bluetooth ([HeadUnitPhone]), not the companion. */
     val viaHeadUnit: Boolean = false,
     /** Our own call, not answered yet: "Calling" instead of a duration. */
@@ -303,6 +305,8 @@ object PhoneLink {
         val prober = if (isPending) null else scope.launch { probePending(gateway, link) }
         // Where the car stops, for the phone's "where's my car".
         val whereabouts = scope.launch { CarWhereabouts.report(context) { send(it) } }
+        // The drives it logged, and the one under way, for the phone's drive journal.
+        val drives = scope.launch { DriveLog.report { send(it) } }
         try {
             while (true) {
                 val message = link.receive() ?: continue
@@ -314,6 +318,7 @@ object PhoneLink {
             pinger.cancel()
             prober?.cancel()
             whereabouts.cancel()
+            drives.cancel()
             link.close()
             if (session === link) session = null
             NotificationFeed.phoneClear()
@@ -375,15 +380,19 @@ object PhoneLink {
             is NotificationPosted -> NotificationFeed.phonePosted(message.notification)
             is NotificationRemoved -> NotificationFeed.phoneRemoved(message.key)
             is ActionResult -> _results.tryEmit(message)
-            is CallState -> _call.value = toPhoneCall(message)
+            is CallState -> _call.value = toPhoneCall(context, message)
             else -> Unit
         }
     }
 
-    private fun toPhoneCall(state: CallState): PhoneCall? {
+    private fun toPhoneCall(context: Context, state: CallState): PhoneCall? {
         if (state.phase == CallState.Phase.IDLE) return null
+        // The same app on this head unit (a WhatsApp linked to the phone's) rings here
+        // by itself, with its own screen: no card over it.
+        if (state.packageName?.let { isInstalled(context, it) } == true) return null
         val before = _call.value
-        val photo = if (before != null && state.photoPng != null && before.number == state.number) before.photo
+        val sameCaller = before != null && before.number == state.number && before.name == state.name && before.app == state.app
+        val photo = if (before != null && state.photoPng != null && sameCaller) before.photo
         else state.photoPng?.let { png ->
             runCatching {
                 val bytes = Base64.getDecoder().decode(png)
@@ -396,9 +405,13 @@ object PhoneLink {
             name = state.name,
             photo = photo,
             answeredAt = SystemClock.elapsedRealtime() - state.activeForMs,
-            canControl = state.canControl
+            canControl = state.canControl,
+            app = state.app
         )
     }
+
+    private fun isInstalled(context: Context, packageName: String): Boolean =
+        runCatching { context.packageManager.getApplicationInfo(packageName, 0).enabled }.getOrDefault(false)
 
     /** Pairings every one of which the hotspot's phone refused; counted once per occasion. */
     private fun noteRefusals(context: Context, ids: List<String>) {

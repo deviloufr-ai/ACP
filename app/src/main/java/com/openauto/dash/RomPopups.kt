@@ -59,6 +59,13 @@ object RomPopups {
         Kind.DOORS, Kind.RADAR, Kind.AC -> isPackageInstalled(context, VEHICLE_PACKAGE)
     }
 
+    /** Whether [kind] can work with this shell access: see [PrivilegedShell]. */
+    fun canWork(kind: Kind, access: PrivilegedShell.Access): Boolean = when (kind) {
+        Kind.DOORS -> access.root
+        Kind.RADAR -> access.shell
+        Kind.CALL, Kind.AC -> true
+    }
+
     fun start(context: Context) {
         if (started) return
         started = true

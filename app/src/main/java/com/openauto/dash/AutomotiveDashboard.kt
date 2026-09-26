@@ -181,6 +181,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // Layout snapshots for Undo while arranging (newest last, capped).
     var history by remember { mutableStateOf<List<List<List<DashboardItem>>>>(emptyList()) }
 
+    val shellAccess = shellAccess()
+    // The default layout is built before the shell is known. Once it is, and
+    // nothing was saved yet, build it again: with the CANbox tiles under root,
+    // without them elsewhere (see DashboardStore.defaultPages).
+    LaunchedEffect(shellAccess) {
+        if (shellAccess != PrivilegedShell.Access.UNKNOWN && !DashboardStore.exists(context, variant())) {
+            pages = DashboardStore.load(context, variant())
+        }
+    }
+
     /** Switches layout, loading that layout's own arrangement (seeded from the current one the first time). */
     val switchLayout: (DashLayout) -> Unit = { next ->
         if (next != layout) {
@@ -554,7 +564,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         obdPaired = ObdBluetoothManager.savedDeviceAddress() != null || obdConnection == ObdConnectionState.CONNECTED,
         driverOnRight = CarProfileStore.current.driverOnRight,
         mapsDocked = half,
-        dockApps = TemplatePlacer.dockApps(pages, appsByPackage.keys)
+        dockApps = TemplatePlacer.dockApps(pages, appsByPackage.keys),
+        canbox = shellAccess.root
     )
 
     /**
@@ -604,12 +615,14 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     DisposableEffect(lifecycleOwner) {
         ObdBluetoothManager.setContext(context)
         McuReader.setContext(context)
+        PrivilegedShell.probe()
         CarProfileStore.setContext(context)
         SpeedCorrection.setContext(context)
         MediaVolume.setContext(context)
         SpeedVolume.start(context)
         CarCare.setContext(context)
         Maintenance.setContext(context)
+        DriveLog.start(context)
         PidExplorer.setContext(context)
         AiMechanic.setContext(context)
         SteeringWheelStore.setContext(context)
@@ -620,6 +633,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     hasMediaAccess = CarMediaController.hasNotificationAccess(context)
+                    // Root granted or ADB turned on meanwhile: the features come back with it.
+                    PrivilegedShell.refresh()
                     accessGeneration++
                     if (hasMediaAccess) mediaController.start()
                     VehicleMonitor.connectSaved()
@@ -642,16 +657,23 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // Installing restarts the launcher, and the permission screen is another
     // app's: neither while the car moves.
-    val onUpdate: () -> Unit = {
+    val installUpdate: () -> Unit = {
         val status = updateStatus
         val info = status.updateInfo
-        if (info != null) whenParked {
+        if (info != null && status !is UpdateStatus.Downloading && status !is UpdateStatus.Installing) whenParked {
             when {
                 !updateManager.canInstallPackages() -> updateManager.openInstallPermissionSettings()
                 status is UpdateStatus.Ready -> updateManager.install(status.file)
                 else -> scope.launch { updateManager.downloadAndInstall(info) }
             }
         }
+    }
+    // "Update to vX" (the ⋮ menu, Settings) first shows what the build brings:
+    // the release's notes, with the Update button that installs it.
+    var releaseNotes by remember { mutableStateOf<UpdateInfo?>(null) }
+    val onUpdate: () -> Unit = {
+        val info = updateStatus.updateInfo
+        if (info != null) whenParked { releaseNotes = info }
     }
     // A newer build downloads by itself on a connection that costs nothing
     // (never over a phone's hotspot), then asks once, parked: now or later.
@@ -669,6 +691,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
         if (status is UpdateStatus.Ready && !moving && promptedBuild != status.info.buildNumber) {
             promptedBuild = status.info.buildNumber
+            // One dialog at a time: the notes give way to "Update ready".
+            releaseNotes = null
             updatePrompt = status
         }
     }
@@ -1049,6 +1073,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 AddSheet(
                     page = addTargetPage,
                     apps = apps,
+                    previewTile = { item ->
+                        // Arranging mode, as in the design picker: view-hosting tiles show their placeholder, not a second live map.
+                        TileContent(
+                            item = item, editing = true, appsByPackage = appsByPackage,
+                            media = media, mediaController = mediaController, hasMediaAccess = mediaAccess,
+                            context = context, obd = obd, obdConnection = obdConnection, onConnectObd = onConnectObd,
+                            onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onLaunchSplitPair = onLaunchSplitPair,
+                            onEditLaunchBar = {}, onModelTouch = {}
+                        )
+                    },
                     onPickBuiltin = { kind ->
                         showAddSheet = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
@@ -1251,6 +1285,15 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 showPage(DashboardStore.CENTER)
             },
             onDismiss = { confirmTemplate = null }
+        )
+    }
+
+    releaseNotes?.let { info ->
+        ParkedOnly { releaseNotes = null }
+        ReleaseNotesDialog(
+            info = info,
+            onUpdate = { releaseNotes = null; installUpdate() },
+            onDismiss = { releaseNotes = null }
         )
     }
 

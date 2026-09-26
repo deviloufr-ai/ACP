@@ -42,4 +42,24 @@
     <string name="car_spot_none">Zodra de auto verbonden is, zie je hier waar hij stopt.</string>
     <string name="car_spot_map">Kaart</string>
     <string name="car_spot_walk">Lopend erheen</string>
+    <string name="drives_title">Ritten</string>
+    <string name="drives_none">Zodra de auto verbonden is, verschijnt elke rit hier met afstand, duur en eco-rijscore.</string>
+    <string name="drive_under_way">Rit bezig</string>
+    <string name="drive_last">Laatste rit</string>
+    <string name="drive_km">km</string>
+    <string name="drive_time">Duur</string>
+    <string name="drive_average">Gemiddeld km/h</string>
+    <string name="drive_top">Max. km/h</string>
+    <string name="drive_row">%1$s km · %2$s · gem. %3$d km/h</string>
+    <string name="drive_eco_score">Eco-rijden %1$d / 100</string>
+    <string name="drive_eco_none">Eco-rijden: geen score (minder dan 1 km of geen motorgegevens)</string>
+    <string name="drive_eco_smooth">Soepel gereden</string>
+    <string name="drive_eco_fair">Redelijk: wat abrupt</string>
+    <string name="drive_eco_harsh">Ruw: rustiger aan</string>
+    <string name="drive_hard">Hard optrekken / remmen: %1$d / %2$d</string>
+    <string name="drive_band">Toerental in het rustige bereik: %1$d %%</string>
+    <string name="drive_clutch">Met gas vastgehouden: %1$d</string>
+    <string name="drive_fuel">Brandstof ≈ %1$s L · %2$s %3$s</string>
+    <string name="drive_duration_hm">%1$d u %2$02d</string>
+    <string name="drive_duration_m">%1$d min</string>
 </resources>

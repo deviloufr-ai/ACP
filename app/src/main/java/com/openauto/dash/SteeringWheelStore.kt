@@ -4,7 +4,9 @@ import android.content.Context
 import android.view.KeyEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,12 +59,23 @@ internal data class WheelMapping(val key: WheelKey, val assignment: WheelAssignm
  * that had been still for [quietMs] takes a new value, then goes back to the
  * old one within [releaseMs]: pressed, then let go. Speed, revs and the like
  * change too often to be still; fuel or temperature drift and never come back
- * to the exact old value. Pure, for the tests.
+ * to the exact old value. Two more things a car value flipping by itself does
+ * and a button doesn't: it keeps doing it ([busyChanges] changes within
+ * [busyWindowMs]: a channel alternating between two messages), and it holds
+ * the new value about as long as the old one (a button is held for less time
+ * than the frame was still before it). Pure, for the tests.
  */
-internal class CanButtonDetector(private val quietMs: Long = 1_500L, private val releaseMs: Long = 5_000L) {
-    private data class Pending(val idle: String, val pressed: String, val at: Long)
+internal class CanButtonDetector(
+    private val quietMs: Long = 1_500L,
+    private val releaseMs: Long = 5_000L,
+    private val busyWindowMs: Long = 60_000L,
+    private val busyChanges: Int = 8
+) {
+    private data class Pending(val idle: String, val pressed: String, val at: Long, val idleFor: Long)
 
     private val lastChange = HashMap<String, Long>()
+    // When each frame changed lately: one that keeps flipping is live data, not a button.
+    private val recent = HashMap<String, ArrayDeque<Long>>()
     // Per frame: other frames keep ticking while a button is held.
     private val pending = HashMap<String, Pending>()
 
@@ -78,10 +91,17 @@ internal class CanButtonDetector(private val quietMs: Long = 1_500L, private val
     fun onChange(key: String, previousHex: String?, hex: String, at: Long): String? {
         val stillFor = lastChange[key]?.let { at - it } ?: Long.MAX_VALUE
         lastChange[key] = at
+        val history = recent.getOrPut(key) { ArrayDeque() }
+        while (history.isNotEmpty() && at - history.first() > busyWindowMs) history.removeFirst()
+        val busy = history.size >= busyChanges
+        if (previousHex != null) history.addLast(at)
         lastWasQuiet = previousHex != null && stillFor >= quietMs
         val p = pending.remove(key)
-        if (p != null) return if (hex == p.idle && at - p.at <= releaseMs) p.pressed else null
-        if (previousHex != null && stillFor >= quietMs) pending[key] = Pending(previousHex, hex, at)
+        if (p != null) {
+            val held = at - p.at
+            return if (hex == p.idle && held <= releaseMs && held < p.idleFor) p.pressed else null
+        }
+        if (previousHex != null && stillFor >= quietMs && !busy) pending[key] = Pending(previousHex, hex, at, stillFor)
         return null
     }
 }
@@ -93,10 +113,15 @@ internal class CanButtonDetector(private val quietMs: Long = 1_500L, private val
  * a CAN frame through [McuReader.changes], which works whatever app is in
  * front. While the "press a button" screen (SteeringWheelDialog.kt) is
  * [listening], the next press is captured instead of running what it's bound to.
+ * A CAN press is only a [candidate] until it's pressed again: the detector's
+ * rules can still be met by a car value that happens to flip and flip back,
+ * and that one won't repeat itself on cue.
  */
 internal object SteeringWheelStore {
     private const val PREFS = "steering_wheel"
     private const val KEY_MAPPINGS = "mappings"
+    /** How long a [candidate] waits for its second press before the screen goes back to plain listening. */
+    private const val CONFIRM_MS = 15_000L
 
     private var appContext: Context? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -113,6 +138,10 @@ internal object SteeringWheelStore {
     /** The key just seen while [listening] was on; the screen consumes it via [consumeCaptured]. */
     val captured = MutableStateFlow<WheelKey?>(null)
 
+    /** A CAN press seen while [listening], waiting to be pressed once more (within [CONFIRM_MS]) before it counts. */
+    val candidate = MutableStateFlow<WheelKey?>(null)
+    private var candidateTimeout: Job? = null
+
     fun setContext(context: Context) {
         if (appContext != null) return
         appContext = context.applicationContext
@@ -123,6 +152,7 @@ internal object SteeringWheelStore {
 
     fun startListening() {
         captured.value = null
+        clearCandidate()
         detector.reset()
         listening.value = true
         WheelMonitor.start()
@@ -131,6 +161,7 @@ internal object SteeringWheelStore {
 
     fun stopListening() {
         listening.value = false
+        clearCandidate()
         WheelMonitor.stop()
         updateReader()
     }
@@ -160,9 +191,26 @@ internal object SteeringWheelStore {
 
     private fun capture(key: WheelKey) {
         listening.value = false
+        clearCandidate()
         WheelMonitor.stop()
         captured.value = key
         updateReader()
+    }
+
+    /** A CAN press was detected: remember it and ask for it again; forgotten if it doesn't come. */
+    private fun propose(key: WheelKey) {
+        candidateTimeout?.cancel()
+        candidate.value = key
+        candidateTimeout = scope.launch {
+            delay(CONFIRM_MS)
+            if (candidate.value == key) candidate.value = null
+        }
+    }
+
+    private fun clearCandidate() {
+        candidateTimeout?.cancel()
+        candidateTimeout = null
+        candidate.value = null
     }
 
     /** The CAN stream is read (root logcat) only while it can be needed. */
@@ -201,7 +249,11 @@ internal object SteeringWheelStore {
             if (detector.lastWasQuiet) {
                 WheelMonitor.add(WheelMonitor.Source.CAN, "${e.key}: ${change.previousHex} → ${e.hex}", WheelKey.can(e.key, e.hex))
             }
-            if (pressed != null) capture(WheelKey.can(e.key, pressed))
+            if (pressed != null) {
+                val key = WheelKey.can(e.key, pressed)
+                // Same press twice: that's a button. Anything else seen meanwhile takes its place.
+                if (candidate.value == key) capture(key) else propose(key)
+            }
             return
         }
         val context = appContext ?: return

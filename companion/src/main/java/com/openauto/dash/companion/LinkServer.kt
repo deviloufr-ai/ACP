@@ -10,6 +10,8 @@ import com.openauto.dash.link.ActionResult
 import com.openauto.dash.link.CallCommand
 import com.openauto.dash.link.CarLocation
 import com.openauto.dash.link.Dismiss
+import com.openauto.dash.link.DriveReport
+import com.openauto.dash.link.DriveSync
 import com.openauto.dash.link.Hello
 import com.openauto.dash.link.LINK_PORT
 import com.openauto.dash.link.LinkMessage
@@ -62,7 +64,7 @@ object LinkServer {
     private val _lastEvent = MutableStateFlow<String?>(null)
     val lastEvent: StateFlow<String?> = _lastEvent
 
-    private fun note(line: String) {
+    fun note(line: String) {
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
         _lastEvent.value = "$time  ${line.trim().take(140)}"
         Log.i(TAG, line)
@@ -203,6 +205,8 @@ object LinkServer {
                 if (!PhoneCalls.command(context, message.action)) send(PhoneCalls.snapshot())
             }
             is CarLocation -> CarSpot.update(context, message)
+            is DriveSync -> DriveJournal.sync(context, message.drives)
+            is DriveReport -> DriveJournal.update(context, message.drive)
             else -> Unit
         }
     }

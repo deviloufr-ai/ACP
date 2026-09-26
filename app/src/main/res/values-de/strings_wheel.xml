@@ -14,6 +14,8 @@
     <string name="wheel_back">Zurück</string>
     <string name="wheel_listening_title">Eine Taste am Lenkrad drücken…</string>
     <string name="wheel_listening_detail">Dashwheel wartet auf den nächsten Tastendruck.</string>
+    <string name="wheel_confirm_title">Dieselbe Taste noch einmal drücken…</string>
+    <string name="wheel_confirm_detail">%1$s wurde erkannt. Noch einmal drücken, damit Dashwheel weiß, dass Sie es waren: ein Fahrzeugwert, der sich von selbst ändert, kommt nicht auf Kommando zurück.</string>
     <string name="wheel_assign_prompt">Was soll %1$s tun?</string>
     <string name="wheel_choose_app">App starten…</string>
     <string name="wheel_remove_binding">Diese Taste vergessen</string>
@@ -31,6 +33,8 @@
     <string name="wheel_needs_accessibility">Braucht eingeschaltete Bedienungshilfen</string>
     <string name="wheel_accessibility_hint">Zurück, letzte Apps, Benachrichtigungen und geteilter Bildschirm brauchen Dashwheel unter Einstellungen, Bedienungshilfen.</string>
     <string name="wheel_accessibility_enable">Einschalten</string>
+    <string name="wheel_accessibility_anywhere">Gelernte Tasten wirken nur, solange Dashwheel im Vordergrund ist, es sei denn, Dashwheel ist unter Einstellungen, Bedienungshilfen eingeschaltet.</string>
+    <string name="wheel_no_voice_assistant">Kein Sprachassistent auf diesem Gerät</string>
     <string name="wheel_action_back">Zurück</string>
     <string name="wheel_action_recents">Letzte Apps</string>
     <string name="wheel_action_notifications">Benachrichtigungen</string>

@@ -42,4 +42,24 @@
     <string name="car_spot_none">Une fois la voiture reliée, l\'endroit où elle s\'arrête s\'affiche ici.</string>
     <string name="car_spot_map">Carte</string>
     <string name="car_spot_walk">Y aller à pied</string>
+    <string name="drives_title">Trajets</string>
+    <string name="drives_none">Une fois la voiture reliée, chaque trajet s\'affiche ici avec sa distance, sa durée et sa note d\'éco-conduite.</string>
+    <string name="drive_under_way">Trajet en cours</string>
+    <string name="drive_last">Dernier trajet</string>
+    <string name="drive_km">km</string>
+    <string name="drive_time">Durée</string>
+    <string name="drive_average">Moyenne km/h</string>
+    <string name="drive_top">Maxi km/h</string>
+    <string name="drive_row">%1$s km · %2$s · %3$d km/h de moyenne</string>
+    <string name="drive_eco_score">Éco-conduite %1$d / 100</string>
+    <string name="drive_eco_none">Éco-conduite : pas de note (moins d\'1 km, ou pas de données moteur)</string>
+    <string name="drive_eco_smooth">Conduite souple</string>
+    <string name="drive_eco_fair">Correct : un peu brusque</string>
+    <string name="drive_eco_harsh">Brusque : levez le pied</string>
+    <string name="drive_hard">Accél. / freinages brusques : %1$d / %2$d</string>
+    <string name="drive_band">Régime dans la plage souple : %1$d %%</string>
+    <string name="drive_clutch">Retenue à l\'accélérateur : %1$d</string>
+    <string name="drive_fuel">Carburant ≈ %1$s L · %2$s %3$s</string>
+    <string name="drive_duration_hm">%1$d h %2$02d</string>
+    <string name="drive_duration_m">%1$d min</string>
 </resources>

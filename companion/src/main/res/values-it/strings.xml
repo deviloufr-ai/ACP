@@ -42,4 +42,24 @@
     <string name="car_spot_none">Con l\'auto collegata, qui compare il punto in cui si ferma.</string>
     <string name="car_spot_map">Mappa</string>
     <string name="car_spot_walk">Vai a piedi</string>
+    <string name="drives_title">Viaggi</string>
+    <string name="drives_none">Una volta collegata l\'auto, ogni viaggio compare qui con distanza, durata e punteggio di guida ecologica.</string>
+    <string name="drive_under_way">Viaggio in corso</string>
+    <string name="drive_last">Ultimo viaggio</string>
+    <string name="drive_km">km</string>
+    <string name="drive_time">Durata</string>
+    <string name="drive_average">Media km/h</string>
+    <string name="drive_top">Max km/h</string>
+    <string name="drive_row">%1$s km · %2$s · %3$d km/h di media</string>
+    <string name="drive_eco_score">Guida ecologica %1$d / 100</string>
+    <string name="drive_eco_none">Guida ecologica: nessun punteggio (meno di 1 km o nessun dato motore)</string>
+    <string name="drive_eco_smooth">Guida fluida</string>
+    <string name="drive_eco_fair">Discreta: un po\' brusca</string>
+    <string name="drive_eco_harsh">Brusca: rallenta</string>
+    <string name="drive_hard">Accel. / frenate brusche: %1$d / %2$d</string>
+    <string name="drive_band">Giri nella fascia rilassata: %1$d %%</string>
+    <string name="drive_clutch">Tenuta con l\'acceleratore: %1$d</string>
+    <string name="drive_fuel">Carburante ≈ %1$s L · %2$s %3$s</string>
+    <string name="drive_duration_hm">%1$d h %2$02d</string>
+    <string name="drive_duration_m">%1$d min</string>
 </resources>

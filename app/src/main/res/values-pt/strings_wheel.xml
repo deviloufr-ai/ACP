@@ -14,6 +14,8 @@
     <string name="wheel_back">Voltar</string>
     <string name="wheel_listening_title">Prima um botão do volante…</string>
     <string name="wheel_listening_detail">O Dashwheel aguarda que prima o próximo botão.</string>
+    <string name="wheel_confirm_title">Prima o mesmo botão outra vez…</string>
+    <string name="wheel_confirm_detail">%1$s foi detetado. Prima-o mais uma vez para o Dashwheel saber que foi você: um valor do carro que muda sozinho não volta a aparecer quando pedido.</string>
     <string name="wheel_assign_prompt">O que deve fazer %1$s?</string>
     <string name="wheel_choose_app">Abrir uma app…</string>
     <string name="wheel_remove_binding">Esquecer este botão</string>
@@ -31,6 +33,8 @@
     <string name="wheel_needs_accessibility">Requer a Acessibilidade ativada</string>
     <string name="wheel_accessibility_hint">Voltar, apps recentes, notificações e ecrã dividido requerem o Dashwheel ativado em Definições, Acessibilidade.</string>
     <string name="wheel_accessibility_enable">Ativar</string>
+    <string name="wheel_accessibility_anywhere">Os botões aprendidos só atuam enquanto o Dashwheel está à frente, a menos que o Dashwheel esteja ativado em Definições, Acessibilidade.</string>
+    <string name="wheel_no_voice_assistant">Sem assistente de voz neste rádio</string>
     <string name="wheel_action_back">Voltar</string>
     <string name="wheel_action_recents">Apps recentes</string>
     <string name="wheel_action_notifications">Notificações</string>
