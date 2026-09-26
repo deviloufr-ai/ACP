@@ -33,6 +33,14 @@
     <string name="design_duo_desc">Blok koloru na liczbę, szczegóły obok.</string>
     <string name="design_island">Wyspa</string>
     <string name="design_island_desc">Unosząca się czarna kapsuła z obrazem i przyciskami.</string>
+    <string name="design_copper_cockpit">Miedziany kokpit</string>
+    <string name="design_copper_cockpit_desc">Skośne miedziane ostrza biegną wokół sportowego zegara, czarnego ze ściętymi rogami.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">Trójkątna sygnatura LED, która zapala się wraz z odczytem, na naftowym błękicie.</string>
+    <string name="design_copper_blade">Miedziane ostrze</string>
+    <string name="design_copper_blade_desc">Pochylone cyfry nad zwężającym się miedzianym ostrzem, ścięte rogi na naftowym błękicie.</string>
+    <string name="design_light_bar">Pas świetlny</string>
+    <string name="design_light_bar_desc">Pas światła od krawędzi do krawędzi, rozświetlany od środka, na czerni.</string>
     <string name="design_change">Zmień wygląd: %1$s</string>
     <string name="design_picker_title">Wygląd: %1$s</string>
     <string name="design_picker_hint">Dotknij wyglądu, aby użyć go na tym kafelku. Każdy kafelek ma własny.</string>

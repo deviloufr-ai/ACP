@@ -281,6 +281,18 @@ class DashboardStoreTest {
     }
 
     @Test
+    fun copperSetReachesEveryWidget() {
+        val copper = listOf(WidgetDesign.COPPER_COCKPIT, WidgetDesign.TRI_LED, WidgetDesign.COPPER_BLADE, WidgetDesign.LIGHT_BAR)
+        // Generic designs: every redrawn widget offers them, and they are saved by name like the rest.
+        assertTrue(copper.none { it.isSignature })
+        BuiltinKind.entries.forEach { kind -> assertTrue("$kind", WidgetDesign.offeredFor(kind, framed = false).containsAll(copper)) }
+        copper.forEach { assertEquals(it, WidgetDesign.fromName(it.name)) }
+        // Two materials, each worn by two different layouts.
+        assertEquals(setOf(FaceLookKind.COPPER, FaceLookKind.PETROL), copper.map { it.look }.toSet())
+        assertEquals(copper.size, copper.map { it.layout }.toSet().size)
+    }
+
+    @Test
     fun widgetSpecificDesignsOnlyReachTheirWidgets() {
         val framed = setOf(BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.MY_CAR)
         // Every redrawn widget gets at least two designs made for it; live views get none.

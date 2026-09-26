@@ -33,6 +33,14 @@
     <string name="design_duo_desc">Un bloc de couleur pour le chiffre, les détails à côté.</string>
     <string name="design_island">Îlot</string>
     <string name="design_island_desc">Une capsule noire flottante avec image et commandes.</string>
+    <string name="design_copper_cockpit">Cockpit cuivre</string>
+    <string name="design_copper_cockpit_desc">Des lames cuivrées inclinées font le tour d\'un combiné sport, noir aux coins coupés.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">Une signature LED en triangles qui s\'allume avec la valeur, sur bleu pétrole.</string>
+    <string name="design_copper_blade">Lame cuivre</string>
+    <string name="design_copper_blade_desc">Chiffres obliques sur une lame cuivrée effilée, coins coupés sur bleu pétrole.</string>
+    <string name="design_light_bar">Bandeau lumineux</string>
+    <string name="design_light_bar_desc">Un bandeau de feux d\'un bord à l\'autre qui s\'allume depuis le centre, sur fond noir.</string>
     <string name="design_change">Changer le style de %1$s</string>
     <string name="design_picker_title">Style : %1$s</string>
     <string name="design_picker_hint">Touchez un style pour l\'appliquer à cette tuile. Chaque tuile garde le sien.</string>

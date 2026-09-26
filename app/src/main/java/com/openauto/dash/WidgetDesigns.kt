@@ -22,10 +22,10 @@ import androidx.compose.ui.unit.dp
  */
 
 /** How a design arranges a widget's reading. */
-internal enum class FaceLayout { HERO, ARC, RING, BARS, STATS, TERMINAL, DIAL, FLAP, ORB, LIQUID, DOTS, POSTER, DUO, ISLAND }
+internal enum class FaceLayout { HERO, ARC, RING, BARS, STATS, TERMINAL, DIAL, FLAP, ORB, LIQUID, DOTS, POSTER, DUO, ISLAND, COCKPIT, TRIANGLES, BLADE, LIGHT_BAR }
 
 /** The material a design is drawn in. THEME follows the dashboard theme; the rest bring their own colours. */
-internal enum class FaceLookKind { THEME, LCD, AMBER, NEON, PAPER, GLASS, CARBON, CHROME, FLAP, DOTS }
+internal enum class FaceLookKind { THEME, LCD, AMBER, NEON, PAPER, GLASS, CARBON, CHROME, FLAP, DOTS, COPPER, PETROL }
 
 /**
  * A tile's design. Names are persisted with the tile, so never rename an
@@ -57,6 +57,11 @@ enum class WidgetDesign(
     POSTER(R.string.design_poster, R.string.design_poster_desc, FaceLayout.POSTER, FaceLookKind.THEME),
     DUO(R.string.design_duo, R.string.design_duo_desc, FaceLayout.DUO, FaceLookKind.THEME),
     ISLAND(R.string.design_island, R.string.design_island_desc, FaceLayout.ISLAND, FaceLookKind.THEME),
+    // The copper set, after the latest Cupra cars (WidgetFacesCopper.kt).
+    COPPER_COCKPIT(R.string.design_copper_cockpit, R.string.design_copper_cockpit_desc, FaceLayout.COCKPIT, FaceLookKind.COPPER),
+    TRI_LED(R.string.design_tri_led, R.string.design_tri_led_desc, FaceLayout.TRIANGLES, FaceLookKind.PETROL),
+    COPPER_BLADE(R.string.design_copper_blade, R.string.design_copper_blade_desc, FaceLayout.BLADE, FaceLookKind.PETROL),
+    LIGHT_BAR(R.string.design_light_bar, R.string.design_light_bar_desc, FaceLayout.LIGHT_BAR, FaceLookKind.COPPER),
 
     // Made for particular widgets: the shape comes from what the widget shows.
     THERMOMETER(R.string.design_thermometer, R.string.design_thermometer_desc, null, FaceLookKind.THEME, setOf(BuiltinKind.WARMUP, BuiltinKind.WEATHER)),
@@ -238,7 +243,7 @@ internal data class WidgetFace(
 // --- Materials ----------------------------------------------------------------
 
 /** Extra drawing a material adds on top of its colours. */
-internal enum class LookDecoration { NONE, SCANLINES, CARBON, CHROME, NEON, GLASS, DOTS }
+internal enum class LookDecoration { NONE, SCANLINES, CARBON, CHROME, NEON, GLASS, DOTS, TRIANGLES }
 
 /**
  * Colours, type and shape of one material. [background] null means the
@@ -270,7 +275,9 @@ internal data class FaceLook(
     val ghost: Color? = null,
     val decoration: LookDecoration = LookDecoration.NONE,
     /** Square-ish buttons and chips instead of pills. */
-    val squareControls: Boolean = false
+    val squareControls: Boolean = false,
+    /** Corners cut on the diagonal (top-start and bottom-end) instead of rounded, card and controls alike. */
+    val angular: Boolean = false
 )
 
 private val Mono = FontFamily.Monospace
@@ -350,5 +357,22 @@ internal fun faceLook(kind: FaceLookKind): FaceLook = when (kind) {
         warn = Color(0xFFFF3B30), track = Color(0x1FFFFFFF), fill = Color(0x14FFFFFF), onAccent = Color.White,
         border = Color(0xFF1C1C1C), radius = 22.dp, font = Mono, numFont = Mono, numWeight = FontWeight.Medium,
         labelWeight = FontWeight.Medium, decoration = LookDecoration.DOTS
+    )
+    // Midnight black with copper, the sport cars' cabin at night.
+    FaceLookKind.COPPER -> FaceLook(
+        kind, background = Brush.linearGradient(listOf(Color(0xFF1A1714), Color(0xFF0A0908), Color(0xFF050505))),
+        ink = Color(0xFFF5F0EA), dim = Color(0xFF9E958C), accent = Color(0xFFC9814F), accent2 = Color(0xFFF0C29A),
+        warn = Color(0xFFFF4A3D), track = Color(0x1FF5F0EA), fill = Color(0x1AC9814F), onAccent = Color(0xFF0A0908),
+        border = Color(0x40C9814F), radius = 18.dp, font = Sans, numFont = Sans, numWeight = FontWeight.Medium,
+        labelWeight = FontWeight.SemiBold, glow = Color(0x55C9814F), decoration = LookDecoration.TRIANGLES,
+        squareControls = true, angular = true
+    )
+    // Matte petrol blue with the same copper, the electric SUV's paint.
+    FaceLookKind.PETROL -> FaceLook(
+        kind, background = Brush.linearGradient(listOf(Color(0xFF123238), Color(0xFF0A1F24), Color(0xFF061114))),
+        ink = Color(0xFFEFF6F5), dim = Color(0xFF8EACAD), accent = Color(0xFFD08A58), accent2 = Color(0xFFF3C9A0),
+        warn = Color(0xFFFF5C4D), track = Color(0x1FEFF6F5), fill = Color(0x14EFF6F5), onAccent = Color(0xFF061114),
+        border = Color(0x33D08A58), radius = 18.dp, font = Sans, numFont = CondensedFamily, numWeight = FontWeight.Bold,
+        labelWeight = FontWeight.SemiBold, decoration = LookDecoration.TRIANGLES, squareControls = true, angular = true
     )
 }
