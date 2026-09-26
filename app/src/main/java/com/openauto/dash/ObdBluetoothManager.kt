@@ -126,6 +126,10 @@ object ObdBluetoothManager {
     private val _lastError = MutableStateFlow<String?>(null)
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
+    /** The head unit is pairing with the adapter and waits for its PIN in Android's dialog. */
+    private val _pairing = MutableStateFlow(false)
+    val pairing: StateFlow<Boolean> = _pairing.asStateFlow()
+
     private fun fail(@StringRes reason: Int, vararg args: Any): Boolean {
         _lastError.value = appContext?.let { if (args.isEmpty()) it.getString(reason) else it.getString(reason, *args) }
         return false
@@ -151,9 +155,14 @@ object ObdBluetoothManager {
      * (which takes one connection) knocks out the first. A link left from an
      * earlier try is closed first for the same reason, and whatever goes wrong
      * ends in ERROR, never stuck in CONNECTING where no retry would happen.
+     *
+     * With [pairIfNeeded] (the driver tapped Connect), an adapter the head
+     * unit no longer has paired, e.g. after it was paired with a phone, is
+     * paired again: Android asks for its PIN. The background retries leave
+     * it alone, so no PIN dialog pops up by itself while driving.
      */
     @SuppressLint("MissingPermission")
-    suspend fun connect(deviceAddress: String): Boolean {
+    suspend fun connect(deviceAddress: String, pairIfNeeded: Boolean = false): Boolean {
         if (_connectionState.value == ObdConnectionState.CONNECTED) return true
         if (!connectLock.tryLock()) return false
         try {
@@ -163,7 +172,7 @@ object ObdBluetoothManager {
             val ok = withContext(Dispatchers.IO) {
                 // No poll or fault-code scan may talk to the link being replaced.
                 commandMutex.withLock {
-                    runCatching { open(deviceAddress) }
+                    runCatching { open(deviceAddress, pairIfNeeded) }
                         .onFailure {
                             Log.w(TAG, "connect failed", it)
                             if (it is SecurityException) fail(R.string.vehicle_err_permission)
@@ -197,7 +206,7 @@ object ObdBluetoothManager {
     private val connectLock = Mutex()
 
     @SuppressLint("MissingPermission")
-    private fun open(deviceAddress: String): Boolean {
+    private fun open(deviceAddress: String, pairIfNeeded: Boolean): Boolean {
         val context = appContext ?: return false
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = manager?.adapter ?: return fail(R.string.vehicle_err_bt_off)
@@ -216,9 +225,10 @@ object ObdBluetoothManager {
         val device = adapter.getRemoteDevice(deviceAddress)
         val label = runCatching { device.name }.getOrNull() ?: deviceAddress
         // Only a paired adapter can be reached; an unpaired one fails slowly and says nothing.
-        if (adapter.bondedDevices.none { it.address == deviceAddress }) {
+        if (adapter.bondedDevices.none { it.address.equals(deviceAddress, ignoreCase = true) }) {
             Log.w(TAG, "$deviceAddress is not paired")
-            return fail(R.string.vehicle_err_not_paired, label)
+            if (!pairIfNeeded) return fail(R.string.vehicle_err_not_paired, label)
+            if (!pair(device)) return fail(R.string.vehicle_err_pairing_failed, label)
         }
         runCatching { adapter.cancelDiscovery() }
         val newSocket = openSocket(device) ?: run {
@@ -235,6 +245,43 @@ object ObdBluetoothManager {
         }
         return true
     }
+
+    /**
+     * Pairs the head unit with [device]: Android shows its own dialog for the
+     * adapter's PIN (1234 or 0000 on most ELM327). Waits until the pairing is
+     * done, refused or [PAIRING_TIMEOUT_MS] went by; true once paired.
+     */
+    @SuppressLint("MissingPermission")
+    private fun pair(device: BluetoothDevice): Boolean {
+        if (device.bondState == BluetoothDevice.BOND_BONDED) return true
+        if (device.bondState != BluetoothDevice.BOND_BONDING && !device.createBond()) {
+            Log.w(TAG, "${device.address}: pairing could not start")
+            return false
+        }
+        _pairing.value = true
+        try {
+            val start = SystemClock.elapsedRealtime()
+            var sawBonding = false
+            while (SystemClock.elapsedRealtime() - start < PAIRING_TIMEOUT_MS) {
+                when (device.bondState) {
+                    BluetoothDevice.BOND_BONDED -> return true
+                    BluetoothDevice.BOND_BONDING -> sawBonding = true
+                    // Back to unpaired: wrong PIN or the dialog was cancelled. Before
+                    // bonding shows up at all, give the stack a moment to start.
+                    else -> if (sawBonding || SystemClock.elapsedRealtime() - start > PAIRING_START_MS) return false
+                }
+                Thread.sleep(250)
+            }
+            Log.w(TAG, "${device.address}: pairing timed out")
+            return false
+        } finally {
+            _pairing.value = false
+        }
+    }
+
+    /** Time for the driver to read the PIN and type it. */
+    private const val PAIRING_TIMEOUT_MS = 60_000L
+    private const val PAIRING_START_MS = 5_000L
 
     /**
      * Opens an RFCOMM socket to the adapter, trying (like Torque) the secure

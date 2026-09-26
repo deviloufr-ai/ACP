@@ -193,10 +193,12 @@
 
     <!-- Why the adapter is not connected -->
     <string name="vehicle_obd_connecting_to">Connessione a %1$s…</string>
+    <string name="vehicle_obd_pairing_pin">Associazione: inserisci il PIN dell\'adattatore nella finestra (spesso 1234 o 0000)</string>
     <string name="vehicle_obd_adapter">Adattatore: %1$s</string>
     <string name="vehicle_choose_adapter">Scegli adattatore</string>
     <string name="vehicle_err_bt_off">Il Bluetooth dell\'autoradio è spento</string>
-    <string name="vehicle_err_not_paired">%1$s non è associato all\'autoradio</string>
+    <string name="vehicle_err_not_paired">%1$s non è associato all\'autoradio: tocca OBD per associarlo di nuovo</string>
+    <string name="vehicle_err_pairing_failed">L\'associazione con %1$s non è riuscita: tocca OBD e inserisci il PIN (spesso 1234 o 0000)</string>
     <string name="vehicle_err_refused">%1$s ha rifiutato la connessione: occupato da un telefono o un\'altra app, senza alimentazione o fuori portata</string>
     <string name="vehicle_err_silent">%1$s si è connesso ma non ha mai risposto</string>
     <string name="vehicle_err_permission">Permesso Bluetooth non concesso</string>
