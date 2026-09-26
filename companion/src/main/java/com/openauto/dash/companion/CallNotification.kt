@@ -102,8 +102,13 @@ internal data class CallNotification(
                 }
             }
 
+            // Who: CallStyle's person, else the title, else the people the notification is about.
             val person = runCatching { BundleCompat.getParcelable(extras, EXTRA_CALL_PERSON, Person::class.java) }.getOrNull()
-            val caller = (person?.name ?: extras.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+                ?: runCatching { BundleCompat.getParcelableArrayList(extras, Notification.EXTRA_PEOPLE_LIST, Person::class.java) }.getOrNull()?.firstOrNull()
+            val caller = listOfNotNull(
+                person?.name, extras.getCharSequence(Notification.EXTRA_TITLE), extras.getCharSequence(Notification.EXTRA_TITLE_BIG),
+                extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)
+            ).map { it.toString().trim() }.firstOrNull { it.isNotEmpty() }
             val photo = (person?.icon ?: n.getLargeIcon())?.let { photoPng(context, it) }
             val startedAt = n.`when`.takeIf { !incoming && it > 0 && extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) }
             return CallNotification(

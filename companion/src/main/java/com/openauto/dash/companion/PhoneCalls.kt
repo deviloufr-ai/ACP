@@ -220,10 +220,14 @@ object PhoneCalls {
         val before = current
         val beforeId = currentId
         val app = appCalls.values.maxByOrNull { it.postedAt }
+        // On some phones (a Samsung…) an app's call reaches the phone's call
+        // state too, without a number: the app's notification knows who it is,
+        // and its buttons work where Telecom ignores a call it doesn't manage.
+        val phoneFirst = phone.phase != CallState.Phase.IDLE && (app == null || phone.number != null)
         val next: CallState
         val id: String?
         when {
-            phone.phase != CallState.Phase.IDLE -> {
+            phoneFirst -> {
                 next = phone
                 id = PHONE
             }
@@ -250,7 +254,21 @@ object PhoneCalls {
         }
         current = next
         currentId = id
-        if (next != before) LinkServer.send(snapshot())
+        if (next != before) {
+            LinkServer.note(describe(next, id))
+            LinkServer.send(snapshot())
+        }
+    }
+
+    /** One line for the companion's status: what the car is told of the call. */
+    private fun describe(state: CallState, id: String?): String {
+        val who = state.name ?: state.number ?: "?"
+        val from = if (id == PHONE) "phone" else "${state.app ?: "app"} notification"
+        return when (state.phase) {
+            CallState.Phase.IDLE -> "call ended"
+            CallState.Phase.RINGING -> "call from $who ringing ($from${if (state.canControl) "" else ", no buttons"})"
+            CallState.Phase.ACTIVE -> "call with $who taken ($from${if (state.canControl) "" else ", no buttons"})"
+        }
     }
 
     /** (name, photo) from the phone's contacts, when allowed and found. */

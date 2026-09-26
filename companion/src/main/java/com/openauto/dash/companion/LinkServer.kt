@@ -64,7 +64,7 @@ object LinkServer {
     private val _lastEvent = MutableStateFlow<String?>(null)
     val lastEvent: StateFlow<String?> = _lastEvent
 
-    private fun note(line: String) {
+    fun note(line: String) {
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
         _lastEvent.value = "$time  ${line.trim().take(140)}"
         Log.i(TAG, line)
