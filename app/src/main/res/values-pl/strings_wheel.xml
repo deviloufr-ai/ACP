@@ -35,6 +35,8 @@
     <string name="wheel_needs_accessibility">Wymaga włączonych Ułatwień dostępu</string>
     <string name="wheel_accessibility_hint">Wstecz, ostatnie aplikacje, powiadomienia i podzielony ekran wymagają włączenia Dashwheel w Ustawienia, Ułatwienia dostępu.</string>
     <string name="wheel_accessibility_enable">Włącz</string>
+    <string name="wheel_accessibility_anywhere">Nauczone przyciski działają tylko, gdy Dashwheel jest na wierzchu, chyba że Dashwheel jest włączony w Ustawieniach, Ułatwienia dostępu.</string>
+    <string name="wheel_no_voice_assistant">Brak asystenta głosowego w tym radiu</string>
     <string name="wheel_action_back">Wstecz</string>
     <string name="wheel_action_recents">Ostatnie aplikacje</string>
     <string name="wheel_action_notifications">Powiadomienia</string>

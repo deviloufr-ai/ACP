@@ -33,6 +33,8 @@
     <string name="wheel_needs_accessibility">Richiede l\'Accessibilità attiva</string>
     <string name="wheel_accessibility_hint">Indietro, app recenti, notifiche e schermo diviso richiedono Dashwheel attivo in Impostazioni, Accessibilità.</string>
     <string name="wheel_accessibility_enable">Attiva</string>
+    <string name="wheel_accessibility_anywhere">I tasti imparati agiscono solo mentre Dashwheel è in primo piano, a meno che Dashwheel non sia attivato in Impostazioni, Accessibilità.</string>
+    <string name="wheel_no_voice_assistant">Nessun assistente vocale su questa autoradio</string>
     <string name="wheel_action_back">Indietro</string>
     <string name="wheel_action_recents">App recenti</string>
     <string name="wheel_action_notifications">Notifiche</string>

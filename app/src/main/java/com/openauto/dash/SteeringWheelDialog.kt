@@ -177,6 +177,15 @@ private fun WheelList(
     onEdit: (WheelKey) -> Unit,
     onRemove: (WheelKey) -> Unit
 ) {
+    // Without the accessibility service a key only reaches Dashwheel while it
+    // is in front; polled, it isn't observable and the user may just have turned it on.
+    var accessibilityOn by remember { mutableStateOf(SplitLauncher.isSystemSplitAvailable()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            accessibilityOn = SplitLauncher.isSystemSplitAvailable()
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.wheel_explanation), color = DashColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
         Button(onClick = onLearn, colors = buttonColors(), modifier = Modifier.fillMaxWidth()) {
@@ -184,6 +193,7 @@ private fun WheelList(
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.wheel_learn_button))
         }
+        if (!accessibilityOn && mappings.isNotEmpty()) AccessibilityHint(stringResource(R.string.wheel_accessibility_anywhere))
         HorizontalDivider(color = DashColors.Line)
         if (mappings.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
@@ -348,7 +358,7 @@ private fun WheelActionPicker(
         WheelActionGroup.entries.forEach { group ->
             Spacer(Modifier.height(8.dp))
             SettingsSection(stringResource(group.labelRes))
-            if (group == WheelActionGroup.SYSTEM && !accessibilityOn) AccessibilityHint()
+            if (group == WheelActionGroup.SYSTEM && !accessibilityOn) AccessibilityHint(stringResource(R.string.wheel_accessibility_hint))
             SteeringWheelAction.entries.filter { it.group == group }.forEach { action ->
                 WheelActionRow(action, unavailable = action.needsAccessibility && !accessibilityOn, onClick = { onPick(action) })
             }
@@ -386,9 +396,13 @@ private fun WheelActionRow(action: SteeringWheelAction, unavailable: Boolean, on
     }
 }
 
-/** Back, recents, notifications, split screen... go through Dashwheel's accessibility service. */
+/**
+ * Why to turn Dashwheel on under Accessibility, with a way there: back, recents,
+ * notifications, split screen go through the service, and it is what puts a
+ * learned key in front of whatever app is showing.
+ */
 @Composable
-private fun AccessibilityHint() {
+private fun AccessibilityHint(text: String) {
     val context = LocalContext.current
     val tap = rememberTapFeedback()
     Row(
@@ -403,7 +417,7 @@ private fun AccessibilityHint() {
         Icon(Icons.Filled.Accessibility, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Text(
-            stringResource(R.string.wheel_accessibility_hint),
+            text,
             color = DashColors.TextPrimary,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f)

@@ -33,6 +33,8 @@
     <string name="wheel_needs_accessibility">Toegankelijkheid moet aan staan</string>
     <string name="wheel_accessibility_hint">Terug, recente apps, meldingen en gesplitst scherm werken pas als Dashwheel aan staat onder Instellingen, Toegankelijkheid.</string>
     <string name="wheel_accessibility_enable">Aanzetten</string>
+    <string name="wheel_accessibility_anywhere">Aangeleerde knoppen werken alleen zolang Dashwheel vooraan staat, tenzij Dashwheel is ingeschakeld onder Instellingen, Toegankelijkheid.</string>
+    <string name="wheel_no_voice_assistant">Geen spraakassistent op deze radio</string>
     <string name="wheel_action_back">Terug</string>
     <string name="wheel_action_recents">Recente apps</string>
     <string name="wheel_action_notifications">Meldingen</string>
