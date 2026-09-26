@@ -203,7 +203,7 @@
     <string name="vehicle_err_bt_still_off">Le Bluetooth de l\'autoradio est éteint et ne se rallume pas : redémarrez l\'autoradio, puis touchez OBD</string>
     <string name="vehicle_err_bt_stuck">Le Bluetooth Android de l\'autoradio est bloqué : redémarrez l\'autoradio, puis touchez OBD</string>
     <string name="vehicle_err_refused">%1$s a refusé la connexion : pris par un téléphone ou une autre appli, sans alimentation, ou hors de portée</string>
-    <string name="vehicle_err_silent">%1$s s\'est connecté mais n\'a jamais répondu</string>
+    <string name="vehicle_err_silent">%1$s s\'est connecté mais n\'a jamais répondu : mettez le contact, puis touchez OBD</string>
     <string name="vehicle_err_permission">Permission Bluetooth non accordée</string>
     <string name="vehicle_obd_connect_from_bar">Connexion par le bouton OBD de la barre</string>
     <string name="vehicle_recent_alerts">Dernières alertes</string>

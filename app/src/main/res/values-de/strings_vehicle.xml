@@ -203,7 +203,7 @@
     <string name="vehicle_err_bt_still_off">Das Bluetooth des Autoradios ist aus und lässt sich nicht einschalten: Autoradio neu starten, dann OBD antippen</string>
     <string name="vehicle_err_bt_stuck">Das Android-Bluetooth des Autoradios hängt: Autoradio neu starten, dann OBD antippen</string>
     <string name="vehicle_err_refused">%1$s hat die Verbindung abgelehnt: von einem Handy oder einer anderen App belegt, ohne Strom oder außer Reichweite</string>
-    <string name="vehicle_err_silent">%1$s hat sich verbunden, aber nie geantwortet</string>
+    <string name="vehicle_err_silent">%1$s hat sich verbunden, aber nie geantwortet: Zündung einschalten, dann OBD antippen</string>
     <string name="vehicle_err_permission">Bluetooth-Berechtigung nicht erteilt</string>
     <string name="vehicle_obd_connect_from_bar">Über die OBD-Taste in der Leiste verbinden</string>
     <string name="vehicle_recent_alerts">Letzte Warnungen</string>

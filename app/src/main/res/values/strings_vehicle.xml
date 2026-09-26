@@ -203,7 +203,7 @@
     <string name="vehicle_err_bt_still_off">The head unit\'s Bluetooth is off and won\'t switch on: restart the head unit, then tap OBD</string>
     <string name="vehicle_err_bt_stuck">Android\'s Bluetooth on the head unit is stuck: restart the head unit, then tap OBD</string>
     <string name="vehicle_err_refused">%1$s refused the connection: taken by a phone or another app, unpowered, or out of range</string>
-    <string name="vehicle_err_silent">%1$s connected but never answered</string>
+    <string name="vehicle_err_silent">%1$s connected but never answered: switch the ignition on, then tap OBD</string>
     <string name="vehicle_err_permission">Bluetooth permission not granted</string>
     <string name="vehicle_obd_connect_from_bar">Connect with the OBD button in the bar</string>
     <string name="vehicle_recent_alerts">Recent alerts</string>

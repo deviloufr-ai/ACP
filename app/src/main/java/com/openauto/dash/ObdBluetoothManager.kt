@@ -251,19 +251,25 @@ object ObdBluetoothManager {
             if (!paired) return fail(R.string.vehicle_err_pairing_failed, label)
         }
         runCatching { adapter.cancelDiscovery() }
-        val newSocket = openSocket(device) ?: run {
+        // A channel can accept the link without reaching the adapter's serial
+        // port, so one that stays silent gives way to the next.
+        var accepted = false
+        for ((i, create) in socketFactories(device).withIndex()) {
+            val newSocket = tryConnect(runCatching(create).getOrNull()) ?: continue
+            accepted = true
+            socket = newSocket
+            inputStream = newSocket.inputStream
+            outputStream = newSocket.outputStream
+            if (initializeAdapter()) return true
+            Log.w(TAG, "$deviceAddress: link #$i connected but the adapter never answered")
+            closeQuietly()
+        }
+        if (!accepted) {
             Log.w(TAG, "no RFCOMM channel to $deviceAddress accepted the connection")
             return fail(R.string.vehicle_err_refused, label)
         }
-        socket = newSocket
-        inputStream = newSocket.inputStream
-        outputStream = newSocket.outputStream
         // A socket nothing answers on is no adapter: fail, so it is tried again.
-        if (!initializeAdapter()) {
-            Log.w(TAG, "$deviceAddress connected but never answered")
-            return fail(R.string.vehicle_err_silent, label)
-        }
-        return true
+        return fail(R.string.vehicle_err_silent, label)
     }
 
     @SuppressLint("MissingPermission")
@@ -353,22 +359,19 @@ object ObdBluetoothManager {
     private const val PAIRING_START_MS = 5_000L
 
     /**
-     * Opens an RFCOMM socket to the adapter, trying (like Torque) the secure
-     * SPP channel, then the insecure channel, then a reflection fallback on
-     * channel 1 — clone ELM327 adapters fail one but succeed on another.
+     * The ways to open an RFCOMM socket to the adapter, in order (like Torque):
+     * the secure SPP channel, the insecure one, then a reflection fallback on
+     * channel 1. Clone ELM327 adapters fail one but succeed on another.
      */
     @SuppressLint("MissingPermission")
-    private fun openSocket(device: BluetoothDevice): BluetoothSocket? {
-        tryConnect(runCatching { device.createRfcommSocketToServiceRecord(SPP_UUID) }.getOrNull())
-            ?.let { return it }
-        tryConnect(runCatching { device.createInsecureRfcommSocketToServiceRecord(SPP_UUID) }.getOrNull())
-            ?.let { return it }
-        val reflected = runCatching {
+    private fun socketFactories(device: BluetoothDevice): List<() -> BluetoothSocket> = listOf(
+        { device.createRfcommSocketToServiceRecord(SPP_UUID) },
+        { device.createInsecureRfcommSocketToServiceRecord(SPP_UUID) },
+        {
             device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
                 .invoke(device, 1) as BluetoothSocket
-        }.getOrNull()
-        return tryConnect(reflected)
-    }
+        }
+    )
 
     /**
      * [BluetoothSocket.connect] has no timeout of its own and can sit for half
@@ -399,22 +402,40 @@ object ObdBluetoothManager {
         }
     }
 
-    /** Per RFCOMM channel tried; three channels, so an attempt takes at most three times this. */
+    /** Per RFCOMM channel tried (three of them). */
     private const val CONNECT_TIMEOUT_MS = 8_000L
 
-    /** Sends the standard ELM327 initialization sequence; false if the adapter said nothing at all. */
+    /**
+     * Sends the standard ELM327 initialization sequence; false if the adapter
+     * said nothing at all, even on a second try with more time for the reset.
+     */
     private fun initializeAdapter(): Boolean {
-        val replies = listOf(
-            sendCommand("ATZ").also { Thread.sleep(1000) }, // reset; clone adapters need a moment after it
-            sendCommand("ATE0"),  // echo off
-            sendCommand("ATL0"),  // line feeds off
-            sendCommand("ATSP0")  // automatic protocol selection
-        )
-        if (replies.all { it == null }) return false
-        // Which PIDs the car serves (0100 also wakes the ECU link); unanswered, everything is polled.
-        supported = ObdParser.supportedPids { sendCommand(it) }
-        return outputStream != null
+        // An adapter asleep (low-power mode, engine off) wakes on the first
+        // character it gets and drops it: a bare return, before ATZ.
+        runCatching { outputStream?.run { write("\r".toByteArray()); flush() } }
+        Thread.sleep(WAKE_MS)
+        for (attempt in 1..INIT_TRIES) {
+            val replies = listOf(
+                // Reset; clone adapters need a moment after it.
+                sendCommand("ATZ", if (attempt == 1) READ_TIMEOUT_MS else RESET_TIMEOUT_MS).also { Thread.sleep(1000) },
+                sendCommand("ATE0"),  // echo off
+                sendCommand("ATL0"),  // line feeds off
+                sendCommand("ATSP0")  // automatic protocol selection
+            )
+            if (outputStream == null) return false // the link dropped
+            if (replies.any { it != null }) {
+                // Which PIDs the car serves (0100 also wakes the ECU link); unanswered, everything is polled.
+                supported = ObdParser.supportedPids { sendCommand(it) }
+                return outputStream != null
+            }
+            Log.w(TAG, "no reply to the setup commands (try $attempt of $INIT_TRIES)")
+        }
+        return false
     }
+
+    private const val WAKE_MS = 500L
+    private const val INIT_TRIES = 2
+    private const val RESET_TIMEOUT_MS = 5_000L
 
     /** Paired Bluetooth devices as (name, MAC) pairs, for the adapter picker. */
     @SuppressLint("MissingPermission")
