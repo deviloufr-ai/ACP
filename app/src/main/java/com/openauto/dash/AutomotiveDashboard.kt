@@ -705,7 +705,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     fun connectSavedOrPick() {
         val saved = ObdBluetoothManager.savedDeviceAddress()
-        if (saved != null) scope.launch { ObdBluetoothManager.connect(saved) } else openDevicePicker()
+        // Tapped by the driver: an adapter that lost its pairing is paired again (Android asks for the PIN).
+        if (saved != null) scope.launch { ObdBluetoothManager.connect(saved, pairIfNeeded = true) } else openDevicePicker()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -1357,7 +1358,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             onPick = { mac ->
                 ObdBluetoothManager.saveDeviceAddress(mac)
                 showDevicePicker = false
-                scope.launch { ObdBluetoothManager.connect(mac) }
+                scope.launch { ObdBluetoothManager.connect(mac, pairIfNeeded = true) }
             },
             onDismiss = { showDevicePicker = false },
             onOpenSettings = {
