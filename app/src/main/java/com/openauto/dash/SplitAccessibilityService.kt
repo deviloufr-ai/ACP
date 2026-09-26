@@ -376,5 +376,9 @@ class SplitAccessibilityService : AccessibilityService() {
          * service is not enabled/bound.
          */
         fun swapSplit(): Boolean = instance?.swapPanes() ?: false
+
+        /** Any `GLOBAL_ACTION_*` (back, recents, notifications...); false when the service is not bound. */
+        fun globalAction(action: Int): Boolean =
+            instance?.let { runCatching { it.performGlobalAction(action) }.getOrDefault(false) } ?: false
     }
 }

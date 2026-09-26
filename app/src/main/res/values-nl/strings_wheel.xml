@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Steering wheel button learning (SteeringWheelDialog.kt), from Settings -> Driving -->
+    <string name="wheel_title">Stuurwielknoppen</string>
+    <string name="wheel_settings_detail_empty">Leer de knoppen van je stuur aan en wijs acties toe</string>
+    <plurals name="wheel_settings_detail_count">
+        <item quantity="one">%1$d knop toegewezen</item>
+        <item quantity="other">%1$d knoppen toegewezen</item>
+    </plurals>
+    <string name="wheel_explanation">Tik op Nieuwe knop aanleren en druk op een knop op je stuur. Kies daarna wat hij moet doen: media, volume, een app en meer.</string>
+    <string name="wheel_learn_button">Nieuwe knop aanleren</string>
+    <string name="wheel_empty">Nog geen knoppen aangeleerd.</string>
+    <string name="wheel_remove">Verwijderen</string>
+    <string name="wheel_back">Terug</string>
+    <string name="wheel_listening_title">Druk op een knop op het stuur…</string>
+    <string name="wheel_listening_detail">Dashwheel wacht op de volgende druk op een knop.</string>
+    <string name="wheel_assign_prompt">Wat moet %1$s doen?</string>
+    <string name="wheel_choose_app">Een app openen…</string>
+    <string name="wheel_remove_binding">Deze knop vergeten</string>
+    <string name="wheel_raw_button">Knop #%1$d</string>
+    <string name="wheel_group_media">Media</string>
+    <string name="wheel_group_volume">Volume</string>
+    <string name="wheel_group_system">Systeem</string>
+    <string name="wheel_group_phone">Telefoon</string>
+    <string name="wheel_needs_accessibility">Toegankelijkheid moet aan staan</string>
+    <string name="wheel_accessibility_hint">Terug, recente apps, meldingen en gesplitst scherm werken pas als Dashwheel aan staat onder Instellingen, Toegankelijkheid.</string>
+    <string name="wheel_accessibility_enable">Aanzetten</string>
+    <string name="wheel_action_back">Terug</string>
+    <string name="wheel_action_recents">Recente apps</string>
+    <string name="wheel_action_notifications">Meldingen</string>
+    <string name="wheel_action_quick_settings">Snelle instellingen</string>
+    <string name="wheel_action_toggle_split">Gesplitst scherm aan / uit</string>
+    <string name="wheel_action_screenshot">Screenshot</string>
+    <string name="wheel_action_play_pause">Afspelen / Pauzeren</string>
+    <string name="wheel_action_next">Volgend nummer</string>
+    <string name="wheel_action_previous">Vorig nummer</string>
+    <string name="wheel_action_volume_up">Volume omhoog</string>
+    <string name="wheel_action_volume_down">Volume omlaag</string>
+    <string name="wheel_action_mute">Dempen / Geluid aan</string>
+    <string name="wheel_action_voice">Spraakassistent</string>
+    <string name="wheel_action_home">Naar het beginscherm</string>
+    <string name="wheel_action_open_apps">App-overzicht openen</string>
+    <string name="wheel_action_swap_split">Kanten van gesplitst scherm wisselen</string>
+    <string name="wheel_action_answer">Oproep beantwoorden</string>
+    <string name="wheel_action_decline">Oproep weigeren</string>
+    <string name="wheel_action_hang_up">Ophangen</string>
+</resources>

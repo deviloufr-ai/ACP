@@ -1,9 +1,11 @@
 package com.openauto.dash
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -35,6 +37,9 @@ class MainActivity : ComponentActivity() {
          * answers by closing what is open and going back to the middle page.
          */
         val homePressed = MutableStateFlow(0L)
+
+        /** Bumped to open the full app drawer, e.g. from a learned steering wheel button. */
+        val openAppsRequested = MutableStateFlow(0L)
     }
 
     // Whether the launcher is sharing the screen (split-screen / freeform). The
@@ -96,6 +101,18 @@ class MainActivity : ComponentActivity() {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) PipAnchor.noteUserTouch()
         return super.dispatchTouchEvent(ev)
+    }
+
+    // Every hardware key the head unit delivers here first — including
+    // whatever a steering wheel or remote sends. SteeringWheelStore either
+    // captures it for the learning screen, runs the action it's learned to,
+    // or (unmapped) leaves it to Android's own handling.
+    // RestrictedApi: a lint false positive, it flags ComponentActivity's own
+    // override of this public Activity method.
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (SteeringWheelStore.onKeyEvent(this, event)) return true
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {

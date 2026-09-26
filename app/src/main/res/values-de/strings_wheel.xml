@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Steering wheel button learning (SteeringWheelDialog.kt), from Settings -> Driving -->
+    <string name="wheel_title">Lenkradtasten</string>
+    <string name="wheel_settings_detail_empty">Lenkradtasten anlernen und Aktionen zuweisen</string>
+    <plurals name="wheel_settings_detail_count">
+        <item quantity="one">%1$d Taste zugewiesen</item>
+        <item quantity="other">%1$d Tasten zugewiesen</item>
+    </plurals>
+    <string name="wheel_explanation">Unten auf Neue Taste anlernen tippen, dann eine beliebige Taste am Lenkrad drücken. Danach wählen, was sie tun soll: Medien, Lautstärke, eine App und mehr.</string>
+    <string name="wheel_learn_button">Neue Taste anlernen</string>
+    <string name="wheel_empty">Noch keine Tasten angelernt.</string>
+    <string name="wheel_remove">Entfernen</string>
+    <string name="wheel_back">Zurück</string>
+    <string name="wheel_listening_title">Eine Taste am Lenkrad drücken…</string>
+    <string name="wheel_listening_detail">Dashwheel wartet auf den nächsten Tastendruck.</string>
+    <string name="wheel_assign_prompt">Was soll %1$s tun?</string>
+    <string name="wheel_choose_app">App starten…</string>
+    <string name="wheel_remove_binding">Diese Taste vergessen</string>
+    <string name="wheel_raw_button">Taste #%1$d</string>
+    <string name="wheel_group_media">Medien</string>
+    <string name="wheel_group_volume">Lautstärke</string>
+    <string name="wheel_group_system">System</string>
+    <string name="wheel_group_phone">Telefon</string>
+    <string name="wheel_needs_accessibility">Braucht eingeschaltete Bedienungshilfen</string>
+    <string name="wheel_accessibility_hint">Zurück, letzte Apps, Benachrichtigungen und geteilter Bildschirm brauchen Dashwheel unter Einstellungen, Bedienungshilfen.</string>
+    <string name="wheel_accessibility_enable">Einschalten</string>
+    <string name="wheel_action_back">Zurück</string>
+    <string name="wheel_action_recents">Letzte Apps</string>
+    <string name="wheel_action_notifications">Benachrichtigungen</string>
+    <string name="wheel_action_quick_settings">Schnelleinstellungen</string>
+    <string name="wheel_action_toggle_split">Geteilter Bildschirm ein / aus</string>
+    <string name="wheel_action_screenshot">Screenshot</string>
+    <string name="wheel_action_play_pause">Wiedergabe / Pause</string>
+    <string name="wheel_action_next">Nächster Titel</string>
+    <string name="wheel_action_previous">Vorheriger Titel</string>
+    <string name="wheel_action_volume_up">Lauter</string>
+    <string name="wheel_action_volume_down">Leiser</string>
+    <string name="wheel_action_mute">Stumm / Ton an</string>
+    <string name="wheel_action_voice">Sprachassistent</string>
+    <string name="wheel_action_home">Zur Startseite</string>
+    <string name="wheel_action_open_apps">App-Übersicht öffnen</string>
+    <string name="wheel_action_swap_split">Seiten des geteilten Bildschirms tauschen</string>
+    <string name="wheel_action_answer">Anruf annehmen</string>
+    <string name="wheel_action_decline">Anruf ablehnen</string>
+    <string name="wheel_action_hang_up">Auflegen</string>
+</resources>

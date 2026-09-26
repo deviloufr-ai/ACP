@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Steering wheel button learning (SteeringWheelDialog.kt), from Settings -> Driving -->
+    <string name="wheel_title">Comandi al volante</string>
+    <string name="wheel_settings_detail_empty">Fai imparare i tasti del volante e assegna le azioni</string>
+    <plurals name="wheel_settings_detail_count">
+        <item quantity="one">%1$d tasto assegnato</item>
+        <item quantity="other">%1$d tasti assegnati</item>
+    </plurals>
+    <string name="wheel_explanation">Tocca Impara un nuovo tasto, poi premi un tasto qualsiasi sul volante. Scegli cosa deve fare: media, volume, un\'app e altro.</string>
+    <string name="wheel_learn_button">Impara un nuovo tasto</string>
+    <string name="wheel_empty">Nessun tasto ancora imparato.</string>
+    <string name="wheel_remove">Rimuovi</string>
+    <string name="wheel_back">Indietro</string>
+    <string name="wheel_listening_title">Premi un tasto sul volante…</string>
+    <string name="wheel_listening_detail">Dashwheel attende la prossima pressione di un tasto.</string>
+    <string name="wheel_assign_prompt">Cosa deve fare %1$s?</string>
+    <string name="wheel_choose_app">Avvia un\'app…</string>
+    <string name="wheel_remove_binding">Dimentica questo tasto</string>
+    <string name="wheel_raw_button">Tasto n. %1$d</string>
+    <string name="wheel_group_media">Media</string>
+    <string name="wheel_group_volume">Volume</string>
+    <string name="wheel_group_system">Sistema</string>
+    <string name="wheel_group_phone">Telefono</string>
+    <string name="wheel_needs_accessibility">Richiede l\'Accessibilità attiva</string>
+    <string name="wheel_accessibility_hint">Indietro, app recenti, notifiche e schermo diviso richiedono Dashwheel attivo in Impostazioni, Accessibilità.</string>
+    <string name="wheel_accessibility_enable">Attiva</string>
+    <string name="wheel_action_back">Indietro</string>
+    <string name="wheel_action_recents">App recenti</string>
+    <string name="wheel_action_notifications">Notifiche</string>
+    <string name="wheel_action_quick_settings">Impostazioni rapide</string>
+    <string name="wheel_action_toggle_split">Schermo diviso sì / no</string>
+    <string name="wheel_action_screenshot">Screenshot</string>
+    <string name="wheel_action_play_pause">Riproduci / Pausa</string>
+    <string name="wheel_action_next">Brano successivo</string>
+    <string name="wheel_action_previous">Brano precedente</string>
+    <string name="wheel_action_volume_up">Alza il volume</string>
+    <string name="wheel_action_volume_down">Abbassa il volume</string>
+    <string name="wheel_action_mute">Disattiva / Riattiva audio</string>
+    <string name="wheel_action_voice">Assistente vocale</string>
+    <string name="wheel_action_home">Vai alla Home</string>
+    <string name="wheel_action_open_apps">Apri l\'elenco delle app</string>
+    <string name="wheel_action_swap_split">Scambia i lati dello schermo diviso</string>
+    <string name="wheel_action_answer">Rispondi alla chiamata</string>
+    <string name="wheel_action_decline">Rifiuta la chiamata</string>
+    <string name="wheel_action_hang_up">Riaggancia</string>
+</resources>
