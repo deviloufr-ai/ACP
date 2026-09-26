@@ -249,9 +249,14 @@ private fun assignmentSummary(assignment: WheelAssignment): String = when (assig
     is WheelAssignment.LaunchApp -> assignment.appLabel
 }
 
-/** The "press a button now" screen: a pulsing badge so it's obvious the app is waiting, plus a way out. */
+/**
+ * The "press a button now" screen: a pulsing badge so it's obvious the app is
+ * waiting, plus a way out. Once a CAN press is seen it asks for the same one
+ * again ([SteeringWheelStore.candidate]) before taking it as a button.
+ */
 @Composable
 private fun WheelListening(onCancel: () -> Unit) {
+    val candidate by SteeringWheelStore.candidate.collectAsState()
     val transition = rememberInfiniteTransition(label = "wheel-pulse")
     val scale by transition.animateFloat(
         initialValue = 0.92f,
@@ -282,18 +287,33 @@ private fun WheelListening(onCancel: () -> Unit) {
             Icon(Icons.Filled.TouchApp, contentDescription = null, tint = DashColors.OnAccent, modifier = Modifier.size(40.dp))
         }
         Text(
-            stringResource(R.string.wheel_listening_title),
+            stringResource(if (candidate != null) R.string.wheel_confirm_title else R.string.wheel_listening_title),
             color = DashColors.TextPrimary,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium
         )
-        Text(
-            stringResource(R.string.wheel_listening_detail),
-            color = DashColors.TextSecondary,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        val seen = candidate
+        if (seen != null) {
+            Text(
+                stringResource(R.string.wheel_confirm_detail, wheelKeyLabel(seen)),
+                color = DashColors.TextPrimary,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(DashShape.Small)
+                    .background(DashColors.Accent.copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            )
+        } else {
+            Text(
+                stringResource(R.string.wheel_listening_detail),
+                color = DashColors.TextSecondary,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
         CanStatus()
         MonitorPanel()
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.dash_cancel)) }

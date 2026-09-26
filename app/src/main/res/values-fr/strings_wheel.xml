@@ -14,6 +14,8 @@
     <string name="wheel_back">Retour</string>
     <string name="wheel_listening_title">Appuyez sur un bouton du volant…</string>
     <string name="wheel_listening_detail">Dashwheel attend le prochain appui.</string>
+    <string name="wheel_confirm_title">Appuyez encore une fois sur le même bouton…</string>
+    <string name="wheel_confirm_detail">%1$s a été détecté. Appuyez une seconde fois pour que Dashwheel sache que c\'est bien vous : une donnée de la voiture qui change toute seule ne revient pas sur commande.</string>
     <string name="wheel_assign_prompt">Que doit faire %1$s ?</string>
     <string name="wheel_choose_app">Lancer une appli…</string>
     <string name="wheel_remove_binding">Oublier ce bouton</string>

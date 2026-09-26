@@ -14,6 +14,8 @@
     <string name="wheel_back">Atrás</string>
     <string name="wheel_listening_title">Pulsa un botón del volante…</string>
     <string name="wheel_listening_detail">Dashwheel espera la siguiente pulsación.</string>
+    <string name="wheel_confirm_title">Pulsa el mismo botón otra vez…</string>
+    <string name="wheel_confirm_detail">Se ha detectado %1$s. Púlsalo una vez más para que Dashwheel sepa que has sido tú: un dato del coche que cambia solo no vuelve a aparecer a la orden.</string>
     <string name="wheel_assign_prompt">¿Qué debe hacer %1$s?</string>
     <string name="wheel_choose_app">Abrir una app…</string>
     <string name="wheel_remove_binding">Olvidar este botón</string>

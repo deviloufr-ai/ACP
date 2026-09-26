@@ -14,6 +14,8 @@
     <string name="wheel_back">Indietro</string>
     <string name="wheel_listening_title">Premi un tasto sul volante…</string>
     <string name="wheel_listening_detail">Dashwheel attende la prossima pressione di un tasto.</string>
+    <string name="wheel_confirm_title">Premi di nuovo lo stesso tasto…</string>
+    <string name="wheel_confirm_detail">È stato rilevato %1$s. Premilo un\'altra volta perché Dashwheel sappia che sei stato tu: un dato dell\'auto che cambia da solo non si ripete a comando.</string>
     <string name="wheel_assign_prompt">Cosa deve fare %1$s?</string>
     <string name="wheel_choose_app">Avvia un\'app…</string>
     <string name="wheel_remove_binding">Dimentica questo tasto</string>
