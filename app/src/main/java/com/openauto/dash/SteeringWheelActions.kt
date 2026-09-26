@@ -3,7 +3,9 @@ package com.openauto.dash
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.speech.RecognizerIntent
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -86,7 +88,7 @@ internal enum class SteeringWheelAction(
             OPEN_APPS -> MainActivity.openAppsRequested.value = System.currentTimeMillis()
             NOTIFICATIONS -> SplitAccessibilityService.globalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS)
             QUICK_SETTINGS -> SplitAccessibilityService.globalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
-            VOICE_ASSISTANT -> context.launchSafely(Intent(Intent.ACTION_VOICE_COMMAND))
+            VOICE_ASSISTANT -> startVoiceAssistant(context)
             TOGGLE_SPLIT -> SplitAccessibilityService.requestSplit()
             SWAP_SPLIT -> SplitLauncher.swapSplit()
             SCREENSHOT -> SplitAccessibilityService.globalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
@@ -94,6 +96,21 @@ internal enum class SteeringWheelAction(
             DECLINE_CALL -> PhoneLink.callCommand(CallCommand.Action.DECLINE)
             HANG_UP_CALL -> PhoneLink.callCommand(CallCommand.Action.HANG_UP)
         }
+    }
+
+    /**
+     * Head units differ in which assistant entry point they have, if any: the
+     * first one an app answers is started, and none at all is said out loud
+     * rather than the button seeming dead.
+     */
+    private fun startVoiceAssistant(context: Context) {
+        val started = listOf(
+            Intent(Intent.ACTION_VOICE_COMMAND),
+            Intent(RecognizerIntent.ACTION_VOICE_SEARCH_HANDS_FREE),
+            Intent(Intent.ACTION_ASSIST),
+            Intent(RecognizerIntent.ACTION_WEB_SEARCH)
+        ).any { context.launchSafely(it) }
+        if (!started) Toast.makeText(context, R.string.wheel_no_voice_assistant, Toast.LENGTH_SHORT).show()
     }
 
     /** Routed to whichever app holds the active media session, exactly like a hardware media button. */

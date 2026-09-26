@@ -33,6 +33,8 @@
     <string name="wheel_needs_accessibility">Requer a Acessibilidade ativada</string>
     <string name="wheel_accessibility_hint">Voltar, apps recentes, notificações e ecrã dividido requerem o Dashwheel ativado em Definições, Acessibilidade.</string>
     <string name="wheel_accessibility_enable">Ativar</string>
+    <string name="wheel_accessibility_anywhere">Os botões aprendidos só atuam enquanto o Dashwheel está à frente, a menos que o Dashwheel esteja ativado em Definições, Acessibilidade.</string>
+    <string name="wheel_no_voice_assistant">Sem assistente de voz neste rádio</string>
     <string name="wheel_action_back">Voltar</string>
     <string name="wheel_action_recents">Apps recentes</string>
     <string name="wheel_action_notifications">Notificações</string>

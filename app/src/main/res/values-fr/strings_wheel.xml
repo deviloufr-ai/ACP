@@ -33,6 +33,8 @@
     <string name="wheel_needs_accessibility">Nécessite l\'Accessibilité activée</string>
     <string name="wheel_accessibility_hint">Retour, applis récentes, notifications et écran partagé nécessitent Dashwheel activé dans Paramètres, Accessibilité.</string>
     <string name="wheel_accessibility_enable">Activer</string>
+    <string name="wheel_accessibility_anywhere">Les boutons appris n\'agissent que quand Dashwheel est devant, sauf si Dashwheel est activé dans Paramètres, Accessibilité.</string>
+    <string name="wheel_no_voice_assistant">Aucun assistant vocal sur cet autoradio</string>
     <string name="wheel_action_back">Retour</string>
     <string name="wheel_action_recents">Applis récentes</string>
     <string name="wheel_action_notifications">Notifications</string>
