@@ -117,6 +117,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var effects by remember { mutableStateOf(DashThemeStore.loadEffects(context)) }
     var barAutoHide by remember { mutableStateOf(DashThemeStore.loadBarAutoHide(context)) }
     var barHideSeconds by remember { mutableIntStateOf(DashThemeStore.loadBarHideSeconds(context)) }
+    val barState = rememberBarAutoHideState()
+    val barRevealTap = rememberTapFeedback()
     val themeState = ThemeState(
         mode = themeMode, appearance = appearance, effects = effects,
         onMode = { themeMode = it; DashThemeStore.save(context, it) },
@@ -720,6 +722,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         Box(
             modifier = Modifier
                 .weight(1f)
+                // With the bar hidden the pages reach the bottom of the screen;
+                // a swipe up from their bottom edge brings it back.
+                .swipeUpRevealsBar(barState, barRevealTap)
                 // Docked app windows must stay inside this area, above the bar.
                 .onGloballyPositioned { coords ->
                     val b = coords.boundsInRoot()
@@ -880,6 +885,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 page = pageIndicatorFor,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
             )
+            BarHandle(barState, Modifier.align(Alignment.BottomCenter))
 
             // needs the accessibility service; if it isn't on, tapping prompts to
             // enable it instead of silently doing nothing.
@@ -1003,6 +1009,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             // Auto-hide (Settings › Look): waits while the pages are being
             // arranged or something opened from the bar covers them.
             AutoHidingBar(
+                state = barState,
                 enabled = barAutoHide,
                 hideSeconds = barHideSeconds,
                 held = editing || settingsTab != null || showAllApps
