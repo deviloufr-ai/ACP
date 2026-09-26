@@ -208,16 +208,30 @@ internal fun CallCard(call: PhoneCall) {
                     style = if (ringing) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
                 )
                 if (ringing) {
-                    val subtitle = stringResource(R.string.phone_call_incoming)
+                    // "Incoming call · +33…" for a phone call, "WhatsApp · Incoming call" for an app's.
+                    val subtitle = listOfNotNull(
+                        call.app,
+                        stringResource(R.string.phone_call_incoming),
+                        call.number.takeIf { call.name != null }
+                    ).joinToString(" · ")
                     Text(
-                        if (call.name != null && call.number != null) "$subtitle · ${call.number}" else subtitle,
+                        subtitle,
                         color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
-                    CallDuration(call.answeredAt)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (call.app != null) {
+                            Text(
+                                "${call.app} · ", color = DashColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        CallDuration(call.answeredAt)
+                    }
                 }
-                if (!call.canControl) {
+                // The Calls permission is for the phone's own calls; an app's call without buttons is just shown.
+                if (!call.canControl && call.app == null) {
                     Text(stringResource(R.string.phone_call_no_control), color = DashColors.Warning, style = MaterialTheme.typography.bodySmall)
                 }
             }

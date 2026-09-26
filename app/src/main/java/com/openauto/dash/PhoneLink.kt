@@ -86,7 +86,9 @@ data class PhoneCall(
     /** [SystemClock.elapsedRealtime] when it was answered, on this head unit's clock. */
     val answeredAt: Long,
     /** False: the companion may not answer / hang up, so the call is only shown. */
-    val canControl: Boolean
+    val canControl: Boolean,
+    /** The app the call is in ("WhatsApp"…); null for a phone call. */
+    val app: String? = null
 )
 
 sealed interface PhoneLinkState {
@@ -380,7 +382,8 @@ object PhoneLink {
     private fun toPhoneCall(state: CallState): PhoneCall? {
         if (state.phase == CallState.Phase.IDLE) return null
         val before = _call.value
-        val photo = if (before != null && state.photoPng != null && before.number == state.number) before.photo
+        val sameCaller = before != null && before.number == state.number && before.name == state.name && before.app == state.app
+        val photo = if (before != null && state.photoPng != null && sameCaller) before.photo
         else state.photoPng?.let { png ->
             runCatching {
                 val bytes = Base64.getDecoder().decode(png)
@@ -393,7 +396,8 @@ object PhoneLink {
             name = state.name,
             photo = photo,
             answeredAt = SystemClock.elapsedRealtime() - state.activeForMs,
-            canControl = state.canControl
+            canControl = state.canControl,
+            app = state.app
         )
     }
 
