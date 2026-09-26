@@ -17,9 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +40,15 @@ import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlin.math.roundToInt
+
+/**
+ * False on the pages the pagers keep composed beside the one on screen (so a
+ * map tile survives a swipe away and back). A window tile there is not on
+ * screen: it must neither open nor place its app's window, or Maps comes up
+ * over a page with no Maps tile, or fullscreen at start from the page next to
+ * home (its tile's bounds are off the screen).
+ */
+internal val LocalPageOnScreen = compositionLocalOf { true }
 
 /**
  * "Maps window" tile: while it is on screen the floating PiP window is kept
@@ -79,23 +90,30 @@ internal fun PipAnchorCard(
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val status by PipAnchor.statusOf(packageName).collectAsState()
+    // The dock sits beside the pages and is always on screen. A page tile kept
+    // composed off screen does nothing with the window until its page shows,
+    // exactly as if it were not composed at all.
+    val onScreen = isDock || LocalPageOnScreen.current
+    val onScreenNow by rememberUpdatedState(onScreen)
     // An app's minimum window size can exceed the tile; let the tile grow to it
     // rather than have the window spill over its neighbours.
     LaunchedEffect(status.oversizePx) {
         val (w, h) = status.oversizePx ?: return@LaunchedEffect
         onWindowBiggerThanTile?.invoke(w, h)
     }
-    // Counted while composed, so the window is never mistaken for a stray while
+    // Counted while on screen, so the window is never mistaken for a stray while
     // the tracking loop is between restarts. Counted down before the window is
     // hidden, so hide() can see whether another tile of the app still shows it.
-    DisposableEffect(packageName) {
-        PipAnchor.tileShown(packageName)
-        onDispose {
-            PipAnchor.tileHidden(packageName)
-            // A Maps page tile standing down for the dock must not close the very
-            // window the dock is about to take over.
-            val handingOverToDock = isMaps && !isDock && PipAnchor.dockActive.value
-            if (!handingOverToDock) PipAnchor.hide(context, packageName)
+    if (onScreen) {
+        DisposableEffect(packageName) {
+            PipAnchor.tileShown(packageName)
+            onDispose {
+                PipAnchor.tileHidden(packageName)
+                // A Maps page tile standing down for the dock must not close the very
+                // window the dock is about to take over.
+                val handingOverToDock = isMaps && !isDock && PipAnchor.dockActive.value
+                if (!handingOverToDock) PipAnchor.hide(context, packageName)
+            }
         }
     }
 
@@ -105,14 +123,14 @@ internal fun PipAnchorCard(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { started = true; PipAnchor.expectReturn(packageName) }
+                Lifecycle.Event.ON_START -> { started = true; if (onScreenNow) PipAnchor.expectReturn(packageName) }
                 // Back from a touch on the window (or any pause): look again at the quick pace.
                 Lifecycle.Event.ON_RESUME -> PipAnchor.pollAgainSoon()
                 // Another app took the whole screen: stop polling and park the
                 // window aside, still running; coming back, track() docks it
                 // again. (Touching the Maps window only *pauses* the launcher,
                 // which must not hide anything.)
-                Lifecycle.Event.ON_STOP -> { started = false; PipAnchor.parkForOtherApp(context, packageName) }
+                Lifecycle.Event.ON_STOP -> { started = false; if (onScreenNow) PipAnchor.parkForOtherApp(context, packageName) }
                 else -> Unit
             }
         }
@@ -135,19 +153,22 @@ internal fun PipAnchorCard(
     // that queued up behind the one before, so the window came back seconds
     // after the swipe had ended.
     val positioned = target != null
-    LaunchedEffect(positioned, started, blocked) {
-        if (positioned && started && blocked) PipAnchor.parkAside(context, packageName)
+    // Not for a tile off screen: the window may be another tile's (the same
+    // app on the page shown), and parking it would take it from there.
+    LaunchedEffect(positioned, started, blocked, onScreen) {
+        if (onScreen && positioned && started && blocked) PipAnchor.parkAside(context, packageName)
     }
     // Re-target after the tile settles: a drag in edit mode moves it many times
     // per second, and each ADB round trip costs real time. A tile that was just
     // uncovered (a swipe ended on it, a pop-up closed) or has not moved since it
     // was last tracked is already settled, and is tracked at once.
     val settle = remember { SettleState() }
-    LaunchedEffect(target, started, blocked) {
+    // A page that has just come on screen counts as uncovered.
+    LaunchedEffect(target, started, blocked, onScreen) {
         val rect = target ?: return@LaunchedEffect
         val settled = settle.wasBlocked || rect == settle.tracked
-        settle.wasBlocked = blocked
-        if (!started || blocked) return@LaunchedEffect
+        settle.wasBlocked = blocked || !onScreen
+        if (!onScreen || !started || blocked) return@LaunchedEffect
         if (!settled) delay(SETTLE_MS)
         settle.tracked = rect
         PipAnchor.track(context, rect, packageName)
@@ -156,7 +177,7 @@ internal fun PipAnchorCard(
     // The skin's frame (a round porthole, a chrome bezel...) over the docked Maps
     // window, only while it actually sits here and the dashboard is on screen.
     WindowFrameOverlay(
-        bounds = status.windowBounds.takeIf { isMaps && started && !blocked && status.docked && status.pipPackage != null }
+        bounds = status.windowBounds.takeIf { isMaps && onScreen && started && !blocked && status.docked && status.pipPackage != null }
     )
 
     Card(

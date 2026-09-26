@@ -781,6 +781,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             if (dockSide == Alignment.Start) { mapsDock(dockSide); divider() }
             /** One dashboard, by its index into pages. */
             val dashboardPage: @Composable (Int) -> Unit = { page ->
+                // The pagers keep the pages beside this one composed; their
+                // window tiles must leave the windows alone (LocalPageOnScreen).
+                CompositionLocalProvider(LocalPageOnScreen provides (page == currentPage)) {
                 DashboardPage(
                     pageItems = pages[page],
                     editing = editing,
@@ -811,6 +814,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onDesign = { index -> whenParked { designPicker = page to index } },
                     onZoom = { index, zoom -> zoomTile(page, index, zoom) }
                 )
+                }
             }
             // The pages' pane reads the dock fraction and the pagers' scroll
             // state itself (WeightedPane), so a divider drag or a swipe starting
