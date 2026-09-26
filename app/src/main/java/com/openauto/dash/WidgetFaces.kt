@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -123,6 +125,10 @@ internal fun DesignedFace(face: WidgetFace, design: WidgetDesign, modifier: Modi
                 FaceLayout.POSTER -> PosterLayout(face, look, m)
                 FaceLayout.DUO -> DuoLayout(face, look, m)
                 FaceLayout.ISLAND -> IslandLayout(face, look, m)
+                FaceLayout.COCKPIT -> CockpitLayout(face, look, m)
+                FaceLayout.TRIANGLES -> TriLedLayout(face, look, m)
+                FaceLayout.BLADE -> BladeLayout(face, look, m)
+                FaceLayout.LIGHT_BAR -> LightBarLayout(face, look, m)
             }
         }
     }
@@ -137,7 +143,7 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
         Card(modifier = modifier) { content() }
         return
     }
-    val shape = RoundedCornerShape(look.radius)
+    val shape = surfaceShape(look)
     val border = look.border
     val decoration = look.decoration
     Box(
@@ -189,7 +195,11 @@ internal fun FaceSurface(look: FaceLook, modifier: Modifier, content: @Composabl
 }
 
 /** Decorations drawn behind the content (scanlines go over it). */
-private val BACKDROP_DECORATIONS = setOf(LookDecoration.CARBON, LookDecoration.DOTS, LookDecoration.GLASS, LookDecoration.NEON)
+private val BACKDROP_DECORATIONS = setOf(LookDecoration.CARBON, LookDecoration.DOTS, LookDecoration.GLASS, LookDecoration.NEON, LookDecoration.TRIANGLES)
+
+/** A material's card outline: rounded, or for the angular ones two opposite corners cut on the diagonal. */
+internal fun surfaceShape(look: FaceLook, r: Dp = look.radius): Shape =
+    if (look.angular) CutCornerShape(topStart = r, bottomEnd = r) else RoundedCornerShape(r)
 
 private fun DrawScope.drawDecoration(look: FaceLook) {
     val w = size.width
@@ -226,6 +236,34 @@ private fun DrawScope.drawDecoration(look: FaceLook) {
                 Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.45f), Color.Transparent)),
                 Offset(w * 0.15f, 1f), Offset(w * 0.85f, 1f), 1.5f
             )
+        }
+        LookDecoration.TRIANGLES -> {
+            // Copper edges along the two cut corners, then a scatter of small
+            // triangles fading out of the bottom-right one, like a grille pattern.
+            val cut = look.radius.toPx()
+            val edge = 2.dp.toPx()
+            drawLine(look.accent, Offset(0f, cut), Offset(cut, 0f), edge)
+            drawLine(look.accent.copy(alpha = 0.5f), Offset(w - cut, h), Offset(w, h - cut), edge)
+            val b = min(w, h) * 0.075f
+            val th = b * 0.866f
+            val cols = 9
+            val rows = 5
+            val tri = Path()
+            for (row in 0 until rows) for (col in 0 until cols) {
+                val fade = 1f - (row + col * 0.6f) / (rows + cols * 0.6f - 1f)
+                if (fade <= 0.15f) continue
+                val x = w - cut - (col + 2) * b / 2f
+                val y = h - cut * 0.5f - (row + 1) * th
+                val up = (row + col) % 2 == 0
+                tri.rewind()
+                if (up) {
+                    tri.moveTo(x + b * 0.1f, y + th * 0.9f); tri.lineTo(x + b * 0.9f, y + th * 0.9f); tri.lineTo(x + b / 2f, y + th * 0.1f)
+                } else {
+                    tri.moveTo(x + b * 0.1f, y + th * 0.1f); tri.lineTo(x + b * 0.9f, y + th * 0.1f); tri.lineTo(x + b / 2f, y + th * 0.9f)
+                }
+                tri.close()
+                drawPath(tri, look.accent.copy(alpha = 0.12f * fade * fade))
+            }
         }
         LookDecoration.NEON -> drawRoundRect(
             Brush.radialGradient(listOf(look.accent.copy(alpha = 0.10f), Color.Transparent), Offset(w * 0.8f, 0f), max(w, h)),
@@ -328,7 +366,11 @@ internal fun FaceCaption(f: WidgetFace, look: FaceLook, m: FaceMetrics, modifier
     FaceText(f.caption, look, m.caption, modifier, color = if (f.alert) look.warn else look.dim, align = align)
 }
 
-internal fun controlShape(look: FaceLook) = if (look.squareControls) RoundedCornerShape(6.dp) else CircleShape
+internal fun controlShape(look: FaceLook): Shape = when {
+    look.angular -> CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp)
+    look.squareControls -> RoundedCornerShape(6.dp)
+    else -> CircleShape
+}
 
 @Composable
 internal fun FaceActions(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int = 3, small: Boolean = false) {
@@ -941,7 +983,7 @@ internal fun DesignFrame(
         FaceLookKind.CHROME -> 12.dp
         else -> 8.dp
     }
-    val innerShape = RoundedCornerShape((look.radius - pad).coerceAtLeast(2.dp))
+    val innerShape = surfaceShape(look, (look.radius - pad).coerceAtLeast(2.dp))
     FaceSurface(look, modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (!labelAtBottom) FrameLabel(icon, title, look, big = design.layout == FaceLayout.HERO)

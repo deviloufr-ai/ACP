@@ -33,6 +33,14 @@
     <string name="design_duo_desc">A block of colour for the number, details beside it.</string>
     <string name="design_island">Island</string>
     <string name="design_island_desc">A floating black capsule with picture and controls.</string>
+    <string name="design_copper_cockpit">Copper cockpit</string>
+    <string name="design_copper_cockpit_desc">Slanted copper blades sweep round a sport cluster, black with sharp cut corners.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">A triangular LED signature that lights up with the reading, on petrol blue.</string>
+    <string name="design_copper_blade">Copper blade</string>
+    <string name="design_copper_blade_desc">Oblique numerals over a tapering copper blade, cut corners on petrol blue.</string>
+    <string name="design_light_bar">Light bar</string>
+    <string name="design_light_bar_desc">A coast-to-coast light strip glowing out from the centre, over black.</string>
     <string name="design_change">Change the design of %1$s</string>
     <string name="design_picker_title">Design: %1$s</string>
     <string name="design_picker_hint">Tap a design to use it on this tile. Each tile keeps its own design.</string>

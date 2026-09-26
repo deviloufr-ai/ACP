@@ -33,6 +33,14 @@
     <string name="design_duo_desc">Um bloco de cor para o número, detalhes ao lado.</string>
     <string name="design_island">Ilha</string>
     <string name="design_island_desc">Uma cápsula preta flutuante com imagem e controlos.</string>
+    <string name="design_copper_cockpit">Cockpit cobre</string>
+    <string name="design_copper_cockpit_desc">Lâminas de cobre inclinadas percorrem um quadrante desportivo, preto com cantos cortados.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">Uma assinatura LED em triângulos que acende com a leitura, sobre azul petróleo.</string>
+    <string name="design_copper_blade">Lâmina de cobre</string>
+    <string name="design_copper_blade_desc">Algarismos oblíquos sobre uma lâmina de cobre afilada, cantos cortados sobre azul petróleo.</string>
+    <string name="design_light_bar">Barra de luz</string>
+    <string name="design_light_bar_desc">Uma faixa de luz de lado a lado que acende a partir do centro, sobre preto.</string>
     <string name="design_change">Mudar o design de %1$s</string>
     <string name="design_picker_title">Design: %1$s</string>
     <string name="design_picker_hint">Toque num design para o usar neste mosaico. Cada mosaico mantém o seu.</string>

@@ -18,6 +18,9 @@
     <string name="wheel_choose_app">Lancer une appli…</string>
     <string name="wheel_remove_binding">Oublier ce bouton</string>
     <string name="wheel_raw_button">Bouton n° %1$d</string>
+    <string name="wheel_can_button">Bouton du volant (%1$s)</string>
+    <string name="wheel_listening_can_live">Écoute aussi les données CAN de la voiture</string>
+    <string name="wheel_listening_can_off">Données CAN de la voiture illisibles (root requis) : seules les touches Android peuvent être apprises</string>
     <string name="wheel_group_media">Média</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">Système</string>

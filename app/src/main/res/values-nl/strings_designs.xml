@@ -33,6 +33,14 @@
     <string name="design_duo_desc">Een kleurvlak voor het getal, details ernaast.</string>
     <string name="design_island">Eiland</string>
     <string name="design_island_desc">Een zwevende zwarte capsule met beeld en knoppen.</string>
+    <string name="design_copper_cockpit">Koper-cockpit</string>
+    <string name="design_copper_cockpit_desc">Schuine koperen lamellen lopen rond een sportief instrument, zwart met afgesneden hoeken.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">Een driehoekige LED-signatuur die oplicht met de waarde, op petrolblauw.</string>
+    <string name="design_copper_blade">Koperen kling</string>
+    <string name="design_copper_blade_desc">Schuine cijfers boven een taps toelopende koperen kling, afgesneden hoeken op petrolblauw.</string>
+    <string name="design_light_bar">Lichtbalk</string>
+    <string name="design_light_bar_desc">Een doorlopende lichtstrip die vanuit het midden oplicht, op zwart.</string>
     <string name="design_change">Ontwerp van %1$s wijzigen</string>
     <string name="design_picker_title">Ontwerp: %1$s</string>
     <string name="design_picker_hint">Tik op een ontwerp om het voor deze tegel te gebruiken. Elke tegel houdt zijn eigen ontwerp.</string>

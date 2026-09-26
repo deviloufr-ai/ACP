@@ -33,6 +33,14 @@
     <string name="design_duo_desc">Un blocco di colore per il numero, i dettagli accanto.</string>
     <string name="design_island">Isola</string>
     <string name="design_island_desc">Una capsula nera sospesa con immagine e comandi.</string>
+    <string name="design_copper_cockpit">Cockpit rame</string>
+    <string name="design_copper_cockpit_desc">Lame color rame inclinate girano attorno a un quadro sportivo, nero con angoli tagliati.</string>
+    <string name="design_tri_led">Tri-LED</string>
+    <string name="design_tri_led_desc">Una firma LED a triangoli che si accende con il valore, su blu petrolio.</string>
+    <string name="design_copper_blade">Lama rame</string>
+    <string name="design_copper_blade_desc">Cifre oblique su una lama color rame affusolata, angoli tagliati su blu petrolio.</string>
+    <string name="design_light_bar">Barra luminosa</string>
+    <string name="design_light_bar_desc">Una striscia di luce da lato a lato che si accende dal centro, su nero.</string>
     <string name="design_change">Cambia lo stile di %1$s</string>
     <string name="design_picker_title">Stile: %1$s</string>
     <string name="design_picker_hint">Tocca uno stile per usarlo su questo riquadro. Ogni riquadro mantiene il suo.</string>
