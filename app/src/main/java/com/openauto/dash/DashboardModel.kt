@@ -61,7 +61,9 @@ enum class BuiltinKind(
     FUEL_TO_DEST(R.string.car_kind_fuel_dest, WidgetCategory.NAVIGATION, R.string.car_kind_fuel_dest_blurb, 3, 3),
     // Servicing planner (Maintenance.kt) and fuel prices around the car (FuelPrices.kt).
     SERVICE(R.string.upkeep_kind, WidgetCategory.VEHICLE, R.string.upkeep_kind_blurb, 4, 3),
-    FUEL_PRICES(R.string.fuel_kind, WidgetCategory.NAVIGATION, R.string.fuel_kind_blurb, 4, 3)
+    FUEL_PRICES(R.string.fuel_kind, WidgetCategory.NAVIGATION, R.string.fuel_kind_blurb, 4, 3),
+    // The car's own data from its CAN box, on the QF firmware (CarBox.kt).
+    CAR_STATUS(R.string.car_kind_status, WidgetCategory.VEHICLE, R.string.car_kind_status_blurb, 4, 3)
 }
 
 /**

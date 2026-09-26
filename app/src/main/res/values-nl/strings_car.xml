@@ -173,4 +173,24 @@
     <string name="car_spec_driver_side">Bestuurder rechts</string>
     <string name="car_spec_driver_side_detail">Rechts gestuurd: sjablonen zetten de belangrijkste tegels rechts</string>
     <string name="car_battery_trip_range">Deze rit: %1$s tot %2$s V</string>
+    <string name="car_kind_status">Autostatus</string>
+    <string name="car_kind_status_blurb">Verlichting, kilometerstand, rit en verbruik van de auto</string>
+    <string name="car_status_title">AUTOSTATUS</string>
+    <string name="car_status_waiting">Wachten op de gegevens van de auto</string>
+    <string name="car_status_lights">Verlichting</string>
+    <string name="car_status_lights_off">Uit</string>
+    <string name="car_status_hazard">Alarmlichten</string>
+    <string name="car_status_main_beam">Grootlicht</string>
+    <string name="car_status_dipped">Dimlicht</string>
+    <string name="car_status_sidelights">Stadslicht</string>
+    <string name="car_status_front_fog">Mistlampen voor</string>
+    <string name="car_status_rear_fog">Mistlamp achter</string>
+    <string name="car_status_odometer">Kilometerstand</string>
+    <string name="car_status_trip">Rit</string>
+    <string name="car_status_consumption">Verbruik</string>
+    <string name="car_status_range">Actieradius</string>
+    <string name="car_status_parking_brake">Parkeerrem</string>
+    <string name="car_status_on">Aan</string>
+    <string name="car_status_off">Los</string>
+    <string name="car_status_km">km</string>
 </resources>

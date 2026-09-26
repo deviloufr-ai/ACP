@@ -1,0 +1,119 @@
+package com.openauto.dash
+
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.util.Log
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+/*
+ * The ignition, as the QF firmware (ROCO K706) announces it to every app:
+ * ACC on when the key turns, ACC off (then "ready to sleep") when it's
+ * switched off. With Dashwheel on the unit's sleep whitelist it lives through
+ * the off time, so it can act on both ends:
+ *  - on: the adapter reconnects at once, and the startup briefing speaks
+ *    right then (only after a real stop, see [briefOnIgnition]);
+ *  - off: the car's spot is kept as where it's parked (the Parking tile, the
+ *    companion's "where's my car"), and the OBD link is closed cleanly.
+ * Other units have no such broadcast; the briefing's heartbeat stands in there.
+ */
+object CarPower {
+    private const val TAG = "CarPower"
+    private const val ACTION_ACC_ON = "com.qf.action.ACC_ON"
+    private const val ACTION_ACC_OFF = "com.qf.action.ACC_OFF"
+    private const val ACTION_SLEEP_SOON = "com.qf.action.READY_GO_SLEEP_PRE"
+
+    private const val PREFS = "car_power"
+    private const val KEY_OFF_AT = "off_at"
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var started = false
+
+    private val _ignition = MutableStateFlow<Boolean?>(null)
+    /** Ignition on / off as the unit last said it; null where the unit says nothing. */
+    val ignition: StateFlow<Boolean?> = _ignition
+
+    fun start(context: Context) {
+        if (started) return
+        val app = context.applicationContext
+        val acc = systemProperty("sys.qf.is.acc.on")
+        // Only on the QF firmware: it sets this property from the MCU at boot.
+        if (acc.isNullOrBlank()) return
+        started = true
+        _ignition.value = acc == "true"
+        val filter = IntentFilter().apply {
+            addAction(ACTION_ACC_ON)
+            addAction(ACTION_ACC_OFF)
+            addAction(ACTION_SLEEP_SOON)
+        }
+        ContextCompat.registerReceiver(app, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+    }
+
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                ACTION_ACC_ON -> if (_ignition.value != true) switchedOn(context.applicationContext)
+                // "Ready to sleep" comes after ACC off; either is the car switched off.
+                ACTION_ACC_OFF, ACTION_SLEEP_SOON -> if (_ignition.value != false) switchedOff(context.applicationContext)
+            }
+        }
+    }
+
+    private fun switchedOn(context: Context) {
+        _ignition.value = true
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val offAt = prefs.getLong(KEY_OFF_AT, 0L).takeIf { it > 0 }
+        Log.i(TAG, "ignition on")
+        VehicleMonitor.connectSaved()
+        if (briefOnIgnition(offAt, System.currentTimeMillis())) StartupBriefing.carStarted(context)
+    }
+
+    private fun switchedOff(context: Context) {
+        _ignition.value = false
+        val now = System.currentTimeMillis()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_OFF_AT, now).apply()
+        Log.i(TAG, "ignition off")
+        if (!DemoMode.isOn) parkingFix(context)?.takeIf { parkFixUsable(it.time, now) }?.let { ParkingStore.save(context, it) }
+        scope.launch { runCatching { ObdBluetoothManager.disconnect() } }
+    }
+
+    /** Where the car is: the dashboard's GPS feed if it's running, else the system's last fix. */
+    @SuppressLint("MissingPermission")
+    private fun parkingFix(context: Context): Location? {
+        LocationFeed.location.value?.let { return it }
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return null
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        return runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun systemProperty(name: String): String? = runCatching {
+        Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, name) as String
+    }.getOrNull()
+}
+
+/**
+ * Whether switching on is a car start worth a briefing: after the car was
+ * off at least [CarStart.OFF_GAP_MS] (a fuel stop doesn't re-brief), or when
+ * it's not known how long it was off (the briefing's heartbeat decides then).
+ */
+internal fun briefOnIgnition(offAt: Long?, now: Long): Boolean =
+    offAt != null && now - offAt >= CarStart.OFF_GAP_MS
+
+/** A GPS fix older than this at switch-off isn't where the car stopped. */
+internal const val PARK_FIX_MAX_AGE_MS = 3 * 60_000L
+
+/** A fix is where the car stopped if it's recent at switch-off. */
+internal fun parkFixUsable(fixTime: Long, now: Long): Boolean =
+    fixTime > 0 && now - fixTime in 0..PARK_FIX_MAX_AGE_MS

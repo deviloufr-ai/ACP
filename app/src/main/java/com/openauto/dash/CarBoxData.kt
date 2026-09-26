@@ -184,3 +184,22 @@ internal fun parseRadar(d: ByteArray): Radar? {
         right = (34..37).map { level(d.u8(it)) }
     )
 }
+
+/** The lights worth naming on the Car status tile, most telling first. */
+enum class CarLight { HAZARD, MAIN_BEAM, DIPPED, SIDELIGHTS, FRONT_FOG, REAR_FOG }
+
+/**
+ * The lights that are on, as the driver would say it: the hazards, then the
+ * strongest of main beam / dipped / sidelights (each includes the ones
+ * below), then the fogs. Empty when all are off.
+ */
+internal fun lightsOn(b: CarBody): List<CarLight> = buildList {
+    if (b.hazard) add(CarLight.HAZARD)
+    when {
+        b.highBeam -> add(CarLight.MAIN_BEAM)
+        b.dippedBeam -> add(CarLight.DIPPED)
+        b.sidelights -> add(CarLight.SIDELIGHTS)
+    }
+    if (b.frontFog) add(CarLight.FRONT_FOG)
+    if (b.rearFog) add(CarLight.REAR_FOG)
+}

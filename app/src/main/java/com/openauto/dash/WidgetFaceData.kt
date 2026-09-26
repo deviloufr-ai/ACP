@@ -8,22 +8,22 @@ import android.provider.CalendarContract
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLocation
+import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.DirectionsCarFilled
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -37,11 +37,12 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.TurnRight
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,16 +56,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /*
  * Live readings for the designed tiles. Each built-in widget turns the feeds
@@ -104,6 +106,7 @@ internal fun rememberWidgetFace(kind: BuiltinKind, env: SkinTileEnv): WidgetFace
     BuiltinKind.BREAK_TIMER -> breakFace()
     BuiltinKind.SERVICE -> serviceFace()
     BuiltinKind.FUEL_PRICES -> fuelPricesFace()
+    BuiltinKind.CAR_STATUS -> carStatusFace()
     // Live views and the spec sheet: they keep their content and get the design's frame (DesignFrame).
     BuiltinKind.NAVMAP, BuiltinKind.PIP_ANCHOR, BuiltinKind.MY_CAR -> null
 }
@@ -1054,5 +1057,23 @@ private fun fuelPricesFace(): WidgetFace {
             )
         },
         onClick = { navigateTo(context, best.station.lat, best.station.lng, best.station.label) }
+    )
+}
+
+@Composable
+private fun carStatusFace(): WidgetFace {
+    val body by CarBox.body.collectAsState()
+    val b = body ?: return idleFace(Icons.Filled.DirectionsCarFilled, BuiltinKind.CAR_STATUS.label, stringResource(R.string.car_status_waiting))
+    val rows = carStatusRows(b)
+    val lights = lightsOn(b)
+    return WidgetFace(
+        icon = Icons.Filled.DirectionsCarFilled,
+        title = BuiltinKind.CAR_STATUS.label,
+        value = b.odometer?.let { NumberFormat.getIntegerInstance().format(it.toLong()) } ?: "--",
+        unit = stringResource(R.string.car_status_km),
+        caption = rows.first().second,
+        alert = CarLight.HAZARD in lights,
+        severity = if (CarLight.HAZARD in lights) 1 else 0,
+        rows = rows.map { (label, value) -> FaceRow(label, value) }
     )
 }

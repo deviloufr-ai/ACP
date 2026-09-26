@@ -37,6 +37,8 @@ object AlertVoice {
         started = true
         val app = context.applicationContext
         CarVoice.setContext(app)
+        // Quiet while reversing: the parking sensors come first; what waited is said after.
+        scope.launch { CarBox.reversing.collect { CarVoice.hold(it) } }
 
         // A call starting to ring (a new one, not every update of it).
         scope.launch {

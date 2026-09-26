@@ -45,7 +45,8 @@ object PrivilegedShell {
         /** Whether [kind] can show anything here: the CANbox tiles need root, the Maps window a shell. */
         fun allows(kind: BuiltinKind): Boolean = when (kind) {
             BuiltinKind.DOORS, BuiltinKind.CAN_MON -> root
-            BuiltinKind.PIP_ANCHOR -> shell
+            // The car box's data is shared once Dashwheel is registered with the car app, through the shell (CarBox).
+            BuiltinKind.PIP_ANCHOR, BuiltinKind.CAR_STATUS -> shell
             else -> true
         }
     }

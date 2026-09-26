@@ -88,7 +88,7 @@ object RadarOverlay {
             style.collect { style ->
                 if (style != null) {
                     hiding?.cancel()
-                    val w = window ?: AlertWindow(app, "radar", AlertKind.RADAR.cardAt.gravity, aboveCamera = true).also { window = it }
+                    val w = window ?: AlertWindow(app, "radar", AlertKind.RADAR.cardAt.gravity, aboveCamera = { true }).also { window = it }
                     if (w.canShow()) w.show(style) { RadarAlertContent(style) }
                 } else if (hiding?.isActive != true) {
                     hiding = launch {

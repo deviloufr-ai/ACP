@@ -75,7 +75,8 @@ import kotlinx.coroutines.launch
  * ([AlertStyle]): who is calling with Answer / Decline, then the call's
  * duration and Hang up. The side panel and the full screen are for the
  * ringing only: an answered call shrinks to the card's slim bar, so a long
- * call never hides the map. It is its own overlay window, so it shows over
+ * call never hides the map. While reversing it's the pill, above the
+ * reversing camera. It is its own overlay window, so it shows over
  * whatever app fills the screen, and keeps running while the launcher is in
  * the background. Without "display over other apps" it falls back to a popup
  * inside the launcher ([PhoneCallHost]).
@@ -102,8 +103,9 @@ object PhoneCallOverlay {
 
     /** The design the call shows in now: null when there's no call. */
     val style: StateFlow<AlertStyle?> =
-        combine(call, AlertStyleStore.styles) { call, styles -> call?.let { callStyle(it, styles.of(AlertKind.CALL)) } }
-            .stateIn(scope, SharingStarted.Eagerly, null)
+        combine(call, AlertStyleStore.styles, CarBox.reversing) { call, styles, reversing ->
+            call?.let { callStyle(it, styles.of(AlertKind.CALL), reversing) }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     private var started = false
     private var window: AlertWindow? = null
@@ -118,10 +120,11 @@ object PhoneCallOverlay {
         // Strings in the language picked in the launcher, not the system's.
         val app = AppLanguage.wrap(context.applicationContext)
         scope.launch {
-            style.collect { style ->
+            // Again when reverse is engaged: the same design then moves above the camera.
+            combine(style, CarBox.reversing) { style, _ -> style }.collect { style ->
                 if (style != null && !Settings.canDrawOverlays(app)) PipAnchor.grantOverlayPermission(app)
-                if (style != null && Settings.canDrawOverlays(app)) {
-                    val w = window ?: AlertWindow(app, "call", AlertKind.CALL.cardAt.gravity).also { window = it }
+                val w = window ?: AlertWindow(app, "call", AlertKind.CALL.cardAt.gravity, aboveCamera = { CarBox.reversing.value }).also { window = it }
+                if (style != null && w.canShow()) {
                     _showing.value = w.show(style) { CallAlertContent(style) }
                 } else {
                     window?.hide()
@@ -132,10 +135,16 @@ object PhoneCallOverlay {
     }
 }
 
-/** The side panel and the full screen are for a ringing call: once it's on, the slim bar. */
-private fun callStyle(call: PhoneCall, chosen: AlertStyle): AlertStyle =
-    if (call.phase == CallState.Phase.RINGING || chosen != AlertStyle.PANEL && chosen != AlertStyle.FULL) chosen
-    else AlertStyle.CARD
+/**
+ * The design a call shows in: the pill while reversing, so the camera stays
+ * in view; the side panel and the full screen only while it rings, then the
+ * slim bar.
+ */
+internal fun callStyle(call: PhoneCall, chosen: AlertStyle, reversing: Boolean): AlertStyle = when {
+    reversing -> AlertStyle.PILL
+    call.phase == CallState.Phase.RINGING || chosen != AlertStyle.PANEL && chosen != AlertStyle.FULL -> chosen
+    else -> AlertStyle.CARD
+}
 
 /** The call in [style], following [PhoneCallOverlay.call]; the last call stays while it animates out. */
 @Composable

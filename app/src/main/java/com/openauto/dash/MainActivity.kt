@@ -94,7 +94,9 @@ class MainActivity : ComponentActivity() {
                 RomPopups.start(this)
                 DoorAlertOverlay.start(this)
                 AlertVoice.start(this)
-                // The car's own data from the CAN box, and the radar / climate alerts built on it.
+                // The ignition as the unit announces it, and the car's own data from the CAN box
+                // with the radar / climate alerts built on it.
+                CarPower.start(this)
                 CarBox.start(this)
                 RadarOverlay.start(this)
                 ClimateOverlay.start(this)

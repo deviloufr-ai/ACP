@@ -173,4 +173,24 @@
     <string name="car_spec_driver_side">Driver on the right</string>
     <string name="car_spec_driver_side_detail">Right-hand drive: templates put the main tiles on the right</string>
     <string name="car_battery_trip_range">This trip: %1$s to %2$s V</string>
+    <string name="car_kind_status">Car status</string>
+    <string name="car_kind_status_blurb">Lights, mileage, trip and consumption from the car</string>
+    <string name="car_status_title">CAR STATUS</string>
+    <string name="car_status_waiting">Waiting for the car\'s data</string>
+    <string name="car_status_lights">Lights</string>
+    <string name="car_status_lights_off">Off</string>
+    <string name="car_status_hazard">Hazard lights</string>
+    <string name="car_status_main_beam">Main beam</string>
+    <string name="car_status_dipped">Dipped beam</string>
+    <string name="car_status_sidelights">Sidelights</string>
+    <string name="car_status_front_fog">Front fog</string>
+    <string name="car_status_rear_fog">Rear fog</string>
+    <string name="car_status_odometer">Mileage</string>
+    <string name="car_status_trip">Trip</string>
+    <string name="car_status_consumption">Consumption</string>
+    <string name="car_status_range">Range</string>
+    <string name="car_status_parking_brake">Parking brake</string>
+    <string name="car_status_on">On</string>
+    <string name="car_status_off">Off</string>
+    <string name="car_status_km">km</string>
 </resources>

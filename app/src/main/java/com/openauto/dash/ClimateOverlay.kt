@@ -84,7 +84,8 @@ object ClimateOverlay {
         // A change, not the state the car app reports first after a start.
         scope.launch {
             CarBox.climate.filterNotNull().drop(1).collect { climate ->
-                if (RomPopups.Kind.AC !in RomPopups.replaced.value) return@collect
+                // Not over the reversing camera: a change made meanwhile is just not shown.
+                if (RomPopups.Kind.AC !in RomPopups.replaced.value || CarBox.reversing.value) return@collect
                 shown.value = climate
                 timer?.cancel()
                 timer = launch {
@@ -92,6 +93,9 @@ object ClimateOverlay {
                     shown.value = null
                 }
             }
+        }
+        scope.launch {
+            CarBox.reversing.collect { if (it) shown.value = null }
         }
         scope.launch {
             style.collect { style ->

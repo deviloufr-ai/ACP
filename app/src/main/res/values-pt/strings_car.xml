@@ -175,4 +175,24 @@
     <string name="car_spec_driver_side">Condutor à direita</string>
     <string name="car_spec_driver_side_detail">Volante à direita: os modelos põem os blocos principais à direita</string>
     <string name="car_battery_trip_range">Esta viagem: de %1$s a %2$s V</string>
+    <string name="car_kind_status">Estado do carro</string>
+    <string name="car_kind_status_blurb">Luzes, quilometragem, viagem e consumo do carro</string>
+    <string name="car_status_title">ESTADO DO CARRO</string>
+    <string name="car_status_waiting">À espera dos dados do carro</string>
+    <string name="car_status_lights">Luzes</string>
+    <string name="car_status_lights_off">Desligadas</string>
+    <string name="car_status_hazard">Pisca-pisca de emergência</string>
+    <string name="car_status_main_beam">Máximos</string>
+    <string name="car_status_dipped">Médios</string>
+    <string name="car_status_sidelights">Mínimos</string>
+    <string name="car_status_front_fog">Nevoeiro dianteiro</string>
+    <string name="car_status_rear_fog">Nevoeiro traseiro</string>
+    <string name="car_status_odometer">Quilometragem</string>
+    <string name="car_status_trip">Viagem</string>
+    <string name="car_status_consumption">Consumo</string>
+    <string name="car_status_range">Autonomia</string>
+    <string name="car_status_parking_brake">Travão de estacionamento</string>
+    <string name="car_status_on">Puxado</string>
+    <string name="car_status_off">Solto</string>
+    <string name="car_status_km">km</string>
 </resources>

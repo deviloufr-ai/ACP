@@ -178,4 +178,24 @@
     <string name="car_spec_driver_side">Kierowca po prawej</string>
     <string name="car_spec_driver_side_detail">Kierownica po prawej: szablony umieszczają główne kafelki po prawej</string>
     <string name="car_battery_trip_range">Ta jazda: od %1$s do %2$s V</string>
+    <string name="car_kind_status">Stan auta</string>
+    <string name="car_kind_status_blurb">Światła, przebieg, trasa i spalanie z auta</string>
+    <string name="car_status_title">STAN AUTA</string>
+    <string name="car_status_waiting">Czekam na dane z auta</string>
+    <string name="car_status_lights">Światła</string>
+    <string name="car_status_lights_off">Wyłączone</string>
+    <string name="car_status_hazard">Światła awaryjne</string>
+    <string name="car_status_main_beam">Światła drogowe</string>
+    <string name="car_status_dipped">Światła mijania</string>
+    <string name="car_status_sidelights">Światła pozycyjne</string>
+    <string name="car_status_front_fog">Przeciwmgielne przednie</string>
+    <string name="car_status_rear_fog">Przeciwmgielne tylne</string>
+    <string name="car_status_odometer">Przebieg</string>
+    <string name="car_status_trip">Trasa</string>
+    <string name="car_status_consumption">Spalanie</string>
+    <string name="car_status_range">Zasięg</string>
+    <string name="car_status_parking_brake">Hamulec postojowy</string>
+    <string name="car_status_on">Zaciągnięty</string>
+    <string name="car_status_off">Zwolniony</string>
+    <string name="car_status_km">km</string>
 </resources>

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -453,3 +454,49 @@ private fun serviceText(car: CarProfile): String = listOfNotNull(
     car.serviceKm?.let { String.format(Locale.getDefault(), "%,d km", it) },
     car.serviceMonths?.let { stringResource(R.string.car_months, it) }
 ).joinToString(" / ")
+
+/**
+ * The car's own state from its CAN box ([CarBox]): the lights, the mileage,
+ * the trip and the consumption, as the car's trip computer counts them. A
+ * value the car doesn't send is left out.
+ */
+@Composable
+internal fun CarStatusCard(modifier: Modifier = Modifier) {
+    val body by CarBox.body.collectAsState()
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            TileHeader(stringResource(R.string.car_status_title))
+            val b = body
+            if (b == null) {
+                Hint(stringResource(R.string.car_status_waiting))
+            } else {
+                carStatusRows(b).forEach { (label, value) -> InfoRow(label, value) }
+            }
+        }
+    }
+}
+
+/** The Car status rows: label and value, only those the car reports. */
+@Composable
+internal fun carStatusRows(b: CarBody): List<Pair<String, String>> {
+    val lights = lightsOn(b).map { stringResource(it.labelRes) }
+    val km = stringResource(R.string.car_status_km)
+    return listOfNotNull(
+        stringResource(R.string.car_status_lights) to (lights.joinToString(", ").ifEmpty { stringResource(R.string.car_status_lights_off) }),
+        b.odometer?.let { stringResource(R.string.car_status_odometer) to "${NumberFormat.getIntegerInstance().format(it.toLong())} $km" },
+        b.trip1?.let { stringResource(R.string.car_status_trip) to "${decimal(it.toDouble(), 1)} $km" },
+        b.instantConsumption?.let { stringResource(R.string.car_status_consumption) to "${decimal(it.toDouble(), 1)} L/100 $km" },
+        b.range?.let { stringResource(R.string.car_status_range) to "${it.toInt()} $km" },
+        stringResource(R.string.car_status_parking_brake) to stringResource(if (b.handbrake) R.string.car_status_on else R.string.car_status_off)
+    )
+}
+
+internal val CarLight.labelRes: Int
+    get() = when (this) {
+        CarLight.HAZARD -> R.string.car_status_hazard
+        CarLight.MAIN_BEAM -> R.string.car_status_main_beam
+        CarLight.DIPPED -> R.string.car_status_dipped
+        CarLight.SIDELIGHTS -> R.string.car_status_sidelights
+        CarLight.FRONT_FOG -> R.string.car_status_front_fog
+        CarLight.REAR_FOG -> R.string.car_status_rear_fog
+    }

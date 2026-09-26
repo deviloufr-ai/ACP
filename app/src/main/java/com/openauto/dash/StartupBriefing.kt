@@ -140,6 +140,16 @@ object StartupBriefing {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var started = false
     @Volatile private var lastScanAt = 0L
+    /** When the last briefing began: the ignition and the heartbeat may both see the same start. */
+    private var briefedAt = 0L
+
+    /**
+     * The unit announced the ignition after a real stop ([CarPower]): brief
+     * now rather than at the heartbeat's next beat.
+     */
+    fun carStarted(context: Context) {
+        scope.launch { brief(context.applicationContext) }
+    }
 
     /** Starts the heartbeat (once per process). */
     fun start(context: Context) {
@@ -174,6 +184,10 @@ object StartupBriefing {
         runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT) }.getOrDefault(-1)
 
     private suspend fun brief(context: Context) {
+        // Main thread (the scope's), so the check and the mark can't interleave.
+        val now = System.currentTimeMillis()
+        if (now - briefedAt in 0 until CarStart.OFF_GAP_MS) return
+        briefedAt = now
         val config = AiSettings.load(context)
         if (!config.briefing) return
         val facts = gather(context, config.language, System.currentTimeMillis())
