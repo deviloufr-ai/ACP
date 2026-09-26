@@ -156,6 +156,7 @@ internal fun ObdCard(
     }
     val connected = connection == ObdConnectionState.CONNECTED
     var speedFix by remember { mutableStateOf(false) }
+    val lock = LocalDriveLock.current
     Card(modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             // Short tiles drop the secondary chips; tall tiles stack the RPM bar
@@ -179,7 +180,7 @@ internal fun ObdCard(
                         modifier = Modifier.weight(1f)
                     )
                     // The speed correction, to match the car's speedometer.
-                    IconButton(onClick = { speedFix = true }, modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = { lock.whenParked { speedFix = true } }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.vehicle_speed_fix), tint = DashColors.Muted, modifier = Modifier.size(20.dp))
                     }
                     if (connected) {
@@ -302,6 +303,7 @@ internal fun ObdCard(
  */
 @Composable
 internal fun SpeedCorrectionDialog(speedKmh: Int?, onDismiss: () -> Unit) {
+    ParkedOnly(onDismiss)
     AlertDialog(
         modifier = Modifier.keepClearOfWindows(),
         onDismissRequest = onDismiss,
@@ -490,6 +492,10 @@ internal fun AnalogGauge(
             val topLeft = Offset(center.x - radius, center.y - radius)
             val arcSize = Size(radius * 2f, radius * 2f)
             val line = Stroke(width = stroke, cap = StrokeCap.Round)
+            // The sweep's three weights, built with the geometry rather than on every draw.
+            val halo = Stroke(width = stroke * 3.2f, cap = StrokeCap.Round)
+            val wide = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
+            val core = Stroke(width = stroke * 0.22f, cap = StrokeCap.Round)
             val gradient = gaugeSweepBrush(center, accent, accent2)
             val redline = SolidColor(redlineAccent)
             onDrawBehind {
@@ -530,7 +536,7 @@ internal fun AnalogGauge(
                             topLeft = topLeft,
                             size = arcSize,
                             alpha = 0.14f * glow,
-                            style = Stroke(width = stroke * 3.2f, cap = StrokeCap.Round)
+                            style = halo
                         )
                     }
                     drawArc(
@@ -541,7 +547,7 @@ internal fun AnalogGauge(
                         topLeft = topLeft,
                         size = arcSize,
                         alpha = 0.25f + 0.15f * glow,
-                        style = Stroke(width = stroke * 1.9f, cap = StrokeCap.Round)
+                        style = wide
                     )
                     drawArc(
                         brush = sweepBrush,
@@ -559,7 +565,7 @@ internal fun AnalogGauge(
                         useCenter = false,
                         topLeft = topLeft,
                         size = arcSize,
-                        style = Stroke(width = stroke * 0.22f, cap = StrokeCap.Round)
+                        style = core
                     )
                 }
                 // Tick marks (hero adds minor ticks between the majors, plus labels).
@@ -795,6 +801,7 @@ internal fun RangeCard(
 
     var showFinder by remember { mutableStateOf(false) }
     var showRangeFinder by remember { mutableStateOf(false) }
+    val lock = LocalDriveLock.current
 
     Card(modifier = modifier) {
         Column(
@@ -827,14 +834,14 @@ internal fun RangeCard(
                 // Reading the range is instant (the trip computer shows it); the
                 // fuel byte takes days of driving to learn, so range comes first.
                 Button(
-                    onClick = { showRangeFinder = true },
+                    onClick = { lock.whenParked { showRangeFinder = true } },
                     colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
                 ) {
                     Icon(Icons.Filled.Speed, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.vehicle_find_range_signal))
                 }
-                TextButton(onClick = { showFinder = true }) {
+                TextButton(onClick = { lock.whenParked { showFinder = true } }) {
                     Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
                 }
                 if (!obdConnected && LocalObdPrompt.current) {
@@ -874,14 +881,14 @@ internal fun RangeCard(
                 }
                 // Always reachable, so a learned signal can be recalibrated or forgotten.
                 Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { showFinder = true }) {
+                    TextButton(onClick = { lock.whenParked { showFinder = true } }) {
                         Text(
                             stringResource(if (canFuel == null) R.string.vehicle_learn_fuel else R.string.vehicle_recalibrate_fuel),
                             color = DashColors.Muted,
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
-                    TextButton(onClick = { showRangeFinder = true }) {
+                    TextButton(onClick = { lock.whenParked { showRangeFinder = true } }) {
                         Text(
                             stringResource(if (canRange == null) R.string.vehicle_learn_range else R.string.vehicle_change_range),
                             color = DashColors.Muted,
@@ -909,6 +916,7 @@ internal fun RangeCard(
  */
 @Composable
 internal fun RangeFinderDialog(onDismiss: () -> Unit) {
+    ParkedOnly(onDismiss)
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
@@ -1035,6 +1043,7 @@ internal fun RangeFinderDialog(onDismiss: () -> Unit) {
  */
 @Composable
 internal fun FuelFinderDialog(onDismiss: () -> Unit) {
+    ParkedOnly(onDismiss)
     DisposableEffect(Unit) {
         McuReader.start()
         onDispose { McuReader.stop() }
@@ -1098,13 +1107,13 @@ internal fun FuelFinderDialog(onDismiss: () -> Unit) {
                     Text(stringResource(R.string.vehicle_dash_reads), color = DashColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
                     FilledIconButton(
                         onClick = { currentPct = (currentPct - 5).coerceAtLeast(5) },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(DashSize.Touch),
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
                     ) { Text("−") }
                     Text("$currentPct%", color = DashColors.TextPrimary, fontWeight = FontWeight.Bold)
                     FilledIconButton(
                         onClick = { currentPct = (currentPct + 5).coerceAtMost(100) },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(DashSize.Touch),
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = DashColors.CardHi, contentColor = DashColors.TextPrimary)
                     ) { Text("+") }
                 }

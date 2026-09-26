@@ -285,8 +285,10 @@ internal fun dashBackground(): Modifier {
     val glow = DashColors.Glow
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
-    // Gradients are built once per size and palette, not on every draw of the page.
-    return Modifier.drawWithCache {
+    // Gradients are built once per size and palette, not on every draw of the
+    // page; the modifier itself is kept too, or each recomposition of the
+    // caller would hand the node a new one and throw the cache away.
+    return remember(stops, glass, glow, accent, accent2) { Modifier.drawWithCache {
         val page = Brush.linearGradient(
             colors = stops,
             start = Offset.Zero,
@@ -303,7 +305,7 @@ internal fun dashBackground(): Modifier {
             if (topWash != null) drawCircle(brush = topWash, radius = topR, center = topC)
             if (cornerWash != null) drawCircle(brush = cornerWash, radius = cornerR, center = cornerC)
         }
-    }
+    } }
 }
 
 /**
@@ -331,9 +333,9 @@ internal fun Context.launchSafely(intent: Intent): Boolean =
     runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
 /**
- * True on an Android emulator. The GL-heavy tiles (MapLibre map, Filament 3D
- * car) crash natively on the emulator's software renderer, so they show a
- * placeholder there; everything else stays testable on an AVD.
+ * True on an Android emulator. The GL-heavy MapLibre map tile crashes natively
+ * on the emulator's software renderer, so it shows a placeholder there;
+ * everything else stays testable on an AVD.
  */
 internal val isEmulator: Boolean by lazy {
     val fp = android.os.Build.FINGERPRINT.lowercase()

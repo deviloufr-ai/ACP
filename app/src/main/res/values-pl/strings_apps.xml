@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Wszystkie wartości OBD na żywo</string>
     <string name="apps_kind_range">Paliwo i zasięg</string>
     <string name="apps_kind_range_blurb">Poziom w baku i pozostałe km</string>
-    <string name="apps_kind_car3d">Auto 3D</string>
-    <string name="apps_kind_car3d_blurb">Obracanie modelu auta</string>
     <string name="apps_kind_doors">Drzwi</string>
     <string name="apps_kind_doors_blurb">Stan drzwi i bagażnika (MCU)</string>
     <string name="apps_kind_can_mon">Monitor CAN</string>

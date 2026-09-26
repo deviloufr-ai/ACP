@@ -46,6 +46,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.runtime.State
+import android.location.Location
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
@@ -163,7 +167,8 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
                                 fontWeight = DashColors.HeroWeight,
                                 letterSpacing = (-0.06).em,
                                 maxLines = 1,
-                                style = TextStyle(shadow = Shadow(DashColors.Critical.copy(alpha = 0.7f * DashColors.Glow), blurRadius = numSize * 0.5f))
+                                // A blurred shadow only with effects at full (softTextShadow): it is costly on the head unit.
+                                style = TextStyle(shadow = softTextShadow(DashColors.Critical.copy(alpha = 0.7f * DashColors.Glow), numSize * 0.5f))
                             )
                         } else {
                             HeroNumber(text = speed?.toString() ?: "--", size = numSize, dimmed = speed == null)
@@ -190,8 +195,10 @@ internal fun SpeedHudCard(obdData: ObdData, obdConnected: Boolean, modifier: Mod
 @Composable
 internal fun CompassCard(modifier: Modifier = Modifier) {
     UseLocationFeed()
-    val location by LocationFeed.location.collectAsState()
-    val heading by LocationFeed.headingDeg.collectAsState()
+    // Both stay States, read by the dial's draw, the header and the footer in
+    // their own scopes: a GPS fix a second must not recompose the whole card.
+    val locationState = LocationFeed.location.collectAsState()
+    val headingState = LocationFeed.headingDeg.collectAsState()
     val textMeasurer = rememberTextMeasurer()
     val accent = DashColors.Accent
     val accent2 = DashColors.Accent2
@@ -208,6 +215,7 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_compass_title)) {
+                val heading = headingState.value
                 Text(
                     heading?.let { "${it.roundToInt()}° ${stringResource(cardinalRes(it))}" }
                         ?: stringResource(R.string.info_compass_no_heading),
@@ -219,62 +227,72 @@ internal fun CompassCard(modifier: Modifier = Modifier) {
             // Dial ink follows the theme: white-on-dark was invisible on light palettes.
             val ink = DashColors.TextPrimary
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                // The dial's geometry (72 ticks as three paths, the four measured
+                // letters, the marker's brushes) is built once per size; each
+                // fix only turns it, reading the heading in the draw.
+                Spacer(modifier = Modifier.fillMaxSize().drawWithCache {
                     val r = size.minDimension / 2f - 6.dp.toPx()
                     val c = Offset(size.width / 2f, size.height / 2f)
-                    // Dial rotates so the current heading sits at the top.
-                    rotate(degrees = -(heading ?: 0f), pivot = c) {
-                        drawCircle(color = ink.copy(alpha = 0.10f), radius = r, center = c)
-                        for (i in 0 until 72) {
-                            val major = i % 18 == 0
-                            val mid = i % 6 == 0
-                            val a = Math.toRadians((i * 5 - 90).toDouble())
-                            val inner = r - if (major) 14.dp.toPx() else if (mid) 9.dp.toPx() else 5.dp.toPx()
-                            drawLine(
-                                color = if (major) accent else ink.copy(alpha = if (mid) 0.55f else 0.25f),
-                                start = Offset(c.x + cos(a).toFloat() * inner, c.y + sin(a).toFloat() * inner),
-                                end = Offset(c.x + cos(a).toFloat() * r, c.y + sin(a).toFloat() * r),
-                                strokeWidth = if (major) 3f else 1.5f,
-                                cap = StrokeCap.Round
-                            )
-                        }
-                        dialLabels.forEachIndexed { i, (l, deg) ->
-                            val a = Math.toRadians((deg - 90).toDouble())
-                            val lr = r - 26.dp.toPx()
-                            val layout = textMeasurer.measure(l, if (i == 0) northStyle else labelStyle)
-                            drawText(
-                                layout,
-                                topLeft = Offset(
-                                    c.x + cos(a).toFloat() * lr - layout.size.width / 2f,
-                                    c.y + sin(a).toFloat() * lr - layout.size.height / 2f
-                                )
-                            )
-                        }
+                    val majorTicks = Path()
+                    val midTicks = Path()
+                    val minorTicks = Path()
+                    for (i in 0 until 72) {
+                        val major = i % 18 == 0
+                        val mid = i % 6 == 0
+                        val a = Math.toRadians((i * 5 - 90).toDouble())
+                        val inner = r - if (major) 14.dp.toPx() else if (mid) 9.dp.toPx() else 5.dp.toPx()
+                        val path = if (major) majorTicks else if (mid) midTicks else minorTicks
+                        path.moveTo(c.x + cos(a).toFloat() * inner, c.y + sin(a).toFloat() * inner)
+                        path.lineTo(c.x + cos(a).toFloat() * r, c.y + sin(a).toFloat() * r)
+                    }
+                    val majorStroke = Stroke(width = 3f, cap = StrokeCap.Round)
+                    val minorStroke = Stroke(width = 1.5f, cap = StrokeCap.Round)
+                    val lr = r - 26.dp.toPx()
+                    val letters = dialLabels.mapIndexed { i, (l, deg) ->
+                        val a = Math.toRadians((deg - 90).toDouble())
+                        val layout = textMeasurer.measure(l, if (i == 0) northStyle else labelStyle)
+                        layout to Offset(
+                            c.x + cos(a).toFloat() * lr - layout.size.width / 2f,
+                            c.y + sin(a).toFloat() * lr - layout.size.height / 2f
+                        )
                     }
                     // Fixed lubber line + glowing heading marker at the top.
                     val tip = Offset(c.x, c.y - r)
-                    if (glow > 0f) {
-                        drawCircle(
-                            brush = Brush.radialGradient(listOf(accent.copy(alpha = 0.6f * glow), Color.Transparent), center = tip, radius = 16.dp.toPx()),
-                            radius = 16.dp.toPx(), center = tip
-                        )
+                    val tipRadius = 16.dp.toPx()
+                    val tipGlow = if (glow > 0f) Brush.radialGradient(listOf(accent.copy(alpha = 0.6f * glow), Color.Transparent), center = tip, radius = tipRadius) else null
+                    val lubber = Brush.verticalGradient(listOf(accent, accent2), startY = tip.y, endY = c.y)
+                    val dotRadius = 4.dp.toPx()
+                    onDrawBehind {
+                        // Dial rotates so the current heading sits at the top.
+                        rotate(degrees = -(headingState.value ?: 0f), pivot = c) {
+                            drawCircle(color = ink.copy(alpha = 0.10f), radius = r, center = c)
+                            drawPath(majorTicks, color = accent, style = majorStroke)
+                            drawPath(midTicks, color = ink.copy(alpha = 0.55f), style = minorStroke)
+                            drawPath(minorTicks, color = ink.copy(alpha = 0.25f), style = minorStroke)
+                            letters.forEach { (layout, at) -> drawText(layout, topLeft = at) }
+                        }
+                        if (tipGlow != null) drawCircle(brush = tipGlow, radius = tipRadius, center = tip)
+                        drawLine(brush = lubber, start = tip, end = Offset(c.x, c.y - r * 0.55f), strokeWidth = 4f, cap = StrokeCap.Round)
+                        drawCircle(color = Color.White, radius = dotRadius, center = tip)
                     }
-                    drawLine(
-                        brush = Brush.verticalGradient(listOf(accent, accent2), startY = tip.y, endY = c.y),
-                        start = tip, end = Offset(c.x, c.y - r * 0.55f), strokeWidth = 4f, cap = StrokeCap.Round
-                    )
-                    drawCircle(color = Color.White, radius = 4.dp.toPx(), center = tip)
-                }
+                })
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatBlock(stringResource(R.string.info_compass_altitude), location?.takeIf { it.hasAltitude() }?.let { "${it.altitude.roundToInt()} m" } ?: "--")
-                StatBlock(stringResource(R.string.info_compass_gps_speed), location?.let { "${(it.speed * 3.6f).roundToInt()} km/h" } ?: "--")
-                StatBlock(stringResource(R.string.info_compass_accuracy), location?.let { "±${it.accuracy.roundToInt()} m" } ?: "--")
-            }
+            CompassFooter(locationState)
         }
+    }
+}
+
+/** Altitude, GPS speed and accuracy under the dial; its own scope, recomposed per fix instead of the card. */
+@Composable
+private fun CompassFooter(locationState: State<Location?>) {
+    val location = locationState.value
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatBlock(stringResource(R.string.info_compass_altitude), location?.takeIf { it.hasAltitude() }?.let { "${it.altitude.roundToInt()} m" } ?: "--")
+        StatBlock(stringResource(R.string.info_compass_gps_speed), location?.let { "${(it.speed * 3.6f).roundToInt()} km/h" } ?: "--")
+        StatBlock(stringResource(R.string.info_compass_accuracy), location?.let { "±${it.accuracy.roundToInt()} m" } ?: "--")
     }
 }
 
@@ -309,7 +327,7 @@ internal fun TripCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_trip_title)) {
-                TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
+                TextButton(onClick = { LocationFeed.resetTrip() }, modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text(stringResource(R.string.info_reset), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
@@ -367,6 +385,10 @@ internal fun formatClock(epochMs: Long): String =
 
 // --- G-force --------------------------------------------------------------------
 
+/** The g-meter's rings, in g; built once, not on each of the ~15 draws a second. */
+private val G_RINGS = floatArrayOf(0.4f, 0.8f, 1.2f)
+private val RingStroke = Stroke(width = 1.5f)
+
 /** Friction-circle style meter: a dot for the current lateral / longitudinal g. */
 @Composable
 internal fun GForceCard(modifier: Modifier = Modifier) {
@@ -386,7 +408,7 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_gforce_title)) {
-                TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
+                TextButton(onClick = { GForceFeed.resetPeaks() }, modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                     Text(stringResource(R.string.info_gforce_reset_peaks), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium)
                 }
             }
@@ -397,10 +419,10 @@ internal fun GForceCard(modifier: Modifier = Modifier) {
                     val r = size.minDimension / 2f - 4.dp.toPx()
                     val c = Offset(size.width / 2f, size.height / 2f)
                     val scale = r / 1.2f   // 1.2 g at the rim
-                    listOf(0.4f, 0.8f, 1.2f).forEach { ring ->
+                    for (ring in G_RINGS) {
                         drawCircle(
                             color = if (ring >= 1.2f) warning.copy(alpha = 0.5f) else ink.copy(alpha = 0.2f),
-                            radius = ring * scale, center = c, style = Stroke(width = 1.5f)
+                            radius = ring * scale, center = c, style = RingStroke
                         )
                     }
                     drawLine(ink.copy(alpha = 0.18f), Offset(c.x - r, c.y), Offset(c.x + r, c.y), 1f)
@@ -457,7 +479,7 @@ internal fun ParkingCard(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_parking_title)) {
                 if (spot != null) {
-                    TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { ParkingStore.clear(context) }, modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                         Text(stringResource(R.string.info_clear), color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }

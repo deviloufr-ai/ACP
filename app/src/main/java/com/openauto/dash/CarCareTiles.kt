@@ -388,9 +388,10 @@ internal fun MyCarCard(modifier: Modifier = Modifier) {
     val car by CarProfileStore.profile.collectAsState()
     var editing by remember { mutableStateOf(false) }
     val unknown = stringResource(R.string.car_unknown)
+    val lock = LocalDriveLock.current
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxSize().clickable { editing = true }.padding(DashSpace.Lg),
+            modifier = Modifier.fillMaxSize().clickable { lock.whenParked { editing = true } }.padding(DashSpace.Lg),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             TileHeader(stringResource(R.string.car_my_car_title)) {

@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -269,7 +270,7 @@ internal fun WeatherCard(modifier: Modifier = Modifier) {
                     val refreshLabel = stringResource(R.string.info_weather_refresh)
                     IconButton(
                         onClick = { scope.launch { busy = true; WeatherRepo.refresh(l.latitude, l.longitude, force = true); busy = false } },
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(DashSize.Touch)
                     ) {
                         Icon(Icons.Filled.Refresh, contentDescription = refreshLabel, tint = if (busy) DashColors.Accent else DashColors.Muted, modifier = Modifier.size(20.dp))
                     }
@@ -377,7 +378,7 @@ internal fun CalendarCard(modifier: Modifier = Modifier) {
                             )
                         }
                     },
-                    modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                    modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                 ) { Text(stringResource(R.string.info_open), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
@@ -486,7 +487,7 @@ internal fun QuickDialCard(modifier: Modifier = Modifier) {
             TileHeader(stringResource(R.string.info_quickdial_title)) {
                 TextButton(
                     onClick = { context.launchSafely(Intent(Intent.ACTION_DIAL)) },
-                    modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                    modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                 ) { Text(stringResource(R.string.info_quickdial_dialer), color = DashColors.Accent, style = MaterialTheme.typography.labelMedium) }
             }
             when {
@@ -562,7 +563,7 @@ internal fun NotificationsCard(hasAccess: Boolean, modifier: Modifier = Modifier
         Column(modifier = Modifier.fillMaxSize().padding(DashSpace.Lg)) {
             TileHeader(stringResource(R.string.info_notif_title)) {
                 if (items.isNotEmpty()) {
-                    TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(36.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { NotificationFeed.dismissAll() }, modifier = Modifier.height(DashSize.Touch), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
                         Text(stringResource(R.string.info_clear), color = DashColors.Muted, style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -667,7 +668,7 @@ internal fun AudioCard(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = if (byKeys) Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally) else Arrangement.Start
             ) {
-                val buttonSize = if (byKeys) 56.dp else 44.dp
+                val buttonSize = if (byKeys) DashSize.TouchPrimary else DashSize.Touch
                 IconButton(onClick = { act { MediaVolume.toggleMute(context) } }, modifier = Modifier.size(buttonSize)) {
                     Icon(if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, contentDescription = stringResource(if (muted) R.string.info_audio_unmute else R.string.info_audio_mute),
                         tint = if (muted) DashColors.Warning else DashColors.TextPrimary, modifier = Modifier.size(26.dp))
@@ -756,6 +757,8 @@ private fun SmallAction(label: String, icon: ImageVector? = null, onClick: () ->
             .clip(shape)
             .itemFill(if (DashColors.Glass) DashColors.haze(0.08f) else DashColors.CardHi, shape)
             .clickable(onClick = onClick)
+            // A pill, but never under the driving minimum height.
+            .heightIn(min = DashSize.Touch)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

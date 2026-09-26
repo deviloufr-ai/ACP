@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Todos los valores OBD en directo</string>
     <string name="apps_kind_range">Combustible y autonomía</string>
     <string name="apps_kind_range_blurb">Nivel del depósito y km restantes</string>
-    <string name="apps_kind_car3d">Coche 3D</string>
-    <string name="apps_kind_car3d_blurb">Gira el modelo del coche</string>
     <string name="apps_kind_doors">Puertas</string>
     <string name="apps_kind_doors_blurb">Estado de puertas y maletero (MCU)</string>
     <string name="apps_kind_can_mon">Monitor CAN</string>

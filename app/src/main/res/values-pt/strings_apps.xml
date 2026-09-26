@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Todos os valores OBD em tempo real</string>
     <string name="apps_kind_range">Combustível e autonomia</string>
     <string name="apps_kind_range_blurb">Nível do depósito e km restantes</string>
-    <string name="apps_kind_car3d">Carro 3D</string>
-    <string name="apps_kind_car3d_blurb">Rodar o modelo do carro</string>
     <string name="apps_kind_doors">Portas</string>
     <string name="apps_kind_doors_blurb">Estado das portas e da mala (MCU)</string>
     <string name="apps_kind_can_mon">Monitor CAN</string>

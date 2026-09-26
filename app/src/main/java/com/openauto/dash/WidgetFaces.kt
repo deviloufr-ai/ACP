@@ -333,7 +333,9 @@ internal fun controlShape(look: FaceLook) = if (look.squareControls) RoundedCorn
 @Composable
 internal fun FaceActions(f: WidgetFace, look: FaceLook, m: FaceMetrics, max: Int = 3, small: Boolean = false) {
     if (f.actions.isEmpty()) return
-    val s = if (small) m.dp(12f).coerceIn(32.dp, 42.dp) else m.dp(15f).coerceIn(36.dp, 52.dp)
+    // Never under the driving minimum, whatever the face's scale: these are
+    // tapped at speed (play, next, connect).
+    val s = if (small) DashSize.Touch else m.dp(15f).coerceIn(DashSize.Touch, DashSize.TouchPrimary)
     val shape = controlShape(look)
     Row(horizontalArrangement = Arrangement.spacedBy(m.dp(2.6f).coerceAtLeast(4.dp)), verticalAlignment = Alignment.CenterVertically) {
         f.actions.take(max).forEach { a ->

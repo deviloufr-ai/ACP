@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
@@ -62,11 +63,18 @@ class MainActivity : ComponentActivity() {
         FeedbackStore.load(this)
         // Rebuilt after a language change: the fault codes' advice follows it.
         AiMechanic.followLanguage(this)
-        // Dials the paired phone whenever its hotspot is around, and shows its calls.
-        PhoneLink.start(this)
-        PhoneCallOverlay.start(this)
-        // A new version runs JIT-only until it is compiled ahead of time.
-        CompileAfterUpdate.schedule(this)
+        // Nothing the first frame needs waits behind these: they read their
+        // own preferences and the package list, so they start once the
+        // dashboard has drawn (posted from the first frame's pre-draw pass).
+        window.decorView.doOnPreDraw {
+            window.decorView.post {
+                // Dials the paired phone whenever its hotspot is around, and shows its calls.
+                PhoneLink.start(this)
+                PhoneCallOverlay.start(this)
+                // A new version runs JIT-only until it is compiled ahead of time.
+                CompileAfterUpdate.schedule(this)
+            }
+        }
 
         setContent {
             // An app window (docked or parked aside) forces the status bar on.

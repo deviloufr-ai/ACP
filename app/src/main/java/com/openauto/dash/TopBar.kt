@@ -94,9 +94,13 @@ import androidx.compose.ui.unit.sp
  * Everything a top bar shows and can do; each skin's bar arranges the same model.
  * The OBD readings are a [State], read only where they are drawn ([obdData]),
  * so a new sample does not recompose the whole bar.
+ *
+ * A data class: the dashboard builds a fresh model on each of its own
+ * recompositions, and only one that differs in a value (the callbacks are
+ * memoised) makes the bar recompose.
  */
 @Stable
-internal class TopBarModel(
+internal data class TopBarModel(
     val clock: String,
     val versionName: String,
     val obdConnection: ObdConnectionState,
@@ -308,8 +312,10 @@ private fun SegmentBar(label: String, fraction: Float, hot: Boolean, lowIsHot: B
 @Composable
 internal fun LayoutPicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    // Switching layout reloads every page: parked only, like arranging.
+    val lock = LocalDriveLock.current
     Box {
-        anchor { open = true }
+        anchor { lock.whenParked { open = true } }
         DashMenu(open, onDismiss = { open = false }) {
             DashLayout.entries.forEach { l ->
                 DashMenuItem(
@@ -595,7 +601,7 @@ private fun AlertChip(alert: VehicleAlert, onAcknowledge: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .padding(end = 6.dp)
-            .heightIn(min = 36.dp)
+            .heightIn(min = DashSize.Touch)
             .clip(shape)
             .background(colour.copy(alpha = if (alert.level == AlertLevel.CRITICAL) 0.22f else 0.14f))
             .border(1.dp, colour.copy(alpha = if (alert.level == AlertLevel.CRITICAL) 0.7f else 0.45f), shape)

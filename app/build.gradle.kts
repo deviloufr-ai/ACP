@@ -61,7 +61,7 @@ android {
             // head unit, so size matters. Keep rules live in proguard-rules.pro.
             isMinifyEnabled = true
             isShrinkResources = true
-            // Head units are ARM. MapLibre and Filament otherwise also ship their
+            // Head units are ARM. MapLibre otherwise also ships its
             // x86 / x86_64 native code (emulators only), tens of MB in every OTA
             // download and in the /system copy. Debug builds keep every ABI.
             ndk {
@@ -144,6 +144,11 @@ dependencies {
 
     // Activity Compose
     implementation("androidx.activity:activity-compose:1.9.2")
+    // Installs the baseline profile (src/main/baseline-prof.txt) on the head
+    // unit's Android 10, which does not read profiles from the APK by itself:
+    // the launcher's startup and swipe paths are compiled ahead of time
+    // instead of running interpreted until the runtime notices them.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
@@ -163,11 +168,6 @@ dependencies {
     // HTTP + JSON for the free routing/geocoding requests.
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
-    // Filament — real-time 3D renderer for the car model (glTF/GLB).
-    implementation("com.google.android.filament:filament-android:1.71.5")
-    implementation("com.google.android.filament:gltfio-android:1.71.5")
-    implementation("com.google.android.filament:filament-utils-android:1.71.5")
-
     // Phone link: the protocol shared with the companion app, and the pairing QR code.
     implementation(project(":link"))
     implementation("com.google.zxing:core:3.5.3")

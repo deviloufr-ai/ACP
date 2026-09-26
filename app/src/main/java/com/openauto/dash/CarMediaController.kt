@@ -167,6 +167,7 @@ class CarMediaController(private val context: Context) {
     private var rememberedPackage: String? = null
     private var artTrack: List<String?>? = null
     private var art: Bitmap? = null
+    private var artSignature = 0L
 
     /**
      * Each read of the session's metadata brings its cover as a new bitmap;
@@ -174,14 +175,36 @@ class CarMediaController(private val context: Context) {
      * a callback that changed nothing leaves the state equal. A cover that
      * shows up late or changes (a placeholder replaced by the real one, a
      * radio show under a fixed title) is taken.
+     *
+     * Same-or-not is decided from a [signature] of sampled pixels, not a
+     * pixel-by-pixel compare: players report a state change every few
+     * seconds, and comparing a full-size cover each time ran on the main
+     * thread. A cover far bigger than any tile is shrunk once.
      */
     private fun artworkFor(track: List<String?>, fresh: Bitmap?): Bitmap? {
         val kept = art
-        if (fresh != null && kept != null && track == artTrack && !kept.isRecycled && kept.sameAs(fresh)) return kept
+        val signature = fresh?.signature() ?: 0L
+        if (fresh != null && kept != null && track == artTrack && signature == artSignature && !kept.isRecycled) return kept
+        val shown = fresh?.let { if (it.width > ART_MAX_PX || it.height > ART_MAX_PX) it.shrunkTo(ART_MAX_PX) else it }
         artTrack = track
-        art = fresh
-        return fresh
+        artSignature = signature
+        art = shown
+        return shown
     }
+
+    /** Size and 64 sampled pixels; enough to tell one cover from another, cheap enough for every callback. */
+    private fun Bitmap.signature(): Long = runCatching {
+        var h = width * 31L + height
+        for (j in 0 until 8) for (i in 0 until 8) {
+            h = h * 31 + getPixel(width * (2 * i + 1) / 16, height * (2 * j + 1) / 16)
+        }
+        h
+    }.getOrElse { generationId.toLong() } // a hardware bitmap can't be read: every one counts as new
+
+    private fun Bitmap.shrunkTo(maxPx: Int): Bitmap = runCatching {
+        val scale = maxPx.toFloat() / maxOf(width, height)
+        Bitmap.createScaledBitmap(this, (width * scale).toInt().coerceAtLeast(1), (height * scale).toInt().coerceAtLeast(1), true)
+    }.getOrDefault(this)
 
     /** First available artwork bitmap from the session metadata, if any. */
     private fun MediaMetadata.artwork(): Bitmap? =
@@ -253,6 +276,8 @@ class CarMediaController(private val context: Context) {
     companion object {
         /** How long a player opened by [playPause] has to publish its session. */
         private const val PENDING_PLAY_MS = 15_000L
+        /** Covers larger than this on a side are shrunk: no tile shows more, and a 1024² cover is 4 MB to upload. */
+        private const val ART_MAX_PX = 512
         /** [pendingPlayPackage] when the system's default player was opened: the first session plays. */
         private const val ANY_PLAYER = "*"
         private const val PREFS = "media_prefs"

@@ -106,6 +106,9 @@ private val SignGreen = Color(0xFF0B7A3E)
 private val DialFace = Color(0xFF0D0F12)
 private val Sand = Color(0xFFF4B942)
 private val Condensed = CondensedFamily
+/** The radar face's range rings, in view-box units, and their hairline. */
+private val RADAR_RINGS = floatArrayOf(15f, 30f, 45f)
+private val HairlineStroke = Stroke(1f)
 
 private fun levelColor(level: Int) = when {
     level >= 2 -> LampRed
@@ -747,23 +750,25 @@ private fun RoadAhead(f: WidgetFace, look: FaceLook, m: FaceMetrics) = Stack(f, 
 
 @Composable
 private fun Radar(f: WidgetFace, look: FaceLook, m: FaceMetrics) {
-    // The beam turns only while there's a spot to point at, and at 30 frames a
-    // second: plenty for a sweep, half the redraws of an animation clock.
-    val clock = if (f.angle != null) rememberWallClock(33L) else null
+    // The beam turns only while there's a spot to point at, as ambient motion:
+    // at the effects setting's rate (20 fps at full), still with effects off.
+    val turn = if (f.angle != null) rememberLoop(4000) else null
+    val beamCenter = Offset(50f, 50f)
+    // The beam's gradient is fixed in the view box; turned, not rebuilt, each frame.
+    val beam = remember(look.accent) {
+        Brush.sweepGradient(0.625f to Color.Transparent, 0.75f to look.accent.copy(alpha = 0.45f), center = beamCenter)
+    }
     Split(f, look, m, 1f) {
         Vb(100f, 100f) {
-            val c = Offset(50f, 50f)
+            val c = beamCenter
             drawCircle(look.fill, 46f, c)
-            listOf(15f, 30f, 45f).forEach { drawCircle(look.accent.copy(alpha = 0.3f), it, c, style = Stroke(1f)) }
+            for (ring in RADAR_RINGS) drawCircle(look.accent.copy(alpha = 0.3f), ring, c, style = HairlineStroke)
             drawLine(look.accent.copy(alpha = 0.2f), Offset(4f, 50f), Offset(96f, 50f))
             drawLine(look.accent.copy(alpha = 0.2f), Offset(50f, 4f), Offset(50f, 96f))
             // The beam: a 45° wedge fading in towards its leading edge, turned as one piece.
-            val sweep = clock?.let { (it.longValue % 4000L) * 360f / 4000f } ?: 0f
+            val sweep = turn?.let { it.value * 360f } ?: 0f
             rotate(sweep, c) {
-                drawArc(
-                    Brush.sweepGradient(0.625f to Color.Transparent, 0.75f to look.accent.copy(alpha = 0.45f), center = c),
-                    225f, 45f, true, Offset(4f, 4f), Size(92f, 92f)
-                )
+                drawArc(beam, 225f, 45f, true, Offset(4f, 4f), Size(92f, 92f))
             }
             val r = 8f + 36f * (1f - frac(f.fraction))
             val p = polarPoint(c, r, f.angle ?: 0f)

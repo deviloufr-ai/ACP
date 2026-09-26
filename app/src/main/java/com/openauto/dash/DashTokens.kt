@@ -29,3 +29,13 @@ object DashSpace {
     val Lg = 16.dp
     val Xl = 24.dp
 }
+
+/**
+ * Touch targets. Everything a finger may be asked to hit while the car moves
+ * is at least [Touch] (the Android minimum); the actions used most at speed
+ * (media transport, calls, connect) get [TouchPrimary].
+ */
+object DashSize {
+    val Touch = 48.dp
+    val TouchPrimary = 56.dp
+}

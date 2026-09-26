@@ -81,6 +81,8 @@ import androidx.compose.foundation.background
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.activity.compose.ReportDrawn
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
@@ -107,6 +109,9 @@ private val DOCK_RESIZE_CLEARANCE = 32.dp
 @Composable
 fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val context = LocalContext.current
+    // Tells the system the launcher is up once the dashboard has composed: the
+    // start-up time it records (and the profile it compiles for) ends here.
+    ReportDrawn()
     var themeMode by remember { mutableStateOf(DashThemeStore.load(context)) }
     var appearance by remember { mutableStateOf(DashThemeStore.loadAppearance(context)) }
     var effects by remember { mutableStateOf(DashThemeStore.loadEffects(context)) }
@@ -117,7 +122,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onEffects = { effects = it; DashThemeStore.saveEffects(context, it) }
     )
     var layout by remember { mutableStateOf(DashLayoutStore.load(context)) }
-    var dockFraction by remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
+    // Kept as a State and read only by the two panes it sizes: dragging the
+    // divider writes it every frame, and a read here would recompose everything.
+    val dockFraction = remember { mutableFloatStateOf(DashLayoutStore.loadDockFraction(context)) }
     // The half-width dashboard beside a Maps dock keeps its own arrangement.
     fun variantOf(l: DashLayout) = if (l == DashLayout.GRID) "" else "_half"
     // Read when called, never captured: gesture handlers outlive a composition,
@@ -273,6 +280,8 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     fun whenParked(action: () -> Unit) {
         if (moving) lockNoticeAt = System.currentTimeMillis() else action()
     }
+    // The same lock for the tiles' own dialogs (LocalDriveLock, DriveLock.kt).
+    val driveLock = remember(moving) { DriveLockState(moving) { lockNoticeAt = System.currentTimeMillis() } }
     LaunchedEffect(moving) {
         if (moving) {
             editing = false
@@ -285,6 +294,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             showWidgetMenu = false
             showPairPrimaryPicker = false
             showPairSecondaryPicker = false
+            showSplitPicker = false
+            showSplitEnable = false
+            showDevicePicker = false
             launchBarEditor = null
             designPicker = null
         }
@@ -466,7 +478,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val screenConfig = LocalConfiguration.current
     /** The car and screen a template is placed for, in the full-width ([half] false) or docked arrangement. */
     fun templateScreen(half: Boolean): TemplateScreen = TemplateScreen.of(
-        pageWidthDp = screenConfig.screenWidthDp * if (half) 1f - dockFraction else 1f,
+        pageWidthDp = screenConfig.screenWidthDp * if (half) 1f - dockFraction.floatValue else 1f,
         // Roughly what the bars leave the grid.
         pageHeightDp = screenConfig.screenHeightDp * 0.8f,
         obdPaired = ObdBluetoothManager.savedDeviceAddress() != null || obdConnection == ObdConnectionState.CONNECTED,
@@ -570,15 +582,20 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
+    // Installing restarts the launcher, and the permission screen is another
+    // app's: neither while the car moves.
     val onUpdate: (UpdateInfo) -> Unit = { info ->
-        if (updateManager.canInstallPackages()) {
-            scope.launch { updateManager.downloadAndInstall(info) }
-        } else {
-            updateManager.openInstallPermissionSettings()
+        whenParked {
+            if (updateManager.canInstallPackages()) {
+                scope.launch { updateManager.downloadAndInstall(info) }
+            } else {
+                updateManager.openInstallPermissionSettings()
+            }
         }
     }
 
-    fun openDevicePicker() {
+    /** The adapter picker is a list to read: parked only. Reconnecting a saved one needs no picker. */
+    fun openDevicePicker() = whenParked {
         pairedDevices = ObdBluetoothManager.bondedDevices()
         showDevicePicker = true
     }
@@ -652,8 +669,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onApps = { showAllApps = true },
         onConnectObd = onConnectObd,
         onSplit = {
-            if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
-            else showSplitEnable = true
+            whenParked {
+                if (SplitLauncher.isSystemSplitAvailable()) showSplitPicker = true
+                else showSplitEnable = true
+            }
         },
         onToggleEdit = { if (editing) editing = false else whenParked { editing = true } },
         onTemplates = { whenParked { showTemplates = true } },
@@ -673,6 +692,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     )
 
     val barOverlapPx = if (barForced) (statusBarPx - contentTopPx).coerceAtLeast(0) else 0
+    CompositionLocalProvider(LocalDriveLock provides driveLock) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -718,7 +738,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 // the Maps window's edge or dragging it does nothing.
                 Box(
                     modifier = Modifier
-                        .weight(dockFraction)
+                        .weight(dockFraction.floatValue)
                         .fillMaxHeight()
                         .padding(
                             start = if (side == Alignment.Start) 8.dp else DOCK_RESIZE_CLEARANCE,
@@ -738,10 +758,10 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onDrag = { dx ->
                         val delta = dx / rowWidthPx.coerceAtLeast(1)
                         val signed = if (dockSide == Alignment.Start) delta else -delta
-                        dockFraction = (dockFraction + signed)
+                        dockFraction.floatValue = (dockFraction.floatValue + signed)
                             .coerceIn(DashLayoutStore.MIN_DOCK_FRACTION, DashLayoutStore.MAX_DOCK_FRACTION)
                     },
-                    onDragEnd = { DashLayoutStore.saveDockFraction(context, dockFraction) }
+                    onDragEnd = { DashLayoutStore.saveDockFraction(context, dockFraction.floatValue) }
                 )
             }
             Row(modifier = Modifier.fillMaxSize().onSizeChanged { rowWidthPx = it.width }) {
@@ -779,19 +799,27 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     onZoom = { index, zoom -> zoomTile(page, index, zoom) }
                 )
             }
+            // The pages' pane reads the dock fraction and the pagers' scroll
+            // state itself (WeightedPane), so a divider drag or a swipe starting
+            // and ending re-measures or recomposes this pane, not the dashboard.
+            WeightedPane(weight = { if (dockSide == null) 1f else 1f - dockFraction.floatValue }) {
             // Sideways swipes only from the middle row: the pages above and
             // below the centre one have nothing beside them.
             val onHomeRow = columnState.currentPage == DashboardStore.COLUMN_HOME && !columnState.isScrollInProgress
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = !blockPagerSwipe && onHomeRow,
-                modifier = Modifier.weight(if (dockSide == null) 1f else 1f - dockFraction).fillMaxHeight()
+                // The neighbouring pages stay composed: a map tile survives a
+                // swipe away and back instead of rebuilding its GL surface.
+                beyondViewportPageCount = 1,
+                modifier = Modifier.fillMaxSize()
             ) { index ->
                 val page = DashboardStore.ROW[index]
                 if (page == DashboardStore.CENTER) {
                     VerticalPager(
                         state = columnState,
                         userScrollEnabled = !blockPagerSwipe && !pagerState.isScrollInProgress,
+                        beyondViewportPageCount = 1,
                         // Off the home row a sideways swipe heads back to it: the
                         // row is the only way sideways, and a dead swipe feels broken.
                         modifier = Modifier.fillMaxSize().pointerInput(onHomeRow, blockPagerSwipe) {
@@ -811,6 +839,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     dashboardPage(page)
                 }
             }
+            }
             if (dockSide == Alignment.End) { divider(); mapsDock(dockSide) }
             }
 
@@ -829,21 +858,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
             }
-            // Fades in fast and out slowly; drawn only while it shows at all.
-            val indicatorAlpha by animateFloatAsState(
-                targetValue = if (pageIndicatorShown && !editing) 1f else 0f,
-                animationSpec = tween(if (pageIndicatorShown) 150 else 400),
-                label = "pageIndicator"
+            FadingPageIndicator(
+                shown = pageIndicatorShown && !editing,
+                page = pageIndicatorFor,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
             )
-            if (indicatorAlpha > 0f) {
-                PageIndicator(
-                    pageIndicatorFor,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp)
-                        .graphicsLayer { alpha = indicatorAlpha }
-                )
-            }
 
             // needs the accessibility service; if it isn't on, tapping prompts to
             // enable it instead of silently doing nothing.
@@ -967,6 +986,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         TopBar(settingsModel)
 
         }
+    }
     }
 
     designPicker?.let { (page, index) ->
@@ -1300,4 +1320,32 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
 
     // The phone's call, when the overlay window can't show it over other apps.
     PhoneCallHost()
+}
+
+/**
+ * The page cross after a page change, fading in fast and out slowly. The fade
+ * is read here, in a scope of its own: read where the dashboard is laid out,
+ * every frame of it recomposed the whole dashboard, its bar and its background
+ * for half a second after each swipe.
+ */
+@Composable
+private fun FadingPageIndicator(shown: Boolean, page: Int, modifier: Modifier = Modifier) {
+    val fade by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(if (shown) 150 else 400),
+        label = "pageIndicator"
+    )
+    if (fade > 0f) {
+        PageIndicator(page, modifier = modifier.graphicsLayer { alpha = fade })
+    }
+}
+
+/**
+ * A [Row] pane whose share of the width is read here, not by the caller, so
+ * dragging the dock divider re-measures this pane without recomposing the
+ * dashboard; [content] is only recomposed when it changes itself.
+ */
+@Composable
+private fun RowScope.WeightedPane(weight: () -> Float, content: @Composable () -> Unit) {
+    Box(modifier = Modifier.weight(weight()).fillMaxHeight()) { content() }
 }

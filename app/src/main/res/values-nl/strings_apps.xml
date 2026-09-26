@@ -24,8 +24,6 @@
     <string name="apps_kind_obd_all_blurb">Alle live OBD-waarden</string>
     <string name="apps_kind_range">Brandstof &amp; actieradius</string>
     <string name="apps_kind_range_blurb">Tankniveau en resterende km</string>
-    <string name="apps_kind_car3d">3D-auto</string>
-    <string name="apps_kind_car3d_blurb">Draai het automodel</string>
     <string name="apps_kind_doors">Portieren</string>
     <string name="apps_kind_doors_blurb">Status van portieren en kofferbak (MCU)</string>
     <string name="apps_kind_can_mon">CAN-monitor</string>

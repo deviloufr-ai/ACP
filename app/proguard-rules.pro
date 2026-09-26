@@ -1,12 +1,8 @@
 # Dashwheel release keep rules.
 #
-# Most libraries ship their own consumer rules (Compose, MapLibre, Filament,
-# OkHttp, coroutines). The entries below cover the ones that reach into native
-# code or reflection and are not fully covered by consumer rules.
-
-# Filament: JNI callbacks into Java by name.
--keep class com.google.android.filament.** { *; }
--dontwarn com.google.android.filament.**
+# Most libraries ship their own consumer rules (Compose, MapLibre, OkHttp,
+# coroutines). The entries below cover the ones that reach into native code or
+# reflection and are not fully covered by consumer rules.
 
 # MapLibre GL + navigation: native bridge and Gson-mapped route models.
 -keep class org.maplibre.** { *; }
