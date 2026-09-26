@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /*
  * Adding to a page: one full-width sheet with three tabs (widgets, apps,
@@ -163,7 +164,8 @@ private fun SearchField(value: String, onChange: (String) -> Unit, modifier: Mod
 
 /**
  * Category chips, then the catalogue as live previews, as many to a row as
- * fit; the launch bar and system widgets close the list.
+ * fit: in sections by category under "All", flat under one chip. The launch
+ * bar and system widgets close the Apps section.
  */
 @Composable
 private fun WidgetsTab(
@@ -201,12 +203,14 @@ private fun WidgetsTab(
         contentPadding = PaddingValues(bottom = 12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(kinds, key = { it.name }) { kind ->
-            WidgetCard(kind.label, kind.blurb, tileAspect(kind.defaultW, kind.defaultH), onClick = { onPickBuiltin(kind) }) {
-                previewTile(DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
+        val kindCards: (List<BuiltinKind>) -> Unit = { list ->
+            items(list, key = { it.name }) { kind ->
+                WidgetCard(kind.label, kind.blurb, tileAspect(kind.defaultW, kind.defaultH), onClick = { onPickBuiltin(kind) }) {
+                    previewTile(DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
+                }
             }
         }
-        if (extras) {
+        val extraCards: () -> Unit = {
             item(key = "bar") {
                 WidgetCard(
                     stringResource(R.string.apps_pick_launch_bar), stringResource(R.string.apps_pick_launch_bar_blurb),
@@ -221,7 +225,36 @@ private fun WidgetsTab(
                 ) { IconPreview(Icons.Filled.Widgets) }
             }
         }
+        if (category == null) {
+            // "All": the catalogue in sections, one per category, each under its title;
+            // a search keeps the sections it still has something in.
+            WidgetCategory.entries.forEach { c ->
+                val inSection = kinds.filter { it.category == c }
+                val withExtras = extras && c == WidgetCategory.APPS
+                if (inSection.isEmpty() && !withExtras) return@forEach
+                item(key = "section:${c.name}", span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(c.titleRes)) }
+                kindCards(inSection)
+                if (withExtras) extraCards()
+            }
+        } else {
+            kindCards(kinds)
+            if (extras) extraCards()
+        }
     }
+}
+
+/** A category's name over its widgets in the "All" list. */
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        title.uppercase(),
+        color = DashColors.Muted,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+        style = MaterialTheme.typography.labelMedium,
+        maxLines = 1,
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 6.dp)
+    )
 }
 
 /** Below this width a row gives up a column: a preview has to stay legible. */
