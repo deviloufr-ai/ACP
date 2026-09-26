@@ -23,6 +23,9 @@
     <string name="wheel_can_button">Przycisk na kierownicy (%1$s)</string>
     <string name="wheel_listening_can_live">Słucha też danych CAN samochodu</string>
     <string name="wheel_listening_can_off">Nie można odczytać danych CAN samochodu (wymaga roota): można nauczyć tylko klawiszy Androida</string>
+    <string name="wheel_monitor_title">Co odbiera radio</string>
+    <string name="wheel_monitor_hint">Dotknij wiersza, który pojawił się po naciśnięciu przycisku, aby go użyć.</string>
+    <string name="wheel_monitor_empty">Na razie nic. Naciśnij przycisk na kierownicy.</string>
     <string name="wheel_group_media">Multimedia</string>
     <string name="wheel_group_volume">Głośność</string>
     <string name="wheel_group_system">System</string>

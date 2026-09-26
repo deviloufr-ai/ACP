@@ -21,6 +21,9 @@
     <string name="wheel_can_button">Lenkradtaste (%1$s)</string>
     <string name="wheel_listening_can_live">Hört auch auf die CAN-Daten des Autos</string>
     <string name="wheel_listening_can_off">CAN-Daten des Autos nicht lesbar (braucht Root): nur Android-Tasten anlernbar</string>
+    <string name="wheel_monitor_title">Was das Gerät empfängt</string>
+    <string name="wheel_monitor_hint">Die Zeile antippen, die beim Drücken der Taste erschien, um sie zu verwenden.</string>
+    <string name="wheel_monitor_empty">Noch nichts. Eine Lenkradtaste drücken.</string>
     <string name="wheel_group_media">Medien</string>
     <string name="wheel_group_volume">Lautstärke</string>
     <string name="wheel_group_system">System</string>

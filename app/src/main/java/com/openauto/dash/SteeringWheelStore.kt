@@ -66,6 +66,10 @@ internal class CanButtonDetector(private val quietMs: Long = 1_500L, private val
     // Per frame: other frames keep ticking while a button is held.
     private val pending = HashMap<String, Pending>()
 
+    /** Whether the last change fed in came from a frame that had been still: worth showing while learning. */
+    var lastWasQuiet = false
+        private set
+
     fun reset() {
         pending.clear()
     }
@@ -74,6 +78,7 @@ internal class CanButtonDetector(private val quietMs: Long = 1_500L, private val
     fun onChange(key: String, previousHex: String?, hex: String, at: Long): String? {
         val stillFor = lastChange[key]?.let { at - it } ?: Long.MAX_VALUE
         lastChange[key] = at
+        lastWasQuiet = previousHex != null && stillFor >= quietMs
         val p = pending.remove(key)
         if (p != null) return if (hex == p.idle && at - p.at <= releaseMs) p.pressed else null
         if (previousHex != null && stillFor >= quietMs) pending[key] = Pending(previousHex, hex, at)
@@ -120,12 +125,19 @@ internal object SteeringWheelStore {
         captured.value = null
         detector.reset()
         listening.value = true
+        WheelMonitor.start()
         updateReader()
     }
 
     fun stopListening() {
         listening.value = false
+        WheelMonitor.stop()
         updateReader()
+    }
+
+    /** A line the learning screen's monitor showed, tapped: that's the button. */
+    fun learnFromMonitor(key: WheelKey) {
+        if (listening.value) capture(key)
     }
 
     fun consumeCaptured() {
@@ -148,6 +160,7 @@ internal object SteeringWheelStore {
 
     private fun capture(key: WheelKey) {
         listening.value = false
+        WheelMonitor.stop()
         captured.value = key
         updateReader()
     }
@@ -170,7 +183,10 @@ internal object SteeringWheelStore {
     fun onKeyEvent(context: Context, event: KeyEvent): Boolean {
         val key = WheelKey(event.keyCode, event.scanCode)
         if (listening.value) {
-            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) capture(key)
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                WheelMonitor.add(WheelMonitor.Source.KEY, "${key.label} (${event.keyCode}/${event.scanCode})", key)
+                capture(key)
+            }
             return true
         }
         val mapping = _mappings.value.firstOrNull { it.key.id == key.id } ?: return false
@@ -182,6 +198,9 @@ internal object SteeringWheelStore {
         val e = change.entry
         val pressed = detector.onChange(e.key, change.previousHex, e.hex, e.changedAt)
         if (listening.value) {
+            if (detector.lastWasQuiet) {
+                WheelMonitor.add(WheelMonitor.Source.CAN, "${e.key}: ${change.previousHex} → ${e.hex}", WheelKey.can(e.key, e.hex))
+            }
             if (pressed != null) capture(WheelKey.can(e.key, pressed))
             return
         }

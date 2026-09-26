@@ -21,6 +21,9 @@
     <string name="wheel_can_button">Stuurknop (%1$s)</string>
     <string name="wheel_listening_can_live">Luistert ook naar de CAN-gegevens van de auto</string>
     <string name="wheel_listening_can_off">CAN-gegevens van de auto niet leesbaar (root nodig): alleen Android-toetsen zijn aan te leren</string>
+    <string name="wheel_monitor_title">Wat de radio ontvangt</string>
+    <string name="wheel_monitor_hint">Tik op de regel die verscheen toen je op de knop drukte om hem te gebruiken.</string>
+    <string name="wheel_monitor_empty">Nog niets. Druk op een stuurknop.</string>
     <string name="wheel_group_media">Media</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">Systeem</string>

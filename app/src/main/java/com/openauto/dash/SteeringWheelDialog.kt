@@ -57,6 +57,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -294,6 +295,7 @@ private fun WheelListening(onCancel: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium
         )
         CanStatus()
+        MonitorPanel()
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.dash_cancel)) }
     }
 }
@@ -412,4 +414,61 @@ private fun CanStatus() {
         textAlign = TextAlign.Center,
         style = MaterialTheme.typography.bodySmall
     )
+}
+
+/**
+ * Everything the unit shows while waiting (WheelMonitor): where this
+ * firmware's wheel buttons surface. A key or CAN line can be tapped to learn
+ * it when the press-and-release wasn't recognised by itself.
+ */
+@Composable
+private fun MonitorPanel() {
+    val lines by WheelMonitor.lines.collectAsState()
+    val tap = rememberTapFeedback()
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            stringResource(R.string.wheel_monitor_title),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelLarge
+        )
+        Text(
+            stringResource(if (lines.any { it.learn != null }) R.string.wheel_monitor_hint else R.string.wheel_monitor_empty),
+            color = DashColors.TextSecondary,
+            style = MaterialTheme.typography.bodySmall
+        )
+        lines.forEach { line ->
+            val learn = line.learn
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(DashShape.Small)
+                    .then(
+                        if (learn != null) Modifier
+                            .background(DashColors.Accent.copy(alpha = 0.12f))
+                            .clickable { tap(); SteeringWheelStore.learnFromMonitor(learn) }
+                        else Modifier
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    line.source.name,
+                    color = if (learn != null) DashColors.Accent else DashColors.Muted,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.width(48.dp)
+                )
+                Text(
+                    line.text,
+                    color = DashColors.TextPrimary,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
 }

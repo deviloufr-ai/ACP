@@ -1,7 +1,9 @@
 package com.openauto.dash
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Steering wheel buttons in the CAN stream: pressed then let go, told apart from moving values. */
@@ -74,5 +76,16 @@ class CanButtonDetectorTest {
         d.onChange("32", "00 00", "02 01", 10_000)
         d.reset()
         assertNull(d.onChange("32", "02 01", "00 00", 10_300))
+    }
+
+    @Test
+    fun onlyChangesAfterStillnessAreFlaggedQuiet() {
+        val d = CanButtonDetector()
+        d.onChange("32", null, "00 00", 0)
+        assertFalse(d.lastWasQuiet)
+        d.onChange("32", "00 00", "02 01", 10_000)
+        assertTrue(d.lastWasQuiet)
+        d.onChange("32", "02 01", "00 00", 10_300)
+        assertFalse(d.lastWasQuiet)
     }
 }

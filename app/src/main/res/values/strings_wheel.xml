@@ -21,6 +21,9 @@
     <string name="wheel_can_button">Wheel button (%1$s)</string>
     <string name="wheel_listening_can_live">Also listening to the car\'s CAN data</string>
     <string name="wheel_listening_can_off">Car CAN data can\'t be read (needs root): only Android keys can be learned</string>
+    <string name="wheel_monitor_title">What the unit sees</string>
+    <string name="wheel_monitor_hint">Tap the line that appeared when you pressed the button to use it.</string>
+    <string name="wheel_monitor_empty">Nothing yet. Press a wheel button.</string>
     <string name="wheel_group_media">Media</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">System</string>

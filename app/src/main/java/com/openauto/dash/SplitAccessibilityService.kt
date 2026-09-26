@@ -21,6 +21,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.util.Log
+import android.view.KeyEvent
 import android.widget.TextView
 import kotlin.math.hypot
 
@@ -81,6 +82,10 @@ class SplitAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    // Every hardware key, before any app: a learned steering wheel button runs
+    // (or is captured while learning) whatever is in front.
+    override fun onKeyEvent(event: KeyEvent): Boolean = SteeringWheelStore.onKeyEvent(this, event)
 
     /**
      * The on-screen bounds of the two split panes, ordered left-to-right, or null
