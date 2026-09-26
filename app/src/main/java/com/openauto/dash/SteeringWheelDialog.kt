@@ -236,8 +236,11 @@ private fun WheelMappingRow(mapping: WheelMapping, onClick: () -> Unit, onRemove
 
 /** [WheelKey.label], with the name of a raw, unnamed button in the chosen language. */
 @Composable
-private fun wheelKeyLabel(key: WheelKey): String =
-    if (key.keyCode == KeyEvent.KEYCODE_UNKNOWN) stringResource(R.string.wheel_raw_button, key.scanCode) else key.label
+private fun wheelKeyLabel(key: WheelKey): String = when {
+    key.canKey != null -> stringResource(R.string.wheel_can_button, key.canHex.orEmpty())
+    key.keyCode == KeyEvent.KEYCODE_UNKNOWN -> stringResource(R.string.wheel_raw_button, key.scanCode)
+    else -> key.label
+}
 
 @Composable
 private fun assignmentSummary(assignment: WheelAssignment): String = when (assignment) {
@@ -290,6 +293,7 @@ private fun WheelListening(onCancel: () -> Unit) {
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium
         )
+        CanStatus()
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.dash_cancel)) }
     }
 }
@@ -385,4 +389,27 @@ private fun AccessibilityHint() {
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.wheel_accessibility_enable), color = DashColors.Warning, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
     }
+}
+
+/**
+ * Whether the car's CAN data can be read (root): on MCU units that's where the
+ * wheel buttons are, so saying it can't is better than recording nothing.
+ * Given a few seconds to start before saying so.
+ */
+@Composable
+private fun CanStatus() {
+    val entries by McuReader.entries.collectAsState()
+    var waited by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(4_000)
+        waited = true
+    }
+    val live = entries.isNotEmpty()
+    if (!live && !waited) return
+    Text(
+        stringResource(if (live) R.string.wheel_listening_can_live else R.string.wheel_listening_can_off),
+        color = if (live) DashColors.Good else DashColors.Warning,
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodySmall
+    )
 }
