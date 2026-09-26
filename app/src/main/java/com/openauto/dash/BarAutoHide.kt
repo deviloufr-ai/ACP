@@ -57,6 +57,9 @@ private const val HANDLE_WORDS_MS = 4_000L
 
 private const val BAR_SLIDE_MS = 250
 
+/** Shortest wait before the bar hides: long enough for a menu opened by a tap to hold it. */
+private const val BAR_SETTLE_MS = 400L
+
 /** Band along the pages' bottom edge where a swipe up brings the hidden bar back. */
 private val REVEAL_EDGE = 32.dp
 
@@ -123,8 +126,11 @@ internal fun AutoHidingBar(
 
     LaunchedEffect(hold, touches, hideSeconds, state.visible.targetState) {
         if (!hold && state.visible.targetState) {
-            delay(barHideDelayMs(hideSeconds, state.afterReveal))
-            state.visible.targetState = false
+            // Never at once, even at 0 s: a tap on ⋮ lifts the finger a frame
+            // before its menu counts itself open, and hiding the bar in between
+            // took the menu with it. The menu is checked again before going.
+            delay(maxOf(barHideDelayMs(hideSeconds, state.afterReveal), BAR_SETTLE_MS))
+            if (BarAutoHide.openMenus == 0) state.visible.targetState = false
         }
     }
 
