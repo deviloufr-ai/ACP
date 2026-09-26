@@ -18,6 +18,9 @@
     <string name="wheel_choose_app">Een app openen…</string>
     <string name="wheel_remove_binding">Deze knop vergeten</string>
     <string name="wheel_raw_button">Knop #%1$d</string>
+    <string name="wheel_can_button">Stuurknop (%1$s)</string>
+    <string name="wheel_listening_can_live">Luistert ook naar de CAN-gegevens van de auto</string>
+    <string name="wheel_listening_can_off">CAN-gegevens van de auto niet leesbaar (root nodig): alleen Android-toetsen zijn aan te leren</string>
     <string name="wheel_group_media">Media</string>
     <string name="wheel_group_volume">Volume</string>
     <string name="wheel_group_system">Systeem</string>

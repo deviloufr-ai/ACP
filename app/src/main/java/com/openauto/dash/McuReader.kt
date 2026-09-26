@@ -10,8 +10,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -33,6 +37,14 @@ object McuReader {
 
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
+
+    /** One frame just took a new value; [previousHex] is null the first time its key is seen. */
+    data class Change(val entry: Entry, val previousHex: String?)
+
+    // Every change, in order: [entries] only keeps the latest state, so a quick
+    // press-and-release (a steering wheel button, SteeringWheelStore) would be lost.
+    private val _changes = MutableSharedFlow<Change>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val changes: SharedFlow<Change> = _changes.asSharedFlow()
 
     /**
      * The door bitfield byte from the MCU status frame `41 FD 0C 38 <bits> …`
@@ -337,8 +349,10 @@ object McuReader {
         // The CANbox repeats most frames several times a second; only a new
         // value is worth a new entry and waking every collector for.
         if (prev == null || prev.hex != hex) {
-            latest[key] = Entry(key, cmdId, bytes, hex, System.currentTimeMillis())
+            val entry = Entry(key, cmdId, bytes, hex, System.currentTimeMillis())
+            latest[key] = entry
             _entries.value = latest.values.toList()
+            _changes.tryEmit(Change(entry, prev?.hex))
         }
 
         // Fuel: the learned CANbox byte → percent, calibrated against a full tank.
