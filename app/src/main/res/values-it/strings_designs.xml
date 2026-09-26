@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">La foglia diventa verde quando il punteggio sale.</string>
     <string name="design_section_generic">Per ogni widget</string>
     <string name="design_made_for_it">Su misura</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">Nei colori del tema</string>
+    <string name="design_family_materials">Materiali</string>
+    <string name="design_family_copper">Rame</string>
+    <string name="design_show_more">Altri %1$d</string>
+    <string name="design_show_fewer">Meno</string>
 </resources>

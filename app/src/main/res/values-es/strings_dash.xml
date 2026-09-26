@@ -33,7 +33,6 @@
     <string name="dash_reset_page">Vaciar página</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Actualización disponible: %1$s</string>
     <string name="dash_update_downloading">Descargando actualización… %1$d %%</string>
     <string name="dash_update_installing">Iniciando el instalador…</string>
     <string name="dash_menu_check_updates">Buscar actualizaciones</string>
@@ -60,17 +59,10 @@
     <string name="dash_notice_resize_overlap">Ese tamaño se superpone a otra tarjeta. Haz sitio antes de cambiar el tamaño.</string>
 
     <!-- Add to dashboard -->
-    <string name="dash_add_to_dashboard">Añadir al panel</string>
-    <string name="dash_add_app">Añadir app</string>
-    <string name="dash_add_app_window">Añadir una app en una ventana</string>
-    <string name="dash_add_app_pair">Añadir un par en pantalla dividida</string>
-    <string name="dash_add_widget">Añadir widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Intercambiar apps izquierda/derecha</string>
     <string name="dash_split_with">Pantalla dividida con…</string>
-    <string name="dash_pair_first">Par de apps: primera app (izquierda)</string>
-    <string name="dash_pair_second">Par de apps: segunda app (derecha)</string>
     <string name="dash_enable_split_title">Activar pantalla dividida</string>
     <string name="dash_enable_split_body">Dashwheel usa la pantalla dividida del sistema, la de las aplicaciones recientes. Activa Dashwheel una vez en Ajustes, Accesibilidad.</string>
     <string name="dash_open_settings">Abrir ajustes</string>
@@ -162,11 +154,27 @@
     <string name="dash_drive_lock_notice">Aparca para hacer cambios</string>
     <string name="dash_theme_group_recommended">Recomendados</string>
     <string name="dash_theme_group_colours">Temas</string>
-    <string name="dash_theme_group_skins">Universos</string>
+    <string name="dash_theme_group_skins">Skins</string>
     <string name="dash_theme_night">Noche</string>
     <string name="dash_theme_day">Día</string>
     <string name="dash_theme_mistral">Mistral</string>
     <string name="dash_theme_mistral_desc">El cuadro central del C4 Picasso: cifras blanco frío sobre grafito ahumado, avisos ámbar</string>
     <string name="dash_theme_zenith">Zénith</string>
     <string name="dash_theme_zenith_desc">El habitáculo lounge: gris perla, paneles blancos, un solo acento azul profundo</string>
+    <!-- Updates without a strip (⋮ dot, Settings row, ready prompt); edit-mode confirms; tile options; theme gallery -->
+    <string name="dash_update_to">Actualizar a %1$s</string>
+    <string name="dash_update_available_detail">Más reciente que la v%1$s. Instalar reinicia Dashwheel.</string>
+    <string name="dash_update_ready_detail">Descargada y lista para instalar</string>
+    <string name="dash_update_ready_title">Actualización lista</string>
+    <string name="dash_update_ready_body">%1$s está descargada. Instalar tarda medio minuto y reinicia Dashwheel.</string>
+    <string name="dash_update_now">Actualizar ahora</string>
+    <string name="dash_update_later">Más tarde</string>
+    <string name="dash_reset_confirm_title">¿Vaciar esta página?</string>
+    <string name="dash_reset_confirm_body">Se quitan todas sus fichas. Deshacer las recupera.</string>
+    <string name="dash_clear">Vaciar</string>
+    <string name="dash_theme_show_all">Ver los %1$d temas</string>
+    <string name="dash_theme_show_fewer">Ver menos</string>
+    <string name="dash_tile_design">Diseño</string>
+    <string name="dash_tile_move">Mover a otra página</string>
+    <string name="dash_tile_remove">Quitar</string>
 </resources>

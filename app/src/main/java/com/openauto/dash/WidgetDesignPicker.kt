@@ -41,6 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
@@ -83,7 +89,9 @@ internal fun WidgetDesignPickerDialog(
 ) {
     val frozen = rememberFaceSnapshot(kind, env)
     val sample = sampleFace(kind)
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // The families opened to show every member; the current design's family starts open.
+    var expanded by remember { mutableStateOf(setOfNotNull(DesignFamily.of(current))) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(
             modifier = Modifier
                 .keepClearOfWindows()
@@ -119,16 +127,24 @@ internal fun WidgetDesignPickerDialog(
                             }
                         }
                     }
-                    // Standard, then the designs made for this widget, then the ones every widget has.
+                    // Standard, then the designs made for this widget, then the
+                    // generic ones by family: one card each until the family is opened.
                     items(offered.filter { it == WidgetDesign.STANDARD || it.isSignature }, key = { it.name }) { choice(it) }
-                    item(key = "generic", span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            stringResource(R.string.design_section_generic).uppercase(),
-                            color = DashColors.Muted, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
-                            style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 6.dp)
-                        )
+                    DesignFamily.entries.forEach { family ->
+                        val members = offered.filter { it != WidgetDesign.STANDARD && !it.isSignature && DesignFamily.of(it) == family }
+                        if (members.isEmpty()) return@forEach
+                        val open = family in expanded
+                        val shown = if (open) members else listOf(members.firstOrNull { it == current } ?: members.first())
+                        item(key = "family:${family.name}", span = { GridItemSpan(maxLineSpan) }) {
+                            FamilyHeader(
+                                title = stringResource(family.titleRes),
+                                hidden = members.size - shown.size,
+                                open = open,
+                                onToggle = { expanded = if (open) expanded - family else expanded + family }
+                            )
+                        }
+                        items(shown, key = { it.name }) { choice(it) }
                     }
-                    items(offered.filter { it != WidgetDesign.STANDARD && !it.isSignature }, key = { it.name }) { choice(it) }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.apps_cancel), color = DashColors.Muted) }
@@ -216,5 +232,54 @@ private fun FramedPlaceholder(kind: BuiltinKind) {
         contentAlignment = Alignment.Center
     ) {
         Icon(kindIcon(kind), contentDescription = null, tint = DashColors.Accent.copy(alpha = 0.7f), modifier = Modifier.size(36.dp))
+    }
+}
+
+/**
+ * The generic designs by family, so the picker shows one of each until the
+ * family is opened: forty cards were a wall, four are a choice.
+ */
+internal enum class DesignFamily(@StringRes val titleRes: Int) {
+    THEME(R.string.design_family_theme),
+    MATERIALS(R.string.design_family_materials),
+    COPPER(R.string.design_family_copper);
+
+    companion object {
+        /** The family of a generic design; null for Standard and the widget-specific ones. */
+        fun of(design: WidgetDesign): DesignFamily? = when {
+            design == WidgetDesign.STANDARD || design.isSignature -> null
+            design.look == FaceLookKind.COPPER || design.look == FaceLookKind.PETROL -> COPPER
+            design.look == FaceLookKind.THEME -> THEME
+            else -> MATERIALS
+        }
+    }
+}
+
+/** A family's title and, while it is folded, how many more it holds. */
+@Composable
+private fun FamilyHeader(title: String, hidden: Int, open: Boolean, onToggle: () -> Unit) {
+    val tap = rememberTapFeedback()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(DashShape.Small)
+            .clickable(role = Role.Button) { tap(); onToggle() }
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            title.uppercase(),
+            color = DashColors.Muted, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+            style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f)
+        )
+        Text(
+            if (open) stringResource(R.string.design_show_fewer) else stringResource(R.string.design_show_more, hidden),
+            color = DashColors.Accent, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium
+        )
+        Icon(
+            if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(20.dp).padding(start = 2.dp)
+        )
     }
 }

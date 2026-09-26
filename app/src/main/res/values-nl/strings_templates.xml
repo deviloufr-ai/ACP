@@ -13,4 +13,7 @@
     <string name="templates_no_obd">Nog geen OBD-adapter gekozen, dus de autodata-widgets blijven weg.</string>
     <string name="templates_fill_empty">Lege pagina\'s vullen</string>
     <string name="templates_replace_all">Alle pagina\'s vervangen</string>
+    <string name="templates_replace_confirm_title">Alle zeven pagina\'s vervangen?</string>
+    <string name="templates_replace_confirm_body">Je indeling verdwijnt. Ongedaan maken brengt hem terug.</string>
+    <string name="templates_replace">Vervangen</string>
 </resources>

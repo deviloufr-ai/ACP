@@ -13,4 +13,7 @@
     <string name="templates_no_obd">No OBD adapter chosen yet, so the car-data widgets are left out.</string>
     <string name="templates_fill_empty">Fill empty pages</string>
     <string name="templates_replace_all">Replace all pages</string>
+    <string name="templates_replace_confirm_title">Replace all seven pages?</string>
+    <string name="templates_replace_confirm_body">Your arrangement goes. Undo brings it back.</string>
+    <string name="templates_replace">Replace</string>
 </resources>

@@ -2,6 +2,5 @@
 <resources>
     <!-- Release notes of an available update (ReleaseNotes.kt), from the update strip -->
     <string name="update_notes_title">Nouveautés de %1$s</string>
-    <string name="update_notes_open">Notes de version</string>
     <string name="update_notes_empty">Aucune note pour cette version.</string>
 </resources>

@@ -4,4 +4,6 @@
     <string name="zoom_out">Plus petit</string>
     <string name="zoom_in">Plus grand</string>
     <string name="zoom_reset">Revenir à 100 %</string>
+    <string name="zoom_page">Taille du texte</string>
+    <string name="zoom_percent">%1$d %%</string>
 </resources>

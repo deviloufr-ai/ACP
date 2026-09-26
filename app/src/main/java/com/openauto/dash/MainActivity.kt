@@ -41,6 +41,17 @@ class MainActivity : ComponentActivity() {
 
         /** Bumped to open the full app drawer, e.g. from a learned steering wheel button. */
         val openAppsRequested = MutableStateFlow(0L)
+
+        /**
+         * True while an app window exists, docked on its tile or parked aside:
+         * Android then shows the status bar whatever the dashboard asks. Asking
+         * to hide it anyway (as the dashboard did whenever it had the focus, i.e.
+         * with the window parked aside) made the head unit draw its own flat white
+         * bar; not asking lets the bar show the dashboard's colours through it.
+         * Read by every pop-up window too (immersiveWindow).
+         */
+        @Volatile
+        var statusBarForced = false
     }
 
     // Whether the launcher is sharing the screen (split-screen / freeform). The
@@ -142,23 +153,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // Re-hide the system bars whenever we regain focus (they can reappear
-        // after a transient swipe or returning from another app).
-        if (hasFocus) enableImmersiveFullscreen()
+        // Re-hide the system bars whenever focus changes: they can reappear
+        // after a transient swipe or returning from another app, and a pop-up
+        // window taking the focus makes Android drop this window's hide flags
+        // (the bars then showed as a strip until the pop-up closed).
+        enableImmersiveFullscreen()
         // Focus changes accompany entering/leaving split on some ROMs.
         inMultiWindow.value = isInMultiWindowMode
     }
 
-    /**
-     * True while an app window exists, docked on its tile or parked aside:
-     * Android then shows the status bar whatever the dashboard asks. Asking
-     * to hide it anyway (as the dashboard did whenever it had the focus, i.e.
-     * with the window parked aside) made the head unit draw its own flat white
-     * bar; not asking lets the bar show the dashboard's colours through it.
-     */
-    private var statusBarForced = false
-
-    private fun enableImmersiveFullscreen() {
+    internal fun enableImmersiveFullscreen() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             if (statusBarForced) {
@@ -229,5 +233,6 @@ fun OpenAutoDashTheme(content: @Composable () -> Unit) {
         }
     }
     // The driving type scale (DashType.kt): nothing under 14 sp, labels at 16 sp.
-    MaterialTheme(colorScheme = colorScheme, typography = DashTypography, content = content)
+    // The skin's corners for every stock dialog and menu (SkinChrome).
+    MaterialTheme(colorScheme = colorScheme, typography = DashTypography, shapes = skinChrome().shapes, content = content)
 }

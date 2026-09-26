@@ -9,6 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.BorderStroke
@@ -34,20 +36,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInFull
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Density
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -130,12 +124,10 @@ internal fun DashboardPage(
     canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     canMove: (Int, Int, Int) -> Boolean,
     onAdd: () -> Unit,
-    /** Opens the design picker for the built-in tile at this index. */
-    onDesign: (Int) -> Unit = {},
+    /** Opens the options sheet (text size, design, move, remove) for the tile at this index: a tap while arranging. */
+    onTileOptions: (Int) -> Unit = {},
     /** Opens the template chooser (offered by an empty page). */
-    onTemplates: () -> Unit = {},
-    /** Sets the tile at this index's zoom (its text and icon size). */
-    onZoom: (Int, Float) -> Unit = { _, _ -> }
+    onTemplates: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -268,8 +260,7 @@ internal fun DashboardPage(
                     canPlace = canPlace,
                     canMove = canMove,
                     onRemove = onRemove,
-                    onDesign = onDesign,
-                    onZoom = onZoom,
+                    onTileOptions = onTileOptions,
                     onPreview = { x, y, w, h, isValid -> preview = GridPreview(x, y, w, h, isValid) },
                     onPreviewClear = { preview = null },
                     content = {
@@ -318,8 +309,7 @@ internal fun GridTile(
     canPlace: (Int, Int, Int, Int, Int) -> Boolean,
     canMove: (Int, Int, Int) -> Boolean,
     onRemove: (Int) -> Unit,
-    onDesign: (Int) -> Unit,
-    onZoom: (Int, Float) -> Unit,
+    onTileOptions: (Int) -> Unit,
     onPreview: (Int, Int, Int, Int, Boolean) -> Unit,
     onPreviewClear: () -> Unit,
     content: @Composable () -> Unit
@@ -377,15 +367,21 @@ internal fun GridTile(
                     if (editing && DashColors.Bare) Modifier.border(1.dp, DashColors.TextSecondary.copy(alpha = 0.35f), DashShape.Large)
                     else Modifier
                 )
+                // Dimmed while arranging: the tile is the thing being moved, not read.
+                .graphicsLayer { alpha = if (editing) 0.7f else 1f }
         ) { content() }
 
         if (editing) {
             // Transparent scrim over the content captures the long-press drag so
             // even map / widget tiles (whose content eats touches) can be moved,
-            // and taps don't reach the content. The buttons below sit above it.
+            // and taps don't reach the content: a tap opens the tile's options
+            // (text size, design, move, remove). The buttons below sit above it.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .pointerInput(index) {
+                        detectTapGestures(onTap = { onTileOptions(index) })
+                    }
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         // The ghost, and the collision check behind it, only
                         // when the finger crosses into another cell, not every frame.
@@ -419,54 +415,34 @@ internal fun GridTile(
                     }
             )
 
-            // 48 dp controls (the driving minimum) stack two high only on tiles
-            // at least two rows tall; on a one-row tile they line up along the
-            // middle instead: remove on the left, zoom and design in the centre,
-            // resize on the right.
-            val shortTile = cellH * item.h < 112.dp
-            FilledIconButton(
-                onClick = { onRemove(index) },
-                modifier = Modifier.align(if (shortTile) Alignment.CenterStart else Alignment.TopEnd).padding(4.dp).size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = DashColors.Critical, contentColor = Color.White
-                )
+            // Two controls only, hugging the corners so the tile's header stays
+            // readable: remove at the top right, the resize handle at the bottom
+            // right. Each is a 48 dp target around a 36 dp button, in the skin's
+            // own colours (SkinChrome). Everything else is a tap away, in the
+            // tile's options.
+            val chrome = skinChrome()
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .size(DashSize.Touch)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.dash_remove_tile, item.describe())) { onRemove(index) },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dash_remove_tile, item.describe()), modifier = Modifier.size(22.dp))
-            }
-
-            // Top-left (centre-left on a one-row tile): the tile's zoom, a small
-            // menu stepping its text and icon size.
-            if (item.canZoom()) {
-                TileZoomButton(
-                    zoom = item.zoom,
-                    onZoom = { onZoom(index, it) },
-                    modifier = if (shortTile) Modifier.align(Alignment.Center).offset(x = (-30).dp)
-                    else Modifier.align(Alignment.TopStart).padding(4.dp)
-                )
-            }
-
-            // Bottom-left (centre-right on a one-row tile): this built-in tile's design (Hero, Gauge, LCD, ...).
-            if (item is DashboardItem.BuiltinWidget) {
-                FilledIconButton(
-                    onClick = { onDesign(index) },
-                    modifier = if (shortTile) Modifier.align(Alignment.Center).offset(x = 30.dp).size(48.dp)
-                    else Modifier.align(Alignment.BottomStart).padding(4.dp).size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
-                    )
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(chrome.editRemove),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Palette, contentDescription = stringResource(R.string.design_change, item.describe()), modifier = Modifier.size(22.dp))
+                    Icon(Icons.Filled.Close, contentDescription = null, tint = chrome.onEdit, modifier = Modifier.size(20.dp))
                 }
             }
 
             // Bottom-right resize handle: drag to change the cell span.
             Box(
                 modifier = Modifier
-                    .align(if (shortTile) Alignment.CenterEnd else Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .size(48.dp)
-                    .clip(DashShape.Large)
-                    .background(DashColors.Accent.copy(alpha = 0.85f))
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 4.dp, y = 4.dp)
+                    .size(DashSize.Touch)
                     .pointerInput(index, item.x, item.y, item.w, item.h, cellWpx, cellHpx) {
                         var shownW = -1
                         var shownH = -1
@@ -498,12 +474,17 @@ internal fun GridTile(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.OpenInFull,
-                    contentDescription = stringResource(R.string.dash_resize_tile, item.describe()),
-                    tint = DashColors.Background,
-                    modifier = Modifier.size(22.dp)
-                )
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(chrome.editHandle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.OpenInFull,
+                        contentDescription = stringResource(R.string.dash_resize_tile, item.describe()),
+                        tint = chrome.onEdit,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -715,43 +696,6 @@ internal fun TileZoom(zoom: Float, content: @Composable () -> Unit) {
     val base = LocalDensity.current
     val zoomed = remember(base, zoom) { Density(base.density * zoom, base.fontScale) }
     CompositionLocalProvider(LocalDensity provides zoomed, content = content)
-}
-
-/** The zoom button on a tile being arranged, and its menu: smaller, the percentage, bigger, reset. */
-@Composable
-private fun TileZoomButton(zoom: Float, onZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        FilledIconButton(
-            onClick = { open = true },
-            modifier = Modifier.size(48.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = DashColors.Accent2.copy(alpha = 0.9f), contentColor = DashColors.Background
-            )
-        ) {
-            Icon(Icons.Filled.ZoomIn, contentDescription = stringResource(R.string.zoom_button), modifier = Modifier.size(22.dp))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.keepClearOfWindows()) {
-            Row(modifier = Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { onZoom(zoomStep(zoom, -1)) }, enabled = zoom > ZOOM_MIN) {
-                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.zoom_out), tint = DashColors.TextPrimary)
-                }
-                Text(
-                    "${(zoom * 100).roundToInt()} %",
-                    color = DashColors.TextPrimary, fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center, modifier = Modifier.width(64.dp)
-                )
-                IconButton(onClick = { onZoom(zoomStep(zoom, 1)) }, enabled = zoom < ZOOM_MAX) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zoom_in), tint = DashColors.TextPrimary)
-                }
-            }
-            if (zoom != 1f) {
-                TextButton(onClick = { onZoom(1f) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(stringResource(R.string.zoom_reset), color = DashColors.Accent)
-                }
-            }
-        }
-    }
 }
 
 /**

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -261,17 +262,41 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     var showDevicePicker by remember { mutableStateOf(false) }
     var pairedDevices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
-    // "+" add flow state.
+    // "+" add flow: the page a tile is being added to, and the sheet that offers them (AddSheet.kt).
     var addTargetPage by remember { mutableIntStateOf(-1) }
-    var showAddMenu by remember { mutableStateOf(false) }
-    var showAppPicker by remember { mutableStateOf(false) }
-    var showAppWindowPicker by remember { mutableStateOf(false) }
-    var showWidgetMenu by remember { mutableStateOf(false) }
+    var showAddSheet by remember { mutableStateOf(false) }
     var layoutNotice by remember { mutableStateOf<String?>(null) }
-    // Two-step picker for creating a saved split-pair tile.
-    var showPairPrimaryPicker by remember { mutableStateOf(false) }
-    var showPairSecondaryPicker by remember { mutableStateOf(false) }
-    var pairPrimaryPackage by remember { mutableStateOf<String?>(null) }
+    // (page, tile index) whose options sheet is open (TileOptions.kt).
+    var tileOptions by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    // Asked before a page is cleared, and before a template replaces every page.
+    var confirmReset by remember { mutableStateOf(false) }
+    var confirmTemplate by remember { mutableStateOf<DashTemplate?>(null) }
+    // The setup (SetupScreen.kt): its step while open, null while closed. A
+    // fresh install starts on it; Settings and the bar's pill reopen it.
+    var setupDone by remember { mutableStateOf(SetupStore.isDone(context)) }
+    var setupPillOff by remember { mutableStateOf(SetupStore.pillOff(context)) }
+    var setupStep by remember { mutableStateOf(if (setupDone) null else SetupStep.CAR) }
+    var showCarSettings by remember { mutableStateOf(false) }
+    // Bumped on every return to the launcher: an access granted in the system settings shows at once.
+    var accessGeneration by remember { mutableIntStateOf(0) }
+
+    // The Back key (the head unit's button, or a wheel button taught to it):
+    // closes what is open, top-most first, then heads back to Home. Dialogs
+    // are windows of their own and take Back themselves before this runs.
+    val offHome = currentPage != DashboardStore.CENTER
+    BackHandler(enabled = setupStep != null || showAllApps || settingsTab != null || showAddSheet || editing || offHome) {
+        when {
+            setupStep != null -> {
+                SetupStore.markDone(context); setupDone = true
+                setupStep = null
+            }
+            showAddSheet -> showAddSheet = false
+            showAllApps -> showAllApps = false
+            settingsTab != null -> settingsTab = null
+            editing -> editing = false
+            else -> showPage(DashboardStore.CENTER)
+        }
+    }
 
     // System-app install (root) — unlocks embedding the real Google Maps app.
     var showSystemDialog by remember { mutableStateOf(false) }
@@ -300,12 +325,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             settingsTab = null
             showTemplates = false
             showSystemDialog = false
-            showAddMenu = false
-            showAppPicker = false
-            showAppWindowPicker = false
-            showWidgetMenu = false
-            showPairPrimaryPicker = false
-            showPairSecondaryPicker = false
+            showAddSheet = false
+            tileOptions = null
+            confirmReset = false
+            confirmTemplate = null
+            setupStep = null
+            showCarSettings = false
             showSplitPicker = false
             showSplitEnable = false
             showDevicePicker = false
@@ -320,11 +345,12 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // aside. A page swipe, sideways or up/down, must take the pages' windows
     // along at once, but the Maps dock beside the pages does not move with them
     // and stays put.
-    LaunchedEffect(showAllApps, settingsTab) { PipAnchor.steppedAside.value = showAllApps || settingsTab != null }
+    val fullScreenSheet = showAllApps || settingsTab != null || showAddSheet || setupStep != null
+    LaunchedEffect(fullScreenSheet) { PipAnchor.steppedAside.value = fullScreenSheet }
     // The floating bar would cover the bottom of the edit bar, Settings and the
     // app drawer: it steps down while they are open (a swipe up still brings
     // it), and comes back as they close, since it is what opened them.
-    val barCovers = editing || settingsTab != null || showAllApps
+    val barCovers = editing || fullScreenSheet
     LaunchedEffect(barCovers) {
         if (barCovers) barState.visible.targetState = false else barState.reveal()
     }
@@ -429,6 +455,31 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         if (item is DashboardItem.SystemWidget) WidgetHostHolder.delete(context, item.appWidgetId)
         mutatePage(page) { list -> list.filterIndexed { i, _ -> i != index } }
         releaseMapsAnchorIfGone()
+    }
+
+    /** Moves the tile at [index] on [page] to the first free cell of [target]; a full target page says so. */
+    fun moveToPage(page: Int, index: Int, target: Int) {
+        val item = pages.getOrNull(page)?.getOrNull(index) ?: return
+        val list = pages.getOrNull(target) ?: return
+        val cell = DashboardStore.firstFreeCell(list, item.w, item.h)
+            ?: DashboardStore.firstFreeCell(list, item.minW(), item.minH())
+        if (cell == null) {
+            layoutNotice = context.getString(R.string.dash_notice_no_space)
+            return
+        }
+        val fits = DashboardStore.canPlace(list, null, cell.first, cell.second, item.w, item.h)
+        val placed = if (fits) item.withCell(cell.first, cell.second, item.w, item.h)
+            else item.withCell(cell.first, cell.second, item.minW(), item.minH())
+        history = (history + listOf(pages)).takeLast(MAX_UNDO)
+        pages = pages.mapIndexed { i, l ->
+            when (i) {
+                page -> l.filterIndexed { j, _ -> j != index }
+                target -> l + placed
+                else -> l
+            }
+        }
+        DashboardStore.save(context, pages, variant())
+        showPage(target)
     }
 
     /** Replaces the tile at [index] (same cell) with [item], e.g. an edited launch bar. */
@@ -569,6 +620,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     hasMediaAccess = CarMediaController.hasNotificationAccess(context)
+                    accessGeneration++
                     if (hasMediaAccess) mediaController.start()
                     VehicleMonitor.connectSaved()
                     VehicleMonitor.setForeground(true)
@@ -586,33 +638,38 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     }
 
     LaunchedEffect(Unit) { updateManager.checkForUpdate() }
-
-    // A check asked for from the menu says how it went, "up to date" included;
-    // that one clears itself after a few seconds.
-    var manualUpdateCheck by remember { mutableStateOf(false) }
-    LaunchedEffect(manualUpdateCheck, updateStatus) {
-        if (manualUpdateCheck && updateStatus is UpdateStatus.UpToDate) {
-            delay(5_000)
-            manualUpdateCheck = false
-        }
-    }
-    val checkForUpdates: () -> Unit = {
-        manualUpdateCheck = true
-        // A download already under way shows its own progress; don't restart it.
-        if (updateStatus !is UpdateStatus.Downloading && updateStatus !is UpdateStatus.Installing) {
-            scope.launch { updateManager.checkForUpdate() }
-        }
-    }
+    val checkForUpdates: () -> Unit = { scope.launch { updateManager.checkForUpdate() } }
 
     // Installing restarts the launcher, and the permission screen is another
     // app's: neither while the car moves.
-    val onUpdate: (UpdateInfo) -> Unit = { info ->
-        whenParked {
-            if (updateManager.canInstallPackages()) {
-                scope.launch { updateManager.downloadAndInstall(info) }
-            } else {
-                updateManager.openInstallPermissionSettings()
+    val onUpdate: () -> Unit = {
+        val status = updateStatus
+        val info = status.updateInfo
+        if (info != null) whenParked {
+            when {
+                !updateManager.canInstallPackages() -> updateManager.openInstallPermissionSettings()
+                status is UpdateStatus.Ready -> updateManager.install(status.file)
+                else -> scope.launch { updateManager.downloadAndInstall(info) }
             }
+        }
+    }
+    // A newer build downloads by itself on a connection that costs nothing
+    // (never over a phone's hotspot), then asks once, parked: now or later.
+    // No strip on the dashboard: a dot on ⋮ and a row in Settings say the rest.
+    var autoDownloadedBuild by remember { mutableLongStateOf(-1L) }
+    var promptedBuild by remember { mutableLongStateOf(-1L) }
+    var updatePrompt by remember { mutableStateOf<UpdateStatus.Ready?>(null) }
+    LaunchedEffect(updateStatus, moving) {
+        val status = updateStatus
+        if (status is UpdateStatus.Available && autoDownloadedBuild != status.info.buildNumber &&
+            updateManager.canInstallPackages() && updateManager.onUnmeteredNetwork()
+        ) {
+            autoDownloadedBuild = status.info.buildNumber
+            updateManager.download(status.info)
+        }
+        if (status is UpdateStatus.Ready && !moving && promptedBuild != status.info.buildNumber) {
+            promptedBuild = status.info.buildNumber
+            updatePrompt = status
         }
     }
 
@@ -655,8 +712,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     val onAdd: (Int) -> Unit = { page ->
         whenParked {
             addTargetPage = page
-            showAddMenu = true
+            showAddSheet = true
         }
+    }
+    // The bar's "Finish setting up" pill: a tile on some page still lacks
+    // what it needs, the setup has been seen, and the driver has not skipped it.
+    val setupPending = remember(pages, accessGeneration, setupDone, setupPillOff, obdConnection) {
+        setupDone && !setupPillOff && AccessNeed.pending(context, pages).isNotEmpty()
     }
 
     // Android forces the status bar on whenever a floating (freeform) window is
@@ -700,6 +762,11 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onTemplates = { whenParked { showTemplates = true } },
         onSystem = { whenParked { showSystemDialog = true } },
         onCheckUpdates = checkForUpdates,
+        update = updateStatus,
+        onUpdate = onUpdate,
+        onDismissUpdate = { updateManager.dismiss() },
+        setupPending = setupPending,
+        onSetup = { fromStart -> whenParked { setupStep = if (fromStart) SetupStep.CAR else SetupStep.ACCESS } },
         demo = demoOn,
         onDemo = { DemoMode.toggle(context) },
         merged = barForced,
@@ -713,18 +780,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         onSettings = { whenParked { settingsTab = SettingsTab.CAR } }
     )
 
-    val updateBanner: @Composable () -> Unit = {
-        UpdateBanner(
-            status = updateStatus,
-            currentVersion = updateManager.currentVersionName,
-            showCheck = manualUpdateCheck,
-            onUpdate = onUpdate,
-            onDismiss = {
-                manualUpdateCheck = false
-                updateManager.dismiss()
-            }
-        )
-    }
     // The bar lives at the bottom: the OS status bar owns the top edge on
     // this head unit whenever a floating window is on screen, and it used to
     // cover the launcher bar there. A horizontal swipe across the bar (or
@@ -881,8 +936,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     },
                     onAdd = { onAdd(page) },
                     onTemplates = { whenParked { showTemplates = true } },
-                    onDesign = { index -> whenParked { designPicker = page to index } },
-                    onZoom = { index, zoom -> zoomTile(page, index, zoom) }
+                    onTileOptions = { index -> tileOptions = page to index }
                 )
                 }
             }
@@ -942,6 +996,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp)
                 )
             }
+            // The skins' bars do not carry the setup pill; it floats over the pages there.
+            if (setupPending && DashColors.Skin != DashSkin.STANDARD && !editing) {
+                SetupPill(
+                    onClick = { whenParked { setupStep = SetupStep.ACCESS } },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 12.dp)
+                )
+            }
             if (lockNoticeAt > 0L) {
                 DriveLockChip(modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
             }
@@ -984,6 +1045,59 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 )
             }
 
+            if (showAddSheet) {
+                AddSheet(
+                    page = addTargetPage,
+                    apps = apps,
+                    onPickBuiltin = { kind ->
+                        showAddSheet = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
+                    },
+                    onPickLaunchBar = {
+                        showAddSheet = false
+                        if (addTargetPage >= 0) {
+                            // Open the editor right away so the new bar isn't left empty.
+                            val index = addItemAt(addTargetPage, DashboardItem.LaunchBar())
+                            if (index >= 0) launchBarEditor = addTargetPage to index
+                        }
+                    },
+                    onPickSystemWidget = {
+                        showAddSheet = false
+                        addSystemWidget.pickFromList()
+                    },
+                    onPickApp = { app ->
+                        showAddSheet = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
+                    },
+                    onPickWindow = { app ->
+                        showAddSheet = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppWindow(app.packageName))
+                    },
+                    onPickPair = { first, second ->
+                        showAddSheet = false
+                        if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.SplitPair(first, second))
+                    },
+                    onClose = { showAddSheet = false },
+                    modifier = Modifier.fillMaxSize().padding(10.dp)
+                )
+            }
+
+            setupStep?.let { step ->
+                SetupScreen(
+                    initialStep = step,
+                    theme = themeState,
+                    onCarSettings = { showCarSettings = true },
+                    onPickObd = onPickDevice,
+                    onClose = { finished ->
+                        // Seen either way; skipping also rests the pill until the setup is run again.
+                        SetupStore.markDone(context); setupDone = true
+                        SetupStore.setPillOff(context, !finished); setupPillOff = !finished
+                        setupStep = null
+                    },
+                    modifier = Modifier.fillMaxSize().padding(10.dp)
+                )
+            }
+
             if (showAllApps) {
                 Box(
                     modifier = Modifier
@@ -1010,19 +1124,22 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         // Edit bar and update banner sit just above the launcher bar for the same
         // reason: the OS status bar can cover the top strip and swallow its taps.
         if (editing && !inSplitMode) {
+            val pageTiles = pages.getOrNull(currentPage).orEmpty()
             EditBar(
                 page = currentPage,
                 canUndo = history.isNotEmpty(),
+                // The page's text size: what its tiles share, or what most of them have.
+                pageZoom = pageTiles.map { it.zoom }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: 1f,
                 onAdd = { onAdd(currentPage) },
                 onUndo = { undo() },
-                onReset = { resetPage(currentPage) },
+                onReset = { confirmReset = true },
                 onTemplates = { showTemplates = true },
+                onPageZoom = { zoom -> mutatePage(currentPage) { list -> list.map { it.withZoom(zoom) } } },
                 onDone = { editing = false }
             )
         }
 
         if (!barAutoHide) {
-            updateBanner()
             launcherBar { TopBar(settingsModel) }
         }
     }
@@ -1030,7 +1147,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // the whole height, so showing or hiding it never resizes the dashboard.
     if (barAutoHide) {
         Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-            updateBanner()
             launcherBar {
                 AutoHidingBar(state = barState, hideSeconds = barHideSeconds) {
                     TopBar(settingsModel)
@@ -1095,6 +1211,72 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         }
     }
 
+    tileOptions?.let { (page, index) ->
+        val tile = pages.getOrNull(page)?.getOrNull(index)
+        if (tile == null) {
+            LaunchedEffect(Unit) { tileOptions = null }
+        } else {
+            TileOptionsDialog(
+                item = tile,
+                page = page,
+                onZoom = { zoomTile(page, index, it) },
+                onDesign = if (tile is DashboardItem.BuiltinWidget) {
+                    { tileOptions = null; designPicker = page to index }
+                } else null,
+                onMoveTo = { target -> tileOptions = null; moveToPage(page, index, target) },
+                onRemove = { tileOptions = null; removeAt(page, index) },
+                onDismiss = { tileOptions = null }
+            )
+        }
+    }
+
+    if (confirmReset) {
+        ConfirmDialog(
+            title = stringResource(R.string.dash_reset_confirm_title),
+            body = stringResource(R.string.dash_reset_confirm_body),
+            action = stringResource(R.string.dash_clear),
+            onConfirm = { confirmReset = false; resetPage(currentPage) },
+            onDismiss = { confirmReset = false }
+        )
+    }
+
+    confirmTemplate?.let { template ->
+        ConfirmDialog(
+            title = stringResource(R.string.templates_replace_confirm_title),
+            body = stringResource(R.string.templates_replace_confirm_body),
+            action = stringResource(R.string.templates_replace),
+            onConfirm = {
+                confirmTemplate = null
+                applyTemplate(template, true)
+                showPage(DashboardStore.CENTER)
+            },
+            onDismiss = { confirmTemplate = null }
+        )
+    }
+
+    updatePrompt?.let { ready ->
+        ParkedOnly { updatePrompt = null }
+        AlertDialog(
+            modifier = Modifier.keepClearOfWindows(),
+            onDismissRequest = { updatePrompt = null },
+            containerColor = DashColors.Card,
+            title = { Text(stringResource(R.string.dash_update_ready_title), color = DashColors.TextPrimary) },
+            text = { Text(stringResource(R.string.dash_update_ready_body, ready.info.versionName), color = DashColors.TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { updatePrompt = null; updateManager.install(ready.file) }) {
+                    Text(stringResource(R.string.dash_update_now), color = DashColors.Accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { updatePrompt = null; updateManager.dismiss() }) {
+                    Text(stringResource(R.string.dash_update_later), color = DashColors.Muted)
+                }
+            }
+        )
+    }
+
+    if (showCarSettings) CarSettingsDialog(onDismiss = { showCarSettings = false })
+
     layoutNotice?.let { notice ->
         AlertDialog(
             modifier = Modifier.keepClearOfWindows(),
@@ -1114,9 +1296,13 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         DashTemplateDialog(
             screen = templateScreen(variant() != ""),
             onApply = { template, replaceAll ->
-                applyTemplate(template, replaceAll)
                 showTemplates = false
-                showPage(DashboardStore.CENTER)
+                if (replaceAll) {
+                    confirmTemplate = template
+                } else {
+                    applyTemplate(template, false)
+                    showPage(DashboardStore.CENTER)
+                }
             },
             onDismiss = { showTemplates = false }
         )
@@ -1142,64 +1328,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         )
     }
 
-    if (showAddMenu) {
-        AlertDialog(
-            modifier = Modifier.keepClearOfWindows(),
-            onDismissRequest = { showAddMenu = false },
-            containerColor = DashColors.Card,
-            title = { Text(stringResource(R.string.dash_add_to_dashboard), color = DashColors.TextPrimary) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AddChoiceRow(Icons.Filled.Apps, stringResource(R.string.dash_add_app)) {
-                        showAddMenu = false
-                        showAppPicker = true
-                    }
-                    AddChoiceRow(Icons.Filled.OpenInNew, stringResource(R.string.dash_add_app_window)) {
-                        showAddMenu = false
-                        showAppWindowPicker = true
-                    }
-                    AddChoiceRow(Icons.Filled.Splitscreen, stringResource(R.string.dash_add_app_pair)) {
-                        showAddMenu = false
-                        pairPrimaryPackage = null
-                        showPairPrimaryPicker = true
-                    }
-                    AddChoiceRow(Icons.Filled.Widgets, stringResource(R.string.dash_add_widget)) {
-                        showAddMenu = false
-                        showWidgetMenu = true
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showAddMenu = false }) {
-                    Text(stringResource(R.string.dash_cancel), color = DashColors.Muted)
-                }
-            }
-        )
-    }
-
-    if (showAppPicker) {
-        AppPickerDialog(
-            apps = apps,
-            onPick = { app ->
-                showAppPicker = false
-                if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppShortcut(app.packageName))
-            },
-            onDismiss = { showAppPicker = false }
-        )
-    }
-
-    if (showAppWindowPicker) {
-        AppPickerDialog(
-            apps = apps,
-            onPick = { app ->
-                showAppWindowPicker = false
-                if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.AppWindow(app.packageName))
-            },
-            onDismiss = { showAppWindowPicker = false }
-        )
-    }
-
     if (showSplitPicker) {
         AppPickerDialog(
             apps = apps,
@@ -1209,38 +1337,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 SplitLauncher.launchSplit(context, app.packageName)
             },
             onDismiss = { showSplitPicker = false }
-        )
-    }
-
-    if (showPairPrimaryPicker) {
-        AppPickerDialog(
-            apps = apps,
-            title = stringResource(R.string.dash_pair_first),
-            onPick = { app ->
-                pairPrimaryPackage = app.packageName
-                showPairPrimaryPicker = false
-                showPairSecondaryPicker = true
-            },
-            onDismiss = { showPairPrimaryPicker = false }
-        )
-    }
-
-    if (showPairSecondaryPicker) {
-        AppPickerDialog(
-            apps = apps,
-            title = stringResource(R.string.dash_pair_second),
-            onPick = { app ->
-                showPairSecondaryPicker = false
-                val primary = pairPrimaryPackage
-                pairPrimaryPackage = null
-                if (primary != null && addTargetPage >= 0) {
-                    addItem(addTargetPage, DashboardItem.SplitPair(primary, app.packageName))
-                }
-            },
-            onDismiss = {
-                showPairSecondaryPicker = false
-                pairPrimaryPackage = null
-            }
         )
     }
 
@@ -1269,30 +1365,6 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     Text(stringResource(R.string.dash_cancel), color = DashColors.Muted)
                 }
             }
-        )
-    }
-
-    if (showWidgetMenu) {
-        WidgetPickerDialog(
-            onPickBuiltin = { kind ->
-                showWidgetMenu = false
-                if (addTargetPage >= 0) {
-                    addItem(addTargetPage, DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
-                }
-            },
-            onPickLaunchBar = {
-                showWidgetMenu = false
-                if (addTargetPage >= 0) {
-                    // Open the editor right away so the new bar isn't left empty.
-                    val index = addItemAt(addTargetPage, DashboardItem.LaunchBar())
-                    if (index >= 0) launchBarEditor = addTargetPage to index
-                }
-            },
-            onPickSystemWidget = {
-                showWidgetMenu = false
-                addSystemWidget.pickFromList()
-            },
-            onDismiss = { showWidgetMenu = false }
         )
     }
 
@@ -1400,4 +1472,22 @@ private fun FadingPageIndicator(shown: Boolean, page: Int, modifier: Modifier = 
 @Composable
 private fun RowScope.WeightedPane(weight: () -> Float, content: @Composable () -> Unit) {
     Box(modifier = Modifier.weight(weight()).fillMaxHeight()) { content() }
+}
+
+/** A two-button question before something a tap could regret; Undo still exists, and the body says so. */
+@Composable
+private fun ConfirmDialog(title: String, body: String, action: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier.keepClearOfWindows(),
+        onDismissRequest = onDismiss,
+        containerColor = DashColors.Card,
+        title = { Text(title, color = DashColors.TextPrimary) },
+        text = { Text(body, color = DashColors.TextSecondary) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(action, color = DashColors.Critical) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dash_cancel), color = DashColors.Muted) }
+        }
+    )
 }

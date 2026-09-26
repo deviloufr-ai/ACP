@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- First-run setup (SetupScreen.kt): the car, what the launcher may use, the look -->
+    <string name="setup_title">Set up Dashwheel</string>
+    <string name="setup_step">Step %1$d of 3</string>
+    <string name="setup_skip">Skip</string>
+    <string name="setup_back">Back</string>
+    <string name="setup_next">Continue</string>
+    <string name="setup_done">Done</string>
+    <string name="setup_car_title">Your car</string>
+    <string name="setup_car_body">Readings, fuel and servicing follow this profile.</string>
+    <string name="setup_car_keep">Yes, that\'s it</string>
+    <string name="setup_car_change">Choose another</string>
+    <string name="setup_driver_side">Driver\'s seat</string>
+    <string name="setup_driver_left">Left</string>
+    <string name="setup_driver_right">Right</string>
+    <string name="setup_access_title">What Dashwheel may use</string>
+    <string name="setup_access_body">Each one is optional. Allow it on the screen that opens, then come back.</string>
+    <string name="setup_access_notifications">Notifications</string>
+    <string name="setup_access_notifications_detail">Music, the next turn and your messages come through them</string>
+    <string name="setup_access_location">Location</string>
+    <string name="setup_access_location_detail">The map, weather, trip and parking spot</string>
+    <string name="setup_access_contacts">Contacts</string>
+    <string name="setup_access_contacts_detail">Starred contacts on the quick dial</string>
+    <string name="setup_access_calendar">Calendar</string>
+    <string name="setup_access_calendar_detail">Today\'s appointments on the agenda</string>
+    <string name="setup_access_obd">OBD adapter</string>
+    <string name="setup_access_obd_detail">Engine data, fuel and fault codes over Bluetooth</string>
+    <string name="setup_allow">Allow</string>
+    <string name="setup_choose">Choose</string>
+    <string name="setup_allowed">Allowed</string>
+    <string name="setup_look_title">How it looks</string>
+    <string name="setup_look_body">Three to start with. Every theme is in Settings, Look.</string>
+    <string name="setup_pill">Finish setting up</string>
+    <string name="setup_again">Set up again</string>
+    <string name="setup_again_detail">The car, what Dashwheel may use and the look, step by step</string>
+</resources>

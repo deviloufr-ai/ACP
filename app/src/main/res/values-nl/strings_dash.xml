@@ -33,7 +33,6 @@
     <string name="dash_reset_page">Pagina wissen</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Update beschikbaar: %1$s</string>
     <string name="dash_update_downloading">Update downloaden… %1$d%%</string>
     <string name="dash_update_installing">Installatie starten…</string>
     <string name="dash_menu_check_updates">Zoeken naar updates</string>
@@ -60,17 +59,10 @@
     <string name="dash_notice_resize_overlap">Dit formaat overlapt een andere tegel. Maak eerst ruimte vrij.</string>
 
     <!-- Add to dashboard -->
-    <string name="dash_add_to_dashboard">Toevoegen aan dashboard</string>
-    <string name="dash_add_app">App toevoegen</string>
-    <string name="dash_add_app_window">App in een venster toevoegen</string>
-    <string name="dash_add_app_pair">Gesplitst app-paar toevoegen</string>
-    <string name="dash_add_widget">Widget toevoegen</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Gesplitste apps links/rechts wisselen</string>
     <string name="dash_split_with">Gesplitst scherm met…</string>
-    <string name="dash_pair_first">App-paar: eerste app (links)</string>
-    <string name="dash_pair_second">App-paar: tweede app (rechts)</string>
     <string name="dash_enable_split_title">Gesplitst scherm inschakelen</string>
     <string name="dash_enable_split_body">Dashwheel gebruikt het gesplitste scherm van het systeem, dat van recente apps. Zet Dashwheel eenmalig aan onder Instellingen, Toegankelijkheid.</string>
     <string name="dash_open_settings">Instellingen openen</string>
@@ -162,11 +154,27 @@
     <string name="dash_drive_lock_notice">Parkeer om wijzigingen te maken</string>
     <string name="dash_theme_group_recommended">Aanbevolen</string>
     <string name="dash_theme_group_colours">Thema\'s</string>
-    <string name="dash_theme_group_skins">Werelden</string>
+    <string name="dash_theme_group_skins">Skins</string>
     <string name="dash_theme_night">Nacht</string>
     <string name="dash_theme_day">Dag</string>
     <string name="dash_theme_mistral">Mistral</string>
     <string name="dash_theme_mistral_desc">Het centrale display van de C4 Picasso: koudwitte cijfers op rookgrafiet, amberkleurige waarschuwingen</string>
     <string name="dash_theme_zenith">Zénith</string>
     <string name="dash_theme_zenith_desc">De lounge-cabine: parelgrijs, witte panelen, één diepblauw accent</string>
+    <!-- Updates without a strip (⋮ dot, Settings row, ready prompt); edit-mode confirms; tile options; theme gallery -->
+    <string name="dash_update_to">Bijwerken naar %1$s</string>
+    <string name="dash_update_available_detail">Nieuwer dan v%1$s. Installeren herstart Dashwheel.</string>
+    <string name="dash_update_ready_detail">Gedownload en klaar om te installeren</string>
+    <string name="dash_update_ready_title">Update klaar</string>
+    <string name="dash_update_ready_body">%1$s is gedownload. Installeren duurt een halve minuut en herstart Dashwheel.</string>
+    <string name="dash_update_now">Nu bijwerken</string>
+    <string name="dash_update_later">Later</string>
+    <string name="dash_reset_confirm_title">Deze pagina leegmaken?</string>
+    <string name="dash_reset_confirm_body">Alle tegels erop verdwijnen. Ongedaan maken brengt ze terug.</string>
+    <string name="dash_clear">Leegmaken</string>
+    <string name="dash_theme_show_all">Alle %1$d thema\'s tonen</string>
+    <string name="dash_theme_show_fewer">Minder tonen</string>
+    <string name="dash_tile_design">Ontwerp</string>
+    <string name="dash_tile_move">Naar een andere pagina</string>
+    <string name="dash_tile_remove">Verwijderen</string>
 </resources>

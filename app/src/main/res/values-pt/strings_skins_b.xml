@@ -13,8 +13,6 @@
     <string name="horizon_rpm_value">%1$s RPM</string>
     <string name="horizon_coolant_value">%1$d° líq. refrig.</string>
     <string name="horizon_load_value">%1$d%% carga</string>
-    <string name="horizon_no_signal_tap_obd">SEM SINAL · LIGAR OBD</string>
-    <string name="horizon_no_signal">SEM SINAL</string>
 
     <!-- Horizon skin: music -->
     <string name="horizon_cd_previous_track">Faixa anterior</string>
@@ -25,15 +23,11 @@
     <string name="horizon_music_caps">MÚSICA</string>
     <string name="horizon_now_playing_caps">A REPRODUZIR</string>
     <string name="horizon_paused_caps">EM PAUSA</string>
-    <string name="horizon_media_access_needed">Acesso multimédia</string>
-    <string name="horizon_nothing_playing">Nada a reproduzir</string>
     <string name="horizon_tap_allow_notification_access">Toque para permitir o acesso às notificações</string>
     <string name="horizon_play_something">Reproduzir algo numa app de música</string>
     <string name="horizon_unknown_artist">Artista desconhecido</string>
 
     <!-- Horizon skin: directions -->
-    <string name="horizon_directions">Percurso</string>
-    <string name="horizon_no_route">Sem percurso</string>
     <string name="horizon_start_navigation">Iniciar a navegação no Google Maps ou Waze</string>
     <string name="horizon_open_navigation">Abrir navegação</string>
 
@@ -74,12 +68,9 @@
     <string name="tape_linking_caps">A LIGAR</string>
     <string name="tape_obd_error_tap">ERRO OBD · TOCAR</string>
     <string name="tape_no_obd_tap">SEM OBD · TOCAR</string>
-    <string name="tape_no_signal_caps">SEM SINAL</string>
     <string name="tape_speed_caps">VELOCIDADE</string>
 
     <!-- Tape Deck skin: cassette deck -->
-    <string name="tape_media_access_caps">ACESSO MULTIMÉDIA</string>
-    <string name="tape_no_tape_caps">SEM CASSETE</string>
     <string name="tape_tap_to_enable_caps">TOCAR PARA ATIVAR</string>
     <string name="tape_unknown_artist_caps">ARTISTA DESCONHECIDO</string>
     <string name="tape_start_music_app_caps">ABRIR UMA APP DE MÚSICA</string>
@@ -90,7 +81,6 @@
     <string name="tape_cd_play">Reproduzir</string>
     <string name="tape_cd_next_track">Faixa seguinte</string>
     <string name="tape_cd_open_music_app">Abrir app de música</string>
-    <string name="tape_no_access_caps">SEM ACESSO</string>
     <string name="tape_play_caps">REPROD.</string>
     <string name="tape_pause_caps">PAUSA</string>
     <string name="tape_stop_caps">PARADO</string>
@@ -98,7 +88,6 @@
 
     <!-- Tape Deck skin: directions CRT -->
     <string name="tape_tap_grant_notification_access_caps">TOCAR PARA PERMITIR AS NOTIFICAÇÕES</string>
-    <string name="tape_no_route_caps">SEM PERCURSO</string>
     <string name="tape_tap_open_maps_caps">TOCAR PARA ABRIR O MAPS</string>
     <string name="tape_eta_caps">CHEGADA %1$s</string>
 

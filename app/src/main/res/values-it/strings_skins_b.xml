@@ -13,8 +13,6 @@
     <string name="horizon_rpm_value">%1$s giri/min</string>
     <string name="horizon_coolant_value">%1$d° refrigerante</string>
     <string name="horizon_load_value">%1$d%% carico</string>
-    <string name="horizon_no_signal_tap_obd">NESSUN SEGNALE · CONNETTI OBD</string>
-    <string name="horizon_no_signal">NESSUN SEGNALE</string>
 
     <!-- Horizon skin: music -->
     <string name="horizon_cd_previous_track">Brano precedente</string>
@@ -25,15 +23,11 @@
     <string name="horizon_music_caps">MUSICA</string>
     <string name="horizon_now_playing_caps">IN RIPRODUZIONE</string>
     <string name="horizon_paused_caps">IN PAUSA</string>
-    <string name="horizon_media_access_needed">Accesso ai media</string>
-    <string name="horizon_nothing_playing">Nessuna riproduzione</string>
     <string name="horizon_tap_allow_notification_access">Tocca per consentire l\'accesso alle notifiche</string>
     <string name="horizon_play_something">Riproduci qualcosa in un\'app musicale</string>
     <string name="horizon_unknown_artist">Artista sconosciuto</string>
 
     <!-- Horizon skin: directions -->
-    <string name="horizon_directions">Percorso</string>
-    <string name="horizon_no_route">Nessun percorso</string>
     <string name="horizon_start_navigation">Avvia la navigazione in Google Maps o Waze</string>
     <string name="horizon_open_navigation">Apri navigazione</string>
 
@@ -74,12 +68,9 @@
     <string name="tape_linking_caps">CONNESSIONE</string>
     <string name="tape_obd_error_tap">ERRORE OBD · TOCCA</string>
     <string name="tape_no_obd_tap">NO OBD · TOCCA</string>
-    <string name="tape_no_signal_caps">NESSUN SEGNALE</string>
     <string name="tape_speed_caps">VELOCITÀ</string>
 
     <!-- Tape Deck skin: cassette deck -->
-    <string name="tape_media_access_caps">ACCESSO MEDIA</string>
-    <string name="tape_no_tape_caps">NESSUNA CASSETTA</string>
     <string name="tape_tap_to_enable_caps">TOCCA PER ATTIVARE</string>
     <string name="tape_unknown_artist_caps">ARTISTA SCONOSCIUTO</string>
     <string name="tape_start_music_app_caps">AVVIA UN\'APP MUSICALE</string>
@@ -90,7 +81,6 @@
     <string name="tape_cd_play">Riproduci</string>
     <string name="tape_cd_next_track">Brano successivo</string>
     <string name="tape_cd_open_music_app">Apri app musicale</string>
-    <string name="tape_no_access_caps">NESSUN ACCESSO</string>
     <string name="tape_play_caps">RIPROD.</string>
     <string name="tape_pause_caps">PAUSA</string>
     <string name="tape_stop_caps">STOP</string>
@@ -98,7 +88,6 @@
 
     <!-- Tape Deck skin: directions CRT -->
     <string name="tape_tap_grant_notification_access_caps">TOCCA PER CONSENTIRE LE NOTIFICHE</string>
-    <string name="tape_no_route_caps">NESSUN PERCORSO</string>
     <string name="tape_tap_open_maps_caps">TOCCA PER APRIRE MAPS</string>
     <string name="tape_eta_caps">ARRIVO %1$s</string>
 

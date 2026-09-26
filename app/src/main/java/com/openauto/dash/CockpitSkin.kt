@@ -594,7 +594,7 @@ private fun OutsideTempLcd() {
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.cockpit_out), style = lcd(12.sp, ink.copy(alpha = 0.7f)), maxLines = 1)
+            Text(stringResource(R.string.cockpit_out), style = lcd(14.sp, ink.copy(alpha = 0.7f)), maxLines = 1)
             Spacer(Modifier.width(8.dp))
             Text(
                 weather?.let { "${it.tempC.roundToInt()}°C" } ?: "--",
@@ -701,19 +701,38 @@ private fun LcdPanel(
     )
 }
 
-/** Two dim lines centred on an LCD: a state ("NO ROUTE") and what a tap does. */
+/** Width in dp of [text] on an LCD at [size] dp: monospace, about 0.62 em a glyph. */
+private fun lcdWidth(text: String, size: Dp): Dp = size * (text.length * 0.62f)
+
+/**
+ * Two dim lines centred on an LCD: a state ("NO ROUTE") and what a tap does.
+ * The title shrinks to fit the [width] (never under 14 sp) and may take two lines.
+ */
 @Composable
-private fun BoxScope.LcdMessage(title: String, hint: String, height: Dp) {
+private fun BoxScope.LcdMessage(title: String, hint: String, width: Dp, height: Dp) {
     val ink = LcdInk
-    Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+    val room = width - 24.dp
+    val titleSize = min(height * 0.2f, room / (title.length * 0.62f)).coerceIn(14.dp, 40.dp)
+    Column(
+        modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(
             title,
-            style = lcd((height * 0.2f).coerceIn(14.dp, 40.dp).fixedSp(), ink.copy(alpha = 0.45f)),
-            maxLines = 1
+            style = lcd(titleSize.fixedSp(), ink.copy(alpha = 0.45f)),
+            textAlign = TextAlign.Center,
+            maxLines = if (lcdWidth(title, titleSize) <= room) 1 else 2,
+            overflow = TextOverflow.Ellipsis
         )
         if (height >= 70.dp) {
             Spacer(Modifier.height(4.dp))
-            Text(hint, style = lcd((height * 0.1f).coerceIn(10.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)), maxLines = 1)
+            Text(
+                hint,
+                style = lcd((height * 0.1f).coerceIn(14.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -796,13 +815,13 @@ private class SubDial(val cx: Float, val cy: Float, val lo: String, val hi: Stri
 /** An LCD window on a dial face, in design units. */
 private class LcdBox(val x: Float, val y: Float, val w: Float, val h: Float)
 
-/** Static artwork of a chrome-ringed dial, in the 380-unit design space of the mockup. */
+/** Static artwork of a chrome-ringed dial, in the 380-unit design space of the mockup; [lcd] null draws no readout window. */
 private class DialFace(
     val labels: List<String>,
     val minor: Int,
     val numeral: Float,
     val title: String,
-    val lcd: LcdBox,
+    val lcd: LcdBox?,
     val start: Float = -135f,
     val sweep: Float = 270f,
     val red: ClosedFloatingPointRange<Float>? = null,
@@ -859,17 +878,17 @@ private fun tachFace(fuel: Boolean, compact: Boolean, w: DialWords) = DialFace(
     titleSize = if (compact) 20f else 15f
 )
 
-/** Speedometer, 0–240 km/h; battery and engine-load sub-dials when [subs]. */
-private fun speedFace(subs: Boolean, compact: Boolean, twoLine: Boolean, w: DialWords) = DialFace(
+/**
+ * Speedometer, 0–240 km/h, read by its needle alone (no speed readout in the
+ * dial): battery and engine-load sub-dials when [subs], and an LCD for the
+ * revs when the dial stands in for the tachometer ([revs]).
+ */
+private fun speedFace(subs: Boolean, compact: Boolean, revs: Boolean, w: DialWords) = DialFace(
     labels = (0..240 step if (compact) 40 else 20).map { it.toString() },
     minor = if (compact) 4 else 2,
     numeral = if (compact) 30f else 23f,
     title = "km/h",
-    lcd = when {
-        compact -> LcdCompact
-        twoLine -> LcdTwoLine
-        else -> LcdNormal
-    },
+    lcd = if (revs) LcdCompact else null,
     subs = if (subs && !compact) {
         listOf(SubDial(147f, 247f, "8", "16", w.volt), SubDial(233f, 247f, "0", "100", w.load))
     } else emptyList(),
@@ -915,9 +934,11 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
         val lcdBack = LcdBack
         val numeral = if (light) tick else accent
         val intervals = (face.labels.size - 1) * face.minor
+        // Lettering follows the dial's size, but never drops under 14 sp.
+        val floor = 14.sp.toPx()
         val numStyle = TextStyle(
             color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold,
-            fontSize = (face.numeral * u).toSp(), shadow = if (light) null else softTextShadow(accent.copy(alpha = 0.7f), 6f * u)
+            fontSize = max(face.numeral * u, floor).toSp(), shadow = if (light) null else softTextShadow(accent.copy(alpha = 0.7f), 6f * u)
         )
         val numerals = face.labels.mapIndexed { i, label ->
             measurer.measure(label, numStyle) to polar(c, 117f * u, face.start + face.sweep * i / (face.labels.size - 1))
@@ -926,20 +947,21 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
             face.title,
             TextStyle(
                 color = cream.copy(alpha = 0.55f), fontFamily = CondensedFamily, fontWeight = FontWeight.Medium,
-                fontSize = (face.titleSize * u).toSp(), letterSpacing = (2f * u).toSp()
+                fontSize = max(face.titleSize * u, floor).toSp(), letterSpacing = (2f * u).toSp()
             )
         )
         val subLabelStyle = TextStyle(
-            color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold, fontSize = (10f * u).toSp()
+            color = numeral, fontFamily = CondensedFamily, fontWeight = FontWeight.SemiBold, fontSize = max(10f * u, floor).toSp()
         )
         val captionStyle = TextStyle(
             color = cream.copy(alpha = 0.6f), fontFamily = CondensedFamily,
-            fontSize = (9.5f * u).toSp(), letterSpacing = (1f * u).toSp()
+            fontSize = max(9.5f * u, floor).toSp(), letterSpacing = (1f * u).toSp()
         )
         val subs = face.subs.map { s ->
             Triple(measurer.measure(s.lo, subLabelStyle), measurer.measure(s.hi, subLabelStyle), measurer.measure(s.caption, captionStyle))
         }
-        val lcdTop = Offset(c.x - (190f - face.lcd.x) * u, c.y - (190f - face.lcd.y) * u)
+        val lcdBox = face.lcd
+        val lcdTop = lcdBox?.let { Offset(c.x - (190f - it.x) * u, c.y - (190f - it.y) * u) }
         onDrawBehind {
             fun text(layout: TextLayoutResult, at: Offset) =
                 drawText(layout, topLeft = Offset(at.x - layout.size.width / 2f, at.y - layout.size.height / 2f))
@@ -980,21 +1002,24 @@ private fun Modifier.dialFace(face: DialFace, measurer: TextMeasurer, accent: Co
                 text(hi, polar(sc, sr * 0.72f, 102f))
                 text(caption, Offset(sc.x, sc.y + sr * 0.56f))
             }
-            drawRoundRect(
-                lcdBack, lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u)
-            )
-            drawRoundRect(
-                lcdInk.copy(alpha = 0.3f), lcdTop, Size(face.lcd.w * u, face.lcd.h * u), CornerRadius(5f * u),
-                style = Stroke(1f * u)
-            )
+            if (lcdBox != null && lcdTop != null) {
+                drawRoundRect(
+                    lcdBack, lcdTop, Size(lcdBox.w * u, lcdBox.h * u), CornerRadius(5f * u)
+                )
+                drawRoundRect(
+                    lcdInk.copy(alpha = 0.3f), lcdTop, Size(lcdBox.w * u, lcdBox.h * u), CornerRadius(5f * u),
+                    style = Stroke(1f * u)
+                )
+            }
         }
     }
 
 /**
  * A chrome-ringed analog dial [side] wide: the cached face on its own layer,
  * sub-dial needles, the main needle turned only by layer rotation (with an
- * idle wobble while [live]), a chrome hub under glass, and the LCD readout.
- * [fraction] 0..1 places the needle; null parks it at rest.
+ * idle wobble while [live]), a chrome hub under glass, and the LCD [readout]
+ * when the face has a window for it. [fraction] 0..1 places the needle; null
+ * parks it at rest.
  */
 @Composable
 private fun ChromeDial(
@@ -1002,11 +1027,10 @@ private fun ChromeDial(
     fraction: Float?,
     subFractions: List<Float?>,
     live: Boolean,
-    readout: String,
+    readout: String?,
     unit: String,
     lcdColor: Color,
     side: Dp,
-    second: String? = null,
     extra: @Composable BoxScope.(unit: Dp) -> Unit = {}
 ) {
     val measurer = rememberTextMeasurer()
@@ -1099,31 +1123,35 @@ private fun ChromeDial(
                     }
                 }
         )
-        val lcdTextSize = (du * if (face.lcd == LcdCompact) 30f else 20f)
-        // A long translated unit ("giri/min") shrinks to the width of " km/h" so the readout stays in its window.
-        val unitScale = min(1f, 5f / (unit.length + 1))
-        Column(
-            modifier = Modifier
-                .offset(du * face.lcd.x, du * face.lcd.y)
-                .size(du * face.lcd.w, du * face.lcd.h),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                buildAnnotatedString {
-                    append(readout)
-                    if (unit.isNotEmpty()) {
-                        withStyle(SpanStyle(fontSize = (lcdTextSize * 0.55f * unitScale).fixedSp(), color = lcdColor.copy(alpha = 0.7f))) {
-                            append(" $unit")
+        val window = face.lcd
+        if (window != null && readout != null) {
+            // The readout follows the dial's size but never drops under 14 sp; the
+            // unit comes along only while the window has room for it (the dial's
+            // title names the unit anyway).
+            val mainSize = max(du.value * if (window == LcdCompact) 30f else 20f, 14f)
+            val unitSize = max(mainSize * 0.55f, 14f)
+            val showUnit = unit.isNotEmpty() &&
+                lcdWidth(readout, mainSize.dp) + lcdWidth(" $unit", unitSize.dp) <= du * window.w
+            Column(
+                modifier = Modifier
+                    .offset(du * window.x, du * window.y)
+                    .size(du * window.w, du * window.h),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    buildAnnotatedString {
+                        append(readout)
+                        if (showUnit) {
+                            withStyle(SpanStyle(fontSize = unitSize.dp.fixedSp(), color = lcdColor.copy(alpha = 0.7f))) {
+                                append(" $unit")
+                            }
                         }
-                    }
-                },
-                style = lcd(lcdTextSize.fixedSp(), lcdColor),
-                maxLines = 1,
-                softWrap = false
-            )
-            if (second != null) {
-                Text(second, style = lcd((du * 12f).fixedSp(), ink.copy(alpha = 0.8f)), maxLines = 1, softWrap = false)
+                    },
+                    style = lcd(mainSize.dp.fixedSp(), lcdColor),
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
         }
     }
@@ -1150,7 +1178,7 @@ private fun SpeedLcd(speed: Int?, caption: String, modifier: Modifier) {
                 )
                 Text(
                     caption,
-                    style = lcd((h * 0.11f).coerceIn(10.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.11f).coerceIn(14.dp, 18.dp).fixedSp(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,
@@ -1218,20 +1246,22 @@ private fun CockpitTelemetry(env: SkinTileEnv) {
             )
         }
 
+        // The speedometer is read by its needle alone; standing in for the
+        // tachometer on a small tile, its LCD carries the revs instead.
         @Composable
         fun speedo(side: Dp, withRevs: Boolean) {
             val compact = side < 230.dp
-            val face = remember(compact, withRevs, words) { speedFace(subs = true, compact = compact, twoLine = withRevs, w = words) }
+            val revs = withRevs && !compact
+            val face = remember(compact, revs, words) { speedFace(subs = true, compact = compact, revs = revs, w = words) }
             ChromeDial(
                 face = face,
                 fraction = speed?.let { it / 240f },
                 subFractions = listOf(volts, load),
                 live = connected,
-                readout = speed?.toString() ?: "--",
-                unit = "km/h",
+                readout = if (revs) rpm?.toString() ?: "--" else null,
+                unit = rpmUnit,
                 lcdColor = speedColor,
-                side = side,
-                second = if (withRevs && !compact) stringResource(R.string.cockpit_rpm_line, rpm?.toString() ?: "--") else null
+                side = side
             )
         }
 
@@ -1303,9 +1333,10 @@ private fun TelemetryTellTales(env: SkinTileEnv, speed: Int?, idle: Boolean, mod
         if (idle) {
             Text(
                 stringResource(R.string.cockpit_tap_to_connect),
-                style = engraved(11.sp),
+                style = engraved(14.sp),
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1315,7 +1346,9 @@ private fun TelemetryTellTales(env: SkinTileEnv, speed: Int?, idle: Boolean, mod
 @Composable
 private fun CockpitSpeedHud(env: SkinTileEnv) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
-    val source = speedSource(env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.cockpit_no_signal))
+    val source = speedSource(
+        env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.info_speed_no_signal).uppercase()
+    )
     val color = if ((speed ?: 0) >= SPEED_WARNING_KMH) DashColors.Warning else LcdInk
     val words = dialWords()
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
@@ -1326,17 +1359,18 @@ private fun CockpitSpeedHud(env: SkinTileEnv) {
             return@BoxWithConstraints
         }
 
+        // Needle only: the number is on the LCD beside the dial when the tile is wide.
         @Composable
         fun dial(side: Dp) {
             val compact = side < 230.dp
-            val face = remember(compact, words) { speedFace(subs = false, compact = compact, twoLine = false, w = words) }
+            val face = remember(compact, words) { speedFace(subs = false, compact = compact, revs = false, w = words) }
             ChromeDial(
                 face = face,
                 fraction = speed?.let { it / 240f },
                 subFractions = emptyList(),
                 live = speed != null,
-                readout = speed?.toString() ?: "--",
-                unit = "km/h",
+                readout = null,
+                unit = "",
                 lcdColor = color,
                 side = side
             )
@@ -1372,8 +1406,8 @@ private fun CockpitMedia(env: SkinTileEnv) {
     val hasTrack = access && state.hasMedia && state.title.isNotBlank()
     val playing = hasTrack && state.isPlaying
     val text = when {
-        !access -> stringResource(R.string.cockpit_media_access_needed)
-        !hasTrack -> stringResource(R.string.cockpit_nothing_playing)
+        !access -> "${stringResource(R.string.info_media_access_needed)} · ${stringResource(R.string.cockpit_tap_to_enable)}".uppercase()
+        !hasTrack -> stringResource(R.string.info_nothing_playing).uppercase()
         state.artist.isNotBlank() -> "${state.artist} · ${state.title}".uppercase()
         else -> state.title.uppercase()
     }
@@ -1538,10 +1572,10 @@ private fun VuMeter(level: () -> Float, channel: String, modifier: Modifier) {
                     val pivot = Offset(size.width / 2f, size.height * pivotY)
                     val r = min(size.height * 0.72f, size.width * 0.6f)
                     val vu = measurer.measure(
-                        "VU", TextStyle(color = cream.copy(alpha = 0.55f), fontFamily = CondensedFamily, fontSize = (r * 0.16f).toSp())
+                        "VU", TextStyle(color = cream.copy(alpha = 0.55f), fontFamily = CondensedFamily, fontSize = max(r * 0.16f, 14.sp.toPx()).toSp())
                     )
                     val ch = measurer.measure(
-                        channel, TextStyle(color = accent, fontFamily = CondensedFamily, fontSize = (r * 0.15f).toSp())
+                        channel, TextStyle(color = accent, fontFamily = CondensedFamily, fontSize = max(r * 0.15f, 14.sp.toPx()).toSp())
                     )
                     onDrawBehind {
                         drawRoundRect(bezel, cornerRadius = corner)
@@ -1650,9 +1684,11 @@ private fun CockpitNavigation(env: SkinTileEnv) {
         ) {
             when {
                 !env.hasMediaAccess -> LcdMessage(
-                    stringResource(R.string.cockpit_no_access), stringResource(R.string.cockpit_tap_to_enable), h
+                    stringResource(R.string.info_directions_access_title).uppercase(), stringResource(R.string.cockpit_tap_to_enable), w, h
                 )
-                !nav.active -> LcdMessage(stringResource(R.string.cockpit_no_route), stringResource(R.string.cockpit_tap_for_maps), h)
+                !nav.active -> LcdMessage(
+                    stringResource(R.string.info_directions_no_route).uppercase(), stringResource(R.string.cockpit_tap_for_maps), w, h
+                )
                 else -> NavReadout(nav, w, h)
             }
         }
@@ -1669,7 +1705,11 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
     val (value, unit) = nav.distanceParts
     val glyph = min(h * 0.52f, w * 0.2f).coerceIn(28.dp, 110.dp)
     val distSize = min(h * 0.3f, w * 0.13f).coerceIn(18.dp, 72.dp)
-    val lineSize = (distSize * 0.36f).coerceIn(11.dp, 22.dp)
+    val lineSize = 18.dp
+    val etaSize = 14.dp
+    val signal = (glyph * 0.5f).coerceIn(26.dp, 56.dp)
+    // Room for the text column: the tile less its padding, the glyph, the signal and the gaps between them.
+    val textW = w - 28.dp - glyph - 14.dp - 10.dp - signal
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -1710,21 +1750,31 @@ private fun NavReadout(nav: NavState, w: Dp, h: Dp) {
             Text(
                 nav.instruction.uppercase(),
                 style = lcd(lineSize.fixedSp(), ink.copy(alpha = 0.9f)),
-                maxLines = if (h >= 150.dp) 2 else 1,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (nav.eta.isNotEmpty() && h >= 110.dp) {
+                // "14 MIN · 7.5 KM · 10:32": the arrival time (last) is never cut. When
+                // the line is too long it wraps on a tall tile, else it drops the
+                // distance, then the duration.
+                val parts = nav.etaParts.map { it.uppercase() }
+                val fits: (List<String>) -> Boolean = { lcdWidth(it.joinToString(" · "), etaSize) <= textW }
+                val wrap = !fits(parts) && h >= 150.dp
+                var shown = parts
+                if (!wrap) {
+                    while (shown.size > 1 && !fits(shown)) shown = shown.filterIndexed { i, _ -> i != shown.size - 2 }
+                }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    nav.etaParts.joinToString(" · ").uppercase(),
-                    style = lcd((lineSize * 0.85f).fixedSp(), ink.copy(alpha = 0.7f)),
-                    maxLines = 1,
+                    shown.joinToString(" · "),
+                    style = lcd(etaSize.fixedSp(), ink.copy(alpha = 0.7f)),
+                    maxLines = if (wrap) 2 else 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
         Spacer(Modifier.width(10.dp))
-        TurnSignal(turnSide(nav.instruction), metres != null && metres < 300f, (glyph * 0.5f).coerceIn(26.dp, 56.dp))
+        TurnSignal(turnSide(nav.instruction), metres != null && metres < 300f, signal)
     }
 }
 
@@ -1963,7 +2013,7 @@ private fun DateLcd(modifier: Modifier) {
                 Text(time, style = lcd(min(h * 0.44f, w * 0.22f).fixedSp(), ink), maxLines = 1)
                 Text(
                     date,
-                    style = lcd((h * 0.12f).coerceIn(10.dp, 20.dp).fixedSp(), ink.copy(alpha = 0.75f)),
+                    style = lcd((h * 0.12f).coerceIn(14.dp, 20.dp).fixedSp(), ink.copy(alpha = 0.75f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 10.dp)
@@ -1985,7 +2035,7 @@ private fun CockpitWeather() {
         val h = maxHeight
         val w = maxWidth
         val big = min(h * 0.36f, w * 0.16f).coerceIn(18.dp, 80.dp)
-        val line = (big * 0.3f).coerceIn(11.dp, 22.dp)
+        val line = (big * 0.3f).coerceIn(14.dp, 22.dp)
         LcdPanel(Modifier.fillMaxSize(), corner = 14.dp) {
             Row(
                 modifier = Modifier
@@ -2099,7 +2149,7 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 stringResource(R.string.cockpit_range),
-                                style = lcd((ph * 0.11f).coerceIn(10.dp, 18.dp).fixedSp(), segment.copy(alpha = 0.7f)),
+                                style = lcd((ph * 0.11f).coerceIn(14.dp, 18.dp).fixedSp(), segment.copy(alpha = 0.7f)),
                                 maxLines = 1
                             )
                             Text(
@@ -2107,11 +2157,14 @@ private fun CockpitRange(item: DashboardItem, env: SkinTileEnv) {
                                 style = lcd(min(ph * 0.34f, pw * 0.16f).fixedSp(), ink),
                                 maxLines = 1
                             )
-                            Text(
-                                "%.0f L · %s".format(fuel.liters, fuel.source.uppercase()),
-                                style = lcd((ph * 0.1f).coerceIn(10.dp, 16.dp).fixedSp(), segment.copy(alpha = 0.7f)),
-                                maxLines = 1
-                            )
+                            // Three 14 sp lines need the room; a short panel keeps the two that matter.
+                            if (ph >= 56.dp) {
+                                Text(
+                                    "%.0f L · %s".format(fuel.liters, fuel.source.uppercase()),
+                                    style = lcd((ph * 0.1f).coerceIn(14.dp, 16.dp).fixedSp(), segment.copy(alpha = 0.7f)),
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -2184,7 +2237,7 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     ToggleIcon(app, (h * 0.34f).coerceIn(18.dp, 48.dp))
                     Spacer(Modifier.height(4.dp))
-                    ToggleLabel(label, ledOn, (h * 0.13f).coerceIn(9.dp, 15.dp))
+                    ToggleLabel(label, ledOn, (h * 0.13f).coerceIn(14.dp, 15.dp))
                 }
             }
         } else {
@@ -2196,7 +2249,7 @@ private fun ToggleSwitch(app: AppEntry?, packageName: String, env: SkinTileEnv, 
             ) {
                 ToggleIcon(app, (h * 0.2f).coerceIn(16.dp, 44.dp))
                 ToggleLever({ lever.value }, Modifier.weight(1f).fillMaxWidth())
-                ToggleLabel(label, ledOn, (h * 0.1f).coerceIn(9.dp, 15.dp))
+                ToggleLabel(label, ledOn, (h * 0.1f).coerceIn(14.dp, 15.dp))
             }
         }
     }
@@ -2325,7 +2378,7 @@ private fun CockpitLaunchRail(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
         if (item.packages.isEmpty()) {
             Text(
                 stringResource(R.string.cockpit_launch_bar_empty),
-                style = engraved(13.sp),
+                style = engraved(14.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)

@@ -13,4 +13,7 @@
     <string name="templates_no_obd">Nessun adattatore OBD scelto: i widget dei dati auto sono esclusi.</string>
     <string name="templates_fill_empty">Riempi pagine vuote</string>
     <string name="templates_replace_all">Sostituisci tutte</string>
+    <string name="templates_replace_confirm_title">Sostituire tutte e sette le pagine?</string>
+    <string name="templates_replace_confirm_body">La tua disposizione sparisce. Annulla la riporta.</string>
+    <string name="templates_replace">Sostituisci</string>
 </resources>

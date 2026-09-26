@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">La hoja se pone verde al subir la puntuación.</string>
     <string name="design_section_generic">Para todos los widgets</string>
     <string name="design_made_for_it">A medida</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">En los colores del tema</string>
+    <string name="design_family_materials">Materiales</string>
+    <string name="design_family_copper">Cobre</string>
+    <string name="design_show_more">%1$d más</string>
+    <string name="design_show_fewer">Menos</string>
 </resources>

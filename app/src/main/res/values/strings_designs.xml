@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">The leaf fills green as the score rises.</string>
     <string name="design_section_generic">For every widget</string>
     <string name="design_made_for_it">Made for it</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">In the theme\'s colours</string>
+    <string name="design_family_materials">Materials</string>
+    <string name="design_family_copper">Copper</string>
+    <string name="design_show_more">%1$d more</string>
+    <string name="design_show_fewer">Fewer</string>
 </resources>

@@ -35,11 +35,26 @@ sealed interface UpdateStatus {
     data object Idle : UpdateStatus
     data object Checking : UpdateStatus
     data object UpToDate : UpdateStatus
+    /** A newer build exists and the driver has not put it off. */
     data class Available(val info: UpdateInfo) : UpdateStatus
-    data class Downloading(val percent: Int) : UpdateStatus
+    /** A newer build exists but the driver said "later": only Settings still offers it. */
+    data class Dismissed(val info: UpdateInfo) : UpdateStatus
+    data class Downloading(val info: UpdateInfo, val percent: Int) : UpdateStatus
+    /** Downloaded and waiting for the go-ahead to install. */
+    data class Ready(val info: UpdateInfo, val file: File) : UpdateStatus
     data object Installing : UpdateStatus
     data class Error(@StringRes val messageRes: Int) : UpdateStatus
 }
+
+/** The update a status is about, if any. */
+val UpdateStatus.updateInfo: UpdateInfo?
+    get() = when (this) {
+        is UpdateStatus.Available -> info
+        is UpdateStatus.Dismissed -> info
+        is UpdateStatus.Downloading -> info
+        is UpdateStatus.Ready -> info
+        else -> null
+    }
 
 /**
  * In-app updater that tracks the installed version against the latest GitHub
@@ -60,15 +75,41 @@ class UpdateManager(private val context: Context) {
     val currentVersionName: String = BuildConfig.VERSION_NAME
     val currentVersionCode: Long = BuildConfig.VERSION_CODE.toLong()
 
+    private val prefs get() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
     /** Queries GitHub for the latest release and updates [status]. */
     suspend fun checkForUpdate() {
+        // A download under way or done keeps its state: the check is for news.
+        val keep = _status.value
+        if (keep is UpdateStatus.Downloading || keep is UpdateStatus.Ready || keep is UpdateStatus.Installing) return
         _status.value = UpdateStatus.Checking
         val info = withContext(Dispatchers.IO) { fetchLatestRelease() }
+        val downloaded = info?.let { downloadedFile(it) }
         _status.value = when {
             info == null -> UpdateStatus.Error(R.string.sys_update_check_failed)
-            info.buildNumber > currentVersionCode -> UpdateStatus.Available(info)
-            else -> UpdateStatus.UpToDate
+            info.buildNumber <= currentVersionCode -> UpdateStatus.UpToDate
+            downloaded != null -> UpdateStatus.Ready(info, downloaded)
+            prefs.getLong(KEY_DISMISSED, -1L) == info.buildNumber -> UpdateStatus.Dismissed(info)
+            else -> UpdateStatus.Available(info)
         }
+    }
+
+    /** The APK of [info] if an earlier download finished and is still there. */
+    private fun downloadedFile(info: UpdateInfo): File? {
+        if (prefs.getLong(KEY_DOWNLOADED, -1L) != info.buildNumber) return null
+        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), APK_NAME)
+        return file.takeIf { it.exists() && it.length() > 0L }
+    }
+
+    /**
+     * True on a connection that costs nothing per byte (home Wi-Fi rather
+     * than a phone's hotspot): the only kind an update downloads on by itself.
+     */
+    fun onUnmeteredNetwork(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) &&
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun fetchLatestRelease(): UpdateInfo? {
@@ -148,10 +189,26 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    /** Downloads the update APK, then launches the system installer. */
+    /** Downloads the update APK (unless it already is), then launches the system installer. */
     suspend fun downloadAndInstall(info: UpdateInfo) {
+        val file = downloadedFile(info) ?: (if (download(info)) downloadedFile(info) else null) ?: return
+        install(file)
+    }
+
+    /** Launches the system installer on a downloaded [file]. */
+    fun install(file: File) {
+        _status.value = UpdateStatus.Installing
+        launchInstaller(file)
+    }
+
+    /**
+     * Downloads [info]'s APK into the app's own downloads folder; [status]
+     * follows the progress and ends [UpdateStatus.Ready] or an error. True on success.
+     */
+    suspend fun download(info: UpdateInfo): Boolean {
         val apkFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), APK_NAME)
         withContext(Dispatchers.IO) { if (apkFile.exists()) apkFile.delete() }
+        prefs.edit().remove(KEY_DOWNLOADED).apply()
 
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.apkUrl))
@@ -161,13 +218,13 @@ class UpdateManager(private val context: Context) {
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, APK_NAME)
 
-        _status.value = UpdateStatus.Downloading(0)
+        _status.value = UpdateStatus.Downloading(info, 0)
         val downloadId = downloadManager.enqueue(request)
 
         var success = false
         try {
             success = withContext(Dispatchers.IO) {
-                withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) { awaitDownload(downloadManager, downloadId) } ?: false
+                withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) { awaitDownload(downloadManager, info, downloadId) } ?: false
             }
         } finally {
             // Failed, stuck or abandoned: nothing left queued in the system's downloader.
@@ -175,11 +232,11 @@ class UpdateManager(private val context: Context) {
         }
         if (!success) {
             _status.value = UpdateStatus.Error(R.string.sys_update_download_failed)
-            return
+            return false
         }
-
-        _status.value = UpdateStatus.Installing
-        launchInstaller(apkFile)
+        prefs.edit().putLong(KEY_DOWNLOADED, info.buildNumber).apply()
+        _status.value = UpdateStatus.Ready(info, apkFile)
+        return true
     }
 
     /**
@@ -187,7 +244,7 @@ class UpdateManager(private val context: Context) {
      * network, the server gone quiet) that makes no progress for [STALL_MS]
      * counts as failed rather than showing the same percentage forever.
      */
-    private suspend fun awaitDownload(downloadManager: DownloadManager, id: Long): Boolean {
+    private suspend fun awaitDownload(downloadManager: DownloadManager, info: UpdateInfo, id: Long): Boolean {
         var lastBytes = -1L
         var lastProgressAt = SystemClock.elapsedRealtime()
         while (true) {
@@ -203,7 +260,7 @@ class UpdateManager(private val context: Context) {
                         val total =
                             cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
                         if (total > 0) {
-                            _status.value = UpdateStatus.Downloading(((soFar * 100) / total).toInt())
+                            _status.value = UpdateStatus.Downloading(info, ((soFar * 100) / total).toInt())
                         }
                         if (soFar != lastBytes) {
                             lastBytes = soFar
@@ -227,11 +284,33 @@ class UpdateManager(private val context: Context) {
         context.startActivity(intent)
     }
 
+    /**
+     * "Later": the update on offer stops asking (no dot, no prompt) until a
+     * newer build comes along; Settings still lists it. A check's own outcome
+     * (up to date, failed) just clears.
+     */
     fun dismiss() {
-        _status.value = UpdateStatus.Idle
+        val info = _status.value.updateInfo
+        if (info == null) {
+            _status.value = UpdateStatus.Idle
+            return
+        }
+        prefs.edit().putLong(KEY_DISMISSED, info.buildNumber).apply()
+        _status.value = UpdateStatus.Dismissed(info)
+    }
+
+    /** Offers a dismissed update again (Settings → Advanced). */
+    fun offerAgain() {
+        val d = _status.value as? UpdateStatus.Dismissed ?: return
+        prefs.edit().remove(KEY_DISMISSED).apply()
+        _status.value = UpdateStatus.Available(d.info)
     }
 
     companion object {
+        private const val PREFS = "updates"
+        private const val KEY_DISMISSED = "dismissed_build"
+        private const val KEY_DOWNLOADED = "downloaded_build"
+
         /** Build number from a release tag or name: "v1.0.42" -> 42 (the last number wins). */
         internal fun parseBuildNumber(text: String): Long? =
             Regex("(\\d+)").findAll(text).lastOrNull()?.value?.toLongOrNull()

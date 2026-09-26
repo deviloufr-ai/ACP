@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">Das Blatt wird grün, wenn der Wert steigt.</string>
     <string name="design_section_generic">Für jedes Widget</string>
     <string name="design_made_for_it">Maßgeschneidert</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">In den Farben des Designs</string>
+    <string name="design_family_materials">Materialien</string>
+    <string name="design_family_copper">Kupfer</string>
+    <string name="design_show_more">%1$d weitere</string>
+    <string name="design_show_fewer">Weniger</string>
 </resources>

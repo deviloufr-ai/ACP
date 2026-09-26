@@ -4,4 +4,6 @@
     <string name="zoom_out">Kleiner</string>
     <string name="zoom_in">Groter</string>
     <string name="zoom_reset">Terug naar 100 %</string>
+    <string name="zoom_page">Tekstgrootte</string>
+    <string name="zoom_percent">%1$d %%</string>
 </resources>

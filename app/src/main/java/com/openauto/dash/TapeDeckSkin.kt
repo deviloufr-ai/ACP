@@ -865,7 +865,7 @@ private fun SegValue(
         val ratio = segUnits(digits) / SEG_H
         val labelH = if (label != null) (labelSize.value * 1.3f + 4f).dp else 0.dp
         val rough = minOf(maxHeight - labelH, maxWidth / (ratio + 0.6f))
-        val unitSize = (rough.value * 0.17f).coerceIn(11f, 30f).sp
+        val unitSize = (rough.value * 0.17f).coerceIn(14f, 30f).sp
         val unitW = (unitSize.value * 0.8f * unit.length + 8f).dp
         val digitH = minOf(maxHeight - labelH, (maxWidth - unitW) / ratio).coerceAtLeast(12.dp)
         Column {
@@ -947,7 +947,7 @@ private fun NeonPill(label: String?, description: String, onClick: () -> Unit, i
             icon()
             if (label != null) {
                 Spacer(Modifier.width(8.dp))
-                Text(label, style = chromeText(legend, 12.sp), maxLines = 1)
+                Text(label, style = chromeText(legend, 14.sp), maxLines = 1)
             }
         }
     }
@@ -973,7 +973,7 @@ private fun VfdClock(clock: String) {
         SevenSegment(digits, 28.dp, cyan, onScreen = true, colonOn = { blink.value })
         if (suffix.isNotEmpty()) {
             Spacer(Modifier.width(6.dp))
-            Text(suffix, style = vfdText(cyan, 12.sp, onScreen = true), maxLines = 1)
+            Text(suffix, style = vfdText(cyan, 14.sp, onScreen = true), maxLines = 1)
         }
     }
 }
@@ -1009,7 +1009,7 @@ private fun ObdLed(state: ObdConnectionState, onConnect: () -> Unit) {
                 }
         )
         Spacer(Modifier.width(8.dp))
-        Text("OBD", style = chromeText(legend, 12.sp), maxLines = 1)
+        Text("OBD", style = chromeText(legend, 14.sp), maxLines = 1)
     }
 }
 
@@ -1037,6 +1037,7 @@ private class TdReadout(val label: String, val value: String, val alert: Boolean
 private fun ReadoutRow(items: List<TdReadout>, valueSize: TextUnit, modifier: Modifier = Modifier) {
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
+    val labelSize = if (valueSize.value * 0.55f < 14f) 14.sp else valueSize * 0.55f
     Row(
         modifier = modifier
             .drawBehind { drawLine(magenta.copy(alpha = 0.35f), Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }
@@ -1045,7 +1046,7 @@ private fun ReadoutRow(items: List<TdReadout>, valueSize: TextUnit, modifier: Mo
     ) {
         items.forEach { r ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(r.label, style = vfdText(magenta, valueSize * 0.55f, glow = false), maxLines = 1)
+                Text(r.label, style = vfdText(magenta, labelSize, glow = false), maxLines = 1)
                 Text(r.value, style = vfdText(if (r.alert) magenta else cyan, valueSize), maxLines = 1, softWrap = false)
             }
         }
@@ -1111,7 +1112,7 @@ private fun TapeTelemetry(env: SkinTileEnv) {
             .clickable(enabled = idle && !env.editing, role = Role.Button, onClick = env.onConnectObd)
     ) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp)) {
-            val label = (maxHeight.value * 0.06f).coerceIn(11f, 18f).sp
+            val label = (maxHeight.value * 0.06f).coerceIn(14f, 18f).sp
             val ledH = (maxHeight * 0.085f).coerceIn(14.dp, 40.dp)
             val valueSize = (maxHeight.value * 0.085f).coerceIn(15f, 40f).sp
             val side = maxWidth > maxHeight * 2.4f
@@ -1169,7 +1170,9 @@ private fun TapeSpeedHud(env: SkinTileEnv) {
     val speed = rememberSpeedKmh(env.obdData, env.obdConnection)
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
-    val source = speedSource(env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.tape_no_signal_caps))
+    val source = speedSource(
+        env.obdConnection == ObdConnectionState.CONNECTED, speed, stringResource(R.string.info_speed_no_signal).uppercase()
+    )
     val over = (speed ?: 0) >= SPEED_WARNING_KMH
     val color = if (over) DashColors.Warning else cyan
     BoxWithConstraints(
@@ -1179,7 +1182,7 @@ private fun TapeSpeedHud(env: SkinTileEnv) {
             .vfdPanel(if (over) magenta else cyan)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        val label = (maxHeight.value * 0.07f).coerceIn(11f, 18f).sp
+        val label = (maxHeight.value * 0.07f).coerceIn(14f, 18f).sp
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.tape_speed_caps), style = chromeText(magenta, label), maxLines = 1)
@@ -1220,9 +1223,9 @@ private fun TapeMedia(env: SkinTileEnv) {
     val spin = rememberSpin(REEL_SPIN_MS, running = state.isPlaying)
     val loaded = state.hasMedia && state.title.isNotBlank()
     val title = when {
-        !access -> stringResource(R.string.tape_media_access_caps)
+        !access -> stringResource(R.string.info_media_access_needed).uppercase()
         loaded -> state.title.uppercase()
-        else -> stringResource(R.string.tape_no_tape_caps)
+        else -> stringResource(R.string.info_nothing_playing).uppercase()
     }
     val artist = when {
         !access -> stringResource(R.string.tape_tap_to_enable_caps)
@@ -1261,7 +1264,7 @@ private fun TapeMedia(env: SkinTileEnv) {
                     TransportKeys(env, state, iconSize, Modifier.width(colW).height(keysH))
                 } else {
                     PianoKey(stringResource(R.string.tape_cd_grant_media_access), !env.editing, openAccess, Modifier.width(colW).height(keysH)) {
-                        Text(stringResource(R.string.tape_grant_access_caps), style = chromeText(TdPrint, 12.sp), maxLines = 1)
+                        Text(stringResource(R.string.tape_grant_access_caps), style = chromeText(TdPrint, 14.sp), maxLines = 1)
                     }
                 }
                 if (deckBelow) {
@@ -1300,7 +1303,7 @@ private fun Cassette(
                 .fillMaxSize()
                 .cachedDraw(title, artist, cyan, magenta, light, measurer) {
                     val s = size.width / CAS_W
-                    val minText = 10.sp.toPx()
+                    val minText = 14.sp.toPx()
                     val titleLayout = measurer.measure(
                         title,
                         TextStyle(
@@ -1556,7 +1559,7 @@ private fun DeckPanel(state: MediaState, controller: CarMediaController, access:
     val cyan = DashColors.Accent
     val magenta = DashColors.Accent2
     val (status, statusColor) = when {
-        !access -> stringResource(R.string.tape_no_access_caps) to magenta
+        !access -> stringResource(R.string.info_media_access_needed).uppercase() to magenta
         state.isPlaying -> stringResource(R.string.tape_play_caps) to DashColors.Good
         state.hasMedia -> stringResource(R.string.tape_pause_caps) to TdYellowText
         else -> stringResource(R.string.tape_stop_caps) to DashColors.Muted
@@ -1574,7 +1577,10 @@ private fun DeckPanel(state: MediaState, controller: CarMediaController, access:
                         }
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(status, style = vfdText(statusColor, 12.sp), maxLines = 1)
+                Text(
+                    status, style = vfdText(statusColor, 14.sp), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
                 Spacer(Modifier.weight(1f))
                 if (state.durationMs > 0L) DeckCounter(state, controller, cyan)
             }
@@ -1582,7 +1588,7 @@ private fun DeckPanel(state: MediaState, controller: CarMediaController, access:
             Spectrum(state.isPlaying, Modifier.weight(1f).fillMaxWidth())
             if (roomy) {
                 Spacer(Modifier.height(6.dp))
-                Text(stringResource(R.string.tape_hifi_stereo_caps), style = chromeText(magenta, 10.sp), maxLines = 1)
+                Text(stringResource(R.string.tape_hifi_stereo_caps), style = chromeText(magenta, 14.sp), maxLines = 1)
             }
         }
     }
@@ -1702,12 +1708,12 @@ private fun TapeNavigation(env: SkinTileEnv) {
         ) {
             when {
                 !access -> CrtMessage(
-                    stringResource(R.string.tape_no_signal_caps),
+                    stringResource(R.string.info_directions_access_title).uppercase(),
                     stringResource(R.string.tape_tap_grant_notification_access_caps),
                     innerW, innerH
                 )
                 !nav.active -> CrtMessage(
-                    stringResource(R.string.tape_no_route_caps),
+                    stringResource(R.string.info_directions_no_route).uppercase(),
                     stringResource(R.string.tape_tap_open_maps_caps),
                     innerW, innerH
                 )
@@ -1716,7 +1722,7 @@ private fun TapeNavigation(env: SkinTileEnv) {
             if (access && nav.active) {
                 Text(
                     if (nav.packageName == "com.waze") "WAZE" else "MAPS",
-                    style = phosphorText(11.sp, alpha = 0.6f),
+                    style = phosphorText(14.sp, alpha = 0.6f),
                     maxLines = 1,
                     modifier = Modifier.align(Alignment.TopEnd)
                 )
@@ -1800,20 +1806,24 @@ private val CrtScreen = Modifier.drawWithCache {
 /** A terminal message: [title] with a blinking block cursor, [hint] underneath. */
 @Composable
 private fun CrtMessage(title: String, hint: String, w: Dp, h: Dp) {
-    val size = minOf(h.value * 0.2f, w.value * 0.09f).coerceIn(18f, 64f).sp
+    // The title (plus its cursor) shrinks to the screen's width, never under 14 sp; a long one ends in an ellipsis.
+    val size = minOf(h.value * 0.2f, w.value / ((title.length + 1) * 0.62f)).coerceIn(14f, 64f).sp
     Column(
         Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(title, style = phosphorText(size, weight = FontWeight.Bold), maxLines = 1)
+            Text(
+                title, style = phosphorText(size, weight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
             BlinkingText("_", phosphorText(size, weight = FontWeight.Bold), periodMs = 530L, offAlpha = 0f)
         }
         Spacer(Modifier.height(6.dp))
         Text(
             hint,
-            style = phosphorText((size.value * 0.34f).coerceIn(11f, 20f).sp, alpha = 0.7f),
+            style = phosphorText((size.value * 0.34f).coerceIn(14f, 20f).sp, alpha = 0.7f),
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -1829,8 +1839,8 @@ private fun CrtRoute(nav: NavState, w: Dp, h: Dp) {
     val eta = nav.etaParts.joinToString(" · ").uppercase()
     val narrow = w < h * 1.25f
     val big = (if (narrow) minOf(h.value * 0.16f, w.value * 0.18f) else minOf(h.value * 0.26f, w.value * 0.11f)).coerceIn(22f, 96f)
-    val streetSize = (big * 0.38f).coerceIn(12f, 34f).sp
-    val etaSize = (big * 0.28f).coerceIn(11f, 24f).sp
+    val streetSize = (big * 0.38f).coerceIn(14f, 34f).sp
+    val etaSize = (big * 0.28f).coerceIn(14f, 24f).sp
     val glyph = (if (narrow) minOf(h * 0.32f, w * 0.4f) else minOf(h * 0.55f, w * 0.26f)).coerceIn(36.dp, 170.dp)
     val lines: @Composable (Alignment.Horizontal, TextAlign) -> Unit = { align, textAlign ->
         Column(horizontalAlignment = align) {
@@ -1926,7 +1936,7 @@ private fun TapeClock(env: SkinTileEnv) {
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        val dateSize = (maxHeight.value * 0.1f).coerceIn(11f, 26f).sp
+        val dateSize = (maxHeight.value * 0.1f).coerceIn(14f, 26f).sp
         val ratio = segUnits(digits) / SEG_H
         val digitH = minOf(maxHeight - (dateSize.value * 1.4f).dp - 10.dp, maxWidth / ratio).coerceAtLeast(16.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -2059,8 +2069,8 @@ private fun TapeWeather() {
                 else minOf(maxHeight.value * 0.4f, maxWidth.value * 0.32f)
                 ).coerceIn(28f, 150f)
             val iconSize = (tempSize * 0.55f).dp
-            val condSize = (tempSize * 0.2f).coerceIn(12f, 28f).sp
-            val smallSize = (tempSize * 0.145f).coerceIn(10f, 18f).sp
+            val condSize = (tempSize * 0.2f).coerceIn(14f, 28f).sp
+            val smallSize = (tempSize * 0.145f).coerceIn(14f, 18f).sp
             val feels = stringResource(R.string.tape_feels_wind_caps, w.feelsC.roundToInt(), w.windKmh.roundToInt())
             val range = if (w.hiC.isNaN() || w.loC.isNaN()) null
             else stringResource(R.string.tape_low_high_caps, w.loC.roundToInt(), w.hiC.roundToInt())
@@ -2123,7 +2133,7 @@ private fun TapeRange(item: DashboardItem, env: SkinTileEnv) {
             .vfdPanel(magenta)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        val label = (maxHeight.value * 0.06f).coerceIn(11f, 18f).sp
+        val label = (maxHeight.value * 0.06f).coerceIn(14f, 18f).sp
         val barH = (maxHeight * 0.09f).coerceIn(14.dp, 34.dp)
         // Side by side or stacked: whichever gives the taller digits.
         val labelH = (label.value * 1.3f + 4f).dp
@@ -2262,7 +2272,7 @@ private fun TapePreset(item: DashboardItem.AppShortcut, env: SkinTileEnv) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val faceH = maxHeight - PRESET_DEPTH
         val wide = maxWidth > maxHeight * 1.7f
-        val labelSize = (faceH.value * 0.14f).coerceIn(10f, 15f).sp
+        val labelSize = (faceH.value * 0.14f).coerceIn(14f, 15f).sp
         val iconSize = (if (wide) faceH * 0.55f else minOf(faceH * 0.5f, maxWidth * 0.5f)).coerceIn(20.dp, 64.dp)
         PresetButton(name, !env.editing, { env.onLaunchApp(item.packageName) }, Modifier.fillMaxSize()) {
             if (wide) {
@@ -2298,8 +2308,8 @@ private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
         val faceH = maxHeight - PRESET_DEPTH
         val bw = if (n > 0) (maxWidth - pencilW - gap * n) / n else 0.dp
         val rowMode = bw >= 140.dp && faceH < 120.dp
-        val labelSize = (faceH.value * 0.16f).coerceIn(10f, 15f).sp
-        val numberSize = (faceH.value * (if (rowMode) 0.3f else 0.2f)).coerceIn(12f, 24f).sp
+        val labelSize = (faceH.value * 0.16f).coerceIn(14f, 15f).sp
+        val numberSize = (faceH.value * (if (rowMode) 0.3f else 0.2f)).coerceIn(14f, 24f).sp
         val iconSize = if (rowMode) (faceH * 0.5f).coerceIn(20.dp, 44.dp) else minOf(faceH * 0.45f, bw * 0.5f).coerceIn(18.dp, 56.dp)
         val showLabel = rowMode || (faceH >= 64.dp && bw >= 60.dp)
         val numberStyle = chromeText(magenta, numberSize, glow = true).copy(fontWeight = FontWeight.Black, letterSpacing = 0.em)
@@ -2311,7 +2321,7 @@ private fun TapePresetBar(item: DashboardItem.LaunchBar, env: SkinTileEnv) {
             if (n == 0) {
                 Text(
                     stringResource(R.string.tape_presets_empty_caps),
-                    style = vfdText(DashColors.Muted, 12.sp, glow = false),
+                    style = vfdText(DashColors.Muted, 14.sp, glow = false),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = 8.dp)

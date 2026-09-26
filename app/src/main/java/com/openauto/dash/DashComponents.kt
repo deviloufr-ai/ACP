@@ -19,6 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.composed
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -396,4 +399,64 @@ internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, con
         if (state.currentValue != SwipeToDismissBoxValue.Settled) dismiss()
     }
     SwipeToDismissBox(state = state, backgroundContent = {}, modifier = modifier) { content() }
+}
+
+/**
+ * Keeps the system bars away while a pop-up window (a dialog, a menu) is up.
+ * The launcher runs immersive, but a dialog or a popup is a window of its
+ * own and Android shows the bars for it, which shifted the whole screen the
+ * moment a menu opened. Setting the flags on the pop-up's own root view is
+ * enough: the window takes the union of its views' flags. With the head
+ * unit's status bar forced on (a docked app window), only the navigation bar
+ * is hidden, as for the launcher's own window.
+ */
+@Suppress("DEPRECATION")
+internal fun Modifier.immersiveWindow(): Modifier = composed {
+    val view = LocalView.current
+    SideEffect {
+        var flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        if (!MainActivity.statusBarForced) flags = flags or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        // The launcher's own window loses its hide flags the moment the pop-up
+        // takes the focus; put them back, or a bar-sized strip shows meanwhile.
+        (view.context.activity() as? MainActivity)?.enableImmersiveFullscreen()
+        // A dialog: its own window, reached through the view that hosts the content.
+        val dialogWindow = generateSequence(view as View?) { it.parent as? View }
+            .mapNotNull { (it as? androidx.compose.ui.window.DialogWindowProvider)?.window }
+            .firstOrNull()
+        if (dialogWindow != null) {
+            if (dialogWindow.decorView.systemUiVisibility != flags) {
+                // A full-width dialog's decor otherwise paints the theme's
+                // navigation bar colour over the bar's strip, hidden or not.
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(dialogWindow, false)
+                dialogWindow.navigationBarColor = android.graphics.Color.TRANSPARENT
+                dialogWindow.statusBarColor = android.graphics.Color.TRANSPARENT
+                dialogWindow.decorView.systemUiVisibility = flags
+                dialogWindow.attributes = dialogWindow.attributes.also { it.systemUiVisibility = flags }
+            }
+            return@SideEffect
+        }
+        // A popup (a menu): the compose view is the window's root; its layout
+        // params are the window's, and updating them re-applies the flags.
+        val root = view.rootView
+        val params = root.layoutParams as? android.view.WindowManager.LayoutParams
+        if (params != null && params.systemUiVisibility != flags) {
+            params.systemUiVisibility = flags
+            root.systemUiVisibility = flags
+            val wm = root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+            runCatching { wm.updateViewLayout(root, params) }
+        } else if (root.systemUiVisibility != flags) {
+            root.systemUiVisibility = flags
+        }
+    }
+    this
+}
+
+/** The activity behind a view's context, through any wrappers. */
+internal fun Context.activity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.activity()
+    else -> null
 }

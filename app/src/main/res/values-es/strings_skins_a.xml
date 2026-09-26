@@ -21,20 +21,16 @@
     <string name="cockpit_dial_full">1</string>
     <string name="cockpit_dial_fuel_title">COMBUSTIBLE</string>
     <string name="cockpit_unit_rpm">rpm</string>
-    <string name="cockpit_rpm_line">%1$s RPM</string>
 
     <!-- Cockpit skin: telemetry and speed -->
     <string name="cockpit_speed_rpm_caption">KM/H · %1$d RPM</string>
     <string name="cockpit_obd_off">OBD APAGADO</string>
-    <string name="cockpit_no_signal">SIN SEÑAL</string>
     <string name="cockpit_battery">Batería</string>
     <string name="cockpit_coolant">Refrigerante</string>
     <string name="cockpit_speed_warning">Aviso de velocidad</string>
     <string name="cockpit_tap_to_connect">TOCA PARA\nCONECTAR</string>
 
     <!-- Cockpit skin: media -->
-    <string name="cockpit_media_access_needed">ACCESO A MEDIOS NECESARIO · TOCA PARA ACTIVAR</string>
-    <string name="cockpit_nothing_playing">NADA EN REPRODUCCIÓN</string>
     <string name="cockpit_tap_to_enable">TOCA PARA ACTIVAR</string>
     <string name="cockpit_grant_media_access">Permitir acceso a medios</string>
     <string name="cockpit_previous">Anterior</string>
@@ -46,8 +42,6 @@
 
     <!-- Cockpit skin: navigation, clock, weather, range -->
     <string name="cockpit_open_navigation">Abrir navegación</string>
-    <string name="cockpit_no_access">SIN ACCESO</string>
-    <string name="cockpit_no_route">SIN RUTA</string>
     <string name="cockpit_tap_for_maps">TOCA PARA MAPS</string>
     <string name="cockpit_open_alarms">Abrir alarmas</string>
     <string name="cockpit_clock">Reloj</string>
@@ -74,11 +68,8 @@
     <string name="orbit_tap_to_connect">Toca para conectar</string>
     <string name="orbit_connecting">Conectando…</string>
     <string name="orbit_connect_obd">Conectar OBD</string>
-    <string name="orbit_no_signal">Sin señal</string>
 
     <!-- Orbit skin: media -->
-    <string name="orbit_media_access_needed">Acceso a medios</string>
-    <string name="orbit_nothing_playing">Nada en reproducción</string>
     <string name="orbit_tap_to_enable">Toca para activar</string>
     <string name="orbit_start_music">Pon música en cualquier app</string>
     <string name="orbit_previous_track">Pista anterior</string>
@@ -88,8 +79,6 @@
     <string name="orbit_grant_access">Permitir acceso</string>
 
     <!-- Orbit skin: navigation -->
-    <string name="orbit_no_route">Sin ruta</string>
-    <string name="orbit_directions_need_access">La ruta necesita acceso</string>
     <string name="orbit_tap_open_maps">Toca para abrir Google Maps</string>
     <string name="orbit_tap_allow_notifications">Toca para permitir el acceso a notificaciones</string>
 

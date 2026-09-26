@@ -51,7 +51,7 @@ internal fun DashTemplateDialog(
     var chosen by remember { mutableStateOf(DashTemplate.DAILY) }
     AlertDialog(
         modifier = Modifier.fillMaxWidth(0.92f).keepClearOfWindows(),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         onDismissRequest = onDismiss,
         containerColor = DashColors.Card,
         title = { Text(stringResource(R.string.templates_title), color = DashColors.TextPrimary) },

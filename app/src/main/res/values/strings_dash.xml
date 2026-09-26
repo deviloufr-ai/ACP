@@ -33,7 +33,6 @@
     <string name="dash_reset_page">Reset page</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Update available: %1$s</string>
     <string name="dash_update_downloading">Downloading update… %1$d%%</string>
     <string name="dash_update_installing">Starting installer…</string>
     <string name="dash_menu_check_updates">Check for updates</string>
@@ -60,17 +59,10 @@
     <string name="dash_notice_resize_overlap">That size overlaps another tile. Make room before resizing.</string>
 
     <!-- Add to dashboard -->
-    <string name="dash_add_to_dashboard">Add to dashboard</string>
-    <string name="dash_add_app">Add app</string>
-    <string name="dash_add_app_window">Add an app in a window</string>
-    <string name="dash_add_app_pair">Add a split pair</string>
-    <string name="dash_add_widget">Add widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Swap split apps left/right</string>
     <string name="dash_split_with">Split screen with…</string>
-    <string name="dash_pair_first">Split pair: first app (left)</string>
-    <string name="dash_pair_second">Split pair: second app (right)</string>
     <string name="dash_enable_split_title">Enable split screen</string>
     <string name="dash_enable_split_body">Dashwheel uses the system\'s own split screen, the one from recents. Turn on Dashwheel once under Settings, Accessibility.</string>
     <string name="dash_open_settings">Open settings</string>
@@ -122,7 +114,7 @@
     <string name="dash_obd_short" translatable="false">OBD</string>
     <string name="dash_theme_group_recommended">Recommended</string>
     <string name="dash_theme_group_colours">Themes</string>
-    <string name="dash_theme_group_skins">Universes</string>
+    <string name="dash_theme_group_skins">Skins</string>
     <string name="dash_theme_night">Night</string>
     <string name="dash_theme_day">Day</string>
 
@@ -174,4 +166,20 @@
     <string name="dash_page_below2">Two below Home</string>
     <string name="dash_empty_title">Nothing here yet</string>
     <string name="dash_empty_body">Add a tile, or pick a template for all the pages.</string>
+    <!-- Updates without a strip (⋮ dot, Settings row, ready prompt); edit-mode confirms; tile options; theme gallery -->
+    <string name="dash_update_to">Update to %1$s</string>
+    <string name="dash_update_available_detail">A newer build than v%1$s. Installing restarts Dashwheel.</string>
+    <string name="dash_update_ready_detail">Downloaded and ready to install</string>
+    <string name="dash_update_ready_title">Update ready</string>
+    <string name="dash_update_ready_body">%1$s is downloaded. Installing takes half a minute and restarts Dashwheel.</string>
+    <string name="dash_update_now">Update now</string>
+    <string name="dash_update_later">Later</string>
+    <string name="dash_reset_confirm_title">Clear this page?</string>
+    <string name="dash_reset_confirm_body">Every tile on it goes. Undo brings them back.</string>
+    <string name="dash_clear">Clear</string>
+    <string name="dash_theme_show_all">Show all %1$d themes</string>
+    <string name="dash_theme_show_fewer">Show fewer</string>
+    <string name="dash_tile_design">Design</string>
+    <string name="dash_tile_move">Move to another page</string>
+    <string name="dash_tile_remove">Remove</string>
 </resources>

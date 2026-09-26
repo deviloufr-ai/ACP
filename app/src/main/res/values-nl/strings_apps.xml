@@ -52,7 +52,6 @@
     <string name="apps_kind_audio_blurb">Volume, dempen, geluid en Bluetooth-instellingen</string>
 
     <!-- Add-widget catalogue: dialog -->
-    <string name="apps_add_widget">Widget toevoegen</string>
     <string name="apps_pick_launch_bar">App-balk</string>
     <string name="apps_pick_launch_bar_blurb">Je favoriete apps op een rij</string>
     <string name="apps_pick_system_widget">Systeemwidget…</string>
@@ -103,4 +102,17 @@
 
     <!-- Floating split-screen swap button (accessibility label) -->
     <string name="apps_swap_split_panes">Apps in gesplitst scherm wisselen</string>
+    <!-- The add sheet (AddSheet.kt): widgets, apps and windows in one place -->
+    <string name="apps_add_title">Toevoegen aan %1$s</string>
+    <string name="apps_tab_widgets">Widgets</string>
+    <string name="apps_tab_apps">Apps</string>
+    <string name="apps_tab_windows">Vensters</string>
+    <string name="apps_search">Zoeken</string>
+    <string name="apps_category_all">Alles</string>
+    <string name="apps_window_mode_single">In een venster</string>
+    <string name="apps_window_mode_pair">Naast elkaar</string>
+    <string name="apps_window_hint">De app blijft open in een eigen venster op deze pagina.</string>
+    <string name="apps_pair_pick_first">Tik op de app voor de linkerkant.</string>
+    <string name="apps_pair_pick_second">%1$s links. Tik nu op de app voor de rechterkant.</string>
+    <string name="apps_pair_change">Wijzigen</string>
 </resources>

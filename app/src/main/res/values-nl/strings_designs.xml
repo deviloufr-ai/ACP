@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">Het blad kleurt groen als de score stijgt.</string>
     <string name="design_section_generic">Voor elke widget</string>
     <string name="design_made_for_it">Op maat</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">In de kleuren van het thema</string>
+    <string name="design_family_materials">Materialen</string>
+    <string name="design_family_copper">Koper</string>
+    <string name="design_show_more">Nog %1$d</string>
+    <string name="design_show_fewer">Minder</string>
 </resources>

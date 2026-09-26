@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">La feuille verdit quand le score monte.</string>
     <string name="design_section_generic">Pour tous les widgets</string>
     <string name="design_made_for_it">Sur mesure</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">Aux couleurs du thème</string>
+    <string name="design_family_materials">Matières</string>
+    <string name="design_family_copper">Cuivre</string>
+    <string name="design_show_more">%1$d de plus</string>
+    <string name="design_show_fewer">Moins</string>
 </resources>

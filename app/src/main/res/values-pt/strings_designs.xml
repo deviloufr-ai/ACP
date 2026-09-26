@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">A folha fica verde à medida que a pontuação sobe.</string>
     <string name="design_section_generic">Para todos os widgets</string>
     <string name="design_made_for_it">À medida</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">Nas cores do tema</string>
+    <string name="design_family_materials">Materiais</string>
+    <string name="design_family_copper">Cobre</string>
+    <string name="design_show_more">Mais %1$d</string>
+    <string name="design_show_fewer">Menos</string>
 </resources>

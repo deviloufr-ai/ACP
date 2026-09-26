@@ -16,6 +16,8 @@
         <!-- See-through: the head unit's status bar, forced on while an app window
              is docked, shows the dashboard's own background (the theme's colours). -->
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@color/background</item>
+        <!-- Transparent too: the bar is hidden (immersive), and a painted bar colour showed as a
+             strip whenever a pop-up window took the focus. -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

@@ -462,7 +462,7 @@ private fun FaultDetailSheet(
     }
     // Leaving the sheet stops listening, and the answer shown goes with it.
     DisposableEffect(Unit) { onDispose { AskMechanic.cancel() } }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(
             shape = DashShape.Large,
             color = DashColors.Card.copy(alpha = 1f),

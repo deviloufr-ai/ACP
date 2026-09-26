@@ -308,7 +308,7 @@ private const val POPUP_MARGIN_PX = 12
  * window whose tile it overlaps steps aside; windows elsewhere stay open.
  * `composed`, so the view it measures against is the pop-up's own window.
  */
-internal fun Modifier.keepClearOfWindows(): Modifier = composed {
+internal fun Modifier.keepClearOfWindows(): Modifier = immersiveWindow().composed {
     val view = LocalView.current
     val owner = remember { Any() }
     DisposableEffect(owner) {

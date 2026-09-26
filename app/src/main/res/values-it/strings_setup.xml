@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- First-run setup (SetupScreen.kt): the car, what the launcher may use, the look -->
+    <string name="setup_title">Configura Dashwheel</string>
+    <string name="setup_step">Passo %1$d di 3</string>
+    <string name="setup_skip">Salta</string>
+    <string name="setup_back">Indietro</string>
+    <string name="setup_next">Continua</string>
+    <string name="setup_done">Fatto</string>
+    <string name="setup_car_title">La tua auto</string>
+    <string name="setup_car_body">Letture, carburante e manutenzione seguono questo profilo.</string>
+    <string name="setup_car_keep">Sì, è questa</string>
+    <string name="setup_car_change">Scegline un\'altra</string>
+    <string name="setup_driver_side">Posto di guida</string>
+    <string name="setup_driver_left">A sinistra</string>
+    <string name="setup_driver_right">A destra</string>
+    <string name="setup_access_title">Cosa può usare Dashwheel</string>
+    <string name="setup_access_body">Ognuno è facoltativo. Consentilo nella schermata che si apre, poi torna qui.</string>
+    <string name="setup_access_notifications">Notifiche</string>
+    <string name="setup_access_notifications_detail">Musica, prossima svolta e messaggi passano da qui</string>
+    <string name="setup_access_location">Posizione</string>
+    <string name="setup_access_location_detail">Mappa, meteo, viaggio e parcheggio</string>
+    <string name="setup_access_contacts">Contatti</string>
+    <string name="setup_access_contacts_detail">I contatti preferiti nella chiamata rapida</string>
+    <string name="setup_access_calendar">Calendario</string>
+    <string name="setup_access_calendar_detail">Gli appuntamenti di oggi nell\'agenda</string>
+    <string name="setup_access_obd">Adattatore OBD</string>
+    <string name="setup_access_obd_detail">Dati motore, carburante e codici errore via Bluetooth</string>
+    <string name="setup_allow">Consenti</string>
+    <string name="setup_choose">Scegli</string>
+    <string name="setup_allowed">Consentito</string>
+    <string name="setup_look_title">L\'aspetto</string>
+    <string name="setup_look_body">Tre per iniziare. Tutti i temi sono in Impostazioni, Aspetto.</string>
+    <string name="setup_pill">Completa la configurazione</string>
+    <string name="setup_again">Configura di nuovo</string>
+    <string name="setup_again_detail">L\'auto, cosa può usare Dashwheel e l\'aspetto, passo dopo passo</string>
+</resources>

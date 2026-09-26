@@ -52,7 +52,6 @@
     <string name="apps_kind_audio_blurb">Volume, mute, sound and Bluetooth settings</string>
 
     <!-- Add-widget catalogue: dialog -->
-    <string name="apps_add_widget">Add widget</string>
     <string name="apps_pick_launch_bar">App launch bar</string>
     <string name="apps_pick_launch_bar_blurb">Your favourite apps in a row</string>
     <string name="apps_pick_system_widget">System widget…</string>
@@ -103,4 +102,17 @@
 
     <!-- Floating split-screen swap button (accessibility label) -->
     <string name="apps_swap_split_panes">Swap split-screen apps</string>
+    <!-- The add sheet (AddSheet.kt): widgets, apps and windows in one place -->
+    <string name="apps_add_title">Add to %1$s</string>
+    <string name="apps_tab_widgets">Widgets</string>
+    <string name="apps_tab_apps">Apps</string>
+    <string name="apps_tab_windows">Windows</string>
+    <string name="apps_search">Search</string>
+    <string name="apps_category_all">All</string>
+    <string name="apps_window_mode_single">In a window</string>
+    <string name="apps_window_mode_pair">Side by side</string>
+    <string name="apps_window_hint">The app stays open in its own window on this page.</string>
+    <string name="apps_pair_pick_first">Tap the app for the left side.</string>
+    <string name="apps_pair_pick_second">%1$s on the left. Now tap the app for the right side.</string>
+    <string name="apps_pair_change">Change</string>
 </resources>

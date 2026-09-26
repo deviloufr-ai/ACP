@@ -153,4 +153,10 @@
     <string name="design_leaf_desc">Liść zielenieje, gdy wynik rośnie.</string>
     <string name="design_section_generic">Dla każdego widżetu</string>
     <string name="design_made_for_it">Na miarę</string>
+    <!-- Design families in the picker -->
+    <string name="design_family_theme">W kolorach motywu</string>
+    <string name="design_family_materials">Materiały</string>
+    <string name="design_family_copper">Miedź</string>
+    <string name="design_show_more">Jeszcze %1$d</string>
+    <string name="design_show_fewer">Mniej</string>
 </resources>

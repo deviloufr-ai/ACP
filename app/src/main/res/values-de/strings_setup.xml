@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- First-run setup (SetupScreen.kt): the car, what the launcher may use, the look -->
+    <string name="setup_title">Dashwheel einrichten</string>
+    <string name="setup_step">Schritt %1$d von 3</string>
+    <string name="setup_skip">Überspringen</string>
+    <string name="setup_back">Zurück</string>
+    <string name="setup_next">Weiter</string>
+    <string name="setup_done">Fertig</string>
+    <string name="setup_car_title">Ihr Auto</string>
+    <string name="setup_car_body">Messwerte, Kraftstoff und Wartung richten sich nach diesem Profil.</string>
+    <string name="setup_car_keep">Ja, das ist es</string>
+    <string name="setup_car_change">Ein anderes wählen</string>
+    <string name="setup_driver_side">Fahrersitz</string>
+    <string name="setup_driver_left">Links</string>
+    <string name="setup_driver_right">Rechts</string>
+    <string name="setup_access_title">Was Dashwheel nutzen darf</string>
+    <string name="setup_access_body">Alles ist optional. Erlauben Sie es auf dem Bildschirm, der sich öffnet, und kommen Sie zurück.</string>
+    <string name="setup_access_notifications">Benachrichtigungen</string>
+    <string name="setup_access_notifications_detail">Musik, die nächste Abzweigung und Ihre Nachrichten kommen darüber</string>
+    <string name="setup_access_location">Standort</string>
+    <string name="setup_access_location_detail">Karte, Wetter, Fahrt und Parkplatz</string>
+    <string name="setup_access_contacts">Kontakte</string>
+    <string name="setup_access_contacts_detail">Favoriten für die Schnellwahl</string>
+    <string name="setup_access_calendar">Kalender</string>
+    <string name="setup_access_calendar_detail">Die heutigen Termine in der Agenda</string>
+    <string name="setup_access_obd">OBD-Adapter</string>
+    <string name="setup_access_obd_detail">Motordaten, Kraftstoff und Fehlercodes über Bluetooth</string>
+    <string name="setup_allow">Erlauben</string>
+    <string name="setup_choose">Wählen</string>
+    <string name="setup_allowed">Erlaubt</string>
+    <string name="setup_look_title">Das Aussehen</string>
+    <string name="setup_look_body">Drei für den Anfang. Alle Designs stehen unter Einstellungen, Aussehen.</string>
+    <string name="setup_pill">Einrichtung abschließen</string>
+    <string name="setup_again">Erneut einrichten</string>
+    <string name="setup_again_detail">Auto, Zugriffe und Aussehen, Schritt für Schritt</string>
+</resources>

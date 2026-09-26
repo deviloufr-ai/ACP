@@ -13,4 +13,7 @@
     <string name="templates_no_obd">Ainda não escolheu um adaptador OBD, por isso os widgets de dados do carro ficam de fora.</string>
     <string name="templates_fill_empty">Preencher páginas vazias</string>
     <string name="templates_replace_all">Substituir todas</string>
+    <string name="templates_replace_confirm_title">Substituir as sete páginas?</string>
+    <string name="templates_replace_confirm_body">A sua disposição desaparece. Anular repõe-na.</string>
+    <string name="templates_replace">Substituir</string>
 </resources>

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -320,10 +321,36 @@ private fun AdvancedPane(m: TopBarModel, onBootLogo: () -> Unit, onClose: () -> 
         SettingsRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.boot_menu), null, onBootLogo)
     }
     SettingsRow(Icons.Filled.Build, stringResource(R.string.dash_system_app_title), stringResource(R.string.settings_system_detail), m.onSystem)
-    SettingsRow(
-        Icons.Filled.SystemUpdate, stringResource(R.string.dash_menu_check_updates),
-        stringResource(R.string.settings_version, m.versionName), m.onCheckUpdates
-    )
+    SettingsRow(Icons.Filled.Checklist, stringResource(R.string.setup_again), stringResource(R.string.setup_again_detail)) { m.onSetup(true) }
+    UpdateRow(m)
+}
+
+/**
+ * The updater's one row: what it knows (checking, up to date, a newer build,
+ * downloading, downloaded) and the one action that fits. The only place an
+ * update the driver put off can still be had.
+ */
+@Composable
+private fun UpdateRow(m: TopBarModel) {
+    val status = m.update
+    val info = status.updateInfo
+    val title = when {
+        info != null -> stringResource(R.string.dash_update_to, info.versionName)
+        else -> stringResource(R.string.dash_menu_check_updates)
+    }
+    val detail = when (status) {
+        is UpdateStatus.Checking -> stringResource(R.string.dash_update_checking)
+        is UpdateStatus.UpToDate -> stringResource(R.string.dash_update_up_to_date, m.versionName)
+        is UpdateStatus.Downloading -> stringResource(R.string.dash_update_downloading, status.percent)
+        is UpdateStatus.Ready -> stringResource(R.string.dash_update_ready_detail)
+        is UpdateStatus.Installing -> stringResource(R.string.dash_update_installing)
+        is UpdateStatus.Error -> stringResource(status.messageRes)
+        is UpdateStatus.Available, is UpdateStatus.Dismissed -> stringResource(R.string.dash_update_available_detail, m.versionName)
+        UpdateStatus.Idle -> stringResource(R.string.settings_version, m.versionName)
+    }
+    SettingsRow(Icons.Filled.SystemUpdate, title, detail) {
+        if (info != null && status !is UpdateStatus.Downloading && status !is UpdateStatus.Installing) m.onUpdate() else m.onCheckUpdates()
+    }
 }
 
 @Composable

@@ -33,7 +33,6 @@
     <string name="dash_reset_page">Vider la page</string>
 
     <!-- Update banner -->
-    <string name="dash_update_available">Mise à jour disponible : %1$s</string>
     <string name="dash_update_downloading">Téléchargement de la mise à jour… %1$d %%</string>
     <string name="dash_update_installing">Lancement de l\'installation…</string>
     <string name="dash_menu_check_updates">Rechercher des mises à jour</string>
@@ -60,17 +59,10 @@
     <string name="dash_notice_resize_overlap">Cette taille chevauche une autre tuile. Faites de la place avant de redimensionner.</string>
 
     <!-- Add to dashboard -->
-    <string name="dash_add_to_dashboard">Ajouter au tableau de bord</string>
-    <string name="dash_add_app">Ajouter une appli</string>
-    <string name="dash_add_app_window">Ajouter une app dans une fenêtre</string>
-    <string name="dash_add_app_pair">Ajouter une paire en écran partagé</string>
-    <string name="dash_add_widget">Ajouter un widget</string>
 
     <!-- Split screen -->
     <string name="dash_swap_split">Inverser les applis gauche/droite</string>
     <string name="dash_split_with">Écran partagé avec…</string>
-    <string name="dash_pair_first">Paire d\'applis : 1re appli (gauche)</string>
-    <string name="dash_pair_second">Paire d\'applis : 2e appli (droite)</string>
     <string name="dash_enable_split_title">Activer l\'écran partagé</string>
     <string name="dash_enable_split_body">Dashwheel utilise l\'écran partagé du système, celui des applications récentes. Activez Dashwheel une fois dans Paramètres, Accessibilité.</string>
     <string name="dash_open_settings">Ouvrir les paramètres</string>
@@ -170,7 +162,23 @@
     <string name="dash_theme_zenith_desc">L\'habitacle lounge : gris perle, panneaux blancs, un seul accent bleu profond</string>
     <string name="dash_theme_group_recommended">Recommandés</string>
     <string name="dash_theme_group_colours">Thèmes</string>
-    <string name="dash_theme_group_skins">Univers</string>
+    <string name="dash_theme_group_skins">Skins</string>
     <string name="dash_theme_night">Nuit</string>
     <string name="dash_theme_day">Jour</string>
+    <!-- Updates without a strip (⋮ dot, Settings row, ready prompt); edit-mode confirms; tile options; theme gallery -->
+    <string name="dash_update_to">Mettre à jour vers %1$s</string>
+    <string name="dash_update_available_detail">Plus récent que la v%1$s. L\'installation redémarre Dashwheel.</string>
+    <string name="dash_update_ready_detail">Téléchargée, prête à installer</string>
+    <string name="dash_update_ready_title">Mise à jour prête</string>
+    <string name="dash_update_ready_body">La %1$s est téléchargée. L\'installation prend une demi-minute et redémarre Dashwheel.</string>
+    <string name="dash_update_now">Mettre à jour</string>
+    <string name="dash_update_later">Plus tard</string>
+    <string name="dash_reset_confirm_title">Vider cette page ?</string>
+    <string name="dash_reset_confirm_body">Toutes ses tuiles disparaissent. Annuler les ramène.</string>
+    <string name="dash_clear">Vider</string>
+    <string name="dash_theme_show_all">Voir les %1$d thèmes</string>
+    <string name="dash_theme_show_fewer">Voir moins</string>
+    <string name="dash_tile_design">Design</string>
+    <string name="dash_tile_move">Déplacer vers une autre page</string>
+    <string name="dash_tile_remove">Retirer</string>
 </resources>

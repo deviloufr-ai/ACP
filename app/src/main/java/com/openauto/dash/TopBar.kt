@@ -38,6 +38,10 @@ import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.roundToInt
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VerticalSplit
 import androidx.compose.material3.Button
@@ -116,6 +120,16 @@ internal data class TopBarModel(
     val onTemplates: () -> Unit,
     val onSystem: () -> Unit,
     val onCheckUpdates: () -> Unit,
+    /** Where the updater stands: a dot on ⋮ and a menu row while a newer build is on offer. */
+    val update: UpdateStatus,
+    /** Installs the update on offer (downloading it first if need be). */
+    val onUpdate: () -> Unit,
+    /** "Later": stops the update asking until a newer one. */
+    val onDismissUpdate: () -> Unit,
+    /** Something the launcher can use is still not allowed: the bar shows a pill that opens the setup. */
+    val setupPending: Boolean,
+    /** Opens the setup on its access step (the pill), or from the start (Settings). */
+    val onSetup: (fromStart: Boolean) -> Unit,
     /** Demo mode is running: the menu offers to stop it. */
     val demo: Boolean,
     val onDemo: () -> Unit,
@@ -203,6 +217,10 @@ internal fun StandardTopBar(m: TopBarModel) {
                 // Takes what is left and no more; its pills shorten first.
                 Row(modifier = Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
                     VehicleAlerts(m.obdConnection, m.obd)
+                }
+                if (m.setupPending) {
+                    SetupPill(onClick = { m.onSetup(false) })
+                    Spacer(Modifier.width(6.dp))
                 }
                 ObdPill(m.obdConnection, m.onConnectObd)
                 MorePicker(m) { open ->
@@ -446,11 +464,25 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             action()
         }
     }
+    val offered = m.update is UpdateStatus.Available || m.update is UpdateStatus.Ready
     Box {
         anchor { open = true }
+        // A newer build waits behind the menu: a dot on its corner says so.
+        if (offered) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp)
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(DashColors.Accent)
+                    .semantics { contentDescription = "" }
+            )
+        }
         DashMenu(open, onDismiss = { open = false }) {
             if (m.moving) DriveLockRow()
             val parked = !m.moving
+            UpdateMenuRow(m.update, parked, onUpdate = pick(m.onUpdate))
             DashMenuItem(
                 text = stringResource(if (m.editing) R.string.dash_menu_done_editing else R.string.dash_menu_edit_dashboards),
                 leading = { MenuIcon(if (m.editing) Icons.Filled.Done else Icons.Filled.Edit, parked) },
@@ -532,7 +564,7 @@ private fun DashMenu(open: Boolean, onDismiss: () -> Unit, content: @Composable 
         expanded = open,
         onDismissRequest = onDismiss,
         modifier = Modifier.keepClearOfWindows(),
-        shape = DashShape.Medium,
+        shape = MaterialTheme.shapes.medium,
         containerColor = DashColors.Card.copy(alpha = 1f),
         border = BorderStroke(1.dp, DashColors.Line)
     ) {
@@ -685,10 +717,14 @@ internal fun DemoBadge(onStop: () -> Unit, modifier: Modifier = Modifier) {
 internal fun EditBar(
     page: Int,
     canUndo: Boolean,
+    /** The page's text size (the zoom its tiles share, or the commonest one). */
+    pageZoom: Float,
     onAdd: () -> Unit,
     onUndo: () -> Unit,
     onReset: () -> Unit,
     onTemplates: () -> Unit,
+    /** Sets every tile on the page to this zoom. */
+    onPageZoom: (Float) -> Unit,
     onDone: () -> Unit
 ) {
     val glass = DashColors.Glass
@@ -742,6 +778,7 @@ internal fun EditBar(
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.templates_button), color = DashColors.TextPrimary)
         }
+        PageZoomButton(pageZoom, onPageZoom)
         TextButton(onClick = onReset) {
             Text(stringResource(R.string.dash_reset_page), color = DashColors.Critical)
         }
@@ -805,133 +842,98 @@ internal fun PageIndicator(current: Int, modifier: Modifier = Modifier) {
 /** How long [PageIndicator] stays after a page change. */
 internal const val PAGE_INDICATOR_MS = 2_000L
 
+
 /**
- * The update strip above the bottom bar. By itself it only appears for an
- * update (available, downloading, installing); after a check asked for from
- * the menu ([showCheck]) it also says checking, up to date, or that it failed.
+ * The update's row at the top of the ⋮ menu: only while a newer build is on
+ * offer, downloading or downloaded. Installing restarts the launcher, so the
+ * row waits for the car to be parked.
  */
 @Composable
-internal fun UpdateBanner(
-    status: UpdateStatus,
-    currentVersion: String,
-    showCheck: Boolean,
-    onUpdate: (UpdateInfo) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val checkOutcome = status is UpdateStatus.Checking || status is UpdateStatus.UpToDate || status is UpdateStatus.Error
-    val visible = status is UpdateStatus.Available ||
-        status is UpdateStatus.Downloading ||
-        status is UpdateStatus.Installing ||
-        (showCheck && checkOutcome)
-    if (!visible) return
+private fun UpdateMenuRow(status: UpdateStatus, parked: Boolean, onUpdate: () -> Unit) {
+    val text = when (status) {
+        is UpdateStatus.Available -> stringResource(R.string.dash_update_to, status.info.versionName)
+        is UpdateStatus.Ready -> stringResource(R.string.dash_update_to, status.info.versionName)
+        is UpdateStatus.Downloading -> stringResource(R.string.dash_update_downloading, status.percent)
+        else -> return
+    }
+    val enabled = parked && status !is UpdateStatus.Downloading
+    DashMenuItem(
+        text = text,
+        leading = { MenuIcon(Icons.Filled.SystemUpdate, enabled) },
+        selected = status !is UpdateStatus.Downloading,
+        enabled = enabled,
+        onClick = onUpdate
+    )
+    HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
+}
 
-    // The release notes of the update on offer, while their dialog is open.
-    var notesFor by remember { mutableStateOf<UpdateInfo?>(null) }
-    val showNotes = (status as? UpdateStatus.Available)?.info?.let { info -> { notesFor = info } }
-
-    Surface(
-        color = if (status is UpdateStatus.Error) DashColors.Critical else DashColors.Accent,
-        shape = DashShape.Large,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 10.dp, end = 10.dp, top = 10.dp)
+/**
+ * On the bar while something the launcher could use is still not allowed
+ * (notifications, location, contacts, calendar, the OBD adapter): one pill
+ * for all of them, in place of a button on every tile. Opens the setup's
+ * access step.
+ */
+@Composable
+internal fun SetupPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = DashShape.Pill
+    val tap = rememberTapFeedback()
+    Row(
+        modifier = modifier
+            .heightIn(min = DashSize.Touch)
+            .clip(shape)
+            .background(DashColors.Card.copy(alpha = 1f))
+            .border(1.dp, DashColors.Warning.copy(alpha = 0.7f), shape)
+            .clickable(role = Role.Button) { tap(); onClick() }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .then(
-                        if (showNotes != null) Modifier
-                            .clip(DashShape.Small)
-                            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.update_notes_open), onClick = showNotes)
-                        else Modifier
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.SystemUpdate,
-                    contentDescription = null,
-                    tint = DashColors.Background,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = when (status) {
-                        is UpdateStatus.Available -> stringResource(R.string.dash_update_available, status.info.versionName)
-                        is UpdateStatus.Downloading -> stringResource(R.string.dash_update_downloading, status.percent)
-                        is UpdateStatus.Installing -> stringResource(R.string.dash_update_installing)
-                        is UpdateStatus.Checking -> stringResource(R.string.dash_update_checking)
-                        is UpdateStatus.UpToDate -> stringResource(R.string.dash_update_up_to_date, currentVersion)
-                        is UpdateStatus.Error -> stringResource(status.messageRes)
-                        else -> ""
-                    },
-                    color = DashColors.Background,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        Icon(Icons.Filled.Info, contentDescription = null, tint = DashColors.Warning, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.setup_pill),
+            color = DashColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+    }
+}
 
-            when (status) {
-                is UpdateStatus.Available -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { notesFor = status.info }) {
-                        Icon(
-                            imageVector = Icons.Filled.Info,
-                            contentDescription = stringResource(R.string.update_notes_open),
-                            tint = DashColors.Background
-                        )
-                    }
-                    Button(
-                        onClick = { onUpdate(status.info) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DashColors.Background,
-                            contentColor = DashColors.Accent
-                        )
-                    ) {
-                        Text(stringResource(R.string.dash_update))
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.dash_dismiss),
-                            tint = DashColors.Background
-                        )
-                    }
-                }
-
-                is UpdateStatus.Downloading, is UpdateStatus.Checking -> CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = DashColors.Background,
-                    strokeWidth = 2.dp
-                )
-
-                is UpdateStatus.UpToDate, is UpdateStatus.Error -> IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.dash_dismiss),
-                        tint = DashColors.Background
-                    )
-                }
-
-                else -> {}
-            }
+/** The whole page's text size: a menu with smaller, the percentage, bigger and back to 100 %. */
+@Composable
+private fun PageZoomButton(zoom: Float, onZoom: (Float) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }) {
+            Icon(Icons.Filled.FormatSize, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.zoom_page), color = DashColors.TextPrimary)
+        }
+        DashMenu(open, onDismiss = { open = false }) {
+            ZoomStepper(zoom, onZoom)
         }
     }
+}
 
-    notesFor?.let { info ->
-        ReleaseNotesDialog(
-            info = info,
-            onUpdate = {
-                notesFor = null
-                onUpdate(info)
-            },
-            onDismiss = { notesFor = null }
+/** Smaller, the percentage, bigger, and back to 100 % when it is not there. */
+@Composable
+internal fun ZoomStepper(zoom: Float, onZoom: (Float) -> Unit) {
+    Row(modifier = Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { onZoom(zoomStep(zoom, -1)) }, enabled = zoom > ZOOM_MIN, modifier = Modifier.size(DashSize.Touch)) {
+            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.zoom_out), tint = DashColors.TextPrimary)
+        }
+        Text(
+            stringResource(R.string.zoom_percent, (zoom * 100).roundToInt()),
+            color = DashColors.TextPrimary, fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center, modifier = Modifier.width(72.dp)
         )
+        IconButton(onClick = { onZoom(zoomStep(zoom, 1)) }, enabled = zoom < ZOOM_MAX, modifier = Modifier.size(DashSize.Touch)) {
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zoom_in), tint = DashColors.TextPrimary)
+        }
+        if (zoom != 1f) {
+            TextButton(onClick = { onZoom(1f) }) {
+                Text(stringResource(R.string.zoom_reset), color = DashColors.Accent)
+            }
+        }
     }
 }

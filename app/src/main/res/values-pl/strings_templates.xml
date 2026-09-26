@@ -13,4 +13,7 @@
     <string name="templates_no_obd">Nie wybrano jeszcze adaptera OBD, więc widżety danych auta są pominięte.</string>
     <string name="templates_fill_empty">Wypełnij puste strony</string>
     <string name="templates_replace_all">Zastąp wszystkie strony</string>
+    <string name="templates_replace_confirm_title">Zastąpić wszystkie siedem stron?</string>
+    <string name="templates_replace_confirm_body">Twój układ zniknie. Cofnij go przywróci.</string>
+    <string name="templates_replace">Zastąp</string>
 </resources>

@@ -63,8 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /*
- * The "Add widget" catalogue: every built-in tile grouped by category, plus
- * the launch bar and hosted system widgets.
+ * The built-in tile catalogue: names, blurbs and icons (the picker is AddSheet.kt).
  */
 
 /** Display name of a built-in tile, in the current language. */
@@ -106,82 +105,4 @@ internal fun kindIcon(kind: BuiltinKind): ImageVector = when (kind) {
     BuiltinKind.FUEL_TO_DEST -> Icons.Filled.EvStation
     BuiltinKind.SERVICE -> Icons.Filled.Build
     BuiltinKind.FUEL_PRICES -> Icons.Filled.LocalGasStation
-}
-
-/** Picker for a new tile: built-ins by category, then the launch bar and system widgets. */
-@Composable
-internal fun WidgetPickerDialog(
-    onPickBuiltin: (BuiltinKind) -> Unit,
-    onPickLaunchBar: () -> Unit,
-    onPickSystemWidget: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        modifier = Modifier.keepClearOfWindows(),
-        onDismissRequest = onDismiss,
-        containerColor = DashColors.Card.copy(alpha = 1f),
-        title = { Text(stringResource(R.string.apps_add_widget), color = DashColors.TextPrimary) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 440.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                WidgetCategory.entries.forEach { category ->
-                    val kinds = BuiltinKind.entries.filter { it.category == category }
-                    if (kinds.isEmpty() && category != WidgetCategory.APPS) return@forEach
-                    Text(
-                        stringResource(category.titleRes),
-                        color = DashColors.Muted,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
-                    )
-                    kinds.chunked(2).forEach { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            pair.forEach { kind ->
-                                ChoiceCell(kindIcon(kind), kind.label, kind.blurb, Modifier.weight(1f)) { onPickBuiltin(kind) }
-                            }
-                            if (pair.size == 1) Spacer(Modifier.weight(1f))
-                        }
-                    }
-                    if (category == WidgetCategory.APPS) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ChoiceCell(Icons.Filled.Apps, stringResource(R.string.apps_pick_launch_bar), stringResource(R.string.apps_pick_launch_bar_blurb), Modifier.weight(1f), onPickLaunchBar)
-                            ChoiceCell(Icons.Filled.Widgets, stringResource(R.string.apps_pick_system_widget), stringResource(R.string.apps_pick_system_widget_blurb), Modifier.weight(1f), onPickSystemWidget)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.apps_cancel), color = DashColors.Muted) }
-        }
-    )
-}
-
-@Composable
-private fun ChoiceCell(icon: ImageVector, label: String, blurb: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = DashShape.Medium
-    Row(
-        modifier = modifier
-            .clip(shape)
-            .background(DashColors.CardHi)
-            .border(1.dp, DashColors.Line, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .height(40.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = DashColors.Accent, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(label, color = DashColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium)
-            Text(blurb, color = DashColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
-        }
-    }
 }

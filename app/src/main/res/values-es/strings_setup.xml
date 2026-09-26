@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- First-run setup (SetupScreen.kt): the car, what the launcher may use, the look -->
+    <string name="setup_title">Configurar Dashwheel</string>
+    <string name="setup_step">Paso %1$d de 3</string>
+    <string name="setup_skip">Omitir</string>
+    <string name="setup_back">Atrás</string>
+    <string name="setup_next">Continuar</string>
+    <string name="setup_done">Listo</string>
+    <string name="setup_car_title">Tu coche</string>
+    <string name="setup_car_body">Las lecturas, el combustible y el mantenimiento siguen este perfil.</string>
+    <string name="setup_car_keep">Sí, es este</string>
+    <string name="setup_car_change">Elegir otro</string>
+    <string name="setup_driver_side">Asiento del conductor</string>
+    <string name="setup_driver_left">Izquierda</string>
+    <string name="setup_driver_right">Derecha</string>
+    <string name="setup_access_title">Qué puede usar Dashwheel</string>
+    <string name="setup_access_body">Todos son opcionales. Permítelo en la pantalla que se abre y vuelve.</string>
+    <string name="setup_access_notifications">Notificaciones</string>
+    <string name="setup_access_notifications_detail">La música, el próximo giro y tus mensajes llegan por ellas</string>
+    <string name="setup_access_location">Ubicación</string>
+    <string name="setup_access_location_detail">El mapa, el tiempo, el viaje y el aparcamiento</string>
+    <string name="setup_access_contacts">Contactos</string>
+    <string name="setup_access_contacts_detail">Contactos favoritos en marcación rápida</string>
+    <string name="setup_access_calendar">Calendario</string>
+    <string name="setup_access_calendar_detail">Las citas de hoy en la agenda</string>
+    <string name="setup_access_obd">Adaptador OBD</string>
+    <string name="setup_access_obd_detail">Datos del motor, combustible y códigos de avería por Bluetooth</string>
+    <string name="setup_allow">Permitir</string>
+    <string name="setup_choose">Elegir</string>
+    <string name="setup_allowed">Permitido</string>
+    <string name="setup_look_title">El aspecto</string>
+    <string name="setup_look_body">Tres para empezar. Todos los temas están en Ajustes, Aspecto.</string>
+    <string name="setup_pill">Terminar configuración</string>
+    <string name="setup_again">Configurar de nuevo</string>
+    <string name="setup_again_detail">El coche, qué puede usar Dashwheel y el aspecto, paso a paso</string>
+</resources>

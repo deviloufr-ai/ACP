@@ -52,7 +52,6 @@
     <string name="apps_kind_audio_blurb">Głośność, wyciszenie, dźwięk i ustawienia Bluetooth</string>
 
     <!-- Add-widget catalogue: dialog -->
-    <string name="apps_add_widget">Dodaj widżet</string>
     <string name="apps_pick_launch_bar">Pasek aplikacji</string>
     <string name="apps_pick_launch_bar_blurb">Ulubione aplikacje w jednym rzędzie</string>
     <string name="apps_pick_system_widget">Widżet systemowy…</string>
@@ -105,4 +104,17 @@
 
     <!-- Floating split-screen swap button (accessibility label) -->
     <string name="apps_swap_split_panes">Zamień aplikacje na podzielonym ekranie</string>
+    <!-- The add sheet (AddSheet.kt): widgets, apps and windows in one place -->
+    <string name="apps_add_title">Dodaj do: %1$s</string>
+    <string name="apps_tab_widgets">Widżety</string>
+    <string name="apps_tab_apps">Aplikacje</string>
+    <string name="apps_tab_windows">Okna</string>
+    <string name="apps_search">Szukaj</string>
+    <string name="apps_category_all">Wszystko</string>
+    <string name="apps_window_mode_single">W oknie</string>
+    <string name="apps_window_mode_pair">Obok siebie</string>
+    <string name="apps_window_hint">Aplikacja pozostaje otwarta we własnym oknie na tej stronie.</string>
+    <string name="apps_pair_pick_first">Wybierz aplikację na lewą stronę.</string>
+    <string name="apps_pair_pick_second">%1$s po lewej. Teraz wybierz aplikację na prawą stronę.</string>
+    <string name="apps_pair_change">Zmień</string>
 </resources>

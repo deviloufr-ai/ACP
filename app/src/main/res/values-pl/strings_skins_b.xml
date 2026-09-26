@@ -13,8 +13,6 @@
     <string name="horizon_rpm_value">%1$s obr/min</string>
     <string name="horizon_coolant_value">%1$d° płyn chłodn.</string>
     <string name="horizon_load_value">%1$d%% obciążenia</string>
-    <string name="horizon_no_signal_tap_obd">BRAK SYGNAŁU · POŁĄCZ OBD</string>
-    <string name="horizon_no_signal">BRAK SYGNAŁU</string>
 
     <!-- Horizon skin: music -->
     <string name="horizon_cd_previous_track">Poprzedni utwór</string>
@@ -25,15 +23,11 @@
     <string name="horizon_music_caps">MUZYKA</string>
     <string name="horizon_now_playing_caps">TERAZ ODTWARZANE</string>
     <string name="horizon_paused_caps">WSTRZYMANO</string>
-    <string name="horizon_media_access_needed">Dostęp do mediów</string>
-    <string name="horizon_nothing_playing">Nic nie jest odtwarzane</string>
     <string name="horizon_tap_allow_notification_access">Dotknij, aby zezwolić na dostęp do powiadomień</string>
     <string name="horizon_play_something">Włącz coś w dowolnej aplikacji muzycznej</string>
     <string name="horizon_unknown_artist">Nieznany wykonawca</string>
 
     <!-- Horizon skin: directions -->
-    <string name="horizon_directions">Trasa</string>
-    <string name="horizon_no_route">Brak trasy</string>
     <string name="horizon_start_navigation">Uruchom nawigację w Google Maps lub Waze</string>
     <string name="horizon_open_navigation">Otwórz nawigację</string>
 
@@ -74,12 +68,9 @@
     <string name="tape_linking_caps">ŁĄCZENIE</string>
     <string name="tape_obd_error_tap">BŁĄD OBD · DOTKNIJ</string>
     <string name="tape_no_obd_tap">BRAK OBD · DOTKNIJ</string>
-    <string name="tape_no_signal_caps">BRAK SYGNAŁU</string>
     <string name="tape_speed_caps">PRĘDKOŚĆ</string>
 
     <!-- Tape Deck skin: cassette deck -->
-    <string name="tape_media_access_caps">DOSTĘP DO MEDIÓW</string>
-    <string name="tape_no_tape_caps">BRAK KASETY</string>
     <string name="tape_tap_to_enable_caps">DOTKNIJ, ABY WŁĄCZYĆ</string>
     <string name="tape_unknown_artist_caps">NIEZNANY WYKONAWCA</string>
     <string name="tape_start_music_app_caps">URUCHOM APLIKACJĘ MUZYCZNĄ</string>
@@ -90,7 +81,6 @@
     <string name="tape_cd_play">Odtwórz</string>
     <string name="tape_cd_next_track">Następny utwór</string>
     <string name="tape_cd_open_music_app">Otwórz aplikację muzyczną</string>
-    <string name="tape_no_access_caps">BRAK DOSTĘPU</string>
     <string name="tape_play_caps">ODTWARZA</string>
     <string name="tape_pause_caps">PAUZA</string>
     <string name="tape_stop_caps">STOP</string>
@@ -98,7 +88,6 @@
 
     <!-- Tape Deck skin: directions CRT -->
     <string name="tape_tap_grant_notification_access_caps">DOTKNIJ, ABY ZEZWOLIĆ NA POWIADOMIENIA</string>
-    <string name="tape_no_route_caps">BRAK TRASY</string>
     <string name="tape_tap_open_maps_caps">DOTKNIJ, ABY OTWORZYĆ MAPS</string>
     <string name="tape_eta_caps">PRZYJAZD %1$s</string>
 

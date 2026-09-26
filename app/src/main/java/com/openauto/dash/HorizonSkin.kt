@@ -883,9 +883,10 @@ private fun HorizonSpeed(env: SkinTileEnv, side: Side) {
         contentAlignment = side.box
     ) {
         val capsSp = (maxWidth.value / 26f).coerceIn(11f, 16f)
+        val noSignal = stringResource(R.string.info_speed_no_signal).uppercase()
         val source = speedSource(
             obd, speed,
-            stringResource(if (idle) R.string.horizon_no_signal_tap_obd else R.string.horizon_no_signal)
+            if (idle) "$noSignal · ${stringResource(R.string.horizon_obd_tap_connect).uppercase()}" else noSignal
         )
         val figureW = maxWidth
         val figureH = maxHeight - (capsSp * 1.3f + 8f).dp
@@ -1017,9 +1018,9 @@ private fun HorizonMedia(env: SkinTileEnv, side: Side) {
                 }
                 SceneText(
                     when {
-                        !access -> stringResource(R.string.horizon_media_access_needed)
+                        !access -> stringResource(R.string.info_media_access_needed)
                         hasTrack -> ms.title
-                        else -> stringResource(R.string.horizon_nothing_playing)
+                        else -> stringResource(R.string.info_nothing_playing)
                     },
                     display(titleSp, italic = !hasTrack || !access),
                     maxLines = titleLines,
@@ -1094,10 +1095,11 @@ private fun SceneEmpty(title: String, hint: String, side: Side, onTap: (() -> Un
             .padding(TilePad),
         contentAlignment = side.box
     ) {
-        val titleSp = min(maxHeight.value * 0.3f, maxWidth.value / 5.5f).coerceIn(22f, 72f)
+        // The title's size follows its length, so a long one ("Notification access needed") stays on one line where it can.
+        val titleSp = min(maxHeight.value * 0.3f, maxWidth.value / (title.length * 0.5f)).coerceIn(22f, 72f)
         val hintSp = (titleSp * 0.32f).coerceIn(12f, 18f)
         Column(horizontalAlignment = side.h) {
-            SceneText(title, display(titleSp, italic = true), align = side.text)
+            SceneText(title, display(titleSp, italic = true), maxLines = 2, align = side.text)
             Spacer(Modifier.height(4.dp))
             SceneText(
                 hint,
@@ -1138,11 +1140,11 @@ private fun HorizonDirections(env: SkinTileEnv, side: Side) {
     val canTap = !env.editing
     when {
         !env.hasMediaAccess -> SceneEmpty(
-            stringResource(R.string.horizon_directions), stringResource(R.string.horizon_tap_allow_notification_access), side,
+            stringResource(R.string.info_directions_access_title), stringResource(R.string.horizon_tap_allow_notification_access), side,
             if (canTap) ({ CarMediaController.openNotificationAccessSettings(context) }) else null
         )
         !nav.active -> SceneEmpty(
-            stringResource(R.string.horizon_no_route), stringResource(R.string.horizon_start_navigation), side,
+            stringResource(R.string.info_directions_no_route), stringResource(R.string.horizon_start_navigation), side,
             if (canTap) ({ openNavigationApp(context, nav) }) else null
         )
         else -> BoxWithConstraints(
