@@ -194,15 +194,14 @@
     <!-- Why the adapter is not connected -->
     <string name="vehicle_obd_connecting_to">Łączenie z %1$s…</string>
     <string name="vehicle_obd_pairing_pin">Parowanie: wpisz PIN adaptera w oknie (często 1234 lub 0000)</string>
-    <string name="vehicle_obd_restarting_bt">Ponowne uruchamianie Bluetooth radia…</string>
+    <string name="vehicle_obd_switching_bt_on">Włączanie Bluetooth radia…</string>
     <string name="vehicle_obd_adapter">Adapter: %1$s</string>
     <string name="vehicle_choose_adapter">Wybierz adapter</string>
     <string name="vehicle_err_bt_off">Bluetooth radia jest wyłączony</string>
     <string name="vehicle_err_not_paired">%1$s nie jest sparowany z radiem: dotknij OBD, aby sparować ponownie</string>
     <string name="vehicle_err_pairing_failed">Parowanie z %1$s nie powiodło się: dotknij OBD i wpisz PIN (często 1234 lub 0000)</string>
-    <string name="vehicle_err_bt_restart_refused">Bluetooth radia się zawiesił i aplikacja nie może go uruchomić ponownie: uruchom ponownie radio, potem dotknij OBD</string>
-    <string name="vehicle_err_bt_still_off">Bluetooth radia nie włączył się po ponownym uruchomieniu: włącz go w ustawieniach</string>
-    <string name="vehicle_err_bt_stuck">Bluetooth radia nadal nie działa po ponownym uruchomieniu: uruchom ponownie radio, potem sparuj %1$s w ustawieniach Bluetooth (PIN 1234 lub 0000)</string>
+    <string name="vehicle_err_bt_still_off">Bluetooth radia jest wyłączony i nie daje się włączyć: uruchom ponownie radio, potem dotknij OBD</string>
+    <string name="vehicle_err_bt_stuck">Bluetooth Androida w radiu się zawiesił: uruchom ponownie radio, potem dotknij OBD</string>
     <string name="vehicle_err_refused">%1$s odrzucił połączenie: zajęty przez telefon lub inną aplikację, bez zasilania albo poza zasięgiem</string>
     <string name="vehicle_err_silent">%1$s połączył się, ale nigdy nie odpowiedział</string>
     <string name="vehicle_err_permission">Brak uprawnienia Bluetooth</string>

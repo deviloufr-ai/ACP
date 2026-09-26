@@ -130,7 +130,7 @@ object ObdBluetoothManager {
 
     /**
      * What a long connection attempt is busy with, for the tile to say: the
-     * PIN to type while pairing, or the Bluetooth restart. Null otherwise.
+     * PIN to type while pairing, or Bluetooth switching on. Null otherwise.
      */
     private val _connectStep = MutableStateFlow<Int?>(null)
     val connectStep: StateFlow<Int?> = _connectStep.asStateFlow()
@@ -161,13 +161,13 @@ object ObdBluetoothManager {
      * earlier try is closed first for the same reason, and whatever goes wrong
      * ends in ERROR, never stuck in CONNECTING where no retry would happen.
      *
-     * With [pairIfNeeded] (the driver tapped Connect), an adapter the head
-     * unit no longer has paired, e.g. after it was paired with a phone, is
-     * paired again: Android asks for its PIN. The background retries leave
-     * it alone, so no PIN dialog pops up by itself while driving.
+     * With [byDriver] (the driver tapped Connect), Bluetooth that is off is
+     * switched on, and an adapter the head unit no longer has paired is
+     * paired again (Android asks for its PIN). The background retries do
+     * neither, so nothing pops up by itself while driving.
      */
     @SuppressLint("MissingPermission")
-    suspend fun connect(deviceAddress: String, pairIfNeeded: Boolean = false): Boolean {
+    suspend fun connect(deviceAddress: String, byDriver: Boolean = false): Boolean {
         if (_connectionState.value == ObdConnectionState.CONNECTED) return true
         if (!connectLock.tryLock()) return false
         try {
@@ -177,7 +177,7 @@ object ObdBluetoothManager {
             val ok = withContext(Dispatchers.IO) {
                 // No poll or fault-code scan may talk to the link being replaced.
                 commandMutex.withLock {
-                    runCatching { open(deviceAddress, pairIfNeeded) }
+                    runCatching { open(deviceAddress, byDriver) }
                         .onFailure {
                             Log.w(TAG, "connect failed", it)
                             if (it is SecurityException) fail(R.string.vehicle_err_permission)
@@ -211,13 +211,15 @@ object ObdBluetoothManager {
     private val connectLock = Mutex()
 
     @SuppressLint("MissingPermission")
-    private suspend fun open(deviceAddress: String, pairIfNeeded: Boolean): Boolean {
+    private suspend fun open(deviceAddress: String, byDriver: Boolean): Boolean {
         val context = appContext ?: return false
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = manager?.adapter ?: return fail(R.string.vehicle_err_bt_off)
         if (!adapter.isEnabled) {
             Log.w(TAG, "Bluetooth is off")
-            return fail(R.string.vehicle_err_bt_off)
+            if (!byDriver) return fail(R.string.vehicle_err_bt_off)
+            // Tapped by the driver: switch it on rather than send them looking for the setting.
+            if (!switchBluetoothOn(adapter)) return fail(R.string.vehicle_err_bt_still_off)
         }
         closeQuietly()
         // Another adapter, or the same one in another car: learn it afresh.
@@ -227,32 +229,24 @@ object ObdBluetoothManager {
         silentPolls = 0
         lastAliveAt = SystemClock.elapsedRealtime()
         misses.fill(0)
-        var device = adapter.getRemoteDevice(deviceAddress)
+        val device = adapter.getRemoteDevice(deviceAddress)
         val label = runCatching { device.name }.getOrNull() ?: deviceAddress
         // Only a paired adapter can be reached; an unpaired one fails slowly and says nothing.
         if (!isBonded(adapter, deviceAddress)) {
             Log.w(TAG, "$deviceAddress is not paired")
-            if (!pairIfNeeded) return fail(R.string.vehicle_err_not_paired, label)
+            if (!byDriver) return fail(R.string.vehicle_err_not_paired, label)
             val paired = try {
                 pair(device)
             } catch (e: SecurityException) {
                 throw e
             } catch (e: RuntimeException) {
                 // Seen on a head unit: "BondStateMachine.obtainMessage(int) on a null
-                // object reference". Android's Bluetooth service there was half shut
-                // down while still saying it was on, and so listed no paired device
-                // either. A restart brings it back, with its pairings.
-                Log.w(TAG, "the Bluetooth service failed, restarting it", e)
-                restartBluetooth(adapter)?.let { return fail(it) }
-                device = adapter.getRemoteDevice(deviceAddress)
-                try {
-                    isBonded(adapter, deviceAddress) || pair(device)
-                } catch (e: SecurityException) {
-                    throw e
-                } catch (e: RuntimeException) {
-                    Log.w(TAG, "the Bluetooth service still fails after a restart", e)
-                    return fail(R.string.vehicle_err_bt_stuck, label)
-                }
+                // object reference", from inside Android's Bluetooth service: half
+                // shut down while still saying it was on, it then lists no paired
+                // device either. Restarting it from the app left it off there for
+                // good, so the driver is asked to restart the head unit instead.
+                Log.w(TAG, "the Bluetooth service failed", e)
+                return fail(R.string.vehicle_err_bt_stuck)
             }
             if (!paired) return fail(R.string.vehicle_err_pairing_failed, label)
         }
@@ -277,25 +271,16 @@ object ObdBluetoothManager {
         adapter.bondedDevices.any { it.address.equals(address, ignoreCase = true) }
 
     /**
-     * Switches the head unit's Bluetooth off and on again; null once it is
-     * back on, else why not (a message). Through the Android API (still
-     * allowed on the Android 10 these head units run), else through the
-     * privileged shell when there is one. Whatever happens on the way, it is
-     * always asked to come back on.
+     * Switches the head unit's Bluetooth on; true once it is. Through the
+     * Android API (still allowed on the Android 10 these head units run),
+     * else through the privileged shell when there is one.
      */
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
-    @StringRes
-    private suspend fun restartBluetooth(adapter: BluetoothAdapter): Int? {
-        val context = appContext ?: return R.string.vehicle_err_bt_restart_refused
-        _connectStep.value = R.string.vehicle_obd_restarting_bt
+    private suspend fun switchBluetoothOn(adapter: BluetoothAdapter): Boolean {
+        val context = appContext ?: return false
+        _connectStep.value = R.string.vehicle_obd_switching_bt_on
         try {
-            val off = runCatching { adapter.disable() }.getOrDefault(false) || bluetoothShell(context, "disable")
-            if (!off) {
-                Log.w(TAG, "Bluetooth refused to be switched off")
-                return R.string.vehicle_err_bt_restart_refused
-            }
-            waitUntil(BT_OFF_TIMEOUT_MS) { adapter.state == BluetoothAdapter.STATE_OFF }
             var on = waitUntil(BT_ON_TIMEOUT_MS) {
                 // Refused while it is still turning off: asked again until it takes.
                 if (adapter.state == BluetoothAdapter.STATE_OFF) adapter.enable()
@@ -303,12 +288,12 @@ object ObdBluetoothManager {
             }
             if (!on && bluetoothShell(context, "enable")) on = waitUntil(BT_ON_TIMEOUT_MS) { adapter.isEnabled }
             if (!on) {
-                Log.w(TAG, "Bluetooth did not come back on")
-                return R.string.vehicle_err_bt_still_off
+                Log.w(TAG, "Bluetooth did not switch on")
+                return false
             }
             // The paired devices and the profiles load just after it says it's on.
             delay(BT_SETTLE_MS)
-            return null
+            return true
         } finally {
             _connectStep.value = null
         }
@@ -327,7 +312,6 @@ object ObdBluetoothManager {
         return runCatching(done).getOrDefault(false)
     }
 
-    private const val BT_OFF_TIMEOUT_MS = 10_000L
     private const val BT_ON_TIMEOUT_MS = 15_000L
     private const val BT_SETTLE_MS = 2_000L
 
