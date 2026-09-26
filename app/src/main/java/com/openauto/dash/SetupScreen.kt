@@ -379,5 +379,9 @@ private fun LookStep(theme: ThemeState, onDone: () -> Unit) {
     PrimaryButton(stringResource(R.string.setup_done), onDone)
 }
 
-/** The three looks the setup and the gallery lead with: the default and the two most different skins. */
-internal val StarterThemes = listOf(DashThemeMode.AUTO, DashThemeMode.COCKPIT, DashThemeMode.ORBIT)
+/**
+ * The three looks the setup and the gallery lead with: the default, and the
+ * two made for the car (Mistral, the C4 Picasso's central cluster, and Zénith,
+ * its lounge cabin). The skins wait behind "Show all" in the gallery.
+ */
+internal val StarterThemes = listOf(DashThemeMode.AUTO, DashThemeMode.MISTRAL, DashThemeMode.ZENITH)

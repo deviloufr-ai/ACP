@@ -127,8 +127,9 @@ internal fun ThemePane(theme: ThemeState) {
     BarAutoHideSetting(theme)
     Spacer(Modifier.height(20.dp))
 
-    // Three looks up front (the one in use first), the other eleven behind one tap.
-    val lead = (listOf(theme.mode) + StarterThemes).distinct().take(3)
+    // The recommended looks up front (the one in use first, then the default
+    // and the two Citroën themes, none of them ever hidden), the rest behind one tap.
+    val lead = (listOf(theme.mode) + StarterThemes).distinct()
     var showAll by remember { mutableStateOf(false) }
     ThemeGroup(stringResource(R.string.dash_theme_group_recommended), lead, theme)
     val tap = rememberTapFeedback()
