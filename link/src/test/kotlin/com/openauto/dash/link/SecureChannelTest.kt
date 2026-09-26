@@ -157,7 +157,7 @@ class SecureChannelTest {
         assertEquals(ringing, LinkCodec.decode(LinkCodec.encode(ringing)))
         assertEquals(CallState(CallState.Phase.IDLE), LinkCodec.decode("""{"t":"call","phase":"IDLE"}""".encodeToByteArray()))
         // An app's call names the app and no number; an older head unit reads it as a plain call.
-        val whatsapp = CallState(CallState.Phase.RINGING, name = "Alice", app = "WhatsApp")
+        val whatsapp = CallState(CallState.Phase.RINGING, name = "Alice", app = "WhatsApp", packageName = "com.whatsapp")
         assertEquals(whatsapp, LinkCodec.decode(LinkCodec.encode(whatsapp)))
         assertEquals(
             CallState(CallState.Phase.ACTIVE, name = "Alice"),

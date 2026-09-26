@@ -374,13 +374,16 @@ object PhoneLink {
             is NotificationPosted -> NotificationFeed.phonePosted(message.notification)
             is NotificationRemoved -> NotificationFeed.phoneRemoved(message.key)
             is ActionResult -> _results.tryEmit(message)
-            is CallState -> _call.value = toPhoneCall(message)
+            is CallState -> _call.value = toPhoneCall(context, message)
             else -> Unit
         }
     }
 
-    private fun toPhoneCall(state: CallState): PhoneCall? {
+    private fun toPhoneCall(context: Context, state: CallState): PhoneCall? {
         if (state.phase == CallState.Phase.IDLE) return null
+        // The same app on this head unit (a WhatsApp linked to the phone's) rings here
+        // by itself, with its own screen: no card over it.
+        if (state.packageName != null && isInstalled(context, state.packageName)) return null
         val before = _call.value
         val sameCaller = before != null && before.number == state.number && before.name == state.name && before.app == state.app
         val photo = if (before != null && state.photoPng != null && sameCaller) before.photo
@@ -400,6 +403,9 @@ object PhoneLink {
             app = state.app
         )
     }
+
+    private fun isInstalled(context: Context, packageName: String): Boolean =
+        runCatching { context.packageManager.getApplicationInfo(packageName, 0).enabled }.getOrDefault(false)
 
     /** Pairings every one of which the hotspot's phone refused; counted once per occasion. */
     private fun noteRefusals(context: Context, ids: List<String>) {

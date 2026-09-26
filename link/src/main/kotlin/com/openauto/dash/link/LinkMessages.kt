@@ -162,7 +162,9 @@ data class CallState(
     /** False when the companion isn't allowed to answer / hang up: the head unit only shows the call. */
     val canControl: Boolean = true,
     /** The app the call is in ("WhatsApp"…); null for a phone call. */
-    val app: String? = null
+    val app: String? = null,
+    /** That app's package, for a head unit that runs the same app (a linked WhatsApp) to leave the call to it. */
+    val packageName: String? = null
 ) : LinkMessage {
     @Serializable
     enum class Phase { IDLE, RINGING, ACTIVE }
