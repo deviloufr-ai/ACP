@@ -35,9 +35,10 @@ import kotlin.math.sin
 /**
  * Demo mode: a made-up drive through Paris that feeds every live source the
  * tiles read (OBD readings and fault codes, GPS and the trip computer, g-force,
- * CANbox fuel / range / doors, weather, turn-by-turn, music, notifications and
- * the car-care stats), so the whole dashboard can be shown off parked and
- * without an adapter.
+ * CANbox fuel / range / doors, weather, turn-by-turn, music, notifications,
+ * fuel prices, the parking spot, the particle filter's soot load and the
+ * car-care stats), so the whole dashboard can be shown off parked and
+ * without an adapter. Started from Settings → Advanced.
  *
  * Meanwhile the real sources are held back (each checks [isOn]) so they don't
  * fight the fake values, nothing is saved and nothing is spoken; stopping puts
@@ -82,6 +83,8 @@ object DemoMode {
         _active.value = true
         FuelPriceRepo.demoWrite(DEMO_STATIONS, null)
         val sim = Simulation(System.currentTimeMillis())
+        // Where the car stood before the drive: the parking tile points back to it.
+        ParkingStore.demoWrite(ParkingSpot(START_LAT, START_LNG, sim.startedAt - 38 * 60_000L))
         job = scope.launch {
             var tick = 0
             while (isActive) {
@@ -252,6 +255,10 @@ object DemoMode {
         Leg(Turn.RIGHT, "Quai de la Tournelle", 900.0),
         Leg(Turn.LEFT, "Avenue des Gobelins", 1_100.0)
     )
+    /** The particle filter's soot load (%) and distance since its last clean-out when the demo starts. */
+    private const val DEMO_SOOT = 64.0
+    private const val DEMO_KM_SINCE_REGEN = 318.0
+
     /** The rest of the way after the last listed manoeuvre. */
     private const val FINAL_METRES = 6_400.0
 
@@ -358,6 +365,15 @@ object DemoMode {
                     elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
                 }
                 LocationFeed.demoWrite(fix, trip, heading.toFloat())
+                // The particle filter filling up slowly, hotter as the engine works.
+                PidExplorer.demoWrite(
+                    mapOf(
+                        ExtraReading.SOOT_LOAD to ExtraValue((DEMO_SOOT + tripM / 4_000).roundToInt().toDouble(), now),
+                        ExtraReading.DPF_TEMP to ExtraValue((260 + kmh * 2.6 + load).roundToInt().toDouble(), now),
+                        ExtraReading.REGEN_ACTIVE to ExtraValue(0.0, now),
+                        ExtraReading.KM_SINCE_REGEN to ExtraValue((DEMO_KM_SINCE_REGEN + tripM / 1000).roundToInt().toDouble(), now)
+                    )
+                )
             }
 
             // CANbox: doors shut, fuel and range going down with the kilometres.
@@ -478,8 +494,9 @@ object DemoMode {
     /**
      * What the real sources showed when the demo began, put back when it ends.
      * The feeds whose real state can change meanwhile (a route ending, a
-     * message arriving, a fetch landing, the CANbox) keep it up to date
-     * themselves and hand back their latest instead.
+     * message arriving, a fetch landing, the CANbox, the parking spot, the
+     * particle filter's readings) keep it up to date themselves and hand
+     * back their latest instead.
      */
     private class Snapshot(
         val lamp: EngineLamp?,
@@ -502,6 +519,8 @@ object DemoMode {
             CarCare.demoWrite(care)
             AiMechanic.demoWrite(ai)
             FuelPriceRepo.endDemo()
+            ParkingStore.endDemo()
+            PidExplorer.endDemo()
         }
 
         companion object {
