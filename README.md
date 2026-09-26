@@ -8,7 +8,7 @@ The dashboard is **three swipeable pages** of a 12×7 cell grid. Each cell can h
 
 ### Key Features
 - **Free-placement widget dashboard**: 3 pages × 12×7 grid, drag-to-move / handle-to-resize tiles, 30-step undo, layout persisted as JSON
-- **21 built-in widgets**: navigation map, Google/Waze directions, full OBD + CANbox telemetry (incl. DTC scan/clear), driving instruments (speed/compass/trip/g-force/parking), weather, calendar, quick-dial, notifications, audio, clock, and more — grouped by category in the widget catalogue
+- **21 built-in widgets**: navigation map, Google/Waze directions, full OBD + CANbox telemetry (incl. DTC scan/clear), driving instruments (speed/compass/trip/g-force/parking), weather, calendar, quick-dial, notifications, audio, clock, and more — grouped by category in the widget catalogue, where each one is previewed live as it will look on the page
 - **In-app navigation**: a free MapLibre GL map (CARTO basemap, Nominatim geocoding, Valhalla routing, 3D buildings) that hands off turn-by-turn to Google Maps/Waze; a Directions tile parses the live turn-by-turn notification from either app
 - **OBD-II + CANbox telemetry**: ELM327 Bluetooth adapter for speed/RPM/coolant/intake/throttle/load/fuel/voltage plus DTC read & clear; an optional rooted CANbox (MCU) reader for door state and a learned fuel-level mapping, tuned for a Citroën C4 Picasso
 - **System split-screen**: docks the dashboard and launches another app (or a saved pair) beside it via an Accessibility Service, with a swap button/overlay to flip which app is on which side
@@ -40,7 +40,7 @@ D:/android car launcher/
 │       │   ├── AutomotiveDashboard.kt             # Root composable: pages, undo, OBD loop, dialogs
 │       │   ├── DashboardModel.kt                  # Grid model, DashboardItem/BuiltinKind, persistence
 │       │   ├── DashboardGrid.kt                   # Grid rendering, drag-move / drag-resize gestures
-│       │   ├── WidgetCatalog.kt                   # "+" add-widget picker, grouped by category
+│       │   ├── AddSheet.kt / WidgetCatalog.kt     # "+" add sheet (live widget previews, apps, windows) + the catalogue's names/icons
 │       │   ├── AppLauncher.kt / AppTiles.kt       # App enumeration + full-screen app drawer
 │       │   ├── TopBar.kt                          # Minimal bar: Apps, layout menu, clock, OBD dot, ⋮ menu
 │       │   ├── DashTheme.kt / DashThemePickerDialog.kt  # 12 palettes (incl. Aurora Glass) + picker UI

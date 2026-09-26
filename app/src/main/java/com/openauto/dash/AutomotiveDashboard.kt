@@ -1059,6 +1059,16 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                 AddSheet(
                     page = addTargetPage,
                     apps = apps,
+                    previewTile = { item ->
+                        // Arranging mode, as in the design picker: view-hosting tiles show their placeholder, not a second live map.
+                        TileContent(
+                            item = item, editing = true, appsByPackage = appsByPackage,
+                            media = media, mediaController = mediaController, hasMediaAccess = mediaAccess,
+                            context = context, obd = obd, obdConnection = obdConnection, onConnectObd = onConnectObd,
+                            onPickDevice = onPickDevice, onLaunchApp = onLaunchApp, onLaunchSplitPair = onLaunchSplitPair,
+                            onEditLaunchBar = {}, onModelTouch = {}
+                        )
+                    },
                     onPickBuiltin = { kind ->
                         showAddSheet = false
                         if (addTargetPage >= 0) addItem(addTargetPage, DashboardItem.BuiltinWidget(kind, w = kind.defaultW, h = kind.defaultH))
