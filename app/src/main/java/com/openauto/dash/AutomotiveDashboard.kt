@@ -93,6 +93,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 internal const val MAX_UNDO = 30
 
 /**
+ * How long "Starting installer…" may stay on with the launcher still in front
+ * before the installer is taken as never having opened. The system installer
+ * takes a few seconds to appear on the head unit; a launch it dropped never does.
+ */
+private const val INSTALLER_GRACE_MS = 15_000L
+
+/**
  * Gap between the docked Maps window and the divider. The system claims the
  * 30 dp band around a freeform window as its resize handle (WindowManager's
  * RESIZE_HANDLE_WIDTH_IN_DP) and swallows drags that start in it; the divider
@@ -625,6 +632,9 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
                     if (hasMediaAccess) mediaController.start()
                     VehicleMonitor.connectSaved()
                     VehicleMonitor.setForeground(true)
+                    // Back from the system installer without a new build: it
+                    // was cancelled, or never opened. The update stays on offer.
+                    updateManager.installerClosed()
                 }
                 Lifecycle.Event.ON_PAUSE -> VehicleMonitor.setForeground(false)
                 else -> Unit
@@ -681,6 +691,19 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
             releaseNotes = null
             updatePrompt = status
         }
+    }
+    // The installer is another app's screen: while it is up, the launcher is
+    // paused, and coming back from it is handled on resume above. Still in
+    // front with "Starting installer…" on this long after asking for it, the
+    // installer never came up (a launch the system dropped): the build goes
+    // back to Ready and the "Update ready" prompt asks again, whose Update
+    // now launches the installer from a tap, with the launcher in front.
+    LaunchedEffect(updateStatus) {
+        if (updateStatus !is UpdateStatus.Installing) return@LaunchedEffect
+        delay(INSTALLER_GRACE_MS)
+        if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
+        promptedBuild = -1L
+        updateManager.installerClosed()
     }
 
     /** The adapter picker is a list to read: parked only. Reconnecting a saved one needs no picker. */

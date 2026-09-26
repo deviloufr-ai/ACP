@@ -42,7 +42,8 @@ sealed interface UpdateStatus {
     data class Downloading(val info: UpdateInfo, val percent: Int) : UpdateStatus
     /** Downloaded and waiting for the go-ahead to install. */
     data class Ready(val info: UpdateInfo, val file: File) : UpdateStatus
-    data object Installing : UpdateStatus
+    /** The system installer was asked to open on [file]; see [UpdateManager.installerClosed]. */
+    data class Installing(val info: UpdateInfo, val file: File) : UpdateStatus
     data class Error(@StringRes val messageRes: Int) : UpdateStatus
 }
 
@@ -53,6 +54,7 @@ val UpdateStatus.updateInfo: UpdateInfo?
         is UpdateStatus.Dismissed -> info
         is UpdateStatus.Downloading -> info
         is UpdateStatus.Ready -> info
+        is UpdateStatus.Installing -> info
         else -> null
     }
 
@@ -195,10 +197,29 @@ class UpdateManager(private val context: Context) {
         install(file)
     }
 
-    /** Launches the system installer on a downloaded [file]. */
+    /**
+     * Launches the system installer on a downloaded [file]. A launch that
+     * fails outright is an error the driver can read; one the system quietly
+     * drops (see [installerClosed]) is caught by the screen.
+     */
     fun install(file: File) {
-        _status.value = UpdateStatus.Installing
-        launchInstaller(file)
+        val info = _status.value.updateInfo ?: return
+        _status.value = UpdateStatus.Installing(info, file)
+        runCatching { launchInstaller(file) }.onFailure {
+            _status.value = UpdateStatus.Error(R.string.sys_update_install_failed)
+        }
+    }
+
+    /**
+     * The launcher is in front again with the installer's status still on:
+     * the driver backed out of the installer, or it never came up (Android
+     * refuses, without a word, an activity started by an app not in front,
+     * as when a download ends after the driver left the launcher). The build
+     * is still downloaded: it is offered again rather than "starting" forever.
+     */
+    fun installerClosed() {
+        val installing = _status.value as? UpdateStatus.Installing ?: return
+        _status.value = UpdateStatus.Ready(installing.info, installing.file)
     }
 
     /**

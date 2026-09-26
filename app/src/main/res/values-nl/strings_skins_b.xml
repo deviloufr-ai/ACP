@@ -108,6 +108,7 @@
     <!-- In-app updater -->
     <string name="sys_update_check_failed">Kan niet op updates controleren</string>
     <string name="sys_update_download_failed">Downloaden mislukt</string>
+    <string name="sys_update_install_failed">Installatie kon niet worden gestart</string>
     <string name="sys_update_downloading">Update downloaden</string>
 
     <!-- System-app install (shown after "Failed: " in the install dialog) -->

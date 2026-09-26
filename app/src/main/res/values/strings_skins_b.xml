@@ -108,6 +108,7 @@
     <!-- In-app updater -->
     <string name="sys_update_check_failed">Couldn\'t check for updates</string>
     <string name="sys_update_download_failed">Download failed</string>
+    <string name="sys_update_install_failed">Couldn\'t start the installer</string>
     <string name="sys_update_downloading">Downloading update</string>
 
     <!-- System-app install (shown after "Failed: " in the install dialog) -->

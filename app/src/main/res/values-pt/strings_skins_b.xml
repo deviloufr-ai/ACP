@@ -108,6 +108,7 @@
     <!-- In-app updater -->
     <string name="sys_update_check_failed">Não foi possível procurar atualizações</string>
     <string name="sys_update_download_failed">Falha na transferência</string>
+    <string name="sys_update_install_failed">Não foi possível iniciar a instalação</string>
     <string name="sys_update_downloading">A transferir atualização</string>
 
     <!-- System-app install (shown after "Failed: " in the install dialog) -->

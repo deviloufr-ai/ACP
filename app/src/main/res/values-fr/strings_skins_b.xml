@@ -108,6 +108,7 @@
     <!-- In-app updater -->
     <string name="sys_update_check_failed">Impossible de rechercher les mises à jour</string>
     <string name="sys_update_download_failed">Échec du téléchargement</string>
+    <string name="sys_update_install_failed">Impossible de lancer l\'installation</string>
     <string name="sys_update_downloading">Téléchargement de la mise à jour</string>
 
     <!-- System-app install (shown after "Failed: " in the install dialog) -->
