@@ -610,6 +610,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
         SpeedVolume.start(context)
         CarCare.setContext(context)
         Maintenance.setContext(context)
+        DriveLog.start(context)
         PidExplorer.setContext(context)
         AiMechanic.setContext(context)
         SteeringWheelStore.setContext(context)

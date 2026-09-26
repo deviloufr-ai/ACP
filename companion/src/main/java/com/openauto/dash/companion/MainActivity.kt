@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,6 +51,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,9 +77,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import com.openauto.dash.link.DriveSummary
 import com.openauto.dash.link.PairingOffer
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * The companion's only screen: is the car connected, what still needs
@@ -95,6 +101,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         PairedUnits.load(this)
         CarSpot.load(this)
+        DriveJournal.load(this)
         takeOffer(intent)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFF5B8DEF), secondary = Color(0xFF2DD4BF))) {
@@ -149,6 +156,7 @@ private fun CompanionScreen(resumes: Int, offer: PairingOffer?, onScanned: (Stri
     val context = LocalContext.current
     val units by PairedUnits.units.collectAsState()
     val state by LinkServer.state.collectAsState()
+    val drives by DriveJournal.drives.collectAsState()
     var enabled by remember { mutableStateOf(PairedUnits.isEnabled(context)) }
     var removing by remember { mutableStateOf<PairedUnit?>(null) }
     val scan = rememberLauncherForActivityResult(ScanContract()) { result -> result.contents?.let(onScanned) }
@@ -179,6 +187,17 @@ private fun CompanionScreen(resumes: Int, offer: PairingOffer?, onScanned: (Stri
                 )
             }
             if (units.isNotEmpty()) item { CarSpotCard() }
+            if (units.isNotEmpty()) {
+                item { SectionTitle(stringResource(R.string.drives_title)) }
+                val latest = drives.firstOrNull()
+                if (latest == null) {
+                    item { HintCard(stringResource(R.string.drives_none)) }
+                } else {
+                    // "Under way" only while the car is linked: once it is gone, the drive it reported last is simply the last one.
+                    item { LatestDriveCard(latest, underWay = latest.ongoing && state is LinkState.Connected) }
+                    items(drives.drop(1).take(PAST_DRIVES_SHOWN), key = { it.startedAt }) { DriveRow(it) }
+                }
+            }
             item { SectionTitle(stringResource(R.string.setup_title)) }
             item { SetupSteps(resumes) }
             item { SectionTitle(stringResource(R.string.cars_title)) }
@@ -321,6 +340,131 @@ private fun CarSpotCard() {
         }
     }
 }
+
+/** Past drives listed under the latest one; older ones stay in [DriveJournal]. */
+private const val PAST_DRIVES_SHOWN = 30
+
+@Composable
+private fun HintCard(text: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp))
+    }
+}
+
+/** The latest drive in full (see [DriveJournal]): the trip computer's figures, then the eco-driving card's. */
+@Composable
+private fun LatestDriveCard(d: DriveSummary, underWay: Boolean) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Route, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(if (underWay) R.string.drive_under_way else R.string.drive_last), fontWeight = FontWeight.SemiBold)
+                    Text(dateText(d.startedAt), style = MaterialTheme.typography.bodySmall)
+                }
+                EcoBadge(d.ecoScore)
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Figure(kmText(d.distanceKm), stringResource(R.string.drive_km))
+                Figure(durationText(d.elapsedMs), stringResource(R.string.drive_time))
+                Figure(d.avgSpeedKmh.toString(), stringResource(R.string.drive_average))
+                Figure(d.maxSpeedKmh.toString(), stringResource(R.string.drive_top))
+            }
+            Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val score = d.ecoScore
+                if (score == null) {
+                    Text(stringResource(R.string.drive_eco_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text(
+                        stringResource(R.string.drive_eco_score, score) + " · " + stringResource(ecoCall(score)),
+                        style = MaterialTheme.typography.bodyMedium, color = ecoTint(score), fontWeight = FontWeight.SemiBold
+                    )
+                    Text(stringResource(R.string.drive_hard, d.hardAccel, d.hardBrake), style = MaterialTheme.typography.bodySmall)
+                    d.sweetPercent?.let { Text(stringResource(R.string.drive_band, it), style = MaterialTheme.typography.bodySmall) }
+                    if (d.clutchHolds > 0) Text(stringResource(R.string.drive_clutch, d.clutchHolds), style = MaterialTheme.typography.bodySmall)
+                }
+                val liters = d.fuelLiters
+                val cost = d.fuelCost
+                if (liters != null && cost != null) {
+                    Text(stringResource(R.string.drive_fuel, decimal(liters, 1), decimal(cost, 2), d.currency.orEmpty()), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+/** One past drive on a line: when, how far, how long, how fast, and its score. */
+@Composable
+private fun DriveRow(d: DriveSummary) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(dateText(d.startedAt), fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(R.string.drive_row, kmText(d.distanceKm), durationText(d.elapsedMs), d.avgSpeedKmh),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            EcoBadge(d.ecoScore)
+        }
+    }
+}
+
+@Composable
+private fun Figure(value: String, label: String) {
+    Column {
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The eco-driving score as a small tinted chip; "--" without one. */
+@Composable
+private fun EcoBadge(score: Int?) {
+    val tint = if (score == null) MaterialTheme.colorScheme.onSurfaceVariant else ecoTint(score)
+    Surface(shape = RoundedCornerShape(8.dp), color = tint.copy(alpha = 0.18f)) {
+        Text(
+            score?.toString() ?: "--", color = tint, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+/** The same verdict as the head unit's eco-driving card. */
+private fun ecoCall(score: Int): Int = when {
+    score >= 80 -> R.string.drive_eco_smooth
+    score >= 60 -> R.string.drive_eco_fair
+    else -> R.string.drive_eco_harsh
+}
+
+@Composable
+private fun ecoTint(score: Int): Color = when {
+    score >= 80 -> MaterialTheme.colorScheme.secondary
+    score >= 60 -> Color(0xFFF5B942)
+    else -> MaterialTheme.colorScheme.error
+}
+
+private fun kmText(km: Double): String =
+    if (km < 100) String.format(Locale.getDefault(), "%.1f", km) else km.roundToInt().toString()
+
+private fun decimal(value: Double, digits: Int): String = String.format(Locale.getDefault(), "%.${digits}f", value)
+
+/** "1 h 05" / "25 min". */
+@Composable
+private fun durationText(ms: Long): String {
+    val minutes = (ms / 60_000L).toInt()
+    return if (minutes >= 60) stringResource(R.string.drive_duration_hm, minutes / 60, minutes % 60)
+    else stringResource(R.string.drive_duration_m, minutes.coerceAtLeast(1))
+}
+
+/** Weekday, date and time, abbreviated: "Tue, 24 Sep, 08:12". */
+@Composable
+private fun dateText(at: Long): String = DateUtils.formatDateTime(
+    LocalContext.current, at,
+    DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_ALL
+)
 
 /** The time alone today, the date on other days. */
 private fun whenText(at: Long): String =

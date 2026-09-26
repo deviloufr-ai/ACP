@@ -3,6 +3,7 @@ package com.openauto.dash.link
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 /*
@@ -49,6 +50,38 @@ data object Pong : LinkMessage
 @Serializable
 @SerialName("car_location")
 data class CarLocation(val lat: Double, val lng: Double, val at: Long, val saved: Boolean = false) : LinkMessage
+
+/**
+ * Head unit → phone: the drives it logged (newest first; see [DriveSummary]),
+ * sent when the link comes up, with the drive under way first when there is
+ * one. The phone keeps them by their start time, so a drive already known is
+ * replaced by its newer figures.
+ */
+@Serializable
+@SerialName("drive_sync")
+data class DriveSync(val drives: List<DriveSummary>) : LinkMessage {
+    companion object {
+        /** More than the phone shows anyway; the log on the head unit is capped lower. */
+        const val MAX_ITEMS = 50
+
+        /** A sync of [drives] (newest first) that always fits in one frame. */
+        fun of(drives: List<DriveSummary>, maxBytes: Int = LinkSession.MAX_MESSAGE): DriveSync {
+            var items = drives.take(MAX_ITEMS)
+            while (items.isNotEmpty() && LinkCodec.encode(DriveSync(items)).size > maxBytes) items = items.dropLast(1)
+            return DriveSync(items)
+        }
+    }
+}
+
+/**
+ * Head unit → phone: a drive's latest figures. Sent every so often for the
+ * drive under way ([DriveSummary.ongoing]), so the phone has them even when the
+ * key turned off cuts the link before the drive is closed, then once more when
+ * it ends. The phone keeps one entry per start time.
+ */
+@Serializable
+@SerialName("drive")
+data class DriveReport(val drive: DriveSummary) : LinkMessage
 
 /** Phone → head unit: every notification currently shown, sent after [Hello]. */
 @Serializable
@@ -156,6 +189,68 @@ data class PhoneNotification(
 
 @Serializable
 data class ConversationLine(val sender: String, val text: String, val at: Long)
+
+/**
+ * One drive, as the dashboard's trip computer counted it and its eco-driving
+ * card judged it. Only what the head unit knows for sure travels: the eco
+ * figures are null without the OBD adapter (or under a kilometre), the fuel
+ * ones are an estimate at the car's usual consumption and the driver's own
+ * fuel price. [startedAt] identifies the drive on both sides.
+ */
+@Serializable
+data class DriveSummary(
+    val startedAt: Long,
+    /** When the car last moved: the end of the drive, or the time of an ongoing one's figures. */
+    val endedAt: Long,
+    val distanceKm: Double,
+    /** Time spent moving, not counting the stops. */
+    val movingMs: Long,
+    val maxSpeedKmh: Int,
+    /** 0-100: smooth, relaxed driving scores high. */
+    val ecoScore: Int? = null,
+    /** Share of the moving time spent in the car's relaxed rev band, 0-100. */
+    val sweetPercent: Int? = null,
+    val hardAccel: Int = 0,
+    val hardBrake: Int = 0,
+    /** A robotised gearbox held on the throttle, standing still. */
+    val clutchHolds: Int = 0,
+    val fuelLiters: Double? = null,
+    val fuelCost: Double? = null,
+    val currency: String? = null,
+    /** Still under way when sent; false once the drive is closed. */
+    val ongoing: Boolean = false
+) {
+    val elapsedMs: Long get() = (endedAt - startedAt).coerceAtLeast(0L)
+    val avgSpeedKmh: Int get() = if (movingMs <= 0L) 0 else Math.round(distanceKm / (movingMs / 3_600_000.0)).toInt()
+}
+
+/** The drives each app keeps, and how they are stored: the same on both sides. */
+object DriveSummaries {
+    private val json = Json { ignoreUnknownKeys = true }
+    private val list = ListSerializer(DriveSummary.serializer())
+
+    /**
+     * [drive] into [drives] (newest first): it replaces the entry with the same
+     * start time, and only the [max] newest are kept.
+     */
+    fun merge(drives: List<DriveSummary>, drive: DriveSummary, max: Int): List<DriveSummary> =
+        (listOf(drive) + drives.filter { it.startedAt != drive.startedAt }).sortedByDescending { it.startedAt }.take(max)
+
+    fun mergeAll(drives: List<DriveSummary>, more: List<DriveSummary>, max: Int): List<DriveSummary> =
+        more.fold(drives) { acc, drive -> merge(acc, drive, max) }
+
+    fun encode(drives: List<DriveSummary>): String = json.encodeToString(list, drives)
+
+    /** Empty for a text this side can't read. */
+    fun decode(text: String): List<DriveSummary> =
+        try {
+            json.decodeFromString(list, text)
+        } catch (_: SerializationException) {
+            emptyList()
+        } catch (_: IllegalArgumentException) {
+            emptyList()
+        }
+}
 
 /** JSON <-> [LinkMessage]. */
 object LinkCodec {
