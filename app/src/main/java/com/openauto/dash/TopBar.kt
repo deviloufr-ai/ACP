@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
@@ -822,6 +823,10 @@ internal fun UpdateBanner(
         (showCheck && checkOutcome)
     if (!visible) return
 
+    // The release notes of the update on offer, while their dialog is open.
+    var notesFor by remember { mutableStateOf<UpdateInfo?>(null) }
+    val showNotes = (status as? UpdateStatus.Available)?.info?.let { info -> { notesFor = info } }
+
     Surface(
         color = if (status is UpdateStatus.Error) DashColors.Critical else DashColors.Accent,
         shape = DashShape.Large,
@@ -838,7 +843,14 @@ internal fun UpdateBanner(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        if (showNotes != null) Modifier
+                            .clip(DashShape.Small)
+                            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.update_notes_open), onClick = showNotes)
+                        else Modifier
+                    )
             ) {
                 Icon(
                     imageVector = Icons.Filled.SystemUpdate,
@@ -866,6 +878,13 @@ internal fun UpdateBanner(
 
             when (status) {
                 is UpdateStatus.Available -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { notesFor = status.info }) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = stringResource(R.string.update_notes_open),
+                            tint = DashColors.Background
+                        )
+                    }
                     Button(
                         onClick = { onUpdate(status.info) },
                         colors = ButtonDefaults.buttonColors(
@@ -901,5 +920,16 @@ internal fun UpdateBanner(
                 else -> {}
             }
         }
+    }
+
+    notesFor?.let { info ->
+        ReleaseNotesDialog(
+            info = info,
+            onUpdate = {
+                notesFor = null
+                onUpdate(info)
+            },
+            onDismiss = { notesFor = null }
+        )
     }
 }

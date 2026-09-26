@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Release notes of an available update (ReleaseNotes.kt), from the update strip -->
+    <string name="update_notes_title">Novedades de %1$s</string>
+    <string name="update_notes_open">Notas de la versión</string>
+    <string name="update_notes_empty">Esta versión no tiene notas.</string>
+</resources>
