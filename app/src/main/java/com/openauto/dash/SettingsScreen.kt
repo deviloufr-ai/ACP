@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Science
@@ -71,8 +72,8 @@ import androidx.compose.ui.unit.em
  * The Settings screen: everything set once, full screen in two columns like
  * a car's own settings. Categories on the left, the chosen one's settings on
  * the right, most of them right there (theme, appearance, language, driving,
- * the paired phone) and the deep ones (car profile, AI, upkeep, readings, boot logo) one tap
- * away in their own sheet. Replaces the dialogs that used to stack four deep.
+ * the paired phone, demo mode) and the deep ones (car profile, AI, upkeep, readings, boot logo)
+ * one tap away in their own sheet. Replaces the dialogs that used to stack four deep.
  */
 
 internal enum class SettingsTab(@StringRes val titleRes: Int, val icon: ImageVector) {
@@ -184,7 +185,7 @@ internal fun SettingsScreen(
                     SettingsTab.LOOK -> LookPane(theme)
                     SettingsTab.DRIVING -> DrivingPane(m, onWheelButtons = { wheelButtons = true })
                     SettingsTab.PHONE -> PhonePane()
-                    SettingsTab.ADVANCED -> AdvancedPane(m, onBootLogo = { bootLogo = true })
+                    SettingsTab.ADVANCED -> AdvancedPane(m, onBootLogo = { bootLogo = true }, onClose = onClose)
                 }
             }
         }
@@ -304,8 +305,16 @@ private fun SpeedVolumeSetting() {
 }
 
 @Composable
-private fun AdvancedPane(m: TopBarModel, onBootLogo: () -> Unit) {
+private fun AdvancedPane(m: TopBarModel, onBootLogo: () -> Unit, onClose: () -> Unit) {
     SettingsSection(stringResource(R.string.settings_section_advanced))
+    SettingsToggle(
+        Icons.Filled.PlayCircle, stringResource(R.string.demo_menu_start),
+        stringResource(R.string.demo_settings_detail), m.demo
+    ) { on ->
+        m.onDemo()
+        // Straight to the dashboard it fills; the badge there stops it.
+        if (on) onClose()
+    }
     // Only on the QF001 / K706 firmware the feature was built for.
     if (BootLogoSupport.available) {
         SettingsRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.boot_menu), null, onBootLogo)

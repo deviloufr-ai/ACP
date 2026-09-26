@@ -313,10 +313,28 @@ object PidExplorer {
     /** The latest value of each verified reading; empty until the adapter connects. */
     val readings: StateFlow<Map<ExtraReading, ExtraValue>> = _readings.asStateFlow()
 
+    // The car's real values, kept up to date while the demo shows its own and put back when it ends.
+    @Volatile private var realReadings: Map<ExtraReading, ExtraValue> = emptyMap()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private var pollJob: Job? = null
     @Volatile private var verifiedFor: Int = 0
+
+    private fun setReadings(v: Map<ExtraReading, ExtraValue>) {
+        realReadings = v
+        if (!DemoMode.isOn) _readings.value = v
+    }
+
+    /** [DemoMode]'s particle-filter readings. */
+    internal fun demoWrite(readings: Map<ExtraReading, ExtraValue>) {
+        _readings.value = readings
+    }
+
+    /** The demo is over: the car's own readings back, as they are now. */
+    internal fun endDemo() {
+        _readings.value = realReadings
+    }
 
     fun setContext(context: Context) {
         if (appContext != null) return
@@ -396,7 +414,7 @@ object PidExplorer {
     /** Forgets every confirmed request (and the values read from them). */
     fun forget() {
         _state.value = State()
-        _readings.value = emptyMap()
+        setReadings(emptyMap())
         save()
     }
 
@@ -438,7 +456,7 @@ object PidExplorer {
             return
         }
         _state.value = _state.value.copy(verified = emptyList())
-        _readings.value = emptyMap()
+        setReadings(emptyMap())
         save()
     }
 
@@ -454,7 +472,7 @@ object PidExplorer {
                     ObdBluetoothManager.connectionState.value == ObdConnectionState.CONNECTED
                 ) {
                     val now = System.currentTimeMillis()
-                    val fresh = _readings.value.toMutableMap()
+                    val fresh = realReadings.toMutableMap()
                     // One set-up per computer and session rather than per reading.
                     for ((_, group) in list.groupBy { Triple(it.header, it.replyAddress, it.session) }) {
                         val c0 = group.first()
@@ -464,7 +482,7 @@ object PidExplorer {
                             if (r.verdict == ProbeVerdict.OK && r.value != null) fresh[c.reading] = ExtraValue(r.value, now)
                         }
                     }
-                    _readings.value = fresh
+                    setReadings(fresh)
                 }
                 delay(POLL_MS)
             }
@@ -475,7 +493,7 @@ object PidExplorer {
     private fun stopPolling() {
         pollJob?.cancel()
         pollJob = null
-        _readings.value = emptyMap()
+        setReadings(emptyMap())
     }
 
     private fun load() {

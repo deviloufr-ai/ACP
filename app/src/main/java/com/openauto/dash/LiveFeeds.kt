@@ -285,20 +285,26 @@ object ParkingStore {
     private const val PREFS = "parking_spot"
     private val _spot = MutableStateFlow<ParkingSpot?>(null)
     val spot: StateFlow<ParkingSpot?> = _spot
+    // The driver's real spot, kept while the demo shows its own and put back when it ends.
+    @Volatile private var realSpot: ParkingSpot? = null
 
     fun load(context: Context) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.contains("lat")) return
-        _spot.value = ParkingSpot(
+        realSpot = ParkingSpot(
             lat = java.lang.Double.longBitsToDouble(p.getLong("lat", 0L)),
             lng = java.lang.Double.longBitsToDouble(p.getLong("lng", 0L)),
             savedAt = p.getLong("at", 0L)
         )
+        if (!DemoMode.isOn) _spot.value = realSpot
     }
 
     fun save(context: Context, location: Location) {
         val s = ParkingSpot(location.latitude, location.longitude, System.currentTimeMillis())
         _spot.value = s
+        // A spot saved during the demo is somewhere in its made-up Paris: shown, never kept.
+        if (DemoMode.isOn) return
+        realSpot = s
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putLong("lat", java.lang.Double.doubleToRawLongBits(s.lat))
             .putLong("lng", java.lang.Double.doubleToRawLongBits(s.lng))
@@ -308,7 +314,19 @@ object ParkingStore {
 
     fun clear(context: Context) {
         _spot.value = null
+        if (DemoMode.isOn) return
+        realSpot = null
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
+    /** [DemoMode]'s spot, where the made-up drive set off. */
+    internal fun demoWrite(spot: ParkingSpot?) {
+        _spot.value = spot
+    }
+
+    /** The demo is over: the driver's own spot back. */
+    internal fun endDemo() {
+        _spot.value = realSpot
     }
 }
 

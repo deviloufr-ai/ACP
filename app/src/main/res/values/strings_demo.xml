@@ -3,6 +3,8 @@
     <!-- Demo mode: a made-up drive that shows every tile working (DemoMode.kt) -->
     <string name="demo_menu_start">Demo mode</string>
     <string name="demo_menu_stop">Stop demo</string>
+    <!-- Settings → Advanced: what the demo does -->
+    <string name="demo_settings_detail">A made-up drive through Paris fills every tile, to show the dashboard off parked. Nothing is saved; tap the badge to stop.</string>
     <string name="demo_badge">Demo · made-up data</string>
     <string name="demo_stop">Stop</string>
     <!-- Fake turn-by-turn instructions; %1$s = street name -->

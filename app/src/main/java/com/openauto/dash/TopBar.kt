@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.filled.Splitscreen
@@ -435,7 +434,8 @@ internal fun ObdPill(state: ObdConnectionState, onConnect: () -> Unit, modifier:
 
 /**
  * Menu around any [anchor] a skin draws: the things done often (edit,
- * templates, split screen, demo) and one door to everything set once.
+ * templates, split screen), one door to everything set once, and a way out
+ * of the demo while it runs (it starts from Settings → Advanced).
  */
 @Composable
 internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -> Unit) {
@@ -460,12 +460,14 @@ internal fun MorePicker(m: TopBarModel, anchor: @Composable (open: () -> Unit) -
             DashMenuItem(stringResource(R.string.templates_button), leading = { MenuIcon(Icons.Filled.Dashboard, parked) }, enabled = parked, onClick = pick(m.onTemplates))
             DashMenuItem(stringResource(R.string.dash_menu_split_screen), leading = { MenuIcon(Icons.Filled.Splitscreen) }, onClick = pick(m.onSplit))
             DashMenuItem(stringResource(R.string.settings_menu), leading = { MenuIcon(Icons.Filled.Settings, parked) }, enabled = parked, onClick = pick(m.onSettings))
-            HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
-            DashMenuItem(
-                text = stringResource(if (m.demo) R.string.demo_menu_stop else R.string.demo_menu_start),
-                leading = { MenuIcon(if (m.demo) Icons.Filled.Stop else Icons.Filled.PlayCircle) },
-                onClick = pick(m.onDemo)
-            )
+            if (m.demo) {
+                HorizontalDivider(color = DashColors.Line, modifier = Modifier.padding(vertical = 4.dp))
+                DashMenuItem(
+                    text = stringResource(R.string.demo_menu_stop),
+                    leading = { MenuIcon(Icons.Filled.Stop) },
+                    onClick = pick(m.onDemo)
+                )
+            }
         }
     }
 }

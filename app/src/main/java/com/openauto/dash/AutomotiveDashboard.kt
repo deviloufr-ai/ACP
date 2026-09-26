@@ -150,7 +150,7 @@ fun AutomotiveDashboard(inSplitMode: Boolean = false) {
     // dashboard on every OBD sample. Tiles read them where they draw them.
     val obd = ObdBluetoothManager.data.collectAsState()
     val obdConnection by ObdBluetoothManager.connectionState.collectAsState()
-    // Demo mode (⋮ menu) plays its own made-up tracks in place of the real session.
+    // Demo mode (Settings → Advanced) plays its own made-up tracks in place of the real session.
     val demoState = DemoMode.active.collectAsState()
     val demoOn by demoState
     val realMedia = mediaController.mediaState.collectAsState()
