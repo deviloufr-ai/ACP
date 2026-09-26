@@ -802,6 +802,9 @@ internal fun RangeCard(
     var showFinder by remember { mutableStateOf(false) }
     var showRangeFinder by remember { mutableStateOf(false) }
     val lock = LocalDriveLock.current
+    // The finders read the CANbox stream through root: without it they have
+    // nothing to list, so only the OBD is offered (see PrivilegedShell).
+    val canbox = shellAccess().root
 
     Card(modifier = modifier) {
         Column(
@@ -825,24 +828,26 @@ internal fun RangeCard(
                 Icon(Icons.Filled.LocalGasStation, null, tint = DashColors.Muted, modifier = Modifier.size(44.dp))
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    stringResource(R.string.vehicle_fuel_no_obd),
+                    stringResource(if (canbox) R.string.vehicle_fuel_no_obd else R.string.vehicle_fuel_none),
                     color = DashColors.Muted,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
-                // Reading the range is instant (the trip computer shows it); the
-                // fuel byte takes days of driving to learn, so range comes first.
-                Button(
-                    onClick = { lock.whenParked { showRangeFinder = true } },
-                    colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
-                ) {
-                    Icon(Icons.Filled.Speed, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.vehicle_find_range_signal))
-                }
-                TextButton(onClick = { lock.whenParked { showFinder = true } }) {
-                    Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                if (canbox) {
+                    // Reading the range is instant (the trip computer shows it); the
+                    // fuel byte takes days of driving to learn, so range comes first.
+                    Button(
+                        onClick = { lock.whenParked { showRangeFinder = true } },
+                        colors = ButtonDefaults.buttonColors(containerColor = DashColors.Accent, contentColor = DashColors.Background)
+                    ) {
+                        Icon(Icons.Filled.Speed, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.vehicle_find_range_signal))
+                    }
+                    TextButton(onClick = { lock.whenParked { showFinder = true } }) {
+                        Text(stringResource(R.string.vehicle_find_fuel_signal), color = DashColors.Muted, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
                 if (!obdConnected && LocalObdPrompt.current) {
                     TextButton(onClick = onConnect) {
@@ -879,8 +884,8 @@ internal fun RangeCard(
                     MeterChip(stringResource(R.string.vehicle_in_tank), approx + "%.0f L".format(fuel.liters), (fuel.liters / fuel.tankL).toFloat(), DashColors.Accent, false, Modifier.weight(1f))
                     MeterChip(stringResource(R.string.vehicle_avg_use), "%.1f".format(fuel.avgUse), (fuel.avgUse / (2 * CarProfileStore.current.typicalUse)).toFloat().coerceIn(0f, 1f), DashColors.Accent, false, Modifier.weight(1f))
                 }
-                // Always reachable, so a learned signal can be recalibrated or forgotten.
-                Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                // Always reachable under root, so a learned signal can be recalibrated or forgotten.
+                if (canbox) Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { lock.whenParked { showFinder = true } }) {
                         Text(
                             stringResource(if (canFuel == null) R.string.vehicle_learn_fuel else R.string.vehicle_recalibrate_fuel),

@@ -275,7 +275,9 @@ object DashboardStore {
     /**
      * Default layout when nothing is saved yet: the Daily template, laid out
      * for the head unit's 1280x720 screen ([half]: beside a Maps dock). Car
-     * tiles are included so a new user sees where to connect the adapter.
+     * tiles are included so a new user sees where to connect the adapter; the
+     * CANbox ones only under root ([PrivilegedShell]), where they can show
+     * something.
      */
     private fun defaultPages(half: Boolean = false): List<List<DashboardItem>> = TemplatePlacer.pages(
         DashTemplate.DAILY,
@@ -285,7 +287,8 @@ object DashboardStore {
             obdPaired = true,
             driverOnRight = CarProfileStore.current.driverOnRight,
             mapsDocked = half,
-            dockApps = emptyList()
+            dockApps = emptyList(),
+            canbox = PrivilegedShell.access.value.root
         )
     )
 
