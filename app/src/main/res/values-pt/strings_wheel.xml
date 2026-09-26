@@ -14,6 +14,8 @@
     <string name="wheel_back">Voltar</string>
     <string name="wheel_listening_title">Prima um botão do volante…</string>
     <string name="wheel_listening_detail">O Dashwheel aguarda que prima o próximo botão.</string>
+    <string name="wheel_confirm_title">Prima o mesmo botão outra vez…</string>
+    <string name="wheel_confirm_detail">%1$s foi detetado. Prima-o mais uma vez para o Dashwheel saber que foi você: um valor do carro que muda sozinho não volta a aparecer quando pedido.</string>
     <string name="wheel_assign_prompt">O que deve fazer %1$s?</string>
     <string name="wheel_choose_app">Abrir uma app…</string>
     <string name="wheel_remove_binding">Esquecer este botão</string>

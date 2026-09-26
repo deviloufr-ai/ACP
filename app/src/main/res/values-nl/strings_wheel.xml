@@ -14,6 +14,8 @@
     <string name="wheel_back">Terug</string>
     <string name="wheel_listening_title">Druk op een knop op het stuur…</string>
     <string name="wheel_listening_detail">Dashwheel wacht op de volgende druk op een knop.</string>
+    <string name="wheel_confirm_title">Druk nog een keer op dezelfde knop…</string>
+    <string name="wheel_confirm_detail">%1$s is gezien. Druk er nog eens op zodat Dashwheel weet dat jij het was: een autowaarde die vanzelf verandert, komt niet op commando terug.</string>
     <string name="wheel_assign_prompt">Wat moet %1$s doen?</string>
     <string name="wheel_choose_app">Een app openen…</string>
     <string name="wheel_remove_binding">Deze knop vergeten</string>
