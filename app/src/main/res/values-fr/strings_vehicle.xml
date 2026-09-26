@@ -200,7 +200,9 @@
     <string name="vehicle_err_bt_off">Le Bluetooth de l\'autoradio est éteint</string>
     <string name="vehicle_err_not_paired">%1$s n\'est pas appairé avec l\'autoradio : touchez OBD pour l\'appairer à nouveau</string>
     <string name="vehicle_err_pairing_failed">L\'appairage avec %1$s n\'a pas abouti : touchez OBD et saisissez son code (souvent 1234 ou 0000)</string>
-    <string name="vehicle_err_bt_stuck">Le Bluetooth de l\'autoradio est bloqué : éteignez-le puis rallumez-le, ou redémarrez l\'autoradio</string>
+    <string name="vehicle_err_bt_restart_refused">Le Bluetooth de l\'autoradio est bloqué et ne se laisse pas redémarrer par l\'appli : redémarrez l\'autoradio, puis touchez OBD</string>
+    <string name="vehicle_err_bt_still_off">Le Bluetooth de l\'autoradio ne s\'est pas rallumé après le redémarrage : rallumez-le dans ses réglages</string>
+    <string name="vehicle_err_bt_stuck">Le Bluetooth de l\'autoradio échoue encore après un redémarrage : redémarrez l\'autoradio, puis appairez %1$s dans ses réglages Bluetooth (code 1234 ou 0000)</string>
     <string name="vehicle_err_refused">%1$s a refusé la connexion : pris par un téléphone ou une autre appli, sans alimentation, ou hors de portée</string>
     <string name="vehicle_err_silent">%1$s s\'est connecté mais n\'a jamais répondu</string>
     <string name="vehicle_err_permission">Permission Bluetooth non accordée</string>

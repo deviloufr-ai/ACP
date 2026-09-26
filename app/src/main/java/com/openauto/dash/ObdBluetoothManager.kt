@@ -243,7 +243,7 @@ object ObdBluetoothManager {
                 // down while still saying it was on, and so listed no paired device
                 // either. A restart brings it back, with its pairings.
                 Log.w(TAG, "the Bluetooth service failed, restarting it", e)
-                if (!restartBluetooth(adapter)) return fail(R.string.vehicle_err_bt_stuck)
+                restartBluetooth(adapter)?.let { return fail(it) }
                 device = adapter.getRemoteDevice(deviceAddress)
                 try {
                     isBonded(adapter, deviceAddress) || pair(device)
@@ -251,7 +251,7 @@ object ObdBluetoothManager {
                     throw e
                 } catch (e: RuntimeException) {
                     Log.w(TAG, "the Bluetooth service still fails after a restart", e)
-                    return fail(R.string.vehicle_err_bt_stuck)
+                    return fail(R.string.vehicle_err_bt_stuck, label)
                 }
             }
             if (!paired) return fail(R.string.vehicle_err_pairing_failed, label)
@@ -277,19 +277,24 @@ object ObdBluetoothManager {
         adapter.bondedDevices.any { it.address.equals(address, ignoreCase = true) }
 
     /**
-     * Switches the head unit's Bluetooth off and on again; true once it is
-     * back on. Through the Android API (still allowed on the Android 10 these
-     * head units run), else through the privileged shell when there is one.
-     * Whatever happens on the way, it is always asked to come back on.
+     * Switches the head unit's Bluetooth off and on again; null once it is
+     * back on, else why not (a message). Through the Android API (still
+     * allowed on the Android 10 these head units run), else through the
+     * privileged shell when there is one. Whatever happens on the way, it is
+     * always asked to come back on.
      */
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
-    private suspend fun restartBluetooth(adapter: BluetoothAdapter): Boolean {
-        val context = appContext ?: return false
+    @StringRes
+    private suspend fun restartBluetooth(adapter: BluetoothAdapter): Int? {
+        val context = appContext ?: return R.string.vehicle_err_bt_restart_refused
         _connectStep.value = R.string.vehicle_obd_restarting_bt
         try {
             val off = runCatching { adapter.disable() }.getOrDefault(false) || bluetoothShell(context, "disable")
-            if (!off) return false
+            if (!off) {
+                Log.w(TAG, "Bluetooth refused to be switched off")
+                return R.string.vehicle_err_bt_restart_refused
+            }
             waitUntil(BT_OFF_TIMEOUT_MS) { adapter.state == BluetoothAdapter.STATE_OFF }
             var on = waitUntil(BT_ON_TIMEOUT_MS) {
                 // Refused while it is still turning off: asked again until it takes.
@@ -299,11 +304,11 @@ object ObdBluetoothManager {
             if (!on && bluetoothShell(context, "enable")) on = waitUntil(BT_ON_TIMEOUT_MS) { adapter.isEnabled }
             if (!on) {
                 Log.w(TAG, "Bluetooth did not come back on")
-                return false
+                return R.string.vehicle_err_bt_still_off
             }
             // The paired devices and the profiles load just after it says it's on.
             delay(BT_SETTLE_MS)
-            return true
+            return null
         } finally {
             _connectStep.value = null
         }

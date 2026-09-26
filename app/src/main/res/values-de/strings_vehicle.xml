@@ -200,7 +200,9 @@
     <string name="vehicle_err_bt_off">Bluetooth des Radios ist aus</string>
     <string name="vehicle_err_not_paired">%1$s ist nicht mit dem Autoradio gekoppelt: OBD antippen, um es erneut zu koppeln</string>
     <string name="vehicle_err_pairing_failed">Kopplung mit %1$s nicht abgeschlossen: OBD antippen und die PIN eingeben (oft 1234 oder 0000)</string>
-    <string name="vehicle_err_bt_stuck">Das Bluetooth des Autoradios hängt: aus- und wieder einschalten oder das Autoradio neu starten</string>
+    <string name="vehicle_err_bt_restart_refused">Das Bluetooth des Autoradios hängt und lässt sich von der App nicht neu starten: Autoradio neu starten, dann OBD antippen</string>
+    <string name="vehicle_err_bt_still_off">Das Bluetooth des Autoradios ist nach dem Neustart nicht wieder angegangen: in den Einstellungen einschalten</string>
+    <string name="vehicle_err_bt_stuck">Das Bluetooth des Autoradios schlägt auch nach einem Neustart fehl: Autoradio neu starten, dann %1$s in den Bluetooth-Einstellungen koppeln (PIN 1234 oder 0000)</string>
     <string name="vehicle_err_refused">%1$s hat die Verbindung abgelehnt: von einem Handy oder einer anderen App belegt, ohne Strom oder außer Reichweite</string>
     <string name="vehicle_err_silent">%1$s hat sich verbunden, aber nie geantwortet</string>
     <string name="vehicle_err_permission">Bluetooth-Berechtigung nicht erteilt</string>

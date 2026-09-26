@@ -200,7 +200,9 @@
     <string name="vehicle_err_bt_off">O Bluetooth do rádio está desligado</string>
     <string name="vehicle_err_not_paired">%1$s não está emparelhado com o autorrádio: toque em OBD para o emparelhar de novo</string>
     <string name="vehicle_err_pairing_failed">O emparelhamento com %1$s não terminou: toque em OBD e introduza o PIN (muitas vezes 1234 ou 0000)</string>
-    <string name="vehicle_err_bt_stuck">O Bluetooth do autorrádio está bloqueado: desligue-o e volte a ligá-lo, ou reinicie o autorrádio</string>
+    <string name="vehicle_err_bt_restart_refused">O Bluetooth do autorrádio está bloqueado e não deixa a app reiniciá-lo: reinicie o autorrádio e toque em OBD</string>
+    <string name="vehicle_err_bt_still_off">O Bluetooth do autorrádio não voltou a ligar depois de reiniciar: ligue-o nas definições</string>
+    <string name="vehicle_err_bt_stuck">O Bluetooth do autorrádio continua a falhar depois de reiniciar: reinicie o autorrádio e emparelhe %1$s nas definições de Bluetooth (PIN 1234 ou 0000)</string>
     <string name="vehicle_err_refused">%1$s recusou a ligação: ocupado por um telemóvel ou outra app, sem alimentação ou fora de alcance</string>
     <string name="vehicle_err_silent">%1$s ligou-se mas nunca respondeu</string>
     <string name="vehicle_err_permission">Permissão Bluetooth não concedida</string>
